@@ -2,6 +2,21 @@
   "name": "nativecorejs",
   "version": "0.1.0",
   "description": "NativeCore framework runtime primitives and utilities",
+  "keywords": [
+    "nativecore",
+    "nativecorejs",
+    "web-components",
+    "signals",
+    "spa"
+  ],
+  "homepage": "https://github.com/davidtv2008/nativecorejs#readme",
+  "bugs": {
+    "url": "https://github.com/davidtv2008/nativecorejs/issues"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/davidtv2008/nativecorejs.git"
+  },
   "type": "module",
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
@@ -22,15 +37,15 @@
   ],
   "scripts": {
     "build": "tsc -p tsconfig.json",
-    "dev": "tsc -p tsconfig.json --watch"
+    "dev": "tsc -p tsconfig.json --watch",
+    "prepublishOnly": "npm run build"
   },
-  "keywords": [
-    "nativecore",
-    "nativecorejs",
-    "web-components",
-    "signals",
-    "spa"
-  ],
+  "publishConfig": {
+    "access": "public"
+  },
+  "engines": {
+    "node": ">=18"
+  },
   "license": "MIT",
   "devDependencies": {
     "typescript": "^5.6.3"

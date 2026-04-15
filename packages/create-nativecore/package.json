@@ -2,15 +2,37 @@
   "name": "create-nativecore",
   "version": "0.1.0",
   "description": "Interactive CLI for scaffolding NativeCore applications",
+  "keywords": [
+    "nativecore",
+    "cli",
+    "scaffold",
+    "starter",
+    "web-components"
+  ],
+  "homepage": "https://github.com/davidtv2008/nativecorejs#readme",
+  "bugs": {
+    "url": "https://github.com/davidtv2008/nativecorejs/issues"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/davidtv2008/nativecorejs.git"
+  },
   "type": "module",
   "bin": {
-    "create-nativecore": "./bin/index.mjs"
+    "create-nativecore": "bin/index.mjs"
   },
   "files": [
-    "bin"
+    "bin",
+    "README.md"
   ],
   "scripts": {
     "build": "echo create-nativecore is a direct CLI package"
+  },
+  "publishConfig": {
+    "access": "public"
+  },
+  "engines": {
+    "node": ">=18"
   },
   "license": "MIT"
 }

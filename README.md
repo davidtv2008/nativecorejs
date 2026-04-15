@@ -20,6 +20,10 @@ Split framework-grade code out of the demo app into `packages/nativecorejs`, the
 
 - `npm install` installs workspace dependencies for the framework and CLI packages
 - `npm run build` builds the `nativecorejs` runtime into `packages/nativecorejs/dist`
+- `npx create-nativecore my-app` is expected to scaffold a starter and run dependency installation automatically by default
+- `npm run publish:check` builds the packages and previews both npm publish tarballs
+- `npm run publish:runtime` publishes the `nativecorejs` runtime package to npm
+- `npm run publish:cli` publishes the `create-nativecore` CLI package to npm
 - `npm run create:sample` regenerates `sample-nativecore` against the local workspace package
 - `npm run verify:sample` installs and compiles the generated `sample-nativecore` project
 - `npm run smoke:sample` builds the runtime, regenerates a local sample starter, installs it, and compiles it in one step
@@ -43,3 +47,7 @@ Components intentionally left in the app repo:
 - `app-header`
 - `app-sidebar`
 - `app-footer`
+
+## npm release
+
+See `docs/NPM_PUBLISHING.md` for the first-time npm publish flow, login steps, dry-run validation, and publish order.

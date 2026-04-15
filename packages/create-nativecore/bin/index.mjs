@@ -1,5 +1,6 @@
 #!/usr/bin/env node
 
+import { spawn } from 'child_process';
 import fs from 'fs/promises';
 import path from 'path';
 import { createInterface } from 'readline/promises';
@@ -64,9 +65,39 @@ async function writeFile(filePath, content) {
     await fs.writeFile(filePath, content, 'utf8');
 }
 
+function installCommand(packageManager) {
+    if (packageManager === 'yarn') {
+        return { command: 'yarn', args: ['install'] };
+    }
+
+    return { command: packageManager, args: ['install'] };
+}
+
+async function installDependencies(targetDir, packageManager) {
+    const { command, args } = installCommand(packageManager);
+
+    await new Promise((resolve, reject) => {
+        const child = spawn(command, args, {
+            cwd: targetDir,
+            stdio: 'inherit',
+            shell: process.platform === 'win32'
+        });
+
+        child.on('error', reject);
+        child.on('exit', code => {
+            if (code === 0) {
+                resolve();
+                return;
+            }
+
+            reject(new Error(`${packageManager} install failed with exit code ${code ?? 'unknown'}`));
+        });
+    });
+}
+
 function scriptBlock(config) {
     const scripts = {
-        dev: 'npm run compile && node server.js',
+        dev: `${config.packageManager === 'yarn' ? 'yarn compile' : `${config.packageManager} run compile`} && node server.js`,
         start: 'node server.js',
         compile: config.useTypeScript ? 'tsc' : 'echo "No compile step required for JavaScript"',
         typecheck: config.useTypeScript ? 'tsc --noEmit' : 'echo "Type checking is disabled for JavaScript mode"'
@@ -582,6 +613,8 @@ async function buildProject(config) {
         await writeFile(path.join(targetDir, `src/controllers/dashboard.controller.${sourceExtension}`), controllerTemplate('dashboardController', dashboardControllerBody(), config));
         await writeFile(path.join(targetDir, 'src/views/pages/protected/dashboard.html'), dashboardViewTemplate());
     }
+
+    return targetDir;
 }
 
 async function main() {
@@ -622,6 +655,11 @@ async function main() {
             : await askYesNo('Include dashboard route?', true);
     const packageManager = getFlagValue('--pm')
         || (useDefaults ? 'npm' : await askChoice('Package manager', ['npm', 'pnpm', 'yarn'], 'npm'));
+    const shouldInstall = hasFlag('--skip-install') || hasFlag('--no-install')
+        ? false
+        : useDefaults
+            ? true
+            : await askYesNo('Install dependencies now?', true);
 
     const config = {
         projectName,
@@ -631,17 +669,40 @@ async function main() {
         includeAuth,
         includeDocs,
         includeDashboard,
-        packageManager
+        packageManager,
+        shouldInstall
     };
 
-    await buildProject(config);
+    const targetDir = await buildProject(config);
+
+    let installSucceeded = false;
+    let installError = null;
+
+    if (config.shouldInstall) {
+        console.log(`\nInstalling dependencies with ${config.packageManager}...\n`);
+
+        try {
+            await installDependencies(targetDir, config.packageManager);
+            installSucceeded = true;
+        } catch (error) {
+            installError = error;
+        }
+    }
 
     console.log('\nProject created successfully.');
     console.log(`cd ${config.projectName}`);
-    console.log(`${config.packageManager} install`);
-    if (useLocalFramework) {
-        console.log(`${config.packageManager} run compile`);
+
+    if (config.shouldInstall && installSucceeded) {
+        console.log('Dependencies installed.');
+    } else {
+        console.log(`${config.packageManager} install`);
     }
+
+    if (installError) {
+        console.log('\nDependency installation did not complete.');
+        console.log(installError.message);
+    }
+
     console.log(`${config.packageManager} run dev`);
     console.log('\nThis starter expects nativecorejs to provide prebuilt dist files and the base stylesheet from node_modules/nativecorejs.');
 
