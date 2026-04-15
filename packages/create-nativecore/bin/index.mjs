@@ -13,11 +13,6 @@ function hasFlag(flag) {
     return cliArgs.includes(flag);
 }
 
-function getFlagValue(prefix) {
-    const match = cliArgs.find(arg => arg.startsWith(`${prefix}=`));
-    return match ? match.slice(prefix.length + 1) : null;
-}
-
 function toKebabCase(value) {
     return value
         .trim()
@@ -47,15 +42,6 @@ async function askYesNo(question, defaultYes = true) {
     return answer === 'y' || answer === 'yes';
 }
 
-async function askChoice(question, options, fallback) {
-    const label = `${question} [${options.join('/')}]`;
-    while (true) {
-        const answer = (await ask(label, fallback)).toLowerCase();
-        if (options.includes(answer)) return answer;
-        console.log(`Invalid choice. Expected one of: ${options.join(', ')}`);
-    }
-}
-
 async function ensureDir(dirPath) {
     await fs.mkdir(dirPath, { recursive: true });
 }
@@ -65,16 +51,9 @@ async function writeFile(filePath, content) {
     await fs.writeFile(filePath, content, 'utf8');
 }
 
-function installCommand(packageManager) {
-    if (packageManager === 'yarn') {
-        return { command: 'yarn', args: ['install'] };
-    }
-
-    return { command: packageManager, args: ['install'] };
-}
-
-async function installDependencies(targetDir, packageManager) {
-    const { command, args } = installCommand(packageManager);
+async function installDependencies(targetDir) {
+    const command = 'npm';
+    const args = ['install'];
 
     await new Promise((resolve, reject) => {
         const child = spawn(command, args, {
@@ -90,17 +69,17 @@ async function installDependencies(targetDir, packageManager) {
                 return;
             }
 
-            reject(new Error(`${packageManager} install failed with exit code ${code ?? 'unknown'}`));
+            reject(new Error(`npm install failed with exit code ${code ?? 'unknown'}`));
         });
     });
 }
 
 function scriptBlock(config) {
     const scripts = {
-        dev: `${config.packageManager === 'yarn' ? 'yarn compile' : `${config.packageManager} run compile`} && node server.js`,
+        dev: 'npm run compile && node server.js',
         start: 'node server.js',
-        compile: config.useTypeScript ? 'tsc' : 'echo "No compile step required for JavaScript"',
-        typecheck: config.useTypeScript ? 'tsc --noEmit' : 'echo "Type checking is disabled for JavaScript mode"'
+        compile: 'tsc',
+        typecheck: 'tsc --noEmit'
     };
 
     return scripts;
@@ -116,10 +95,10 @@ function packageJsonTemplate(config) {
         dependencies: {
             nativecorejs: config.frameworkDependency
         },
-        devDependencies: config.useTypeScript ? {
+        devDependencies: {
             typescript: '^5.6.3',
             '@types/node': '^22.0.0'
-        } : {}
+        }
     }, null, 2) + '\n';
 }
 
@@ -183,7 +162,7 @@ http.createServer((req, res) => {
 }
 
 function shellHtmlTemplate(config, shell) {
-    const entryScript = config.useTypeScript ? './dist/app.js' : './src/app.js';
+    const entryScript = './dist/app.js';
     const shellName = shell === 'app' ? 'protected' : 'public';
 
     return `<!DOCTYPE html>
@@ -226,13 +205,7 @@ router.start();
 }
 
 function routesTemplate(config) {
-    const typeImport = config.useTypeScript
-        ? "import type { ControllerFunction, Router } from 'nativecorejs';\n"
-        : '';
-
-    const docsRoute = config.includeDocs
-        ? "        .register('/docs', 'src/views/pages/public/docs.html', lazyController('docsController', '../controllers/docs.controller.js'))\n"
-        : '';
+    const typeImport = "import type { ControllerFunction, Router } from 'nativecorejs';\n";
     const loginRoute = config.includeAuth
         ? "        .register('/login', 'src/views/pages/public/login.html', lazyController('loginController', '../controllers/login.controller.js'))\n"
         : '';
@@ -241,26 +214,26 @@ function routesTemplate(config) {
         : '';
     const protectedRoutes = config.includeDashboard ? "export const protectedRoutes = ['/dashboard'];\n" : "export const protectedRoutes = [];\n";
 
-    return `${typeImport}function lazyController(controllerName${config.useTypeScript ? ': string' : ''}, controllerPath${config.useTypeScript ? ': string' : ''})${config.useTypeScript ? ': ControllerFunction' : ''} {
-    return async (...args) => {
+    return `${typeImport}function lazyController(controllerName: string, controllerPath: string): ControllerFunction {
+    return async (...args: Parameters<ControllerFunction>) => {
         const module = await import(controllerPath);
-        return module[controllerName](...args);
+        const controller = module[controllerName] as ControllerFunction;
+        return controller(...args);
     };
 }
 
-export function registerRoutes(router${config.useTypeScript ? ': Router' : ''})${config.useTypeScript ? ': void' : ''} {
+export function registerRoutes(router: Router): void {
     router
         .register('/', 'src/views/pages/public/home.html', lazyController('homeController', '../controllers/home.controller.js'))
-${docsRoute}${loginRoute}${dashboardRoute}}
+${loginRoute}${dashboardRoute}}
 
 ${protectedRoutes}`;
 }
 
 function controllerTemplate(name, body, config) {
-    const typePrefix = config.useTypeScript ? ': Promise<() => void>' : '';
     return `import { trackEvents, trackSubscriptions } from 'nativecorejs';
 
-export async function ${name}(params = {})${typePrefix} {
+export async function ${name}(params: Record<string, string> = {}): Promise<() => void> {
     const events = trackEvents();
     const subs = trackSubscriptions();
 
@@ -288,13 +261,9 @@ function homeControllerBody(config) {
 
 function loginControllerBody() {
     return `    void params;
-    events.onSubmit('[data-form="login"]', event => {
+    events.onSubmit('[data-form="login"]', (event: Event) => {
         event.preventDefault();
     });`;
-}
-
-function docsControllerBody() {
-    return '    void params;';
 }
 
 function dashboardControllerBody() {
@@ -304,7 +273,6 @@ function dashboardControllerBody() {
 }
 
 function publicViewTemplate(config) {
-    const docsLink = config.includeDocs ? '<a href="/docs">Docs</a>' : '';
     const authLink = config.includeAuth ? '<a href="/login">Login</a>' : '';
     const dashboardButton = config.includeDashboard ? '<button type="button" data-action="launch-dashboard">Open dashboard shell</button>' : '';
 
@@ -314,17 +282,8 @@ function publicViewTemplate(config) {
     <p class="lede">A clean starter generated by create-nativecore. This shell is app-level only and excludes demo API endpoints or deployment-specific backend assets.</p>
     <div class="hero-actions">
         ${dashboardButton}
-        ${docsLink}
         ${authLink}
     </div>
-</section>
-`;
-}
-
-function docsViewTemplate() {
-    return `<section class="page-section">
-    <h1>Documentation</h1>
-    <p>Replace this starter page with your product documentation, component examples, or a markdown renderer.</p>
 </section>
 `;
 }
@@ -554,15 +513,23 @@ a {
 function nativecoreConfigTemplate(config) {
     return JSON.stringify({
         appName: config.projectTitle,
-        packageManager: config.packageManager,
-        useTypeScript: config.useTypeScript,
+        packageManager: 'npm',
+        useTypeScript: true,
         frameworkDependency: config.frameworkDependency,
         features: {
             authShell: config.includeAuth,
-            docs: config.includeDocs,
             dashboard: config.includeDashboard
         }
     }, null, 2) + '\n';
+}
+
+async function supportsLocalWorkspace() {
+    try {
+        await fs.access(path.join(process.cwd(), 'packages', 'nativecorejs', 'package.json'));
+        return true;
+    } catch {
+        return false;
+    }
 }
 
 async function buildProject(config) {
@@ -575,7 +542,7 @@ async function buildProject(config) {
         if (error.code !== 'ENOENT') throw error;
     }
 
-    const sourceExtension = config.useTypeScript ? 'ts' : 'js';
+    const sourceExtension = 'ts';
 
     await ensureDir(targetDir);
     await ensureDir(path.join(targetDir, 'src/config'));
@@ -594,19 +561,12 @@ async function buildProject(config) {
     await writeFile(path.join(targetDir, 'src/views/pages/public/home.html'), publicViewTemplate(config));
     await writeFile(path.join(targetDir, 'src/styles/main.css'), stylesTemplate());
 
-    if (config.useTypeScript) {
-        await writeFile(path.join(targetDir, 'tsconfig.json'), tsconfigTemplate());
-    }
+    await writeFile(path.join(targetDir, 'tsconfig.json'), tsconfigTemplate());
 
     if (config.includeAuth) {
         await writeFile(path.join(targetDir, 'app.html'), shellHtmlTemplate(config, 'app'));
         await writeFile(path.join(targetDir, `src/controllers/login.controller.${sourceExtension}`), controllerTemplate('loginController', loginControllerBody(), config));
         await writeFile(path.join(targetDir, 'src/views/pages/public/login.html'), loginViewTemplate());
-    }
-
-    if (config.includeDocs) {
-        await writeFile(path.join(targetDir, `src/controllers/docs.controller.${sourceExtension}`), controllerTemplate('docsController', docsControllerBody(), config));
-        await writeFile(path.join(targetDir, 'src/views/pages/public/docs.html'), docsViewTemplate());
     }
 
     if (config.includeDashboard) {
@@ -626,35 +586,23 @@ async function main() {
     const projectTitle = toTitleCase(projectName);
     const useDefaults = hasFlag('--defaults');
 
-    const useTypeScript = hasFlag('--js')
-        ? false
-        : hasFlag('--ts')
-            ? true
-            : useDefaults
-                ? true
-                : await askYesNo('Use TypeScript?', true);
-    const useLocalFramework = hasFlag('--local')
-        ? true
-        : useDefaults
-            ? false
-            : await askYesNo('Use local workspace nativecorejs package?', false);
+    const wantsLocalFramework = hasFlag('--local');
+    const canUseLocalFramework = wantsLocalFramework ? await supportsLocalWorkspace() : false;
+
+    if (wantsLocalFramework && !canUseLocalFramework) {
+        throw new Error('--local can only be used from the nativecorejs monorepo root where ./packages/nativecorejs exists.');
+    }
+
     const includeAuth = hasFlag('--no-auth')
         ? false
         : useDefaults
             ? true
             : await askYesNo('Include auth shell?', true);
-    const includeDocs = hasFlag('--no-docs')
-        ? false
-        : useDefaults
-            ? true
-            : await askYesNo('Include docs route?', true);
     const includeDashboard = hasFlag('--no-dashboard')
         ? false
         : useDefaults
             ? true
             : await askYesNo('Include dashboard route?', true);
-    const packageManager = getFlagValue('--pm')
-        || (useDefaults ? 'npm' : await askChoice('Package manager', ['npm', 'pnpm', 'yarn'], 'npm'));
     const shouldInstall = hasFlag('--skip-install') || hasFlag('--no-install')
         ? false
         : useDefaults
@@ -664,12 +612,11 @@ async function main() {
     const config = {
         projectName,
         projectTitle,
-        useTypeScript,
-        frameworkDependency: useLocalFramework ? 'file:../packages/nativecorejs' : '^0.1.0',
+        useTypeScript: true,
+        frameworkDependency: wantsLocalFramework ? 'file:../packages/nativecorejs' : '^0.1.0',
         includeAuth,
-        includeDocs,
         includeDashboard,
-        packageManager,
+        packageManager: 'npm',
         shouldInstall
     };
 
@@ -679,10 +626,10 @@ async function main() {
     let installError = null;
 
     if (config.shouldInstall) {
-        console.log(`\nInstalling dependencies with ${config.packageManager}...\n`);
+        console.log('\nInstalling dependencies with npm...\n');
 
         try {
-            await installDependencies(targetDir, config.packageManager);
+            await installDependencies(targetDir);
             installSucceeded = true;
         } catch (error) {
             installError = error;
@@ -695,7 +642,7 @@ async function main() {
     if (config.shouldInstall && installSucceeded) {
         console.log('Dependencies installed.');
     } else {
-        console.log(`${config.packageManager} install`);
+        console.log('npm install');
     }
 
     if (installError) {
@@ -703,7 +650,7 @@ async function main() {
         console.log(installError.message);
     }
 
-    console.log(`${config.packageManager} run dev`);
+    console.log('npm run dev');
     console.log('\nThis starter expects nativecorejs to provide prebuilt dist files and the base stylesheet from node_modules/nativecorejs.');
 
     rl.close();
