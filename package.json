@@ -1,0 +1,28 @@
+{
+  "name": "nativecorejs-monorepo",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "workspaces": [
+    "packages/*"
+  ],
+  "scripts": {
+    "build": "npm run build -w nativecorejs && npm run build -w create-nativecore",
+    "dev": "npm run dev -w nativecorejs",
+    "create:app": "node packages/create-nativecore/bin/index.mjs",
+    "clean:artifacts": "node -e \"const fs=require('fs'); fs.rmSync('.artifacts',{recursive:true,force:true}); fs.mkdirSync('.artifacts',{recursive:true});\"",
+    "clean:sample": "node -e \"const fs=require('fs'); fs.rmSync('sample-nativecore',{recursive:true,force:true});\"",
+    "create:sample": "npm run clean:sample && node packages/create-nativecore/bin/index.mjs sample-nativecore --defaults --no-auth --local",
+    "create:sample:packed": "npm run clean:sample && node packages/create-nativecore/bin/index.mjs sample-nativecore --defaults --no-auth",
+    "install:sample": "npm install --prefix sample-nativecore",
+    "install:sample:packed": "npm install --prefix sample-nativecore ./.artifacts/nativecorejs-0.1.0.tgz",
+    "compile:sample": "npm run compile --prefix sample-nativecore",
+    "verify:sample": "npm run install:sample && npm run compile:sample",
+    "smoke:sample": "npm run build && npm run create:sample && npm run verify:sample",
+    "pack:runtime": "npm run clean:artifacts && npm pack --pack-destination ./.artifacts ./packages/nativecorejs",
+    "pack:runtime:dry": "npm pack --dry-run ./packages/nativecorejs",
+    "verify:runtime:pack": "npm run build && npm run pack:runtime",
+    "verify:sample:packed": "npm run install:sample:packed && npm run compile:sample",
+    "smoke:sample:packed": "npm run verify:runtime:pack && npm run create:sample:packed && npm run verify:sample:packed"
+  }
+}

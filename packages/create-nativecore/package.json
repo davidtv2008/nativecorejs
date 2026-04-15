@@ -1,0 +1,16 @@
+{
+  "name": "create-nativecore",
+  "version": "0.1.0",
+  "description": "Interactive CLI for scaffolding NativeCore applications",
+  "type": "module",
+  "bin": {
+    "create-nativecore": "./bin/index.mjs"
+  },
+  "files": [
+    "bin"
+  ],
+  "scripts": {
+    "build": "echo create-nativecore is a direct CLI package"
+  },
+  "license": "MIT"
+}

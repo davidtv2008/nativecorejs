@@ -1,0 +1,38 @@
+{
+  "name": "nativecorejs",
+  "version": "0.1.0",
+  "description": "NativeCore framework runtime primitives and utilities",
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    },
+    "./components": {
+      "types": "./dist/components/index.d.ts",
+      "import": "./dist/components/index.js"
+    },
+    "./styles/base.css": "./src/styles/base.css"
+  },
+  "files": [
+    "dist",
+    "src/styles"
+  ],
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "dev": "tsc -p tsconfig.json --watch"
+  },
+  "keywords": [
+    "nativecore",
+    "nativecorejs",
+    "web-components",
+    "signals",
+    "spa"
+  ],
+  "license": "MIT",
+  "devDependencies": {
+    "typescript": "^5.6.3"
+  }
+}
