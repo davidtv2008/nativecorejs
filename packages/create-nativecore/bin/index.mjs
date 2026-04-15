@@ -3,11 +3,15 @@
 import { spawn } from 'child_process';
 import fs from 'fs/promises';
 import path from 'path';
+import { fileURLToPath } from 'url';
 import { createInterface } from 'readline/promises';
 import { stdin as input, stdout as output } from 'process';
 
 const cliArgs = process.argv.slice(2);
 const rl = createInterface({ input, output });
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+const templateDir = path.resolve(__dirname, '../template');
 
 function hasFlag(flag) {
     return cliArgs.includes(flag);
@@ -51,12 +55,18 @@ async function writeFile(filePath, content) {
     await fs.writeFile(filePath, content, 'utf8');
 }
 
-async function installDependencies(targetDir) {
-    const command = 'npm';
-    const args = ['install'];
+async function removeIfExists(targetPath) {
+    await fs.rm(targetPath, { recursive: true, force: true });
+}
 
+async function replaceInFile(filePath, transform) {
+    const existing = await fs.readFile(filePath, 'utf8');
+    await fs.writeFile(filePath, transform(existing), 'utf8');
+}
+
+async function installDependencies(targetDir) {
     await new Promise((resolve, reject) => {
-        const child = spawn(command, args, {
+        const child = spawn('npm', ['install'], {
             cwd: targetDir,
             stdio: 'inherit',
             shell: process.platform === 'win32'
@@ -74,440 +84,58 @@ async function installDependencies(targetDir) {
     });
 }
 
-function scriptBlock(config) {
-    const scripts = {
-        dev: 'npm run compile && node server.js',
-        start: 'node server.js',
-        compile: 'tsc',
-        typecheck: 'tsc --noEmit'
-    };
-
-    return scripts;
-}
-
 function packageJsonTemplate(config) {
     return JSON.stringify({
         name: config.projectName,
         version: '0.1.0',
-        private: true,
+        description: `${config.projectTitle} built with NativeCore`,
         type: 'module',
-        scripts: scriptBlock(config),
-        dependencies: {
-            nativecorejs: config.frameworkDependency
+        main: 'server.js',
+        scripts: {
+            prestart: 'npm run compile && node scripts/inject-version.mjs',
+            start: 'node server.js',
+            validate: 'npm run typecheck && npm run build:client && npm run test -- --run',
+            dev: 'npm run compile && node scripts/inject-version.mjs && concurrently --kill-others --names "watch,server" -c "blue,green" "node scripts/watch-compile.mjs" "node server.js"',
+            'dev:watch': 'node scripts/watch-compile.mjs',
+            clean: 'node -e "const fs=require(\'fs\'); fs.rmSync(\'dist\',{recursive:true,force:true}); fs.rmSync(\'_deploy\',{recursive:true,force:true})"',
+            prebuild: 'npm run clean && npm run lint && npm run typecheck',
+            build: 'node scripts/inject-version.mjs && npm run compile:prod && node scripts/minify.mjs && node scripts/prepare-static-assets.mjs && node scripts/strip-dev-blocks.mjs && node scripts/remove-dev.mjs',
+            'build:client': 'node scripts/inject-version.mjs && npm run compile:prod && node scripts/minify.mjs && node scripts/prepare-static-assets.mjs',
+            compile: 'tsc && tsc-alias',
+            'compile:prod': 'tsc -p tsconfig.build.json && tsc-alias -p tsconfig.build.json && node scripts/remove-dev.mjs',
+            typecheck: 'tsc --noEmit',
+            'make:component': 'node scripts/make-component.mjs',
+            'make:core-component': 'node scripts/make-core-component.mjs',
+            'make:controller': 'node scripts/make-controller.mjs',
+            'remove:component': 'node scripts/remove-component.mjs',
+            'remove:core-component': 'node scripts/remove-core-component.mjs',
+            'make:view': 'node scripts/make-view.mjs',
+            'remove:view': 'node scripts/remove-view.mjs',
+            test: 'vitest',
+            'test:ui': 'vitest --ui',
+            'test:coverage': 'vitest --coverage',
+            lint: 'eslint src/**/*.ts && htmlhint "**/*.html" --config .htmlhintrc',
+            'lint:fix': 'eslint src/**/*.ts --fix'
         },
+        keywords: ['nativecore', 'spa', 'web-components', 'typescript'],
+        license: 'MIT',
         devDependencies: {
-            typescript: '^5.6.3',
-            '@types/node': '^22.0.0'
+            '@eslint/js': '^9.39.2',
+            '@types/node': '^20.11.0',
+            'concurrently': '^9.2.1',
+            'eslint': '^9.39.2',
+            'globals': '^17.0.0',
+            'happy-dom': '^20.8.9',
+            'htmlhint': '^1.1.4',
+            'puppeteer': '^24.36.0',
+            'terser': '^5.46.0',
+            'tsc-alias': '^1.8.16',
+            'typescript': '^5.3.3',
+            'typescript-eslint': '^8.53.1',
+            'vitest': '^4.1.4',
+            'ws': '^8.19.0'
         }
     }, null, 2) + '\n';
-}
-
-function tsconfigTemplate() {
-    return `{
-  "compilerOptions": {
-    "target": "ES2022",
-    "module": "ESNext",
-    "moduleResolution": "Bundler",
-    "outDir": "dist",
-    "strict": true,
-    "skipLibCheck": true,
-    "baseUrl": "."
-  },
-  "include": ["src/**/*.ts"]
-}
-`;
-}
-
-function serverTemplate() {
-    return `import http from 'http';
-import fs from 'fs';
-import path from 'path';
-import { fileURLToPath } from 'url';
-
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
-const PORT = process.env.PORT || 8000;
-
-const mimeTypes = {
-    '.html': 'text/html',
-    '.js': 'text/javascript',
-    '.css': 'text/css',
-    '.json': 'application/json',
-    '.svg': 'image/svg+xml'
-};
-
-http.createServer((req, res) => {
-    const requestPath = req.url?.split('?')[0] || '/';
-    let filePath = path.join(__dirname, requestPath === '/' ? 'index.html' : requestPath);
-
-    if (!path.extname(requestPath) && !fs.existsSync(filePath)) {
-        filePath = path.join(__dirname, 'index.html');
-    }
-
-    fs.readFile(filePath, (error, content) => {
-        if (error) {
-            res.writeHead(404, { 'Content-Type': 'text/plain' });
-            res.end('Not found');
-            return;
-        }
-
-        const contentType = mimeTypes[path.extname(filePath)] || 'text/plain';
-        res.writeHead(200, { 'Content-Type': contentType, 'Cache-Control': 'no-cache' });
-        res.end(content);
-    });
-}).listen(PORT, () => {
-    console.log('NativeCore starter running at http://localhost:' + PORT);
-});
-`;
-}
-
-function shellHtmlTemplate(config, shell) {
-    const entryScript = './dist/app.js';
-    const shellName = shell === 'app' ? 'protected' : 'public';
-
-    return `<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <meta name="app-shell" content="${shellName}">
-    <title>${config.projectTitle}</title>
-    <link rel="stylesheet" href="./node_modules/nativecorejs/src/styles/base.css">
-    <link rel="stylesheet" href="./src/styles/main.css">
-    <script type="importmap">
-    {
-        "imports": {
-            "nativecorejs": "./node_modules/nativecorejs/dist/index.js",
-            "nativecorejs/components": "./node_modules/nativecorejs/dist/components/index.js"
-        }
-    }
-    </script>
-</head>
-<body>
-    <div id="main-content"></div>
-    <script type="module" src="${entryScript}"></script>
-</body>
-</html>
-`;
-}
-
-function appEntryTemplate(config) {
-    return `import { registerBuiltinComponents, Router } from 'nativecorejs';
-import { registerRoutes } from './config/routes.js';
-
-registerBuiltinComponents();
-
-const router = new Router();
-
-registerRoutes(router);
-router.start();
-`;
-}
-
-function routesTemplate(config) {
-    const typeImport = "import type { ControllerFunction, Router } from 'nativecorejs';\n";
-    const loginRoute = config.includeAuth
-        ? "        .register('/login', 'src/views/pages/public/login.html', lazyController('loginController', '../controllers/login.controller.js'))\n"
-        : '';
-    const dashboardRoute = config.includeDashboard
-        ? "        .register('/dashboard', 'src/views/pages/protected/dashboard.html', lazyController('dashboardController', '../controllers/dashboard.controller.js'))\n"
-        : '';
-    const protectedRoutes = config.includeDashboard ? "export const protectedRoutes = ['/dashboard'];\n" : "export const protectedRoutes = [];\n";
-
-    return `${typeImport}function lazyController(controllerName: string, controllerPath: string): ControllerFunction {
-    return async (...args: Parameters<ControllerFunction>) => {
-        const module = await import(controllerPath);
-        const controller = module[controllerName] as ControllerFunction;
-        return controller(...args);
-    };
-}
-
-export function registerRoutes(router: Router): void {
-    router
-        .register('/', 'src/views/pages/public/home.html', lazyController('homeController', '../controllers/home.controller.js'))
-${loginRoute}${dashboardRoute}}
-
-${protectedRoutes}`;
-}
-
-function controllerTemplate(name, body, config) {
-    return `import { trackEvents, trackSubscriptions } from 'nativecorejs';
-
-export async function ${name}(params: Record<string, string> = {}): Promise<() => void> {
-    const events = trackEvents();
-    const subs = trackSubscriptions();
-
-${body}
-
-    return () => {
-        events.cleanup();
-        subs.cleanup();
-    };
-}
-`;
-}
-
-function homeControllerBody(config) {
-    return `    void params;
-    const cta = document.querySelector('[data-action="launch-dashboard"]');
-
-    if (cta) {
-        events.onClick('[data-action="launch-dashboard"]', () => {
-            window.history.pushState({}, '', '${config.includeDashboard ? '/dashboard' : '/'}');
-            window.dispatchEvent(new PopStateEvent('popstate'));
-        });
-    }`;
-}
-
-function loginControllerBody() {
-    return `    void params;
-    events.onSubmit('[data-form="login"]', (event: Event) => {
-        event.preventDefault();
-    });`;
-}
-
-function dashboardControllerBody() {
-    return `    void params;
-    const items = document.querySelectorAll('[data-metric-card]');
-    items.forEach(item => item.classList.add('is-ready'));`;
-}
-
-function publicViewTemplate(config) {
-    const authLink = config.includeAuth ? '<a href="/login">Login</a>' : '';
-    const dashboardButton = config.includeDashboard ? '<button type="button" data-action="launch-dashboard">Open dashboard shell</button>' : '';
-
-    return `<section class="hero">
-    <p class="eyebrow">NativeCore</p>
-    <h1>${config.projectTitle}</h1>
-    <p class="lede">A clean starter generated by create-nativecore. This shell is app-level only and excludes demo API endpoints or deployment-specific backend assets.</p>
-    <div class="hero-actions">
-        ${dashboardButton}
-        ${authLink}
-    </div>
-</section>
-`;
-}
-
-function loginViewTemplate() {
-    return `<section class="page-section auth-page">
-    <h1>Sign in</h1>
-    <form data-form="login" class="auth-form">
-        <label>
-            <span>Email</span>
-            <input type="email" name="email" placeholder="you@example.com">
-        </label>
-        <label>
-            <span>Password</span>
-            <input type="password" name="password" placeholder="Enter your password">
-        </label>
-        <button type="submit">Sign in</button>
-    </form>
-</section>
-`;
-}
-
-function dashboardViewTemplate() {
-    return `<section class="page-section dashboard-grid">
-    <article data-metric-card>
-        <h2>Users</h2>
-        <p>1,284</p>
-    </article>
-    <article data-metric-card>
-        <h2>Revenue</h2>
-        <p>$48,900</p>
-    </article>
-    <article data-metric-card>
-        <h2>Errors</h2>
-        <p>2</p>
-    </article>
-</section>
-`;
-}
-
-function stylesTemplate() {
-    return `:root {
-    --background: #f5efe5;
-    --surface: rgba(255, 255, 255, 0.78);
-    --surface-strong: #fffaf2;
-    --text: #1f2937;
-    --muted: #5b6470;
-    --accent: #0f766e;
-    --accent-strong: #115e59;
-    --border: rgba(31, 41, 55, 0.12);
-    --shadow: 0 24px 60px rgba(15, 23, 42, 0.10);
-    font-family: 'Space Grotesk', 'Segoe UI', sans-serif;
-}
-
-* {
-    box-sizing: border-box;
-}
-
-body {
-    margin: 0;
-    min-height: 100vh;
-    color: var(--text);
-    background:
-        radial-gradient(circle at top left, rgba(15, 118, 110, 0.18), transparent 32%),
-        radial-gradient(circle at bottom right, rgba(217, 119, 6, 0.16), transparent 24%),
-        linear-gradient(180deg, #f8f5ee 0%, #efe6d8 100%);
-}
-
-body::before {
-    content: '';
-    position: fixed;
-    inset: 0;
-    background-image: linear-gradient(rgba(255, 255, 255, 0.18) 1px, transparent 1px), linear-gradient(90deg, rgba(255, 255, 255, 0.18) 1px, transparent 1px);
-    background-size: 28px 28px;
-    pointer-events: none;
-    opacity: 0.5;
-}
-
-#main-content {
-    position: relative;
-    z-index: 1;
-    width: min(1100px, calc(100vw - 2rem));
-    margin: 0 auto;
-    padding: 4rem 0 5rem;
-}
-
-.hero,
-.page-section {
-    background: var(--surface);
-    backdrop-filter: blur(14px);
-    border: 1px solid var(--border);
-    border-radius: 28px;
-    box-shadow: var(--shadow);
-}
-
-.hero {
-    padding: 4rem;
-}
-
-.eyebrow {
-    margin: 0 0 1rem;
-    text-transform: uppercase;
-    letter-spacing: 0.18em;
-    color: var(--accent-strong);
-    font-size: 0.82rem;
-}
-
-h1,
-h2,
-p {
-    margin-top: 0;
-}
-
-h1 {
-    font-size: clamp(2.5rem, 6vw, 5rem);
-    line-height: 0.95;
-    margin-bottom: 1rem;
-}
-
-.lede,
-.page-section p {
-    max-width: 42rem;
-    font-size: 1.05rem;
-    line-height: 1.7;
-    color: var(--muted);
-}
-
-.hero-actions {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 0.9rem;
-    margin-top: 2rem;
-}
-
-button,
-a {
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    min-height: 2.9rem;
-    padding: 0.75rem 1.1rem;
-    border-radius: 999px;
-    border: 1px solid transparent;
-    text-decoration: none;
-    font: inherit;
-}
-
-button {
-    background: var(--accent);
-    color: #fff;
-    cursor: pointer;
-}
-
-button:hover {
-    background: var(--accent-strong);
-}
-
-a {
-    color: var(--text);
-    background: rgba(255, 255, 255, 0.65);
-    border-color: var(--border);
-}
-
-.page-section {
-    padding: 2rem;
-}
-
-.auth-page {
-    max-width: 34rem;
-}
-
-.auth-form {
-    display: grid;
-    gap: 1rem;
-}
-
-.auth-form label {
-    display: grid;
-    gap: 0.45rem;
-}
-
-.auth-form input {
-    min-height: 3rem;
-    border: 1px solid var(--border);
-    border-radius: 16px;
-    padding: 0.8rem 0.95rem;
-    font: inherit;
-    background: rgba(255, 255, 255, 0.85);
-}
-
-.dashboard-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
-    gap: 1rem;
-}
-
-.dashboard-grid article {
-    padding: 1.5rem;
-    border-radius: 20px;
-    background: var(--surface-strong);
-    border: 1px solid var(--border);
-    transform: translateY(8px);
-    opacity: 0;
-    transition: transform 160ms ease, opacity 160ms ease;
-}
-
-.dashboard-grid article.is-ready {
-    transform: translateY(0);
-    opacity: 1;
-}
-
-@media (max-width: 720px) {
-    #main-content {
-        width: min(100vw - 1rem, 100%);
-        padding-top: 1rem;
-    }
-
-    .hero,
-    .page-section {
-        border-radius: 22px;
-        padding: 1.4rem;
-    }
-}
-`;
 }
 
 function nativecoreConfigTemplate(config) {
@@ -515,21 +143,403 @@ function nativecoreConfigTemplate(config) {
         appName: config.projectTitle,
         packageManager: 'npm',
         useTypeScript: true,
-        frameworkDependency: config.frameworkDependency,
         features: {
-            authShell: config.includeAuth,
-            dashboard: config.includeDashboard
+            auth: config.includeAuth,
+            dashboard: config.includeDashboard,
+            devTools: true,
+            hmr: true,
+            mockApi: true
         }
     }, null, 2) + '\n';
 }
 
-async function supportsLocalWorkspace() {
-    try {
-        await fs.access(path.join(process.cwd(), 'packages', 'nativecorejs', 'package.json'));
-        return true;
-    } catch {
-        return false;
+function routesTemplate(config) {
+    const loginRoute = config.includeAuth
+        ? "        .register('/login', 'src/views/public/login.html', lazyController('loginController', '../controllers/login.controller.js'))\n"
+        : '';
+    const dashboardRoute = config.includeDashboard
+        ? "        .register('/dashboard', 'src/views/protected/dashboard.html', lazyController('dashboardController', '../controllers/dashboard.controller.js'))\n"
+        : '';
+    const protectedRoutes = config.includeAuth && config.includeDashboard ? "export const protectedRoutes = ['/dashboard'];\n" : "export const protectedRoutes = [];\n";
+
+    return `/**
+ * Route Configuration
+ */
+import { bustCache } from '../utils/cacheBuster.js';
+import type { ControllerFunction, Router } from '../core/router.js';
+
+function lazyController(controllerName: string, controllerPath: string): ControllerFunction {
+    return async (...args: any[]) => {
+        const module = await import(bustCache(controllerPath));
+        return module[controllerName](...args);
+    };
+}
+
+export function registerRoutes(router: Router): void {
+    router
+        .register('/', 'src/views/public/home.html', lazyController('homeController', '../controllers/home.controller.js'))
+${loginRoute}${dashboardRoute}}
+
+${protectedRoutes}`;
+}
+
+function appTsTemplate(config) {
+    const authImports = config.includeAuth
+        ? "import auth from './services/auth.service.js';\nimport type { User } from './services/auth.service.js';\nimport api from './services/api.service.js';\nimport { authMiddleware } from './middleware/auth.middleware.js';\n"
+        : "";
+    const authVerify = config.includeAuth
+        ? `async function verifyExistingSession(): Promise<void> {
+    if (!auth.getToken()) {
+        return;
     }
+
+    try {
+        const response = await api.get<{ authenticated: boolean; user?: User }>('/auth/verify');
+        if (!response?.authenticated || !response.user) {
+            auth.logout();
+            return;
+        }
+
+        auth.setUser(response.user);
+    } catch {
+        auth.logout();
+    }
+}
+
+`
+        : '';
+    const authMiddlewareSetup = config.includeAuth ? '    router.use(authMiddleware);\n' : '';
+    const authChangeHandler = config.includeAuth ? `    window.addEventListener('auth-change', () => {
+        const isAuth = auth.isAuthenticated();
+        if (!isAuth) {
+            document.body.classList.remove('sidebar-enabled');
+            document.getElementById('app')?.classList.remove('sidebar-collapsed');
+            document.getElementById('app')?.classList.add('no-sidebar');
+        } else {
+            updateSidebarVisibility();
+        }
+    });
+
+` : '';
+    const authVerificationCall = config.includeAuth ? '    await verifyExistingSession();\n' : '';
+
+    return `/**
+ * Main Application Entry Point
+ */
+import router from './core/router.js';
+${authImports}import { registerRoutes, protectedRoutes } from './routes/routes.js';
+import { initSidebar } from './utils/sidebar.js';
+import { initLazyComponents } from './core/lazyComponents.js';
+import './utils/dom.js';
+import './components/registry.js';
+
+function isLocalhost(): boolean {
+    const hostname = window.location.hostname;
+    return hostname === 'localhost' ||
+        hostname === '127.0.0.1' ||
+        hostname.startsWith('192.168.') ||
+        hostname.endsWith('.local');
+}
+
+function updateSidebarVisibility() {
+${config.includeAuth ? `    const isAuthenticated = auth.isAuthenticated();` : '    const isAuthenticated = false;'}
+    const currentPath = window.location.pathname;
+    const isProtectedRoute = protectedRoutes.some(route => currentPath.startsWith(route));
+    const app = document.getElementById('app');
+
+    if (isAuthenticated && isProtectedRoute) {
+        document.body.classList.add('sidebar-enabled');
+        app?.classList.remove('no-sidebar');
+    } else {
+        document.body.classList.remove('sidebar-enabled');
+        app?.classList.add('no-sidebar');
+    }
+}
+
+${authVerify}async function init() {
+${authVerificationCall}    await initLazyComponents();
+
+    window.router = router;
+
+${authMiddlewareSetup}    registerRoutes(router);
+    router.start();
+
+    initSidebar();
+
+${authChangeHandler}    window.addEventListener('pageloaded', () => {
+        updateSidebarVisibility();
+    });
+
+    updateSidebarVisibility();
+    initDevTools();
+}
+
+function initDevTools(): void {
+    if (!isLocalhost()) {
+        return;
+    }
+
+    Promise.all([
+        import('./dev/hmr.js'),
+        import('./dev/denc-tools.js')
+    ])
+        .then(() => {
+            window.__NATIVECORE_DEV__ = true;
+        })
+        .catch(() => {
+            // Dev tools not available.
+        });
+}
+
+init();
+`;
+}
+
+function homeControllerTemplate(config) {
+    const authenticatedHref = config.includeDashboard ? '/dashboard' : '/';
+    const unauthenticatedHref = config.includeAuth ? '/login' : authenticatedHref;
+    const unauthenticatedLabel = config.includeAuth
+        ? 'Sign In'
+        : config.includeDashboard
+            ? 'Open Dashboard'
+            : 'Get Started';
+
+    return `/**
+ * Home Controller
+ * Updates the primary landing CTA based on authentication status.
+ */
+import auth from '../services/auth.service.js';
+
+export async function homeController(): Promise<() => void> {
+    const getStartedBtn = document.getElementById('get-started-btn') as HTMLAnchorElement | null;
+
+    if (getStartedBtn) {
+        if (auth.isAuthenticated()) {
+            getStartedBtn.href = '${authenticatedHref}';
+            getStartedBtn.textContent = 'Go to Dashboard';
+        } else {
+            getStartedBtn.href = '${unauthenticatedHref}';
+            getStartedBtn.textContent = '${unauthenticatedLabel}';
+        }
+    }
+
+    return () => {};
+}
+`;
+}
+
+function homeViewTemplate(config) {
+    const primaryHref = config.includeAuth ? '/login' : config.includeDashboard ? '/dashboard' : '/';
+    const primaryLabel = config.includeAuth ? 'Sign In' : config.includeDashboard ? 'Open Dashboard' : 'Get Started';
+
+    return `<section class="hero">
+    <div class="hero-inner">
+        <div class="hero-badge">TypeScript-first. Web Components. Dev tools included.</div>
+
+        <h1>NativeCoreJS</h1>
+
+        <p class="hero-tagline">
+            Build modern applications with a browser-native architecture that leans on web standards,
+            not proprietary runtimes. NativeCoreJS keeps you close to the platform with Web Components,
+            TypeScript, reactive state, and high-performance patterns that stay durable as the web evolves.
+        </p>
+
+        <div class="hero-actions">
+            <nc-a variant="hero-primary" href="${primaryHref}" id="get-started-btn">${primaryLabel}</nc-a>
+            <nc-a variant="hero-ghost" href="https://nativecorejs.com/docs" target="_blank" rel="noopener noreferrer">Read the Docs</nc-a>
+            <nc-a variant="hero-ghost" href="https://nativecorejs.com/components" target="_blank" rel="noopener noreferrer">Component Library</nc-a>
+        </div>
+
+        <div class="hero-stats">
+            <div class="stat-item">
+                <span class="stat-number">Full</span>
+                <span class="stat-label">Project Template</span>
+            </div>
+            <div class="stat-item">
+                <span class="stat-number">Built-in</span>
+                <span class="stat-label">Dev Tools</span>
+            </div>
+            <div class="stat-item">
+                <span class="stat-number">Local</span>
+                <span class="stat-label">Mock API</span>
+            </div>
+        </div>
+    </div>
+</section>
+`;
+}
+
+function loginViewTemplate() {
+    return `<div class="login-experience">
+    <div class="login-shell">
+        <section class="login-showcase" aria-label="Starter access overview">
+            <div class="login-showcase__eyebrow">Starter Auth Flow</div>
+            <h1 class="login-showcase__title">Sign in.</h1>
+            <p class="login-showcase__copy">
+                This starter includes a local mock authentication flow, protected routes, and dashboard handoff.
+            </p>
+
+            <div class="login-showcase__grid">
+                <article class="login-showcase__card">
+                    <h2>What is included</h2>
+                    <ul class="login-showcase__list">
+                        <li>Protected route gating with dashboard handoff</li>
+                        <li>Mock API-backed authentication for local development</li>
+                        <li>Component-driven UI built from NativeCore primitives</li>
+                    </ul>
+                </article>
+
+                <article class="login-showcase__card login-showcase__card--accent">
+                    <h2>Starter defaults</h2>
+                    <div class="login-showcase__metrics">
+                        <div>
+                            <strong>Demo email</strong>
+                            <span>demo@example.com</span>
+                        </div>
+                        <div>
+                            <strong>Demo password</strong>
+                            <span>pa$$w0rd</span>
+                        </div>
+                        <div>
+                            <strong>Target route</strong>
+                            <span>/dashboard</span>
+                        </div>
+                    </div>
+                </article>
+            </div>
+        </section>
+
+        <section class="login-panel" aria-label="Sign in form">
+            <div class="login-panel__header">
+                <p class="login-panel__eyebrow">Starter Access</p>
+                <h2>Access the dashboard</h2>
+                <p>Use the local demo credentials below.</p>
+            </div>
+
+            <div class="login-demo-credentials" aria-label="Demo credentials">
+                <div class="login-demo-credentials__item">
+                    <span>Demo email</span>
+                    <strong>demo@example.com</strong>
+                </div>
+                <div class="login-demo-credentials__item">
+                    <span>Demo password</span>
+                    <strong>pa$$w0rd</strong>
+                </div>
+            </div>
+
+            <div id="login-error" class="login-alert alert alert-error" hidden aria-live="polite"></div>
+
+            <nc-form id="loginForm" class="login-form">
+                <nc-field class="login-field" label="Work Email" for="email" required>
+                    <nc-input
+                        id="email"
+                        name="email"
+                        type="email"
+                        autocomplete="username email"
+                        placeholder="demo@example.com"
+                        value="demo@example.com"
+                        required
+                    ></nc-input>
+                </nc-field>
+
+                <nc-field class="login-field" label="Password" for="password" required>
+                    <nc-input
+                        id="password"
+                        name="password"
+                        type="password"
+                        autocomplete="current-password"
+                        placeholder="Enter your password"
+                        value="pa$$w0rd"
+                        required
+                        minlength="8"
+                        show-password-toggle
+                    ></nc-input>
+                </nc-field>
+
+                <div class="login-form__utility">
+                    <nc-checkbox id="rememberMe" name="rememberMe" label="Remember demo email" checked></nc-checkbox>
+                    <a href="/" data-link class="login-form__utility-link">Return home</a>
+                </div>
+
+                <nc-button id="loginBtn" type="submit" variant="primary" size="lg" full-width>
+                    Access Dashboard
+                </nc-button>
+            </nc-form>
+        </section>
+    </div>
+</div>
+`;
+}
+
+function controllersIndexTemplate(config) {
+    const lines = [
+        '/**',
+        ' * Controller Registry',
+        ' */',
+        '',
+        "export { homeController } from './home.controller.js';"
+    ];
+
+    if (config.includeAuth) {
+        lines.push("export { loginController } from './login.controller.js';");
+    }
+
+    if (config.includeDashboard) {
+        lines.push("export { dashboardController } from './dashboard.controller.js';");
+    }
+
+    return `${lines.join('\n')}\n`;
+}
+
+async function copyTemplate(targetDir) {
+    await fs.cp(templateDir, targetDir, { recursive: true, force: true });
+}
+
+async function customizeProject(targetDir, config) {
+    await writeFile(path.join(targetDir, 'package.json'), packageJsonTemplate(config));
+    await writeFile(path.join(targetDir, 'nativecore.config.json'), nativecoreConfigTemplate(config));
+    await writeFile(path.join(targetDir, 'src/app.ts'), appTsTemplate(config));
+    await writeFile(path.join(targetDir, 'src/routes/routes.ts'), routesTemplate(config));
+    await writeFile(path.join(targetDir, 'src/controllers/index.ts'), controllersIndexTemplate(config));
+    await writeFile(path.join(targetDir, 'src/controllers/home.controller.ts'), homeControllerTemplate(config));
+    await writeFile(path.join(targetDir, 'src/views/public/home.html'), homeViewTemplate(config));
+
+    if (config.includeAuth) {
+        await writeFile(path.join(targetDir, 'src/views/public/login.html'), loginViewTemplate());
+    } else {
+        await removeIfExists(path.join(targetDir, 'src/controllers/login.controller.ts'));
+        await removeIfExists(path.join(targetDir, 'src/views/public/login.html'));
+    }
+
+    if (!config.includeDashboard) {
+        await removeIfExists(path.join(targetDir, 'src/controllers/dashboard.controller.ts'));
+        await removeIfExists(path.join(targetDir, 'src/views/protected/dashboard.html'));
+    }
+
+    await replaceInFile(path.join(targetDir, 'src/services/api.service.ts'), content => content.replace("        return 'https://api.nativecorejs.com';", "        return '/api';"));
+
+    await replaceInFile(path.join(targetDir, 'src/components/core/app-header.ts'), content => content
+        .replace(/<a href="\/docs" data-link class="nanc-link">Docs<\/a>\s*/g, '')
+        .replace(/<a href="\/components" data-link class="nanc-link">Components<\/a>\s*/g, '')
+        .replace(/<a href="\/docs" data-link class="login-form__utility-link">Review the docs<\/a>/g, '<a href="/" data-link class="login-form__utility-link">Return home</a>'));
+
+    await replaceInFile(path.join(targetDir, 'index.html'), content => content
+        .replaceAll('NativeCore | Modern Reactive JavaScript Framework', 'NativeCoreJS | Built with NativeCore')
+        .replaceAll('NativeCore Framework', 'NativeCoreJS')
+        .replaceAll('https://nativecorejs.com/', '/')
+        .replaceAll('https://nativecorejs.com', '/')
+        .replaceAll('@nativecorejs', '')
+        .replaceAll('A modern, lightweight reactive framework using vanilla JavaScript, Web Components, reactive signals, and zero dependencies.', 'A NativeCoreJS starter focused on web standards, browser-native architecture, and durable performance.'));
+
+    await replaceInFile(path.join(targetDir, 'manifest.json'), content => content
+        .replace(/"name"\s*:\s*"[^"]+"/, '"name": "NativeCoreJS"')
+        .replace(/"short_name"\s*:\s*"[^"]+"/, '"short_name": "NativeCoreJS"'));
+
+    await replaceInFile(path.join(targetDir, 'public/_headers'), content => content
+        .replace(/https:\/\/api\.nativecorejs\.com\s*/g, '')
+        .replace(/Access-Control-Allow-Origin: .*\n/g, ''));
+
+    await replaceInFile(path.join(targetDir, '.env.example'), content => content.replace('APP_NAME=MyApp', `APP_NAME=${config.projectTitle}`));
 }
 
 async function buildProject(config) {
@@ -542,37 +552,9 @@ async function buildProject(config) {
         if (error.code !== 'ENOENT') throw error;
     }
 
-    const sourceExtension = 'ts';
-
     await ensureDir(targetDir);
-    await ensureDir(path.join(targetDir, 'src/config'));
-    await ensureDir(path.join(targetDir, 'src/controllers'));
-    await ensureDir(path.join(targetDir, 'src/views/pages/public'));
-    await ensureDir(path.join(targetDir, 'src/views/pages/protected'));
-    await ensureDir(path.join(targetDir, 'src/styles'));
-
-    await writeFile(path.join(targetDir, 'package.json'), packageJsonTemplate(config));
-    await writeFile(path.join(targetDir, 'server.js'), serverTemplate());
-    await writeFile(path.join(targetDir, 'index.html'), shellHtmlTemplate(config, 'index'));
-    await writeFile(path.join(targetDir, 'nativecore.config.json'), nativecoreConfigTemplate(config));
-    await writeFile(path.join(targetDir, `src/app.${sourceExtension}`), appEntryTemplate(config));
-    await writeFile(path.join(targetDir, `src/config/routes.${sourceExtension}`), routesTemplate(config));
-    await writeFile(path.join(targetDir, `src/controllers/home.controller.${sourceExtension}`), controllerTemplate('homeController', homeControllerBody(config), config));
-    await writeFile(path.join(targetDir, 'src/views/pages/public/home.html'), publicViewTemplate(config));
-    await writeFile(path.join(targetDir, 'src/styles/main.css'), stylesTemplate());
-
-    await writeFile(path.join(targetDir, 'tsconfig.json'), tsconfigTemplate());
-
-    if (config.includeAuth) {
-        await writeFile(path.join(targetDir, 'app.html'), shellHtmlTemplate(config, 'app'));
-        await writeFile(path.join(targetDir, `src/controllers/login.controller.${sourceExtension}`), controllerTemplate('loginController', loginControllerBody(), config));
-        await writeFile(path.join(targetDir, 'src/views/pages/public/login.html'), loginViewTemplate());
-    }
-
-    if (config.includeDashboard) {
-        await writeFile(path.join(targetDir, `src/controllers/dashboard.controller.${sourceExtension}`), controllerTemplate('dashboardController', dashboardControllerBody(), config));
-        await writeFile(path.join(targetDir, 'src/views/pages/protected/dashboard.html'), dashboardViewTemplate());
-    }
+    await copyTemplate(targetDir);
+    await customizeProject(targetDir, config);
 
     return targetDir;
 }
@@ -586,18 +568,11 @@ async function main() {
     const projectTitle = toTitleCase(projectName);
     const useDefaults = hasFlag('--defaults');
 
-    const wantsLocalFramework = hasFlag('--local');
-    const canUseLocalFramework = wantsLocalFramework ? await supportsLocalWorkspace() : false;
-
-    if (wantsLocalFramework && !canUseLocalFramework) {
-        throw new Error('--local can only be used from the nativecorejs monorepo root where ./packages/nativecorejs exists.');
-    }
-
     const includeAuth = hasFlag('--no-auth')
         ? false
         : useDefaults
             ? true
-            : await askYesNo('Include auth shell?', true);
+            : await askYesNo('Include auth flow?', true);
     const includeDashboard = hasFlag('--no-dashboard')
         ? false
         : useDefaults
@@ -612,11 +587,8 @@ async function main() {
     const config = {
         projectName,
         projectTitle,
-        useTypeScript: true,
-        frameworkDependency: wantsLocalFramework ? 'file:../packages/nativecorejs' : '^0.1.0',
         includeAuth,
         includeDashboard,
-        packageManager: 'npm',
         shouldInstall
     };
 
@@ -651,7 +623,7 @@ async function main() {
     }
 
     console.log('npm run dev');
-    console.log('\nThis starter expects nativecorejs to provide prebuilt dist files and the base stylesheet from node_modules/nativecorejs.');
+    console.log('\nThis scaffold now ships a full NativeCore-style project structure with scripts, dev tools, HMR, services, stores, middleware, mock API, and source folders included.');
 
     rl.close();
 }

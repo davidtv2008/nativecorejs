@@ -1,0 +1,115 @@
+/**
+ * Main Application Entry Point
+ */
+import router from './core/router.js';
+import auth from './services/auth.service.js';
+import type { User } from './services/auth.service.js';
+import api from './services/api.service.js';
+import { authMiddleware } from './middleware/auth.middleware.js';
+import { registerRoutes, protectedRoutes } from './routes/routes.js';
+import { initSidebar } from './utils/sidebar.js';
+import { initLazyComponents } from './core/lazyComponents.js';
+import './utils/dom.js';
+import './components/registry.js';
+
+function isLocalhost(): boolean {
+    const hostname = window.location.hostname;
+    return hostname === 'localhost' || 
+        hostname === '127.0.0.1' || 
+        hostname.startsWith('192.168.') ||
+        hostname.endsWith('.local');
+}
+
+function updateSidebarVisibility() {
+    const isAuthenticated = auth.isAuthenticated();
+    const currentPath = window.location.pathname;
+    const isProtectedRoute = protectedRoutes.some(route => currentPath.startsWith(route));
+    const app = document.getElementById('app');
+
+    // Show sidebar only when authenticated AND on a protected route
+    if (isAuthenticated && isProtectedRoute) {
+        document.body.classList.add('sidebar-enabled');
+        app?.classList.remove('no-sidebar');
+    } else {
+        document.body.classList.remove('sidebar-enabled');
+        app?.classList.add('no-sidebar');
+    }
+}
+
+async function verifyExistingSession(): Promise<void> {
+    if (!auth.getToken()) {
+        return;
+    }
+
+    try {
+        const response = await api.get<{ authenticated: boolean; user?: User }>('/auth/verify');
+        if (!response?.authenticated || !response.user) {
+            auth.logout();
+            return;
+        }
+
+        auth.setUser(response.user);
+    } catch {
+        auth.logout();
+    }
+}
+
+async function init(){
+    await verifyExistingSession();
+    await initLazyComponents();
+    
+    // Expose router globally for components
+    (window as any).router = router;
+    
+    router.use(authMiddleware);
+    registerRoutes(router);
+    router.start();
+    
+    initSidebar();
+    
+    // Update sidebar on auth changes
+    window.addEventListener('auth-change', () => {
+        const isAuth = auth.isAuthenticated();
+        if (!isAuth) {
+            router.replace('/login');
+            document.body.classList.remove('sidebar-enabled');
+            document.getElementById('app')?.classList.remove('sidebar-collapsed');
+            document.getElementById('app')?.classList.add('no-sidebar');
+        } else {
+            updateSidebarVisibility();
+        }
+    });
+    
+    // Update sidebar on navigation
+    window.addEventListener('pageloaded', () => {
+        updateSidebarVisibility();
+    });
+    
+    // Initialize Dev Tools (ONLY in development - localhost)
+    initDevTools();
+}
+
+/**
+ * Initialize Dev Tools
+ * SECURITY: Only loads on localhost, completely excluded from production builds
+ */
+function initDevTools(): void {
+    if (!isLocalhost()) {
+        return; // SECURITY: Never load dev tools on production
+    }
+    
+    // Load HMR and dev tools (both TypeScript modules now)
+    Promise.all([
+        import('./dev/hmr.js'),
+        import('./dev/denc-tools.js')
+    ])
+        .then(() => {
+            console.warn('[NativeCore] Dev tools loaded');
+            (window as any).__NATIVECORE_DEV__ = true;
+        })
+        .catch(() => {
+            // Dev tools not available - that's fine in production
+        });
+}
+
+init();

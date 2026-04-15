@@ -1,6 +1,6 @@
 {
   "name": "create-nativecore",
-  "version": "0.1.1",
+  "version": "0.2.1",
   "description": "Interactive CLI for scaffolding NativeCore applications",
   "keywords": [
     "nativecore",
@@ -23,7 +23,8 @@
   },
   "files": [
     "bin",
-    "README.md"
+    "README.md",
+    "template"
   ],
   "scripts": {
     "build": "echo create-nativecore is a direct CLI package"

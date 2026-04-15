@@ -1,0 +1,19 @@
+{
+  "name": "NativeCore - Modern Reactive JavaScript Framework",
+  "short_name": "NativeCore",
+  "description": "A modern, lightweight reactive framework using vanilla JavaScript, Web Components, and reactive signals.",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#ffffff",
+  "theme_color": "#667eea",
+  "orientation": "portrait-primary",
+  "icons": [
+    {
+      "src": "/assets/icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    }
+  ],
+  "categories": ["development", "productivity"]
+}

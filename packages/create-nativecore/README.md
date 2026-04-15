@@ -5,25 +5,17 @@ Official CLI for generating NativeCore applications.
 ## Goals
 
 - prompt only for app-level starter decisions that actually vary
-- generate app-level shells, routes, controllers, views, and styles
-- keep framework internals inside the published `nativecorejs` package
-- avoid shipping demo API code into new projects by default
+- generate a full NativeCore project structure, not just a thin starter shell
+- include dev tools, HMR, scripts, stores, services, middleware, mock API, tests, and source folders by default
+- avoid shipping framework marketing/docs routes into new projects by default
 
 ## Current starter behavior
 
 - always generates a TypeScript project
-- installs `nativecorejs` as the framework dependency
 - uses npm for dependency installation by default unless `--skip-install` is passed
-- uses an import map so browser-loaded ESM can resolve `nativecorejs` without a bundler
-- links the framework base stylesheet from `node_modules/nativecorejs/src/styles/base.css`
-- registers built-in framework components during app bootstrap
+- scaffolds the full NativeCore-style source tree: `src/components`, `constants`, `core`, `dev`, `middleware`, `routes`, `services`, `stores`, `styles`, `types`, `utils`, and `views`
+- includes `api/`, `scripts/`, test setup, lint config, HMR, and local mock authentication/data flow
 - does not generate documentation routes or docs pages
-
-## Local workspace mode
-
-- pass `--local` to generate `"nativecorejs": "file:../packages/nativecorejs"`
-- this is only supported from the `nativecorejs` monorepo root before publishing to npm
-- generated local starters still expect the framework package to be built so `dist/` exists
 
 ## Install behavior
 
@@ -32,7 +24,7 @@ Official CLI for generating NativeCore applications.
 
 ## Planned templates
 
-- landing plus app shell
+- full app shell plus dashboard flow
 - auth starter
 - dashboard starter
 - future deployment targets such as Cloudflare or Node

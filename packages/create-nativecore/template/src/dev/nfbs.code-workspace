@@ -1,0 +1,27 @@
+{
+	"folders": [
+		{
+			"path": "../.."
+		}
+	],
+	"settings": {
+		"liveServer.settings.file": "index.html",
+		"liveServer.settings.mount": [
+			[
+				"/",
+				"./"
+			]
+		],
+		"liveServer.settings.useWebExt": false,
+		"liveServer.settings.ignoreFiles": [
+			".vscode/**",
+			"**/*.scss",
+			"**/*.sass"
+		],
+		"liveServer.settings.proxy": {
+			"enable": false
+		},
+		"liveServer.settings.CustomBrowser": null,
+		"liveServer.settings.ChromeDebuggingAttachment": false
+	}
+}

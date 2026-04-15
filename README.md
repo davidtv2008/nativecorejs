@@ -20,7 +20,7 @@ Split framework-grade code out of the demo app into `packages/nativecorejs`, the
 
 - `npm install` installs workspace dependencies for the framework and CLI packages
 - `npm run build` builds the `nativecorejs` runtime into `packages/nativecorejs/dist`
-- `npx create-nativecore my-app` is expected to scaffold a TypeScript starter, run `npm install` automatically, and avoid demo docs routes entirely
+- `npx create-nativecore my-app` is expected to scaffold a full NativeCore TypeScript app, including scripts, dev tools, HMR, mock API, stores, services, middleware, and the full source tree, then run `npm install` automatically
 - `npm run publish:check` builds the packages and previews both npm publish tarballs
 - `npm run publish:runtime` publishes the `nativecorejs` runtime package to npm
 - `npm run publish:cli` publishes the `create-nativecore` CLI package to npm

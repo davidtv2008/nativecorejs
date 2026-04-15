@@ -1,0 +1,137 @@
+﻿<!DOCTYPE html>
+<html lang="en" prefix="og: https://ogp.me/ns#" data-public-route="ready">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="X-UA-Compatible" content="ie=edge">
+    <base href="/">
+    <!-- Primary Meta Tags -->
+    <title>NativeCore | Modern Reactive JavaScript Framework</title>
+    <meta name="title" content="NativeCore | Modern Reactive JavaScript Framework">
+    <meta name="description" content="A modern, lightweight reactive framework using vanilla JavaScript, Web Components, reactive signals, and zero dependencies. Fast, simple, and powerful.">
+    <meta name="keywords" content="NativeCore, JavaScript framework, reactive signals, Web Components, vanilla JS, SPA, lightweight, TypeScript, frontend framework">
+    <meta name="author" content="NativeCore Framework">
+    <meta name="robots" content="index, follow">
+    <meta name="language" content="English">
+    <meta name="revisit-after" content="7 days">
+    <!-- Canonical URL -->
+    <link rel="canonical" href="https://nativecorejs.com/">
+    <!-- Open Graph / Facebook -->
+    <meta property="og:type" content="website">
+    <meta property="og:url" content="https://nativecorejs.com/">
+    <meta property="og:title" content="NativeCore | Modern Reactive JavaScript Framework">
+    <meta property="og:description" content="A modern, lightweight reactive framework using vanilla JavaScript, Web Components, reactive signals, and zero dependencies.">
+    <meta property="og:image" content="https://nativecorejs.com/assets/og-image.png">
+    <meta property="og:site_name" content="NativeCore Framework">
+    <meta property="og:locale" content="en_US">
+    <!-- Twitter Card -->
+    <meta name="twitter:card" content="summary_large_image">
+    <meta name="twitter:url" content="https://nativecorejs.com/">
+    <meta name="twitter:title" content="NativeCore | Modern Reactive JavaScript Framework">
+    <meta name="twitter:description" content="A modern, lightweight reactive framework using vanilla JavaScript, Web Components, reactive signals, and zero dependencies.">
+    <meta name="twitter:image" content="https://nativecorejs.com/assets/twitter-card.png">
+    <meta name="twitter:creator" content="@nativecorejs">
+    <!-- Inline SVG favicon to prevent fetch requests -->
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>N</text></svg>">
+    <link rel="apple-touch-icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>N</text></svg>">
+    <!-- PWA Manifest -->
+    <link rel="manifest" href="/manifest.json">
+    <style>
+    html[data-public-route="pending"] body {
+            visibility: hidden;
+            opacity: 0;
+    }
+    </style>
+    <script>
+    (function() {
+            const isRootPath = window.location.pathname === '/';
+            if (!isRootPath) {
+                document.documentElement.setAttribute('data-public-route', 'pending');
+                window.addEventListener('pageloaded', function handlePageLoaded() {
+                    document.documentElement.setAttribute('data-public-route', 'ready');
+                    window.removeEventListener('pageloaded', handlePageLoaded);
+                });
+                return;
+            }
+            document.documentElement.setAttribute('data-public-route', 'ready');
+    })();
+    </script>
+    <!-- JSON-LD Structured Data -->
+    <script type="application/ld+json">
+    {
+    "@context": "https://schema.org",
+    "@type": "WebApplication",
+    "name": "NativeCore Framework",
+    "alternateName": "NativeCore",
+    "url": "https://nativecorejs.com",
+    "logo": "https://nativecorejs.com/assets/logo.svg",
+    "description": "A modern, lightweight reactive framework using vanilla JavaScript, Web Components, reactive signals, and zero dependencies.",
+    "applicationCategory": "DeveloperApplication",
+    "operatingSystem": "Any",
+    "offers": {
+    "@type": "Offer",
+    "price": "0",
+    "priceCurrency": "USD"
+    },
+    "author": {
+    "@type": "Organization",
+    "name": "NativeCore Framework",
+    "url": "https://nativecorejs.com"
+    },
+    "keywords": "NativeCore, JavaScript framework, reactive signals, Web Components, vanilla JS"
+    }
+    </script>
+    <!-- Stylesheets with cache busting -->
+    <script>
+    (function() {
+            const isDev = location.hostname === 'localhost' || location.hostname === '127.0.0.1';
+            const version = isDev ? Date.now() : '1.0.0-20260414231644';
+            const modulePreloads = [
+                '/dist/app.js',
+                '/dist/controllers/home.controller.js',
+                '/dist/components/core/app-header.js',
+                '/dist/components/core/app-sidebar.js',
+                '/dist/components/core/app-footer.js',
+                '/dist/components/core/loading-spinner.js',
+                '/dist/components/core/nc-a.js',
+                '/dist/components/core/nc-scroll-top.js',
+                '/dist/components/core/nc-snackbar.js'
+            ];
+            modulePreloads.forEach(path => {
+                document.write(`<link rel="modulepreload" href="${path}?v=${version}">`);
+            });
+            document.write(`<link rel="stylesheet" href="/src/styles/core-variables.css?v=${version}">`);
+            document.write(`<link rel="stylesheet" href="/src/styles/core.css?v=${version}">`);
+            document.write(`<link rel="stylesheet" href="/src/styles/variables.css?v=${version}">`);
+            document.write(`<link rel="stylesheet" href="/src/styles/main.css?v=${version}">`);
+    })();
+    </script>
+</head>
+<body>
+    <div id="page-progress" role="progressbar" aria-label="Page loading progress"></div>
+
+    <div id="app" class="no-sidebar">
+        <app-header class="app-header"></app-header>
+        <app-sidebar></app-sidebar>
+
+        <main class="main-content">
+            <div id="main-content" class="page">
+                <loading-spinner message="Loading page..."></loading-spinner>
+            </div>
+            <app-footer></app-footer>
+        </main>
+
+        <nc-scroll-top to="top"></nc-scroll-top>
+    </div>
+
+    <nc-snackbar position="bottom-right"></nc-snackbar>
+
+    <script type="module">
+        (function() {
+            const isDev = location.hostname === 'localhost' || location.hostname === '127.0.0.1';
+            const version = isDev ? Date.now() : '1.0.0-20260414231644';
+            import(`/dist/app.js?v=${version}`);
+        })();
+    </script>
+</body>
+</html>
