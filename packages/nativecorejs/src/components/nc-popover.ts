@@ -46,6 +46,7 @@ export class NcPopover extends Component {
     private _open       = false;
     private _hoverTimer: ReturnType<typeof setTimeout> | null = null;
     private _outside: ((e: MouseEvent) => void) | null = null;
+    private _triggerCleanups: Array<() => void> = [];
 
     static get observedAttributes() { return ['open', 'placement', 'disabled']; }
 
@@ -135,47 +136,56 @@ export class NcPopover extends Component {
         const mode = this.getAttribute('trigger') ?? 'click';
         const hoverDelay = parseInt(this.getAttribute('hover-delay') ?? '200', 10);
 
-        if (mode === 'click') {
-            triggerSlot.addEventListener('slotchange', () => {
-                const el = getTrigger();
-                if (el) el.addEventListener('click', () => {
-                    if (this.hasAttribute('disabled')) return;
-                    this.toggle();
-                });
-            });
-            // Also handle if already slotted
-            requestAnimationFrame(() => {
-                const el = getTrigger();
-                if (el) el.addEventListener('click', () => {
-                    if (this.hasAttribute('disabled')) return;
-                    this.toggle();
-                });
-            });
-        }
-
-        if (mode === 'hover') {
-            triggerSlot.addEventListener('slotchange', () => {
-                const el = getTrigger();
-                if (!el) return;
-                el.addEventListener('mouseenter', () => {
+        const bindTriggerElement = (el: HTMLElement) => {
+            if (mode === 'click') {
+                const handler = () => { if (!this.hasAttribute('disabled')) this.toggle(); };
+                el.addEventListener('click', handler);
+                this._triggerCleanups.push(() => el.removeEventListener('click', handler));
+            }
+            if (mode === 'hover') {
+                const enterHandler = () => {
                     if (this.hasAttribute('disabled')) return;
                     this._hoverTimer = setTimeout(() => this.show(), hoverDelay);
-                });
-                el.addEventListener('mouseleave', () => {
+                };
+                const leaveHandler = () => {
                     if (this._hoverTimer) { clearTimeout(this._hoverTimer); this._hoverTimer = null; }
                     this.hide();
+                };
+                el.addEventListener('mouseenter', enterHandler);
+                el.addEventListener('mouseleave', leaveHandler);
+                this._triggerCleanups.push(() => {
+                    el.removeEventListener('mouseenter', enterHandler);
+                    el.removeEventListener('mouseleave', leaveHandler);
                 });
-            });
-        }
+            }
+            if (mode === 'focus') {
+                const focusInHandler = () => { if (!this.hasAttribute('disabled')) this.show(); };
+                const focusOutHandler = () => this.hide();
+                el.addEventListener('focusin', focusInHandler);
+                el.addEventListener('focusout', focusOutHandler);
+                this._triggerCleanups.push(() => {
+                    el.removeEventListener('focusin', focusInHandler);
+                    el.removeEventListener('focusout', focusOutHandler);
+                });
+            }
+        };
 
-        if (mode === 'focus') {
-            triggerSlot.addEventListener('slotchange', () => {
-                const el = getTrigger();
-                if (!el) return;
-                el.addEventListener('focusin',  () => { if (!this.hasAttribute('disabled')) this.show(); });
-                el.addEventListener('focusout', () => this.hide());
-            });
-        }
+        const slotHandler = () => {
+            // Remove old trigger listeners before binding new trigger
+            this._triggerCleanups.forEach(fn => fn());
+            this._triggerCleanups = [];
+            const el = getTrigger();
+            if (el) bindTriggerElement(el);
+        };
+
+        triggerSlot.addEventListener('slotchange', slotHandler);
+        this._triggerCleanups.push(() => triggerSlot.removeEventListener('slotchange', slotHandler));
+
+        // Also handle if already slotted
+        requestAnimationFrame(() => {
+            const el = getTrigger();
+            if (el && this._triggerCleanups.length <= 1) bindTriggerElement(el);
+        });
     }
 
     // ── Position calculation ────────────────────────────────────────────────
@@ -241,6 +251,8 @@ export class NcPopover extends Component {
     private _cleanup() {
         this._cleanupOutside();
         if (this._hoverTimer) clearTimeout(this._hoverTimer);
+        this._triggerCleanups.forEach(fn => fn());
+        this._triggerCleanups = [];
     }
 
     attributeChangedCallback(n: string, o: string, v: string) {

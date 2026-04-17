@@ -659,6 +659,19 @@ function checkRateLimit(ip) {
     return true;
 }
 
+// Periodically clean up expired rate limit entries to prevent memory leaks
+setInterval(() => {
+    const now = Date.now();
+    for (const [ip, attempts] of loginAttempts.entries()) {
+        const recent = attempts.filter(t => now - t < RATE_LIMIT_WINDOW);
+        if (recent.length === 0) {
+            loginAttempts.delete(ip);
+        } else {
+            loginAttempts.set(ip, recent);
+        }
+    }
+}, RATE_LIMIT_WINDOW).unref();
+
 // Handle API routes
 async function handleApiRoute(req, res) {
     const url = req.url;

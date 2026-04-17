@@ -416,7 +416,7 @@ export class Router {
                             color: var(--primary, #0f766e);
                         ">${escapeHTML(path)}</code> could not be found.
                     </p>
-                    <button onclick="window.history.back()" style="
+                    <button id="nc-404-back" style="
                         display: inline-flex;
                         align-items: center;
                         gap: 0.5rem;
@@ -429,12 +429,23 @@ export class Router {
                         font-size: 1rem;
                         cursor: pointer;
                         transition: all 0.2s ease;
-                    " onmouseover="this.style.transform='translateY(-2px)'; this.style.boxShadow='var(--shadow-md, 0 10px 20px rgba(0,0,0,0.12))'"
-                       onmouseout="this.style.transform='translateY(0)'; this.style.boxShadow='none'">
+                    ">
                         <span><</span> Go Back
                     </button>
                 </div>
             `;
+            const backBtn = mainContent.querySelector<HTMLButtonElement>('#nc-404-back');
+            if (backBtn) {
+                backBtn.addEventListener('click', () => window.history.back());
+                backBtn.addEventListener('mouseenter', () => {
+                    backBtn.style.transform = 'translateY(-2px)';
+                    backBtn.style.boxShadow = 'var(--shadow-md, 0 10px 20px rgba(0,0,0,0.12))';
+                });
+                backBtn.addEventListener('mouseleave', () => {
+                    backBtn.style.transform = 'translateY(0)';
+                    backBtn.style.boxShadow = 'none';
+                });
+            }
         }
     }
 
