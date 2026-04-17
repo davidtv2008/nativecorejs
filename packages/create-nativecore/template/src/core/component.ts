@@ -44,8 +44,8 @@ export class Component extends HTMLElement {
     connectedCallback(): void {
         try {
             this.render();
-            this.onMount();
             this._mounted = true;
+            this.onMount();
         } catch (error) {
             console.error(`Error rendering ${this.tagName.toLowerCase()}:`, error);
         }
