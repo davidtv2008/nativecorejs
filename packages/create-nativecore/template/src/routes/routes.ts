@@ -25,4 +25,4 @@ export function registerRoutes(router: any): void {
         .cache({ ttl: 30, revalidate: true });
 }
 
-export const protectedRoutes = ['/dashboard', '/user', '/under-construction'];
+export const protectedRoutes = ['/dashboard'];
