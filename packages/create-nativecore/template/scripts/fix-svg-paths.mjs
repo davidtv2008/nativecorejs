@@ -6,7 +6,7 @@ const files = [
   'src/components/ui/nc-icon-button.ts',
   'src/components/ui/nc-icon.ts',
   'src/components/ui/nc-menu-item.ts',
-  'src/dev/outline-panel.ts',
+  '.nativecore/outline-panel.ts',
 ];
 
 const svgCtxMarkers = [' d=', '<path', '<polyline', '<polygon', '<svg', '"M', "'M"];

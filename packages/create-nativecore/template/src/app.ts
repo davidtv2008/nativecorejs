@@ -109,8 +109,8 @@ function initDevTools(): void {
     
     // Load HMR and dev tools (both TypeScript modules now)
     Promise.all([
-        import('./dev/hmr.js'),
-        import('./dev/denc-tools.js')
+        import('../.nativecore/hmr.js'),
+        import('../.nativecore/denc-tools.js')
     ])
         .then(() => {
             console.warn('[NativeCore] Dev tools loaded');

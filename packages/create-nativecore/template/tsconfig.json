@@ -12,7 +12,7 @@
     "declarationMap": true,
     "sourceMap": true,
     "outDir": "./dist",
-    "rootDir": "./src",
+    "rootDir": ".",
     "baseUrl": "./src",
     "paths": {
       "@core/*": ["core/*"],
@@ -41,7 +41,8 @@
     "jsx": "preserve"
   },
   "include": [
-    "src/**/*"
+    "src/**/*",
+    ".nativecore/**/*"
   ],
   "exclude": [
     "node_modules",
