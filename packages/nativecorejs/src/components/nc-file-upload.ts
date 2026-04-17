@@ -21,6 +21,7 @@
  */
 
 import { Component, defineComponent } from '../core/component.js';
+import { escapeHTML } from '../utils/templates.js';
 
 export class NcFileUpload extends Component {
     static useShadowDOM = true;
@@ -57,9 +58,9 @@ export class NcFileUpload extends Component {
                             <path d="M9 1v5h5" stroke="currentColor" stroke-width="1.2" stroke-linejoin="round"/>
                         </svg>
                     </span>
-                    <span class="file-name">${f.name}</span>
+                    <span class="file-name">${escapeHTML(f.name)}</span>
                     <span class="file-size">${this._formatSize(f.size)}</span>
-                    <button class="file-remove" data-index="${i}" aria-label="Remove ${f.name}" type="button">
+                    <button class="file-remove" data-index="${i}" aria-label="Remove ${escapeHTML(f.name)}" type="button">
                         <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 12 12" fill="none" width="12" height="12">
                             <path d="M2 2l8 8M10 2l-8 8" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
                         </svg>

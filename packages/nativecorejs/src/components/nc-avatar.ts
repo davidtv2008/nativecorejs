@@ -1,4 +1,5 @@
 import { Component, defineComponent } from '../core/component.js';
+import { escapeHTML, sanitizeURL } from '../utils/templates.js';
 
 const SIZE_MAP: Record<string, string> = {
     xs: '24px',
@@ -107,11 +108,11 @@ export class NcAvatar extends Component {
                     display: ${status ? 'block' : 'none'};
                 }
             </style>
-            <div class="avatar" title="${alt}" aria-label="${alt}" role="img">
-                ${showImage ? `<img src="${src}" alt="${alt}" />` : ''}
+            <div class="avatar" title="${escapeHTML(alt)}" aria-label="${escapeHTML(alt)}" role="img">
+                ${showImage ? `<img src="${sanitizeURL(src)}" alt="${escapeHTML(alt)}" />` : ''}
                 <span class="initials">${letters || '?'}</span>
             </div>
-            ${status ? `<span class="status-dot" aria-label="${status}"></span>` : ''}
+            ${status ? `<span class="status-dot" aria-label="${escapeHTML(status)}"></span>` : ''}
         `;
     }
 

@@ -11,6 +11,7 @@
  * 
  */
 import { Component, defineComponent } from '../core/component.js';
+import { escapeHTML } from '../utils/templates.js';
 import { useState } from '../core/state.js';
 import { createAnimationLoop, type AnimationLoop } from '../core/gpu-animation.js';
 import type { State } from '../core/state.js';
@@ -160,8 +161,8 @@ export class NcSplash extends Component {
             <div class="splash-overlay" id="overlay">
                 <div class="splash-glow"></div>
                 <div class="splash-content" id="content">
-                    <h1 class="splash-title">${title}</h1>
-                    ${subtitle ? `<p class="splash-subtitle">${subtitle}</p>` : ''}
+                    <h1 class="splash-title">${escapeHTML(title)}</h1>
+                    ${subtitle ? `<p class="splash-subtitle">${escapeHTML(subtitle)}</p>` : ''}
                     <div class="splash-prompt" id="prompt">
                         Click to start <span class="splash-cursor"></span>
                     </div>

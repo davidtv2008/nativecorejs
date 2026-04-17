@@ -23,6 +23,7 @@
  *   <nc-otp-input length="6" type="numeric"></nc-otp-input>
  */
 import { Component, defineComponent } from '../core/component.js';
+import { escapeHTML } from '../utils/templates.js';
 
 export class NcOtpInput extends Component {
     static useShadowDOM = true;
@@ -110,7 +111,7 @@ export class NcOtpInput extends Component {
             <div class="wrap" role="group" aria-label="${label || 'OTP input'}">
                 ${boxesHtml}
             </div>
-            ${error ? `<p class="error">${error}</p>` : hint ? `<p class="hint">${hint}</p>` : ''}
+            ${error ? `<p class="error">${escapeHTML(error)}</p>` : hint ? `<p class="hint">${escapeHTML(hint)}</p>` : ''}
         `;
     }
 

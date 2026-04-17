@@ -1,4 +1,5 @@
 import { Component, defineComponent } from '../core/component.js';
+import { sanitizeURL } from '../utils/templates.js';
 
 export class NcChip extends Component {
     static useShadowDOM = true;
@@ -63,7 +64,7 @@ export class NcChip extends Component {
                 ::slotted(*) { pointer-events: none; }
             </style>
             <span class="chip chip--${variant}">
-                ${icon ? `<img class="chip__icon" src="${icon}" alt="" aria-hidden="true" />` : ''}
+                ${icon ? `<img class="chip__icon" src="${sanitizeURL(icon)}" alt="" aria-hidden="true" />` : ''}
                 <slot></slot>
                 ${dismissible ? `
                 <button class="chip__dismiss" type="button" aria-label="Remove">

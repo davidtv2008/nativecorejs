@@ -22,6 +22,7 @@
  */
 
 import { Component, defineComponent } from '../core/component.js';
+import { escapeHTML } from '../utils/templates.js';
 
 export class NcAutocomplete extends Component {
     static useShadowDOM = true;
@@ -142,8 +143,10 @@ export class NcAutocomplete extends Component {
             </div>
             <div class="dropdown" role="listbox">
                 ${results.map((opt, i) => {
-                    const hl = opt.replace(new RegExp(`(${this._inputValue.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')})`, 'gi'), '<mark>$1</mark>');
-                    return `<div class="option${i === this._activeIndex ? ' active' : ''}" role="option" data-value="${opt}" aria-selected="${i === this._activeIndex}">${hl}</div>`;
+                    const safeOpt = escapeHTML(opt);
+                    const escaped = this._inputValue.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+                    const hl = escaped ? safeOpt.replace(new RegExp(`(${escapeHTML(escaped)})`, 'gi'), '<mark>$1</mark>') : safeOpt;
+                    return `<div class="option${i === this._activeIndex ? ' active' : ''}" role="option" data-value="${safeOpt}" aria-selected="${i === this._activeIndex}">${hl}</div>`;
                 }).join('')}
             </div>
         `;
@@ -241,9 +244,10 @@ export class NcAutocomplete extends Component {
         if (!results.length) { dropdown.style.display = 'none'; return; }
         dropdown.style.display = 'block';
         dropdown.innerHTML = results.map((opt, i) => {
+            const safeOpt = escapeHTML(opt);
             const escaped = this._inputValue.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-            const hl = escaped ? opt.replace(new RegExp(`(${escaped})`, 'gi'), '<mark>$1</mark>') : opt;
-            return `<div class="option${i === this._activeIndex ? ' active' : ''}" role="option" data-value="${opt}" aria-selected="${i === this._activeIndex}">${hl}</div>`;
+            const hl = escaped ? safeOpt.replace(new RegExp(`(${escapeHTML(escaped)})`, 'gi'), '<mark>$1</mark>') : safeOpt;
+            return `<div class="option${i === this._activeIndex ? ' active' : ''}" role="option" data-value="${safeOpt}" aria-selected="${i === this._activeIndex}">${hl}</div>`;
         }).join('');
         const input = this.$<HTMLInputElement>('input');
         if (input) input.setAttribute('aria-expanded', String(results.length > 0));

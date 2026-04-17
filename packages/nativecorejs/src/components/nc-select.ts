@@ -28,6 +28,7 @@
  */
 
 import { Component, defineComponent } from '../core/component.js';
+import { escapeHTML } from '../utils/templates.js';
 
 interface SelectOption {
     value: string;
@@ -86,11 +87,11 @@ export class NcSelect extends Component {
 
         const optionItems = filtered.map(o => `
             <div class="option${o.value === value ? ' option--selected' : ''}${o.disabled ? ' option--disabled' : ''}"
-                 data-value="${o.value}"
+                 data-value="${escapeHTML(o.value)}"
                  role="option"
                  aria-selected="${o.value === value}"
                  aria-disabled="${o.disabled ? 'true' : 'false'}">
-                ${o.label}
+                ${escapeHTML(o.label)}
                 ${o.value === value ? `
                 <svg class="option__check" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 12 12" fill="none" width="12" height="12">
                     <path d="M2 6l3 3 5-5" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
@@ -385,11 +386,11 @@ export class NcSelect extends Component {
 
         list.innerHTML = filtered.length ? filtered.map(o => `
             <div class="option${o.value === value ? ' option--selected' : ''}${o.disabled ? ' option--disabled' : ''}"
-                 data-value="${o.value}"
+                 data-value="${escapeHTML(o.value)}"
                  role="option"
                  aria-selected="${o.value === value}"
                  aria-disabled="${o.disabled ? 'true' : 'false'}">
-                ${o.label}
+                ${escapeHTML(o.label)}
                 ${o.value === value ? `
                 <svg class="option__check" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 12 12" fill="none" width="12" height="12">
                     <path d="M2 6l3 3 5-5" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
