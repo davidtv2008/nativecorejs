@@ -473,16 +473,43 @@ export function createWebGLParticleSystem(
 const injectedAnimations = new Set<string>();
 
 /**
+ * Sanitize a CSS animation name to prevent injection.
+ * Only allows alphanumeric, hyphens, and underscores.
+ */
+function sanitizeCSSName(name: string): string {
+    return name.replace(/[^a-zA-Z0-9_-]/g, '');
+}
+
+/**
+ * Sanitize CSS keyframes content to prevent breakout injection.
+ * Strips unbalanced braces that could escape the @keyframes block.
+ */
+function sanitizeCSSKeyframes(keyframes: string): string {
+    // Remove any attempt to close the @keyframes block and inject new rules
+    return keyframes.replace(/}/g, (match, offset, str) => {
+        // Count opening braces up to this point
+        const before = str.slice(0, offset);
+        const opens = (before.match(/{/g) || []).length;
+        const closes = (before.match(/}/g) || []).length;
+        // Only allow close brace if there's an unmatched open brace
+        return opens > closes ? match : '';
+    });
+}
+
+/**
  * Inject keyframe animation into document (once)
  * These run entirely on GPU via compositor
  */
 export function injectKeyframes(name: string, keyframes: string): void {
-    if (injectedAnimations.has(name)) return;
+    const safeName = sanitizeCSSName(name);
+    if (!safeName) return;
+    if (injectedAnimations.has(safeName)) return;
     
+    const safeKeyframes = sanitizeCSSKeyframes(keyframes);
     const style = document.createElement('style');
-    style.textContent = `@keyframes ${name} { ${keyframes} }`;
+    style.textContent = `@keyframes ${safeName} { ${safeKeyframes} }`;
     document.head.appendChild(style);
-    injectedAnimations.add(name);
+    injectedAnimations.add(safeName);
 }
 
 /**

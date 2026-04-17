@@ -93,7 +93,11 @@ export const dom = {
 };
 
 if (typeof window !== 'undefined') {
-    (window as any).dom = dom;
+    Object.defineProperty(window, 'dom', {
+        value: Object.freeze(dom),
+        writable: false,
+        configurable: false,
+    });
 }
 
 export default dom;
