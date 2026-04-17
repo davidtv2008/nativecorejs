@@ -87,7 +87,7 @@ export { componentRegistry, initLazyComponents } from './core/lazyComponents.js'
 export { useState, createStates, computed, effect } from './core/state.js';
 export { bustCache, cacheVersion, importWithBust } from './utils/cacheBuster.js';
 export { dom } from './utils/dom.js';
-export { css, html } from './utils/templates.js';
+export { css, html, unsafeHTML, escapeHTML, sanitizeURL, raw } from './utils/templates.js';
 export {
 	bindEvents,
 	delegate,

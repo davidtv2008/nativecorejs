@@ -32,7 +32,7 @@
  */
 
 import { Component, defineComponent } from '../core/component.js';
-import { html } from '../utils/templates.js';
+import { html, raw, sanitizeURL } from '../utils/templates.js';
 
 export class NcMenuItem extends Component {
     static useShadowDOM = true;
@@ -49,8 +49,9 @@ export class NcMenuItem extends Component {
         const alt      = this.getAttribute('alt') || '';
         const disabled = this.hasAttribute('disabled');
 
-        const iconHTML = icon
-            ? `<img class="item__icon" src="${icon}" alt="${alt}" />`
+        const safeIcon = sanitizeURL(icon);
+        const iconHTML = safeIcon
+            ? `<img class="item__icon" src="${safeIcon}" alt="${alt}" />`
             : '';
 
         return html`
@@ -149,7 +150,7 @@ export class NcMenuItem extends Component {
                 }
             </style>
             <div class="item" role="menuitem" tabindex="${disabled ? -1 : 0}" aria-disabled="${disabled}">
-                ${iconHTML}
+                ${raw(iconHTML)}
                 <span class="item__label"><slot></slot></span>
                 <span class="item__end"><slot name="end"></slot></span>
             </div>
