@@ -635,11 +635,11 @@ this.count.watch(val => {
 ### Global State
 ```javascript
 // In stores
-import { signal } from '../core/signals.js';
+import { useState } from '../core/state.js';
 
 export const store = {
-    user: signal(null),
-    isLoading: signal(false)
+    user: useState(null),
+    isLoading: useState(false)
 };
 
 // Usage

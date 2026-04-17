@@ -84,7 +84,7 @@ export {
 } from './core/gpu-animation.js';
 export { Router } from './core/router.js';
 export { componentRegistry, initLazyComponents } from './core/lazyComponents.js';
-export { useState, createStates, computed, effect } from './core/state.js';
+export { useState, createStates, computed, effect, useSignal } from './core/state.js';
 export { bustCache, cacheVersion, importWithBust } from './utils/cacheBuster.js';
 export { dom } from './utils/dom.js';
 export { css, html, unsafeHTML, escapeHTML, sanitizeURL, raw } from './utils/templates.js';

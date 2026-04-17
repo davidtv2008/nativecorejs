@@ -33,38 +33,55 @@ type Unsubscribe = () => void;
 // Global tracker for dependency collection
 let currentTracker: Tracker | null = null;
 
+/** Strip prototype-polluting keys from a value if it's a plain object. */
+function sanitizeValue<T>(value: T): T {
+    if (value !== null && typeof value === 'object' && !Array.isArray(value)) {
+        const obj = value as Record<string, unknown>;
+        if ('__proto__' in obj || 'constructor' in obj || 'prototype' in obj) {
+            const clean = { ...obj };
+            delete clean['__proto__'];
+            delete clean['constructor'];
+            delete clean['prototype'];
+            return clean as T;
+        }
+    }
+    return value;
+}
+
 /**
  * Create a reactive state (React-like useState)
  */
 function createState<T>(initialValue: T): State<T> {
-    let _value = initialValue;
+    let currentValue = sanitizeValue(initialValue);
     const subscribers = new Set<() => void>();
 
     const state = {
         // Getter/setter for value property
         get value(): T {
-            return _value;
+            return currentValue;
         },
         set value(newValue: T) {
-            if (Object.is(_value, newValue)) return;
-            _value = newValue;
+            const safe = sanitizeValue(newValue);
+            if (Object.is(currentValue, safe)) return;
+            currentValue = safe;
             notify();
         },
         
         // Set method (supports updater function like React)
         set(valueOrUpdater: T | ((prev: T) => T)): void {
-            const newValue = typeof valueOrUpdater === 'function' 
-                ? (valueOrUpdater as (prev: T) => T)(_value)
+            const rawValue = typeof valueOrUpdater === 'function'
+                ? (valueOrUpdater as (prev: T) => T)(currentValue)
                 : valueOrUpdater;
-            
-            if (Object.is(_value, newValue)) return;
-            _value = newValue;
+
+            const newValue = sanitizeValue(rawValue);
+            if (Object.is(currentValue, newValue)) return;
+            currentValue = newValue;
             notify();
         },
         
         // Watch for changes (like useEffect watching a dependency)
         watch(callback: (value: T) => void): Unsubscribe {
-            const wrappedCallback = () => callback(_value);
+            const wrappedCallback = () => callback(currentValue);
             subscribers.add(wrappedCallback);
             
             // Return unsubscribe function
@@ -115,6 +132,24 @@ export function createStates<T extends Record<string, any>>(
         states[key] = useState(value);
     }
     return states;
+}
+
+/**
+ * Tuple-style reactive state (SolidJS / React Hooks pattern).
+ * Returns `[getter, setter]` backed by a tracked `State<T>`.
+ *
+ * @example
+ * const [count, setCount] = useSignal(0);
+ * count();        // read
+ * setCount(5);    // write
+ * setCount(n => n + 1); // updater
+ */
+export function useSignal<T>(initialValue: T): [() => T, (value: T | ((prev: T) => T)) => void] {
+    const state = useState(initialValue);
+    return [
+        () => state.value,
+        (valueOrUpdater: T | ((prev: T) => T)) => state.set(valueOrUpdater)
+    ];
 }
 
 /**
