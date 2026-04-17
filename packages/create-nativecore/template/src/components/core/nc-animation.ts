@@ -72,6 +72,7 @@
  */
 
 import { Component, defineComponent } from '@core/component.js';
+import { html } from '@utils/templates.js';
 import {
     animate,
     prepareForAnimation,
@@ -456,7 +457,7 @@ export class NcAnimation extends Component {
     private _visibleFired = false;
 
     template() {
-        return `
+        return html`
             <style>
                 :host {
                     display: contents;

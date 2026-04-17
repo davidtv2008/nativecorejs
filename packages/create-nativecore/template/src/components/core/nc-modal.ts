@@ -38,6 +38,7 @@
 
 import { Component, defineComponent } from '@core/component.js';
 import { dom } from '@utils/dom.js';
+import { html } from '@utils/templates.js';
 
 export class NcModal extends Component {
     static useShadowDOM = true;
@@ -62,7 +63,7 @@ export class NcModal extends Component {
         };
         const maxWidth = widths[size] ?? widths.md;
 
-        return `
+        return html`
             <style>
                 :host {
                     display: block;

@@ -6,6 +6,7 @@ import { Component, defineComponent } from '@core/component.js';
 import router from '@core/router.js';
 import auth from '@services/auth.service.js';
 import './nc-avatar.js';
+import { html } from '@utils/templates.js';
 
 class AppHeader extends Component {
     // Bound references so addEventListener and removeEventListener use the same fn
@@ -39,7 +40,7 @@ class AppHeader extends Component {
         const isAuthenticated = auth.isAuthenticated();
         const logoHref = isAuthenticated ? '/dashboard' : '/';
 
-        return `
+        return html`
                 <div class="header-container">
                     <div class="header-left">
                         ${isAuthenticated ? `

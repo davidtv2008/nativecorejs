@@ -14,6 +14,7 @@ import { Component, defineComponent } from '@core/component.js';
 import { useState } from '@core/state.js';
 import { createAnimationLoop, type AnimationLoop } from '@core/gpu-animation.js';
 import type { State } from '@core/state.js';
+import { html } from '@utils/templates.js';
 
 interface Particle {
     x: number;
@@ -46,7 +47,7 @@ export class NcSplash extends Component {
     template() {
         const title = this.attr('title', 'NativeCore');
         const subtitle = this.attr('subtitle', '');
-        return `
+        return html`
             <style>
                 :host {
                     display: block;

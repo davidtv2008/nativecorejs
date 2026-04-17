@@ -3,6 +3,62 @@
  * Shorthand helpers for common DOM operations
  */
 
+type QueryRoot = Document | Element | ShadowRoot;
+
+function resolveRoot(root?: Element | ShadowRoot | string | null): QueryRoot {
+    if (!root) return document;
+    if (typeof root === 'string') {
+        return document.querySelector(root) ?? document;
+    }
+    return root;
+}
+
+function createDataScope(viewName: string, rootOverride?: Element | ShadowRoot | string | null) {
+    const rootSelector = `[data-view="${viewName}"]`;
+
+    const root = () => {
+        if (rootOverride) {
+            const resolvedRoot = resolveRoot(rootOverride);
+            if (resolvedRoot instanceof Element || resolvedRoot instanceof ShadowRoot) {
+                return resolvedRoot.querySelector<HTMLElement>(rootSelector);
+            }
+        }
+
+        return document.querySelector<HTMLElement>(rootSelector);
+    };
+
+    const query = <T extends Element = HTMLElement>(selector: string): T | null =>
+        root()?.querySelector<T>(selector) ?? null;
+
+    const queryAll = <T extends Element = HTMLElement>(selector: string): NodeListOf<T> | T[] =>
+        root()?.querySelectorAll<T>(selector) ?? ([] as T[]);
+
+    const hookSelector = (name: string): string => `${rootSelector} [data-hook="${name}"]`;
+    const actionSelector = (name: string): string => `${rootSelector} [data-action="${name}"]`;
+
+    return {
+        root,
+        query,
+        queryAll,
+        hookSelector,
+        actionSelector,
+        hook: <T extends HTMLElement = HTMLElement>(name: string): T | null =>
+            query<T>(`[data-hook="${name}"]`),
+        action: <T extends HTMLElement = HTMLElement>(name: string): T | null =>
+            query<T>(`[data-action="${name}"]`),
+        text: (name: string): HTMLElement | null =>
+            query<HTMLElement>(`[data-hook="${name}"]`),
+        button: (name: string): HTMLButtonElement | null =>
+            query<HTMLButtonElement>(`[data-action="${name}"]`),
+        input: (name: string): HTMLInputElement | null =>
+            query<HTMLInputElement>(`[data-hook="${name}"]`),
+        form: (name: string): HTMLFormElement | null =>
+            query<HTMLFormElement>(`[data-hook="${name}"]`),
+        component: <T extends HTMLElement = HTMLElement>(name: string): T | null =>
+            query<T>(`[data-hook="${name}"]`),
+    };
+}
+
 export const dom = {
     /**
      * Query single element (shorthand for document.querySelector)
@@ -138,7 +194,13 @@ export const dom = {
         }
 
         return () => {};
-    }
+    },
+
+    /**
+     * Create a scoped helper around a [data-view="..."] container.
+     */
+    data: (viewName: string, root?: Element | ShadowRoot | string | null) =>
+        createDataScope(viewName, root)
 };
 
 // Expose to window for console debugging

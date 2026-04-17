@@ -27,6 +27,7 @@
 
 import { Component, defineComponent } from '@core/component.js';
 import { dom } from '@utils/dom.js';
+import { html } from '@utils/templates.js';
 
 interface ToastOptions {
     message: string;
@@ -68,7 +69,7 @@ export class NcSnackbar extends Component {
         const position = this.getAttribute('position') || 'bottom-right';
         const [vPos, hPos] = position.split('-');
 
-        return `
+        return html`
             <style>
                 :host {
                     position: fixed;

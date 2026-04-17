@@ -26,6 +26,7 @@
  *   </nc-code>
  */
 import { Component, defineComponent } from '@core/component.js';
+import { html } from '@utils/templates.js';
 
 // ── Simple tokenizer ─────────────────────────────────────────────────────────
 
@@ -173,7 +174,7 @@ export class NcCode extends Component {
             const lineNum = i + 1;
             const hl = hlLines.has(lineNum) ? ' class="hl"' : '';
             const lnHtml = noLines ? '' : `<span class="ln" aria-hidden="true">${lineNum}</span>`;
-            return `<span${hl}>${lnHtml}<span class="lc">${line || '&ZeroWidthSpace;'}</span></span>`;
+            return html`<span${hl}>${lnHtml}<span class="lc">${line || '&ZeroWidthSpace;'}</span></span>`;
         }).join('\n');
 
         const langLabels: Record<string, string> = {

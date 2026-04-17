@@ -22,6 +22,7 @@
  */
 
 import { Component, defineComponent } from '@core/component.js';
+import { html } from '@utils/templates.js';
 
 export class NcRadio extends Component {
     static useShadowDOM = true;
@@ -48,7 +49,7 @@ export class NcRadio extends Component {
         const dotSize = size === 'sm' ? '6px' : size === 'lg' ? '10px' : '8px';
         const boxSize = size === 'sm' ? '16px' : size === 'lg' ? '24px' : '20px';
 
-        return `
+        return html`
             <style>
                 :host {
                     display: inline-flex;

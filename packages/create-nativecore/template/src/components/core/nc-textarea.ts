@@ -25,6 +25,7 @@
  */
 
 import { Component, defineComponent } from '@core/component.js';
+import { html } from '@utils/templates.js';
 
 export class NcTextarea extends Component {
     static useShadowDOM = true;
@@ -52,7 +53,7 @@ export class NcTextarea extends Component {
         const autoresize = this.hasAttribute('autoresize');
         const charCount = value.length;
 
-        return `
+        return html`
             <style>
                 :host {
                     display: block;

@@ -3,6 +3,7 @@
  * Simple reusable loading indicator
  */
 import { Component, defineComponent } from '@core/component.js';
+import { html } from '@utils/templates.js';
 
 class LoadingSpinner extends Component {
     static get observedAttributes() {
@@ -13,7 +14,7 @@ class LoadingSpinner extends Component {
         const size = this.attr('size', 'medium');
         const message = this.attr('message', 'Loading...');
         
-        return `
+        return html`
             <div class="loading-spinner ${size}">
                 <div class="spinner"></div>
                 ${message ? `<p class="loading-message">${message}</p>` : ''}

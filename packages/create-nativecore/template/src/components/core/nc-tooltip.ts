@@ -16,6 +16,7 @@
  */
 
 import { Component, defineComponent } from '@core/component.js';
+import { html } from '@utils/templates.js';
 
 export class NcTooltip extends Component {
     static useShadowDOM = true;
@@ -32,7 +33,7 @@ export class NcTooltip extends Component {
         const variant = this.getAttribute('variant') || 'default';
         const tip = this.getAttribute('tip') || '';
 
-        return `
+        return html`
             <style>
                 :host { display: inline-flex; position: relative; }
 

@@ -60,6 +60,7 @@
  */
 
 import { Component, defineComponent } from '@core/component.js';
+import { html } from '@utils/templates.js';
 
 export class NcCard extends Component {
     static useShadowDOM = true;
@@ -80,7 +81,7 @@ export class NcCard extends Component {
     }
     
     template() {
-        return `
+        return html`
             <style>
                 :host {
                     display: block;

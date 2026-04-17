@@ -19,6 +19,7 @@
  */
 
 import { Component, defineComponent } from '@core/component.js';
+import { html } from '@utils/templates.js';
 
 export class NcProgress extends Component {
     static useShadowDOM = true;
@@ -38,7 +39,7 @@ export class NcProgress extends Component {
         const animated = this.hasAttribute('animated');
         const label = this.getAttribute('label') || `${pct}%`;
 
-        return `
+        return html`
             <style>
                 :host { display: block; width: 100%; font-family: var(--nc-font-family); }
 

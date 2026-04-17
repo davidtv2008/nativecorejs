@@ -17,6 +17,7 @@
  */
 
 import { Component, defineComponent } from '@core/component.js';
+import { html } from '@utils/templates.js';
 
 export class NcChip extends Component {
     static useShadowDOM = true;
@@ -31,7 +32,7 @@ export class NcChip extends Component {
         const disabled = this.hasAttribute('disabled');
         const icon = this.getAttribute('icon');
 
-        return `
+        return html`
             <style>
                 :host { display: inline-flex; }
 

@@ -21,6 +21,7 @@
  */
 
 import { Component, defineComponent } from '@core/component.js';
+import { html } from '@utils/templates.js';
 
 export class NcFileUpload extends Component {
     static useShadowDOM = true;
@@ -68,7 +69,7 @@ export class NcFileUpload extends Component {
             `).join('')
             : '';
 
-        return `
+        return html`
             <style>
                 :host {
                     display: block;

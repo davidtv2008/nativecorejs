@@ -22,6 +22,7 @@
  */
 
 import { Component, defineComponent } from '@core/component.js';
+import { html } from '@utils/templates.js';
 
 export class NcAutocomplete extends Component {
     static useShadowDOM = true;
@@ -63,7 +64,7 @@ export class NcAutocomplete extends Component {
         const name = this.getAttribute('name') || '';
         const results = this._open ? this._filtered() : [];
 
-        return `
+        return html`
             <style>
                 :host { display: block; position: relative; width: 100%; font-family: var(--nc-font-family); }
 

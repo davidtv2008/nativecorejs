@@ -23,6 +23,7 @@
  */
 
 import { Component, defineComponent } from '@core/component.js';
+import { html } from '@utils/templates.js';
 
 function pad2(n: number) { return String(n).padStart(2, '0'); }
 
@@ -98,7 +99,7 @@ export class NcTimePicker extends Component {
         const hourRange = is12 ? 12 : 24;
         const hourOptions = Array.from({ length: hourRange }, (_, i) => is12 ? i + 1 : i);
 
-        return `
+        return html`
             <style>
                 :host { display: block; position: relative; font-family: var(--nc-font-family); }
 

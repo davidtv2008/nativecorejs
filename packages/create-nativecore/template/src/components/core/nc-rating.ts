@@ -23,6 +23,7 @@
  */
 
 import { Component, defineComponent } from '@core/component.js';
+import { html } from '@utils/templates.js';
 
 const ICONS: Record<string, { filled: string; empty: string }> = {
     star: {
@@ -81,7 +82,7 @@ export class NcRating extends Component {
         const items = Array.from({ length: max }, (_, i) => {
             const pos = i + 1;
             const filled = pos <= value;
-            return `<span
+            return html`<span
                 class="item${filled ? ' filled' : ''}"
                 data-pos="${pos}"
                 role="${interactive ? 'radio' : 'presentation'}"

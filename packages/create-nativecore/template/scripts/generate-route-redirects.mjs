@@ -24,7 +24,7 @@ export function extractRegisteredRoutes(routesSource) {
     return Array.from(routesSource.matchAll(/\.register\(\s*['"]([^'"]+)['"]/g), match => match[1]);
 }
 
-export function renderCfRouter(protectedRoutes, registeredRoutes) {
+export function renderRouteRedirects(protectedRoutes, registeredRoutes) {
     const routeRules = registeredRoutes
         .filter(route => route !== '/')
         .flatMap(route => {
@@ -37,16 +37,16 @@ export function renderCfRouter(protectedRoutes, registeredRoutes) {
     ].join('\n') + '\n';
 }
 
-export function generateCfRouter() {
+export function generateRouteRedirects() {
     const routesSource = fs.readFileSync(routesPath, 'utf8');
     const protectedRoutes = extractProtectedRoutes(routesSource);
     const registeredRoutes = extractRegisteredRoutes(routesSource);
-    const output = renderCfRouter(protectedRoutes, registeredRoutes);
+    const output = renderRouteRedirects(protectedRoutes, registeredRoutes);
 
     fs.writeFileSync(redirectsPath, output);
     console.log(`Updated: ${path.relative(path.resolve(__dirname, '..'), redirectsPath).replace(/\\/g, '/')}`);
 }
 
 if (process.argv[1] && path.resolve(process.argv[1]) === __filename) {
-    generateCfRouter();
+    generateRouteRedirects();
 }

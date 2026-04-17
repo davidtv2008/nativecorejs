@@ -538,6 +538,13 @@ export class Router {
                     </button>
                 </div>
             `;
+
+            window.dispatchEvent(new CustomEvent('pageloaded', {
+                detail: {
+                    path,
+                    notFound: true,
+                },
+            }));
         }
     }
     

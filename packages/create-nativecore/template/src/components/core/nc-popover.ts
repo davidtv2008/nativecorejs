@@ -37,6 +37,7 @@
  *   </nc-popover>
  */
 import { Component, defineComponent } from '@core/component.js';
+import { html } from '@utils/templates.js';
 
 type Placement = 'top'|'top-start'|'top-end'|'bottom'|'bottom-start'|'bottom-end'|'left'|'left-start'|'left-end'|'right'|'right-start'|'right-end';
 
@@ -55,7 +56,7 @@ export class NcPopover extends Component {
         const width    = this.getAttribute('width') ?? 'auto';
         const maxWidth = this.getAttribute('max-width') ?? '320px';
 
-        return `
+        return html`
             <style>
                 :host { display: inline-block; position: relative; }
                 .trigger-wrap { display: contents; }

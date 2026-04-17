@@ -16,6 +16,7 @@
  */
 
 import { Component, defineComponent } from '@core/component.js';
+import { html } from '@utils/templates.js';
 
 const SIZE_MAP: Record<string, string> = {
     xs: '24px', sm: '32px', md: '40px', lg: '48px', xl: '64px', '2xl': '80px',
@@ -71,7 +72,7 @@ export class NcAvatar extends Component {
             neutral:   'var(--nc-bg-tertiary)',
         };
 
-        return `
+        return html`
             <style>
                 :host { display: inline-flex; position: relative; flex-shrink: 0; }
 

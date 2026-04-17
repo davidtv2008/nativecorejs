@@ -23,6 +23,7 @@
  *   </nc-empty-state>
  */
 import { Component, defineComponent } from '@core/component.js';
+import { html } from '@utils/templates.js';
 
 const ICONS: Record<string, string> = {
     inbox: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" fill="none">
@@ -82,7 +83,7 @@ export class NcEmptyState extends Component {
         const hasCustomIcon = icon === 'custom';
         const iconHtml = hasCustomIcon ? '' : (ICONS[icon] ?? ICONS.inbox);
 
-        return `
+        return html`
             <style>
                 :host { display: block; }
                 .wrap {

@@ -19,6 +19,7 @@
  */
 
 import { Component, defineComponent } from '@core/component.js';
+import { html } from '@utils/templates.js';
 
 const DEFAULT_SWATCHES = [
     '#ef4444','#f97316','#f59e0b','#eab308',
@@ -54,7 +55,7 @@ export class NcColorPicker extends Component {
         const disabled = this.hasAttribute('disabled');
         const swatches = this._getSwatches();
 
-        return `
+        return html`
             <style>
                 :host { display: inline-block; font-family: var(--nc-font-family); }
 

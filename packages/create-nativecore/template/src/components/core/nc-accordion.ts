@@ -21,6 +21,7 @@
  */
 
 import { Component, defineComponent } from '@core/component.js';
+import { html } from '@utils/templates.js';
 
 // ── NcAccordionItem ──────────────────────────────────────────────────────────
 
@@ -34,7 +35,7 @@ export class NcAccordionItem extends Component {
         const open = this.hasAttribute('open');
         const disabled = this.hasAttribute('disabled');
 
-        return `
+        return html`
             <style>
                 :host { display: block; }
 

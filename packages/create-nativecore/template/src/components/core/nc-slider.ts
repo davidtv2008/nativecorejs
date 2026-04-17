@@ -24,6 +24,7 @@
  */
 
 import { Component, defineComponent } from '@core/component.js';
+import { html } from '@utils/templates.js';
 
 export class NcSlider extends Component {
     static useShadowDOM = true;
@@ -59,7 +60,7 @@ export class NcSlider extends Component {
         // Set fill % as a host CSS variable so it can be updated without re-render
         this.style.setProperty('--_fill-pct', `${pct}%`);
 
-        return `
+        return html`
             <style>
                 :host {
                     display: block;

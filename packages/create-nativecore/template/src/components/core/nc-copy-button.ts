@@ -15,6 +15,7 @@
  *   error — CustomEvent<{ error: unknown }> — fires if clipboard write fails
  */
 import { Component, defineComponent } from '@core/component.js';
+import { html } from '@utils/templates.js';
 
 export class NcCopyButton extends Component {
     static useShadowDOM = true;
@@ -52,7 +53,7 @@ export class NcCopyButton extends Component {
             ? 'var(--nc-success)'
             : variant === 'primary' ? 'var(--nc-white)' : 'var(--nc-text)';
 
-        return `
+        return html`
             <style>
                 :host { display: inline-block; }
                 button {

@@ -23,6 +23,7 @@
  *   </nc-collapsible>
  */
 import { Component, defineComponent } from '@core/component.js';
+import { html } from '@utils/templates.js';
 
 export class NcCollapsible extends Component {
     static useShadowDOM = true;
@@ -55,7 +56,7 @@ export class NcCollapsible extends Component {
             none:    '',
         };
 
-        return `
+        return html`
             <style>
                 :host {
                     display: block;

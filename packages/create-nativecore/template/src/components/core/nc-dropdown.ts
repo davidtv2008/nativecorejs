@@ -28,6 +28,7 @@
  */
 
 import { Component, defineComponent } from '@core/component.js';
+import { html } from '@utils/templates.js';
 
 export class NcDropdown extends Component {
     static useShadowDOM = true;
@@ -46,7 +47,7 @@ export class NcDropdown extends Component {
         const [vSide, hAlign] = placement.split('-') as [string, string | undefined];
         const above = vSide === 'top';
 
-        return `
+        return html`
             <style>
                 :host { display: inline-flex; position: relative; vertical-align: middle; }
 

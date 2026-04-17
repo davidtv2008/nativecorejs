@@ -16,6 +16,7 @@
  */
 
 import { Component, defineComponent } from '@core/component.js';
+import { html } from '@utils/templates.js';
 
 export class NcSkeleton extends Component {
     static useShadowDOM = true;
@@ -39,7 +40,7 @@ export class NcSkeleton extends Component {
             content = Array.from({ length: lines }, (_, i) => {
                 // Last line is shorter to look natural
                 const w = i === lines - 1 && lines > 1 ? '75%' : '100%';
-                return `<span class="bone bone--text" style="width:${w}"></span>`;
+                return html`<span class="bone bone--text" style="width:${w}"></span>`;
             }).join('');
         } else if (variant === 'circle') {
             content = `<span class="bone bone--circle" style="width:${width};height:${width}"></span>`;

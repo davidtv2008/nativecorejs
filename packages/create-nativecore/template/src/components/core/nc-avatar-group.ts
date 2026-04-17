@@ -20,6 +20,7 @@
  *   </nc-avatar-group>
  */
 import { Component, defineComponent } from '@core/component.js';
+import { html } from '@utils/templates.js';
 
 export class NcAvatarGroup extends Component {
     static useShadowDOM = true;
@@ -35,7 +36,7 @@ export class NcAvatarGroup extends Component {
         const fs  = Math.round(sz * 0.32);
         const bw  = Math.max(2, Math.round(sz * 0.06));
 
-        return `
+        return html`
             <style>
                 :host { display: inline-block; }
                 .group {

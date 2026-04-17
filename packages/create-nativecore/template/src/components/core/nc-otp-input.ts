@@ -23,6 +23,7 @@
  *   <nc-otp-input length="6" type="numeric"></nc-otp-input>
  */
 import { Component, defineComponent } from '@core/component.js';
+import { html } from '@utils/templates.js';
 
 export class NcOtpInput extends Component {
     static useShadowDOM = true;
@@ -56,7 +57,7 @@ export class NcOtpInput extends Component {
         const boxesHtml = Array.from({ length: len }, (_, i) => {
             const val = this._values[i] ?? '';
             const showSep = separator > 0 && i === separator - 1 && i < len - 1;
-            return `
+            return html`
                 <input
                     class="box"
                     type="${masked ? 'password' : 'text'}"

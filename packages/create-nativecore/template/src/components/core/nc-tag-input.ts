@@ -30,6 +30,7 @@
  *   el.clear()            — remove all tags
  */
 import { Component, defineComponent } from '@core/component.js';
+import { html } from '@utils/templates.js';
 
 export class NcTagInput extends Component {
     static useShadowDOM = true;
@@ -71,7 +72,7 @@ export class NcTagInput extends Component {
             </span>
         `).join('');
 
-        return `
+        return html`
             <style>
                 :host { display: block; font-family: var(--nc-font-family); }
                 .label {

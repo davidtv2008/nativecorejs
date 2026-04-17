@@ -46,6 +46,7 @@
  */
 
 import { Component, defineComponent } from '@core/component.js';
+import { html } from '@utils/templates.js';
 
 // ── NcField ──────────────────────────────────────────────────────────────────
 
@@ -63,7 +64,7 @@ export class NcField extends Component {
         const hint = this.getAttribute('hint') || '';
         const error = this.getAttribute('error') || '';
 
-        return `
+        return html`
             <style>
                 :host { display: block; font-family: var(--nc-font-family); }
 

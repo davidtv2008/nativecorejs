@@ -17,6 +17,7 @@
  */
 
 import { Component, defineComponent } from '@core/component.js';
+import { html } from '@utils/templates.js';
 
 export class NcDivider extends Component {
     static useShadowDOM = true;
@@ -35,7 +36,7 @@ export class NcDivider extends Component {
 
         const isHorizontal = orientation === 'horizontal';
 
-        return `
+        return html`
             <style>
                 :host {
                     display: ${isHorizontal ? 'block' : 'inline-flex'};

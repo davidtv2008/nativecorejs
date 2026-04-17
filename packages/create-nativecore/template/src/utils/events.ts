@@ -12,11 +12,15 @@
  *   on('.input', 'input', handleInput);
  */
 export function on<T = Event>(
-    selector: string, 
+    selectorOrElement: string | Element | null,
     eventName: string, 
     handler: (event: T) => void
 ): () => void {
-    const elements = document.querySelectorAll(selector);
+    const elements = typeof selectorOrElement === 'string'
+        ? Array.from(document.querySelectorAll(selectorOrElement))
+        : selectorOrElement
+            ? [selectorOrElement]
+            : [];
     
     elements.forEach(el => {
         el.addEventListener(eventName, handler as EventListener);
@@ -67,17 +71,17 @@ export function bindEvents(
 /**
  * Shorthand for common events
  */
-export const onClick = (selector: string, handler: (event: Event) => void) => 
-    on(selector, 'click', handler);
+export const onClick = (selectorOrElement: string | Element | null, handler: (event: Event) => void) => 
+    on(selectorOrElement, 'click', handler);
 
-export const onChange = (selector: string, handler: (event: Event) => void) => 
-    on(selector, 'change', handler);
+export const onChange = (selectorOrElement: string | Element | null, handler: (event: Event) => void) => 
+    on(selectorOrElement, 'change', handler);
 
-export const onInput = (selector: string, handler: (event: Event) => void) => 
-    on(selector, 'input', handler);
+export const onInput = (selectorOrElement: string | Element | null, handler: (event: Event) => void) => 
+    on(selectorOrElement, 'input', handler);
 
-export const onSubmit = (selector: string, handler: (event: Event) => void) => 
-    on(selector, 'submit', handler);
+export const onSubmit = (selectorOrElement: string | Element | null, handler: (event: Event) => void) => 
+    on(selectorOrElement, 'submit', handler);
 
 /**
  * Delegate event to parent container (for dynamic elements)
@@ -127,24 +131,24 @@ export function trackEvents() {
     const cleanupFunctions: Array<() => void> = [];
     
     return {
-        on<T = Event>(selector: string, eventName: string, handler: (event: T) => void): void {
-            cleanupFunctions.push(on(selector, eventName, handler));
+        on<T = Event>(selectorOrElement: string | Element | null, eventName: string, handler: (event: T) => void): void {
+            cleanupFunctions.push(on(selectorOrElement, eventName, handler));
         },
         
-        onClick(selector: string, handler: (event: Event) => void): void {
-            cleanupFunctions.push(onClick(selector, handler));
+        onClick(selectorOrElement: string | Element | null, handler: (event: Event) => void): void {
+            cleanupFunctions.push(onClick(selectorOrElement, handler));
         },
         
-        onChange(selector: string, handler: (event: Event) => void): void {
-            cleanupFunctions.push(onChange(selector, handler));
+        onChange(selectorOrElement: string | Element | null, handler: (event: Event) => void): void {
+            cleanupFunctions.push(onChange(selectorOrElement, handler));
         },
         
-        onInput(selector: string, handler: (event: Event) => void): void {
-            cleanupFunctions.push(onInput(selector, handler));
+        onInput(selectorOrElement: string | Element | null, handler: (event: Event) => void): void {
+            cleanupFunctions.push(onInput(selectorOrElement, handler));
         },
         
-        onSubmit(selector: string, handler: (event: Event) => void): void {
-            cleanupFunctions.push(onSubmit(selector, handler));
+        onSubmit(selectorOrElement: string | Element | null, handler: (event: Event) => void): void {
+            cleanupFunctions.push(onSubmit(selectorOrElement, handler));
         },
         
         delegate<T = Event>(

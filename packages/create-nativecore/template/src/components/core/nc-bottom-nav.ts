@@ -37,6 +37,7 @@
  *   active   — boolean (managed by parent nc-bottom-nav)
  */
 import { Component, defineComponent } from '@core/component.js';
+import { html } from '@utils/templates.js';
 
 // Shared icon paths with nc-nav-item
 const NAV_ICONS: Record<string, string> = {
@@ -71,7 +72,7 @@ export class NcBottomNavItem extends Component {
 
         const iconHtml = NAV_ICONS[iconName] ? svgWrap(NAV_ICONS[iconName]) : '';
 
-        return `
+        return html`
             <style>
                 :host { display: flex; flex: 1; }
                 button {

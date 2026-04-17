@@ -32,6 +32,7 @@
  */
 
 import { Component, defineComponent } from '@core/component.js';
+import { html } from '@utils/templates.js';
 
 const CHECK_ICON = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16" fill="none" width="14" height="14"><path d="M3 8l4 4 6-7" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>`;
 const ERROR_ICON = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16" fill="none" width="14" height="14"><path d="M8 5v4M8 11v1" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>`;
@@ -88,7 +89,7 @@ export class NcStepper extends Component {
                     ? ERROR_ICON
                     : String(i + 1);
 
-            return `
+            return html`
                 <div
                     class="step ${stateClass}"
                     data-index="${i}"

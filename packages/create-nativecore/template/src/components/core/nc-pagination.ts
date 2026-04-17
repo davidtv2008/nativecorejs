@@ -18,6 +18,7 @@
  */
 
 import { Component, defineComponent } from '@core/component.js';
+import { html } from '@utils/templates.js';
 
 export class NcPagination extends Component {
     static useShadowDOM = true;
@@ -60,7 +61,7 @@ export class NcPagination extends Component {
                 }
             </button>`;
 
-        return `
+        return html`
             <style>
                 :host { display: block; font-family: var(--nc-font-family); }
 

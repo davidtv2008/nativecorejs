@@ -20,6 +20,7 @@
  */
 
 import { Component, defineComponent } from '@core/component.js';
+import { html } from '@utils/templates.js';
 
 export class NcButton extends Component {
     static useShadowDOM = true;

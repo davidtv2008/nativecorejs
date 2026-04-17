@@ -25,6 +25,7 @@
  */
 
 import { Component, defineComponent } from '@core/component.js';
+import { html } from '@utils/templates.js';
 
 export class NcNumberInput extends Component {
     static useShadowDOM = true;
@@ -85,7 +86,7 @@ export class NcNumberInput extends Component {
         const atMin = min !== null && value <= Number(min);
         const atMax = max !== null && value >= Number(max);
 
-        return `
+        return html`
             <style>
                 :host {
                     display: inline-flex;

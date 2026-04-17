@@ -31,6 +31,7 @@
  */
 
 import { Component, defineComponent } from '@core/component.js';
+import { html } from '@utils/templates.js';
 
 export class NcDiv extends Component {
     static useShadowDOM = true;
@@ -68,7 +69,7 @@ export class NcDiv extends Component {
     }
     
     template() {
-        return `
+        return html`
             <style>
                 :host {
                     display: block;

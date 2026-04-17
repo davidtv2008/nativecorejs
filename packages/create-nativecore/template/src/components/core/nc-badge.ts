@@ -15,6 +15,7 @@
  */
 
 import { Component, defineComponent } from '@core/component.js';
+import { html } from '@utils/templates.js';
 
 export class NcBadge extends Component {
     static useShadowDOM = true;
@@ -36,7 +37,7 @@ export class NcBadge extends Component {
 
         const [vPos, hPos] = position.split('-');
 
-        return `
+        return html`
             <style>
                 :host { display: inline-flex; position: relative; vertical-align: middle; }
 

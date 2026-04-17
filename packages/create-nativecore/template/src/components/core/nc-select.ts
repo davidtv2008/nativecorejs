@@ -28,6 +28,7 @@
  */
 
 import { Component, defineComponent } from '@core/component.js';
+import { html } from '@utils/templates.js';
 
 interface SelectOption {
     value: string;
@@ -98,7 +99,7 @@ export class NcSelect extends Component {
             </div>
         `).join('');
 
-        return `
+        return html`
             <style>
                 :host {
                     display: inline-block;

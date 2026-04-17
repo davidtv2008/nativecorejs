@@ -13,6 +13,7 @@
  */
 
 import { Component, defineComponent } from '@core/component.js';
+import { html } from '@utils/templates.js';
 
 export class NcBreadcrumb extends Component {
     static useShadowDOM = true;
@@ -20,7 +21,7 @@ export class NcBreadcrumb extends Component {
     static get observedAttributes() { return ['separator']; }
 
     template() {
-        return `
+        return html`
             <style>
                 :host { display: block; font-family: var(--nc-font-family); }
 

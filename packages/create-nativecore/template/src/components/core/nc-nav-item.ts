@@ -26,6 +26,7 @@
  *   <nc-nav-item href="/users" label="Users" icon="users" badge="14"></nc-nav-item>
  */
 import { Component, defineComponent } from '@core/component.js';
+import { html } from '@utils/templates.js';
 
 const NAV_ICONS: Record<string, string> = {
     home:        `<path d="M3 9.5L12 3l9 6.5V20a1 1 0 0 1-1 1H14v-5h-4v5H4a1 1 0 0 1-1-1V9.5z"/>`,
@@ -79,7 +80,7 @@ export class NcNavItem extends Component {
             ? `href="${href}" target="${target}"`
             : `type="button"`;
 
-        return `
+        return html`
             <style>
                 :host { display: block; }
                 ${tag} {

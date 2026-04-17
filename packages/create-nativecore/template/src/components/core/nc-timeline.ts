@@ -41,6 +41,7 @@
  *   </nc-timeline>
  */
 import { Component, defineComponent } from '@core/component.js';
+import { html } from '@utils/templates.js';
 
 const STATUS_COLORS: Record<string, string> = {
     completed: 'var(--nc-success)',
@@ -83,7 +84,7 @@ export class NcTimelineItem extends Component {
         const isActive = status === 'active';
         const dotSz   = isActive ? 14 : 12;
 
-        return `
+        return html`
             <style>
                 :host { display: flex; font-family: var(--nc-font-family); }
                 .col-dot {

@@ -15,6 +15,7 @@ Official CLI for generating NativeCore applications.
 - uses npm for dependency installation by default unless `--skip-install` is passed
 - scaffolds the full NativeCore-style source tree: `src/components`, `constants`, `core`, `dev`, `middleware`, `routes`, `services`, `stores`, `styles`, `types`, `utils`, and `views`
 - includes `api/`, `scripts/`, test setup, lint config, HMR, and local mock authentication/data flow
+- includes reusable AI/context guidance files such as `.context/`, `.cursorrules`, `AGENTS.md`, and `.github/copilot-instructions.md`
 - does not generate documentation routes or docs pages
 
 ## Install behavior

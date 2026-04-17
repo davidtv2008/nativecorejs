@@ -28,6 +28,7 @@
  */
 
 import { Component, defineComponent } from '@core/component.js';
+import { html } from '@utils/templates.js';
 
 export class NcDrawer extends Component {
     static useShadowDOM = true;
@@ -55,7 +56,7 @@ export class NcDrawer extends Component {
             bottom: 'translateY(100%)',
         }[placement];
 
-        return `
+        return html`
             <style>
                 :host { display: contents; }
 

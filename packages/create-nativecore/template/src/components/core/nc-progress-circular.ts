@@ -20,6 +20,7 @@
  */
 
 import { Component, defineComponent } from '@core/component.js';
+import { html } from '@utils/templates.js';
 
 const VARIANT_COLORS: Record<string, string> = {
     primary: 'var(--nc-primary)',
@@ -56,7 +57,7 @@ export class NcProgressCircular extends Component {
         const cy = size / 2;
         const fontSize = Math.max(10, Math.round(size * 0.22));
 
-        return `
+        return html`
             <style>
                 :host { display: inline-flex; align-items: center; justify-content: center; }
 

@@ -22,6 +22,7 @@
  */
 
 import { Component, defineComponent } from '@core/component.js';
+import { html } from '@utils/templates.js';
 
 const MONTHS = ['January','February','March','April','May','June','July','August','September','October','November','December'];
 const DAYS_SUN = ['Su','Mo','Tu','We','Th','Fr','Sa'];
@@ -69,7 +70,7 @@ export class NcDatePicker extends Component {
         const firstDay = Number(this.getAttribute('first-day') ?? 0);
         const dayLabels = firstDay === 1 ? DAYS_MON : DAYS_SUN;
 
-        return `
+        return html`
             <style>
                 :host { display: block; position: relative; font-family: var(--nc-font-family); }
 

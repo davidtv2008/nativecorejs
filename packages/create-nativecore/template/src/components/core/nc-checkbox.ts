@@ -23,6 +23,7 @@
  */
 
 import { Component, defineComponent } from '@core/component.js';
+import { html } from '@utils/templates.js';
 
 export class NcCheckbox extends Component {
     static useShadowDOM = true;
@@ -61,7 +62,7 @@ export class NcCheckbox extends Component {
         const checked = this.hasAttribute('checked');
         const disabled = this.hasAttribute('disabled');
 
-        return `
+        return html`
             <style>
                 :host {
                     display: inline-flex;

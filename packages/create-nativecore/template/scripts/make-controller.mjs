@@ -52,30 +52,49 @@ async function main() {
     // Generate standardized controller template
     const controllerTemplate = `/**
  * ${titleName} Controller
- * Handles dynamic behavior for the ${titleName.toLowerCase()} functionality
+ * Handles dynamic behavior for the ${titleName.toLowerCase()} route
  */
 import { trackEvents, trackSubscriptions } from '@utils/events.js';
+import { dom } from '@utils/dom.js';
+import { useState, computed } from '@core/state.js';
+import auth from '@services/auth.service.js';
+import api from '@services/api.service.js';
 
 export async function ${camelName}Controller(params: Record<string, string> = {}): Promise<() => void> {
     const events = trackEvents();
     const subs = trackSubscriptions();
-    
-    // DOM references
-    // const element = document.getElementById('${kebabName}') as HTMLElement;
-    
-    // Load data, then render and attach events
-    // const data = await api.get('/endpoint');
-    // element.innerHTML = \`...\`;
-    
-    // Event listeners — all auto-tracked for cleanup
-    // events.onClick('#my-button', handleClick);
-    // events.delegate('#list', 'click', '.item', handleItemClick);
-    
-    // State watchers — all auto-unsubscribed on cleanup
-    // subs.watch(store.isLoading.watch(loading => toggleSpinner(loading)));
-    
-    // Return cleanup function — called automatically on route change
+
+    const titleElement = dom.query<HTMLElement>('[data-${kebabName}-title]');
+    const summaryElement = dom.query<HTMLElement>('[data-${kebabName}-summary]');
+    const userState = useState(auth.getUser());
+    const serviceState = useState({ apiReady: typeof api.get === 'function' });
+    const titleText = computed(() => userState.value?.name
+        ? '${titleName} for ' + userState.value.name
+        : '${titleName}');
+    const summaryText = computed(() => userState.value
+        ? 'Authenticated context is active. Use this controller to coordinate state, services, and existing markup.'
+        : 'Use dom helpers, signals, auth, and API services to wire this view without rendering HTML strings from the controller.');
+
+    void params;
+    void serviceState.value.apiReady;
+
+    const syncView = () => {
+        if (titleElement) titleElement.textContent = titleText.value;
+        if (summaryElement) summaryElement.textContent = summaryText.value;
+    };
+
+    subs.watch(titleText.watch(syncView));
+    subs.watch(summaryText.watch(syncView));
+    syncView();
+
+    events.onClick('[data-${kebabName}-primary-action]', () => {
+        userState.value = auth.getUser();
+        syncView();
+    });
+
     return () => {
+        titleText.dispose();
+        summaryText.dispose();
         events.cleanup();
         subs.cleanup();
     };

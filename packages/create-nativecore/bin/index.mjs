@@ -212,6 +212,7 @@ function appTsTemplate(config) {
     const authChangeHandler = config.includeAuth ? `    window.addEventListener('auth-change', () => {
         const isAuth = auth.isAuthenticated();
         if (!isAuth) {
+            router.replace('/login');
             document.body.classList.remove('sidebar-enabled');
             document.getElementById('app')?.classList.remove('sidebar-collapsed');
             document.getElementById('app')?.classList.add('no-sidebar');
