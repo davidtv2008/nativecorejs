@@ -42,7 +42,7 @@
  */
 
 import { Component, defineComponent } from '../core/component.js';
-import { html } from '../utils/templates.js';
+import { html, raw, escapeHTML } from '../utils/templates.js';
 
 export class NcTabs extends Component {
     static useShadowDOM = true;
@@ -438,7 +438,7 @@ export class NcTabs extends Component {
                 tabindex="${isActive ? 0 : -1}"
                 data-tab-index="${i}"
                 ${disabled ? 'disabled' : ''}
-            >${label}</button>`;
+            >${escapeHTML(label)}</button>`;
         }).join('');
 
         // Sync active attribute on each panel (drives :host([active]) CSS in nc-tab-item)

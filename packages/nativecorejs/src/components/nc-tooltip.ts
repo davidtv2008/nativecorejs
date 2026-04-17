@@ -16,6 +16,7 @@
  */
 
 import { Component, defineComponent } from '../core/component.js';
+import { escapeHTML } from '../utils/templates.js';
 
 export class NcTooltip extends Component {
     static useShadowDOM = true;
@@ -93,7 +94,7 @@ export class NcTooltip extends Component {
                 data-placement="${placement}"
                 role="tooltip"
                 aria-hidden="true"
-            >${tip}</div>
+            >${escapeHTML(tip)}</div>
         `;
     }
 

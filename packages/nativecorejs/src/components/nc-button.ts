@@ -20,6 +20,7 @@
  */
 
 import { Component, defineComponent } from '../core/component.js';
+import { escapeHTML, sanitizeURL } from '../utils/templates.js';
 
 export class NcButton extends Component {
     static useShadowDOM = true;
@@ -53,7 +54,7 @@ export class NcButton extends Component {
         const loading = this.hasAttribute('loading');
         const fullWidth = this.hasAttribute('full-width');
         
-        const iconHTML = icon ? `<img class="nc-button-icon" src="${icon}" alt="${alt}" />` : '';
+        const iconHTML = icon ? `<img class="nc-button-icon" src="${sanitizeURL(icon)}" alt="${escapeHTML(alt)}" />` : '';
         
         return`
             <style>

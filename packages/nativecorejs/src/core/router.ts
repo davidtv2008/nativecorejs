@@ -1,4 +1,5 @@
 import { bustCache } from '../utils/cacheBuster.js';
+import { escapeHTML } from '../utils/templates.js';
 
 export interface CachePolicy {
     ttl: number;
@@ -230,6 +231,7 @@ export class Router {
                 const contentTarget = await this.resolveContentTarget(mainContent, route);
                 const html = await this.fetchHTML(route.config.htmlFile, route.config.cachePolicy);
 
+                // Trusted framework template loaded via fetchHTML
                 contentTarget.innerHTML = html;
                 mainContent.classList.remove('page-transition-exit');
                 mainContent.classList.add('page-transition-enter');
@@ -412,7 +414,7 @@ export class Router {
                             padding: 0.2rem 0.5rem;
                             border-radius: var(--radius-sm, 0.375rem);
                             color: var(--primary, #0f766e);
-                        ">${path}</code> could not be found.
+                        ">${escapeHTML(path)}</code> could not be found.
                     </p>
                     <button onclick="window.history.back()" style="
                         display: inline-flex;
@@ -463,6 +465,7 @@ export class Router {
 
         if (needsLayoutRender) {
             const layoutHtml = await this.fetchHTML(layoutRoute.config.htmlFile, layoutRoute.config.cachePolicy);
+            // Trusted framework template loaded via fetchHTML
             mainContent.innerHTML = layoutHtml;
             this.renderedLayoutPath = layoutRoute.path;
         }

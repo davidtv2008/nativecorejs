@@ -32,7 +32,7 @@
 
 import { Component, defineComponent } from '../core/component.js';
 import router from '../core/router.js';
-import { html } from '../utils/templates.js';
+import { html, raw, sanitizeURL } from '../utils/templates.js';
 
 export class NcA extends Component {
     static useShadowDOM = true;
@@ -57,6 +57,7 @@ export class NcA extends Component {
         const disabled = this.hasAttribute('disabled');
         const target   = this.attr('target', '');
 
+        const safeHref  = sanitizeURL(href);
         const targetAttr = target ? `target="${target}" rel="noopener noreferrer"` : '';
 
         return html`
@@ -250,7 +251,7 @@ export class NcA extends Component {
                     box-shadow: none !important;
                 }
             </style>
-            <a href="${href}" ${targetAttr} aria-disabled="${disabled}" role="link">
+            <a href="${safeHref}" ${raw(targetAttr)} aria-disabled="${disabled}" role="link">
                 <slot></slot>
             </a>
         `;

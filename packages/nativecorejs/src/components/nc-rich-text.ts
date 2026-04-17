@@ -26,6 +26,7 @@
  */
 
 import { Component, defineComponent } from '../core/component.js';
+import { sanitizeURL } from '../utils/templates.js';
 
 const ICONS: Record<string, string> = {
     bold:         `<svg viewBox="0 0 16 16" fill="none" width="14" height="14"><text x="3" y="13" font-family="Georgia,serif" font-size="13" font-weight="bold" fill="currentColor">B</text></svg>`,
@@ -201,7 +202,8 @@ export class NcRichText extends Component {
             case 'clear':        document.execCommand('removeFormat', false); break;
             case 'link': {
                 const url = prompt('Enter URL:');
-                if (url) document.execCommand('createLink', false, url);
+                const safeUrl = sanitizeURL(url);
+                if (safeUrl) document.execCommand('createLink', false, safeUrl);
                 break;
             }
         }

@@ -26,6 +26,7 @@
  *   <nc-nav-item href="/users" label="Users" icon="users" badge="14"></nc-nav-item>
  */
 import { Component, defineComponent } from '../core/component.js';
+import { escapeHTML, sanitizeURL } from '../utils/templates.js';
 
 const NAV_ICONS: Record<string, string> = {
     home:        `<path d="M3 9.5L12 3l9 6.5V20a1 1 0 0 1-1 1H14v-5h-4v5H4a1 1 0 0 1-1-1V9.5z"/>`,
@@ -63,7 +64,7 @@ export class NcNavItem extends Component {
 
         const iconHtml = NAV_ICONS[iconName]
             ? svgWrap(NAV_ICONS[iconName])
-            : iconName.startsWith('<') ? iconName : '';
+            : '';
 
         const badgeColors: Record<string, [string,string]> = {
             primary:  ['var(--nc-primary)', 'var(--nc-white)'],
@@ -76,7 +77,7 @@ export class NcNavItem extends Component {
         const paddingLeft = `calc(var(--nc-spacing-md) + ${indent * 16}px)`;
         const tag = href ? 'a' : 'button';
         const tagAttrs = href
-            ? `href="${href}" target="${target}"`
+            ? `href="${sanitizeURL(href)}" target="${escapeHTML(target)}"`
             : `type="button"`;
 
         return `
@@ -127,8 +128,8 @@ export class NcNavItem extends Component {
             </style>
             <${tag} ${tagAttrs} ${disabled ? (href ? 'aria-disabled="true"' : 'disabled') : ''} aria-current="${active ? 'page' : 'false'}">
                 ${iconHtml ? `<span class="icon">${iconHtml}<slot name="icon"></slot></span>` : '<slot name="icon"></slot>'}
-                <span class="label">${label}<slot></slot></span>
-                ${badge ? `<span class="badge">${badge}<slot name="badge"></slot></span>` : '<slot name="badge"></slot>'}
+                <span class="label">${escapeHTML(label)}<slot></slot></span>
+                ${badge ? `<span class="badge">${escapeHTML(badge)}<slot name="badge"></slot></span>` : '<slot name="badge"></slot>'}
             </${tag}>
         `;
     }

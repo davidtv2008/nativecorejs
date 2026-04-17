@@ -48,7 +48,7 @@
  */
 
 import { Component, defineComponent } from '../core/component.js';
-import { html } from '../utils/templates.js';
+import { html, raw, escapeHTML } from '../utils/templates.js';
 
 export class NcMenu extends Component {
     static useShadowDOM = true;
@@ -73,7 +73,7 @@ export class NcMenu extends Component {
         const width      = this.getAttribute('width') || 'fit-content';
 
         const labelHTML = label
-            ? `<div class="menu__label">${label}</div>`
+            ? `<div class="menu__label">${escapeHTML(label)}</div>`
             : '';
 
         const searchHTML = searchable
@@ -198,8 +198,8 @@ export class NcMenu extends Component {
                 }
             </style>
             <div class="menu" role="menu">
-                ${labelHTML}
-                ${searchHTML}
+                ${raw(labelHTML)}
+                ${raw(searchHTML)}
                 <slot></slot>
                 <div class="menu__empty">No results</div>
             </div>

@@ -1,11 +1,40 @@
 import { bustCache } from '../utils/cacheBuster.js';
 
+/**
+ * Validate that a module path is safe for dynamic import.
+ * Blocks absolute URLs, path traversal, and dangerous protocols.
+ */
+function isValidModulePath(modulePath: string): boolean {
+    const normalized = modulePath.trim().toLowerCase();
+
+    // Block absolute URLs (http://, https://, //, etc.)
+    if (/^https?:\/\//i.test(normalized) || normalized.startsWith('//')) {
+        return false;
+    }
+
+    // Block dangerous protocols
+    if (/^(javascript|data|vbscript|blob):/i.test(normalized)) {
+        return false;
+    }
+
+    // Block path traversal
+    if (normalized.includes('..')) {
+        return false;
+    }
+
+    return true;
+}
+
 class ComponentRegistry {
     private components = new Map<string, string>();
     private loaded = new Set<string>();
     private observer: MutationObserver | null = null;
 
     register(tagName: string, modulePath: string): void {
+        if (!isValidModulePath(modulePath)) {
+            console.error(`[ComponentRegistry] Blocked unsafe module path for <${tagName}>: ${modulePath}`);
+            return;
+        }
         this.components.set(tagName, modulePath);
     }
 

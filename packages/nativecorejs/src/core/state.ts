@@ -25,8 +25,23 @@ type Unsubscribe = () => void;
 
 let currentTracker: Tracker | null = null;
 
+/** Strip prototype-polluting keys from a value if it's a plain object. */
+function sanitizeValue<T>(value: T): T {
+    if (value !== null && typeof value === 'object' && !Array.isArray(value)) {
+        const obj = value as Record<string, unknown>;
+        if ('__proto__' in obj || 'constructor' in obj || 'prototype' in obj) {
+            const clean = { ...obj };
+            delete clean['__proto__'];
+            delete clean['constructor'];
+            delete clean['prototype'];
+            return clean as T;
+        }
+    }
+    return value;
+}
+
 function createState<T>(initialValue: T): State<T> {
-    let currentValue = initialValue;
+    let currentValue = sanitizeValue(initialValue);
     const subscribers = new Set<() => void>();
 
     const state = {
@@ -34,15 +49,17 @@ function createState<T>(initialValue: T): State<T> {
             return currentValue;
         },
         set value(newValue: T) {
-            if (Object.is(currentValue, newValue)) return;
-            currentValue = newValue;
+            const safe = sanitizeValue(newValue);
+            if (Object.is(currentValue, safe)) return;
+            currentValue = safe;
             notify();
         },
         set(valueOrUpdater: T | ((prev: T) => T)): void {
-            const newValue = typeof valueOrUpdater === 'function'
+            const rawValue = typeof valueOrUpdater === 'function'
                 ? (valueOrUpdater as (prev: T) => T)(currentValue)
                 : valueOrUpdater;
 
+            const newValue = sanitizeValue(rawValue);
             if (Object.is(currentValue, newValue)) return;
             currentValue = newValue;
             notify();

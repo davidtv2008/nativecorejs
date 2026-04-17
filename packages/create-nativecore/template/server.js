@@ -35,10 +35,19 @@ const MIME_TYPES = {
 };
 
 // Parse JSON body
+const MAX_BODY_SIZE = 1 * 1024 * 1024; // 1MB
+
 function parseBody(req) {
     return new Promise((resolve, reject) => {
         let body = '';
+        let size = 0;
         req.on('data', chunk => {
+            size += chunk.length;
+            if (size > MAX_BODY_SIZE) {
+                req.destroy();
+                reject(new Error('Request body too large'));
+                return;
+            }
             body += chunk.toString();
         });
         req.on('end', () => {
@@ -49,6 +58,18 @@ function parseBody(req) {
             }
         });
     });
+}
+
+/**
+ * Validate that a resolved file path is within the allowed root directory.
+ * Prevents path traversal attacks.
+ */
+function validatePath(userPath, rootDir = ROOT_DIR) {
+    const resolved = path.resolve(rootDir, userPath);
+    if (!resolved.startsWith(path.resolve(rootDir) + path.sep) && resolved !== path.resolve(rootDir)) {
+        throw new Error(`Path traversal blocked: ${userPath}`);
+    }
+    return resolved;
 }
 
 // ============================================
@@ -379,7 +400,7 @@ function extractVariantOptions(sourceCode, attributeName) {
  * Edit component file with style changes
  */
 async function editComponentFile({ tagName, filePath, changes, styleChanges }) {
-    const fullPath = path.join(ROOT_DIR, filePath);
+    const fullPath = validatePath(filePath);
     
     if (!fs.existsSync(fullPath)) {
         return { success: false, message: `File not found: ${filePath}` };
@@ -480,7 +501,7 @@ async function saveInstanceChanges({ tagName, viewPath, attributes, inlineStyles
             return { success: false, message: `Unknown view path: ${viewPath}. Add it to viewsMap in server.js` };
         }
 
-        const fullPath = path.join(ROOT_DIR, htmlFilePath);
+        const fullPath = validatePath(htmlFilePath);
         if (!fs.existsSync(fullPath)) {
             console.error('[DevTools] View file not found:', htmlFilePath);
             return { success: false, message: `View file not found: ${htmlFilePath}` };
@@ -566,7 +587,7 @@ async function saveInstanceChanges({ tagName, viewPath, attributes, inlineStyles
  */
 async function saveGlobalChanges({ tagName, filePath, defaultAttributes, styleChanges }) {
     try {
-        const fullPath = path.join(ROOT_DIR, filePath);
+        const fullPath = validatePath(filePath);
         
         if (!fs.existsSync(fullPath)) {
             return { success: false, message: `Component file not found: ${filePath}` };
@@ -620,6 +641,24 @@ async function saveGlobalChanges({ tagName, filePath, defaultAttributes, styleCh
     }
 }
 
+// Simple rate limiter for authentication endpoints
+const loginAttempts = new Map();
+const RATE_LIMIT_WINDOW = 60 * 1000; // 1 minute
+const RATE_LIMIT_MAX = 10; // max attempts per window
+
+function checkRateLimit(ip) {
+    const now = Date.now();
+    const attempts = loginAttempts.get(ip) || [];
+    const recent = attempts.filter(t => now - t < RATE_LIMIT_WINDOW);
+    recent.push(now);
+    loginAttempts.set(ip, recent);
+    
+    if (recent.length > RATE_LIMIT_MAX) {
+        return false;
+    }
+    return true;
+}
+
 // Handle API routes
 async function handleApiRoute(req, res) {
     const url = req.url;
@@ -646,10 +685,12 @@ async function proxyRemoteLogin(body) {
         data,
     };
 }
-    res.setHeader('Access-Control-Allow-Origin', '*');
-    res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
+    const allowedOrigin = req.headers.origin || `http://localhost:${PORT}`;
+    const isLocalOrigin = /^https?:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/.test(allowedOrigin);
+    res.setHeader('Access-Control-Allow-Origin', isLocalOrigin ? allowedOrigin : `http://localhost:${PORT}`);
     res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
     res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
+    res.setHeader('Access-Control-Allow-Credentials', 'true');
     
     if (method === 'OPTIONS') {
         res.writeHead(200);
@@ -660,6 +701,12 @@ async function proxyRemoteLogin(body) {
     try {
         // POST /api/auth/login
         if (url === '/api/auth/login' && method === 'POST') {
+            const clientIP = req.socket.remoteAddress || 'unknown';
+            if (!checkRateLimit(clientIP)) {
+                res.writeHead(429, { 'Content-Type': 'application/json' });
+                res.end(JSON.stringify({ error: 'Too many login attempts. Please try again later.' }));
+                return;
+            }
             const body = await parseBody(req);
             let result;
 
@@ -786,7 +833,7 @@ async function proxyRemoteLogin(body) {
         if (url === '/api/dev/component/delete-instance' && method === 'POST') {
             const body = await parseBody(req);
             const { tagName, htmlPath, outerHTML } = body;
-            const fullPath = path.join(ROOT_DIR, htmlPath);
+            const fullPath = validatePath(htmlPath);
 
             if (!fs.existsSync(fullPath)) {
                 res.writeHead(404, { 'Content-Type': 'application/json' });
@@ -881,6 +928,12 @@ const server = http.createServer(async (req, res) => {
             // Add headers
             const headers = { 'Content-Type': contentType };
 
+            // Security headers
+            headers['X-Frame-Options'] = 'DENY';
+            headers['X-Content-Type-Options'] = 'nosniff';
+            headers['Referrer-Policy'] = 'strict-origin-when-cross-origin';
+            headers['Permissions-Policy'] = 'camera=(), microphone=(), geolocation=()';
+
             // In development, disable all caching for instant updates
             const isDevelopment = process.env.NODE_ENV !== 'production';
 
@@ -900,6 +953,17 @@ const server = http.createServer(async (req, res) => {
                     `connect-src ${connectSrc}`,
                     "img-src 'self' data:"
                 ].join('; ');
+            } else if (!isDevelopment && contentType === 'text/html') {
+                headers['Content-Security-Policy'] = [
+                    "default-src 'self'",
+                    "script-src 'self'",
+                    "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
+                    "font-src 'self' https://fonts.gstatic.com",
+                    "connect-src 'self'",
+                    "img-src 'self' data: https:",
+                    "frame-ancestors 'none'"
+                ].join('; ');
+                headers['Strict-Transport-Security'] = 'max-age=31536000; includeSubDomains';
             }
             
             if (isDevelopment) {

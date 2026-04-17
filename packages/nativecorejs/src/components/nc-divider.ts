@@ -1,4 +1,5 @@
 import { Component, defineComponent } from '../core/component.js';
+import { escapeHTML } from '../utils/templates.js';
 
 export class NcDivider extends Component {
     static useShadowDOM = true;
@@ -50,7 +51,7 @@ export class NcDivider extends Component {
             </style>
             <div class="divider" role="separator" aria-orientation="${orientation}">
                 <span class="line"></span>
-                ${label ? `<span class="label">${label}</span><span class="line"></span>` : ''}
+                ${label ? `<span class="label">${escapeHTML(label)}</span><span class="line"></span>` : ''}
             </div>
         `;
     }
