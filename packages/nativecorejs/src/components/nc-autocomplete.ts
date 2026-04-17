@@ -35,6 +35,7 @@ export class NcAutocomplete extends Component {
     private _dynamicOptions: string[] = [];
     private _activeIndex = -1;
     private _open = false;
+    private _cleanupFns: Array<() => void> = [];
 
     constructor() { super(); }
 
@@ -156,17 +157,25 @@ export class NcAutocomplete extends Component {
         this._bindEvents();
 
         // Dynamic options API
-        this.addEventListener('nc-autocomplete-options', (e: Event) => {
+        const optionsHandler = (e: Event) => {
             this._dynamicOptions = (e as CustomEvent<string[]>).detail || [];
             if (this._open) { this.render(); this._bindEvents(); }
-        });
+        };
+        this.addEventListener('nc-autocomplete-options', optionsHandler);
+        this._cleanupFns.push(() => this.removeEventListener('nc-autocomplete-options', optionsHandler));
+    }
+
+    onUnmount() {
+        this._cleanupFns.forEach(fn => fn());
+        this._cleanupFns = [];
     }
 
     private _bindEvents() {
         const input = this.$<HTMLInputElement>('input')!;
         const dropdown = this.$<HTMLElement>('.dropdown')!;
+        if (!input || !dropdown) return;
 
-        input.addEventListener('input', () => {
+        const inputHandler = () => {
             this._inputValue = input.value;
             this._activeIndex = -1;
             this._open = true;
@@ -175,22 +184,22 @@ export class NcAutocomplete extends Component {
                 bubbles: true, composed: true,
                 detail: { value: input.value, name: this.getAttribute('name') || '' }
             }));
-        });
+        };
 
-        input.addEventListener('focus', () => {
+        const focusHandler = () => {
             this._open = true;
             this._refreshDropdown();
-        });
+        };
 
-        input.addEventListener('blur', () => {
+        const blurHandler = () => {
             // Delay so click on option fires first
             setTimeout(() => {
                 this._open = false;
                 this._refreshDropdown();
             }, 150);
-        });
+        };
 
-        input.addEventListener('keydown', (e: KeyboardEvent) => {
+        const keydownHandler = (e: KeyboardEvent) => {
             const results = this._filtered();
             if (!results.length) return;
             if (e.key === 'ArrowDown') {
@@ -208,15 +217,29 @@ export class NcAutocomplete extends Component {
                 this._open = false;
                 this._refreshDropdown();
             }
-        });
+        };
 
-        dropdown.addEventListener('mousedown', (e) => {
+        const mousedownHandler = (e: MouseEvent) => {
             const opt = (e.target as HTMLElement).closest<HTMLElement>('[data-value]');
             if (opt) {
                 e.preventDefault();
                 this._selectOption(opt.dataset.value!);
             }
-        });
+        };
+
+        input.addEventListener('input', inputHandler);
+        input.addEventListener('focus', focusHandler);
+        input.addEventListener('blur', blurHandler);
+        input.addEventListener('keydown', keydownHandler);
+        dropdown.addEventListener('mousedown', mousedownHandler);
+
+        this._cleanupFns.push(
+            () => input.removeEventListener('input', inputHandler),
+            () => input.removeEventListener('focus', focusHandler),
+            () => input.removeEventListener('blur', blurHandler),
+            () => input.removeEventListener('keydown', keydownHandler),
+            () => dropdown.removeEventListener('mousedown', mousedownHandler),
+        );
     }
 
     private _selectOption(value: string) {

@@ -25,19 +25,27 @@ type Unsubscribe = () => void;
 
 let currentTracker: Tracker | null = null;
 
-/** Strip prototype-polluting keys from a value if it's a plain object. */
+const FORBIDDEN_KEYS = new Set(['__proto__', 'constructor', 'prototype']);
+
+/** Recursively strip prototype-polluting keys from a value. */
 function sanitizeValue<T>(value: T): T {
-    if (value !== null && typeof value === 'object' && !Array.isArray(value)) {
-        const obj = value as Record<string, unknown>;
-        if ('__proto__' in obj || 'constructor' in obj || 'prototype' in obj) {
-            const clean = { ...obj };
-            delete clean['__proto__'];
-            delete clean['constructor'];
-            delete clean['prototype'];
-            return clean as T;
-        }
+    if (value === null || typeof value !== 'object') return value;
+    if (Array.isArray(value)) {
+        return value.map(item => sanitizeValue(item)) as T;
     }
-    return value;
+    const obj = value as Record<string, unknown>;
+    let needsClean = false;
+    for (const key of Object.keys(obj)) {
+        if (FORBIDDEN_KEYS.has(key)) { needsClean = true; break; }
+        if (typeof obj[key] === 'object' && obj[key] !== null) { needsClean = true; break; }
+    }
+    if (!needsClean) return value;
+    const clean: Record<string, unknown> = {};
+    for (const key of Object.keys(obj)) {
+        if (FORBIDDEN_KEYS.has(key)) continue;
+        clean[key] = sanitizeValue(obj[key]);
+    }
+    return clean as T;
 }
 
 function createState<T>(initialValue: T): State<T> {

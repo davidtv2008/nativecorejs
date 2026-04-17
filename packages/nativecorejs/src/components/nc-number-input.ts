@@ -14,6 +14,7 @@ export class NcNumberInput extends Component {
 
     private holdTimer: ReturnType<typeof setTimeout> | null = null;
     private holdInterval: ReturnType<typeof setInterval> | null = null;
+    private _stopHold: (() => void) | null = null;
 
     private getNumber(attr: string, fallback: number): number {
         const value = this.getAttribute(attr);
@@ -202,6 +203,7 @@ export class NcNumberInput extends Component {
             }
         };
 
+        this._stopHold = stopHold;
         document.addEventListener('mouseup', stopHold);
 
         decreaseButton.addEventListener('click', () => {
@@ -257,6 +259,10 @@ export class NcNumberInput extends Component {
     onUnmount() {
         if (this.holdTimer) clearTimeout(this.holdTimer);
         if (this.holdInterval) clearInterval(this.holdInterval);
+        if (this._stopHold) {
+            document.removeEventListener('mouseup', this._stopHold);
+            this._stopHold = null;
+        }
     }
 
     attributeChangedCallback(name: string, oldValue: string, newValue: string) {

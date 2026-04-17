@@ -260,7 +260,17 @@ ${config.includeAuth ? `    const isAuthenticated = auth.isAuthenticated();` : '
 ${authVerify}async function init() {
 ${authVerificationCall}    await initLazyComponents();
 
-    window.router = router;
+    // Expose router globally for components (frozen to prevent XSS manipulation)
+    Object.defineProperty(window, 'router', {
+        value: Object.freeze({
+            navigate: router.navigate.bind(router),
+            replace: router.replace.bind(router),
+            back: router.back.bind(router),
+            getCurrentRoute: router.getCurrentRoute.bind(router),
+        }),
+        writable: false,
+        configurable: false,
+    });
 
 ${authMiddlewareSetup}    registerRoutes(router);
     router.start();
@@ -281,8 +291,8 @@ function initDevTools(): void {
     }
 
     Promise.all([
-        import('./dev/hmr.js'),
-        import('./dev/denc-tools.js')
+        import('../.nativecore/hmr.js'),
+        import('../.nativecore/denc-tools.js')
     ])
         .then(() => {
             window.__NATIVECORE_DEV__ = true;
@@ -566,6 +576,11 @@ async function main() {
     const positionalName = cliArgs.find(arg => !arg.startsWith('--'));
     const rawName = positionalName || await ask('Project name', 'my-nativecore-app');
     const projectName = toKebabCase(rawName);
+    if (!projectName) {
+        console.error('Error: project name is empty after sanitization. Use only letters, numbers, and hyphens.');
+        rl.close();
+        process.exit(1);
+    }
     const projectTitle = toTitleCase(projectName);
     const useDefaults = hasFlag('--defaults');
 
