@@ -15,7 +15,7 @@
     "tests",
     "**/*.test.ts",
     "**/*.spec.ts",
-    "src/dev/**/*.ts",
-    "src/dev"
+    ".nativecore/**/*.ts",
+    ".nativecore"
   ]
 }

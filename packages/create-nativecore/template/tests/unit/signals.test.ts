@@ -1,54 +1,54 @@
 import { describe, expect, it, vi } from 'vitest';
-import { createComputed, createEffect, createSignal } from '../../src/core/signals.js';
+import { useSignal, computed, effect } from '../../src/core/state.js';
 
-describe('core/signals', () => {
+describe('core/state – useSignal (tuple API)', () => {
     it('keeps computed values live when source signals change', () => {
-        const count = createSignal(2);
-        const doubled = createComputed(() => count.get() * 2);
+        const [count, setCount] = useSignal(2);
+        const doubled = computed(() => count() * 2);
 
-        expect(doubled()).toBe(4);
+        expect(doubled.value).toBe(4);
 
-        count.set(5);
-        expect(doubled()).toBe(10);
+        setCount(5);
+        expect(doubled.value).toBe(10);
     });
 
     it('releases stale dependencies when a computed branch changes', () => {
-        const toggle = createSignal(true);
-        const left = createSignal('left');
-        const right = createSignal('right');
-        const branch = createComputed(() => (toggle.get() ? left.get() : right.get()));
+        const [toggle, setToggle] = useSignal(true);
+        const [left, setLeft] = useSignal('left');
+        const [right, setRight] = useSignal('right');
+        const branch = computed(() => (toggle() ? left() : right()));
 
-        expect(branch()).toBe('left');
+        expect(branch.value).toBe('left');
 
-        toggle.set(false);
-        expect(branch()).toBe('right');
+        setToggle(false);
+        expect(branch.value).toBe('right');
 
-        left.set('updated-left');
-        expect(branch()).toBe('right');
+        setLeft('updated-left');
+        expect(branch.value).toBe('right');
 
-        right.set('updated-right');
-        expect(branch()).toBe('updated-right');
+        setRight('updated-right');
+        expect(branch.value).toBe('updated-right');
     });
 
     it('tracks effects and runs cleanup before rerunning', () => {
-        const count = createSignal(1);
+        const [count, setCount] = useSignal(1);
         const seen: number[] = [];
         const cleanup = vi.fn();
-        const stop = createEffect(() => {
-            seen.push(count.get());
+        const stop = effect(() => {
+            seen.push(count());
             return cleanup;
         });
 
         expect(seen).toEqual([1]);
 
-        count.set(2);
+        setCount(2);
         expect(seen).toEqual([1, 2]);
         expect(cleanup).toHaveBeenCalledTimes(1);
 
         stop();
         expect(cleanup).toHaveBeenCalledTimes(2);
 
-        count.set(3);
+        setCount(3);
         expect(seen).toEqual([1, 2]);
     });
 });

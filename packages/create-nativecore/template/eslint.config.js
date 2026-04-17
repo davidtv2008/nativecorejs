@@ -74,7 +74,7 @@ export default tseslint.config(
     },
     {
         // Dev tools - need direct DOM access at framework level
-        files: ['src/dev/**/*.{js,ts}'],
+        files: ['.nativecore/**/*.{js,ts}'],
         rules: {
             'no-restricted-syntax': 'off'
         }

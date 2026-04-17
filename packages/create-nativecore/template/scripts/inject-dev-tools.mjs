@@ -6,8 +6,8 @@ import { resolve } from 'path';
 const files = ['index.html'];
 const devScripts = `    <!-- DEnc-ONLY-START -->
     <!-- Hot Module Replacement (HMR) - Development Only -->
-    <script type="module" src="/src/dev/hmr.js"></script>
-    <script type="module" src="/dist/dev/denc-tools.js"></script>
+    <script type="module" src="/.nativecore/hmr.js"></script>
+    <script type="module" src="/dist/.nativecore/denc-tools.js"></script>
     <!-- DEnc-ONLY-END -->`;
 
 async function injectDevTools(file) {
@@ -16,7 +16,7 @@ async function injectDevTools(file) {
     let html = await readFile(path, 'utf8');
     
     // Check if denc-tools already injected
-    if (html.includes('dist/dev/denc-tools.js')) {
+    if (html.includes('dist/.nativecore/denc-tools.js')) {
       console.log(`✓ Dev scripts already injected in ${file}`);
       return;
     }

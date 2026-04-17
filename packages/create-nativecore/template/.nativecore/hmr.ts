@@ -1,4 +1,4 @@
-// src/dev/hmr.ts
+// .nativecore/hmr.ts
 // NativeCore HMR client (development only)
 
 // Extend Window interface for HMR

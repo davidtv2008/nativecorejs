@@ -108,6 +108,24 @@ export function createStates<T extends Record<string, any>>(
     return states;
 }
 
+/**
+ * Tuple-style reactive state (SolidJS / React Hooks pattern).
+ * Returns `[getter, setter]` backed by a tracked `State<T>`.
+ *
+ * @example
+ * const [count, setCount] = useSignal(0);
+ * count();        // read
+ * setCount(5);    // write
+ * setCount(n => n + 1); // updater
+ */
+export function useSignal<T>(initialValue: T): [() => T, (value: T | ((prev: T) => T)) => void] {
+    const state = useState(initialValue);
+    return [
+        () => state.value,
+        (valueOrUpdater: T | ((prev: T) => T)) => state.set(valueOrUpdater)
+    ];
+}
+
 export function computed<T>(computeFn: () => T): ComputedState<T> {
     const derivedState = createState<T>(undefined as T);
     const trackedDeps = new Set<Watchable<any>>();
