@@ -3,24 +3,30 @@
  */
 import fs from 'fs';
 import path from 'path';
+import crypto from 'crypto';
 import { fileURLToPath } from 'url';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-// Simple JWT-like token generation for local development only.
-function generateToken(user) {
-    const header = Buffer.from(JSON.stringify({ alg: 'none', typ: 'JWT' })).toString('base64url');
+const JWT_SECRET = crypto.randomBytes(32).toString('hex');
+
+function generateToken(user, expiresInSeconds = 3600) {
+    const header = Buffer.from(JSON.stringify({ alg: 'HS256', typ: 'JWT' })).toString('base64url');
     const payload = {
         userId: user.id,
         email: user.email,
         name: user.name,
         role: user.role,
-        exp: Math.floor(Date.now() / 1000) + (60 * 60) // 1 hour expiry
+        exp: Math.floor(Date.now() / 1000) + expiresInSeconds,
+        iat: Math.floor(Date.now() / 1000)
     };
 
     const payloadSegment = Buffer.from(JSON.stringify(payload)).toString('base64url');
-    return `${header}.${payloadSegment}.mock`;
+    const signature = crypto.createHmac('sha256', JWT_SECRET)
+        .update(`${header}.${payloadSegment}`)
+        .digest('base64url');
+    return `${header}.${payloadSegment}.${signature}`;
 }
 
 // Read JSON file
@@ -35,7 +41,17 @@ function handleLogin(body) {
     const { email, password } = body;
     const data = readJSON('users.json');
     
-    const user = data.users.find(u => u.email === email && u.password === password);
+    const user = data.users.find(u => {
+        if (u.email !== email) return false;
+        // Hash comparison for stored passwords
+        const inputHash = crypto.createHash('sha256').update(password).digest('hex');
+        const storedHash = crypto.createHash('sha256').update(u.password).digest('hex');
+        try {
+            return crypto.timingSafeEqual(Buffer.from(inputHash), Buffer.from(storedHash));
+        } catch {
+            return false;
+        }
+    });
     
     if (!user) {
         return {
@@ -44,8 +60,8 @@ function handleLogin(body) {
         };
     }
     
-    const accessToken = generateToken(user);
-    const refreshToken = generateToken(user); // Same for demo
+    const accessToken = generateToken(user, 3600);       // 1 hour
+    const refreshToken = generateToken(user, 7 * 24 * 3600); // 7 days
     
     return {
         status: 200,
@@ -109,45 +125,44 @@ function handleUserDetail(userId) {
     };
 }
 
-// Verify token (simplified - just check if exists)
 function verifyToken(authHeader) {
     if (!authHeader || !authHeader.startsWith('Bearer ')) {
         return false;
     }
     
     const token = authHeader.split(' ')[1];
-
-    const parsePayload = (rawToken) => {
-        if (!rawToken) return null;
-
-        try {
-            if (rawToken.includes('.')) {
-                const [, payloadSegment] = rawToken.split('.');
-                if (!payloadSegment) return null;
-
-                const normalized = payloadSegment.replace(/-/g, '+').replace(/_/g, '/');
-                const padded = normalized.padEnd(normalized.length + ((4 - normalized.length % 4) % 4), '=');
-                return JSON.parse(Buffer.from(padded, 'base64').toString());
-            }
-
-            return JSON.parse(Buffer.from(rawToken, 'base64').toString());
-        } catch {
-            return null;
-        }
-    };
+    if (!token) return false;
 
     try {
-        const payload = parsePayload(token);
-        if (!payload) {
+        const parts = token.split('.');
+        if (parts.length !== 3) return false;
+
+        const [headerSegment, payloadSegment, signatureSegment] = parts;
+
+        // Verify signature
+        const expectedSignature = crypto.createHmac('sha256', JWT_SECRET)
+            .update(`${headerSegment}.${payloadSegment}`)
+            .digest('base64url');
+
+        if (!crypto.timingSafeEqual(
+            Buffer.from(signatureSegment),
+            Buffer.from(expectedSignature)
+        )) {
             return false;
         }
 
-        // Check if expired
-        if (payload.exp && payload.exp < Math.floor(Date.now() / 1000)) {
+        // Decode payload
+        const normalized = payloadSegment.replace(/-/g, '+').replace(/_/g, '/');
+        const padded = normalized.padEnd(normalized.length + ((4 - normalized.length % 4) % 4), '=');
+        const payload = JSON.parse(Buffer.from(padded, 'base64').toString());
+
+        // Check expiration (required)
+        if (!payload.exp || payload.exp < Math.floor(Date.now() / 1000)) {
             return false;
         }
+
         return payload;
-    } catch (e) {
+    } catch {
         return false;
     }
 }
