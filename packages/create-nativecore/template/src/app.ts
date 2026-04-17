@@ -58,8 +58,17 @@ async function init(){
     await verifyExistingSession();
     await initLazyComponents();
     
-    // Expose router globally for components
-    (window as any).router = router;
+    // Expose router globally for components (frozen to prevent XSS manipulation)
+    Object.defineProperty(window, 'router', {
+        value: Object.freeze({
+            navigate: router.navigate.bind(router),
+            replace: router.replace.bind(router),
+            back: router.back.bind(router),
+            getCurrentRoute: router.getCurrentRoute.bind(router),
+        }),
+        writable: false,
+        configurable: false,
+    });
     
     router.use(authMiddleware);
     registerRoutes(router);
