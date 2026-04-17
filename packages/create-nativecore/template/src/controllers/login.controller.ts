@@ -1,41 +1,35 @@
-﻿/**
- * Login Page Controller
- * Handles dynamic behavior for the login page
+/**
+ * Login Controller
+ * Handles form submission, validation, and auth flow for the login page.
  */
-import { trackEvents, trackSubscriptions } from '@utils/events.js';
+import { trackEvents, trackSubscriptions } from '@core-utils/events.js';
+import { dom } from '@core-utils/dom.js';
 import router from '@core/router.js';
-import auth from '../services/auth.service.js';
-import api from '../services/api.service.js';
+import auth from '@services/auth.service.js';
+import api from '@services/api.service.js';
 
 export async function loginController(): Promise<() => void> {
+
+    // -- Setup ---------------------------------------------------------------
     const events = trackEvents();
     const subs = trackSubscriptions();
 
-    const form = document.getElementById('loginForm') as (HTMLElement & {
-        getValues?: () => Record<string, string>;
-    }) | null;
-    const errorDiv = document.getElementById('login-error') as HTMLDivElement | null;
-    const loginBtn = document.getElementById('loginBtn') as HTMLElement | null;
-    const rememberMeCheckbox = document.getElementById('rememberMe') as HTMLElement | null;
-    const emailField = document.getElementById('email') as HTMLElement | null;
-    const passwordField = document.getElementById('password') as HTMLElement | null;
+    // -- DOM refs ------------------------------------------------------------
+    const form             = dom.$<HTMLElement & { getValues?: () => Record<string, string> }>('#loginForm');
+    const errorDiv         = dom.$<HTMLElement>('#login-error');
+    const loginBtn         = dom.$('#loginBtn');
+    const rememberMeCheckbox = dom.$('#rememberMe');
+    const emailField       = dom.$('#email');
+    const passwordField    = dom.$('#password');
 
-    // Load saved email if "remember me" was checked
-    const savedEmail = localStorage.getItem('rememberedEmail');
-    if (savedEmail) {
-        emailField?.setAttribute('value', savedEmail);
-        rememberMeCheckbox?.setAttribute('checked', '');
-    }
-
+    // -- Helpers -------------------------------------------------------------
     const setButtonState = (isLoading: boolean) => {
         if (!loginBtn) return;
-
         if (isLoading) {
             loginBtn.setAttribute('disabled', '');
             loginBtn.textContent = 'Signing In...';
             return;
         }
-
         loginBtn.removeAttribute('disabled');
         loginBtn.textContent = 'Access Dashboard';
     };
@@ -52,16 +46,15 @@ export async function loginController(): Promise<() => void> {
         errorDiv.textContent = '';
     };
 
-    const getInputValue = (element: HTMLElement | null): string => {
+    // nc-input wraps a native <input> inside its shadow root
+    const getInputValue = (element: Element | null): string => {
         if (!element) return '';
-
-        const shadowInput = element.shadowRoot?.querySelector('input') as HTMLInputElement | null;
+        const shadowInput = dom.within<HTMLInputElement>(element.shadowRoot ?? element, 'input');
         return shadowInput?.value ?? element.getAttribute('value') ?? '';
     };
 
-    const focusInput = (element: HTMLElement | null) => {
-        const shadowInput = element?.shadowRoot?.querySelector('input') as HTMLInputElement | null;
-        shadowInput?.focus();
+    const focusInput = (element: Element | null) => {
+        dom.within<HTMLInputElement>(element?.shadowRoot ?? element, 'input')?.focus();
     };
 
     const handleSubmit = async (e: Event) => {
@@ -71,20 +64,16 @@ export async function loginController(): Promise<() => void> {
         if (!form || !loginBtn || !errorDiv) return;
 
         const submitEvent = e as CustomEvent<{ values?: Record<string, string> }>;
-        const values = submitEvent.detail?.values ?? form.getValues?.() ?? {};
-        const email = (values.email ?? getInputValue(emailField)).trim();
-        const password = values.password ?? getInputValue(passwordField);
+        const values   = submitEvent.detail?.values ?? form.getValues?.() ?? {};
+        const email    = (values.email    ?? getInputValue(emailField)).trim();
+        const password =  values.password ?? getInputValue(passwordField);
         const rememberMe = rememberMeCheckbox?.hasAttribute('checked') ?? false;
 
         clearError();
 
         if (!email || !password) {
             setError('Email and password are required. Use the demo credentials shown above.');
-            if (!email) {
-                focusInput(emailField);
-            } else {
-                focusInput(passwordField);
-            }
+            focusInput(!email ? emailField : passwordField);
             return;
         }
 
@@ -115,17 +104,33 @@ export async function loginController(): Promise<() => void> {
         }
     };
 
-    events.on<CustomEvent<{ values: Record<string, string> }>>('#loginForm', 'submit', handleSubmit);
-    events.on<KeyboardEvent>('#loginForm', 'keydown', (event) => {
-        if (event.key === 'Enter') {
-            handleSubmit(event);
+    // -- On load -------------------------------------------------------------
+    // Restore remembered email from a previous session
+    const savedEmail = localStorage.getItem('rememberedEmail');
+    if (savedEmail) {
+        emailField?.setAttribute('value', savedEmail);
+        rememberMeCheckbox?.setAttribute('checked', '');
+    }
+
+    // -- Events --------------------------------------------------------------
+    events.onSubmit('#loginForm', handleSubmit);
+    events.onKeydown('#loginForm', (e) => {
+        if (e.key === 'Enter') handleSubmit(e);
+    });
+    events.onInput('#email, #password', (e) => {
+        const target = e.target as Element;
+        const value = getInputValue(target);
+        if (value) {
+            target.setAttribute('value', value);
+        } else {
+            target.removeAttribute('value');
         }
     });
 
+    // -- Cleanup -------------------------------------------------------------
     return () => {
         events.cleanup();
         subs.cleanup();
     };
 }
-
 

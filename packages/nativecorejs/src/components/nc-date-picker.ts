@@ -1,4 +1,4 @@
-﻿/**
+/**
  * NcDatePicker Component
  *
  * Attributes:
@@ -21,7 +21,7 @@
  *   <nc-date-picker name="from" min="2024-01-01" max="2024-12-31"></nc-date-picker>
  */
 
-import { Component, defineComponent } from '../core/component.js';
+import { Component, defineComponent } from '../../.nativecore/core/component.js';
 
 const MONTHS = ['January','February','March','April','May','June','July','August','September','October','November','December'];
 const DAYS_SUN = ['Su','Mo','Tu','We','Th','Fr','Sa'];
@@ -441,4 +441,5 @@ export class NcDatePicker extends Component {
 }
 
 defineComponent('nc-date-picker', NcDatePicker);
+
 

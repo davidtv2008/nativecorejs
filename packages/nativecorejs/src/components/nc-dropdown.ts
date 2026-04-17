@@ -1,4 +1,4 @@
-﻿/**
+/**
  * NcDropdown Component
  *
  * A generic trigger + floating-panel component. The trigger is whatever
@@ -27,7 +27,7 @@
  *   </nc-dropdown>
  */
 
-import { Component, defineComponent } from '../core/component.js';
+import { Component, defineComponent } from '../../.nativecore/core/component.js';
 
 export class NcDropdown extends Component {
     static useShadowDOM = true;
@@ -176,4 +176,5 @@ export class NcDropdown extends Component {
 }
 
 defineComponent('nc-dropdown', NcDropdown);
+
 

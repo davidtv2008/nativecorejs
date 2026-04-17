@@ -26,7 +26,7 @@
  */
 
 import { Component, defineComponent } from '@core/component.js';
-import { html } from '@utils/templates.js';
+import { html } from '@core-utils/templates.js';
 
 const ICONS: Record<string, string> = {
     bold:         `<svg viewBox="0 0 16 16" fill="none" width="14" height="14"><text x="3" y="13" font-family="Georgia,serif" font-size="13" font-weight="bold" fill="currentColor">B</text></svg>`,
@@ -282,3 +282,4 @@ export class NcRichText extends Component {
 }
 
 defineComponent('nc-rich-text', NcRichText);
+

@@ -1,4 +1,4 @@
-export { Component, defineComponent } from './core/component.js';
+export { Component, defineComponent } from '../.nativecore/core/component.js';
 export {
 	LoadingSpinner,
 	NcA,
@@ -81,13 +81,13 @@ export {
 	setTransformVars,
 	slideIn,
 	throttle
-} from './core/gpu-animation.js';
-export { Router } from './core/router.js';
-export { componentRegistry, initLazyComponents } from './core/lazyComponents.js';
-export { useState, createStates, computed, effect, useSignal } from './core/state.js';
-export { bustCache, cacheVersion, importWithBust } from './utils/cacheBuster.js';
-export { dom } from './utils/dom.js';
-export { css, html, unsafeHTML, escapeHTML, sanitizeURL, raw } from './utils/templates.js';
+} from '../.nativecore/core/gpu-animation.js';
+export { Router } from '../.nativecore/core/router.js';
+export { componentRegistry, initLazyComponents } from '../.nativecore/core/lazyComponents.js';
+export { useState, createStates, computed, effect, useSignal } from '../.nativecore/core/state.js';
+export { bustCache, cacheVersion, importWithBust } from '../.nativecore/utils/cacheBuster.js';
+export { dom } from '../.nativecore/utils/dom.js';
+export { css, html, unsafeHTML, escapeHTML, sanitizeURL, raw } from '../.nativecore/utils/templates.js';
 export {
 	bindEvents,
 	delegate,
@@ -98,12 +98,12 @@ export {
 	onSubmit,
 	trackEvents,
 	trackSubscriptions
-} from './utils/events.js';
+} from '../.nativecore/utils/events.js';
 
 export type {
 	ComponentConstructor,
 	ComponentState
-} from './core/component.js';
+} from '../.nativecore/core/component.js';
 
 export type {
 	CachePolicy,
@@ -111,11 +111,13 @@ export type {
 	MiddlewareFunction,
 	RouteConfig,
 	RouteMatch
-} from './core/router.js';
+} from '../.nativecore/core/router.js';
 
 export type {
 	ComputedState,
 	EffectCallback,
 	EffectCleanup,
 	State
-} from './core/state.js';
+} from '../.nativecore/core/state.js';
+
+

@@ -1,4 +1,4 @@
-﻿/**
+/**
  * NcScrollTop Component - floating "back to top" button
  *
  * Appends itself to document.body so it always sits over all content.
@@ -15,9 +15,9 @@
  * Usage:
  *   <nc-scroll-top></nc-scroll-top>
  */
-import { Component, defineComponent } from '../core/component.js';
-import { addPassiveListener } from '../core/gpu-animation.js';
-import { dom } from '../utils/dom.js';
+import { Component, defineComponent } from '../../.nativecore/core/component.js';
+import { addPassiveListener } from '../../.nativecore/core/gpu-animation.js';
+import { dom } from '../../.nativecore/utils/dom.js';
 
 export class NcScrollTop extends Component {
     static useShadowDOM = true;
@@ -114,4 +114,6 @@ export class NcScrollTop extends Component {
 }
 
 defineComponent('nc-scroll-top', NcScrollTop);
+
+
 

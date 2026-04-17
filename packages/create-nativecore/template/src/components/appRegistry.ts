@@ -6,3 +6,4 @@ export function registerAppComponents(): void {
     componentRegistry.register('app-sidebar', './core/app-sidebar.js');
     componentRegistry.register('dashboard-signal-lab', './ui/dashboard-signal-lab.js');
 }
+

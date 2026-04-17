@@ -37,6 +37,8 @@ class ApiService {
     private inFlightRequests = new Map<string, Promise<unknown>>();
     private queryKeyIndex = new Map<string, Set<string>>();
     private tagIndex = new Map<string, Set<string>>();
+    private isRefreshing = false;
+    private refreshQueue: Array<(token: string | null) => void> = [];
 
     constructor() {
         auth.subscribe(event => {
@@ -123,38 +125,104 @@ class ApiService {
     }
     
     /**
+     * Attempt to refresh the access token using the stored refresh token.
+     * Queues concurrent requests that arrive during an in-flight refresh.
+     */
+    private async attemptTokenRefresh(): Promise<string | null> {
+        const refreshToken = auth.getRefreshToken();
+        if (!refreshToken) return null;
+
+        if (this.isRefreshing) {
+            return new Promise(resolve => {
+                this.refreshQueue.push(resolve);
+            });
+        }
+
+        this.isRefreshing = true;
+
+        try {
+            const response = await fetch(`${this.baseURL}/auth/refresh`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ refresh_token: refreshToken }),
+            });
+
+            if (!response.ok) {
+                this.refreshQueue.forEach(cb => cb(null));
+                this.refreshQueue = [];
+                return null;
+            }
+
+            const data = await response.json();
+            const newToken: string | undefined = data.access_token;
+
+            if (!newToken) {
+                this.refreshQueue.forEach(cb => cb(null));
+                this.refreshQueue = [];
+                return null;
+            }
+
+            auth.setTokens(newToken, data.refresh_token ?? null);
+            this.refreshQueue.forEach(cb => cb(newToken));
+            this.refreshQueue = [];
+            return newToken;
+        } catch {
+            this.refreshQueue.forEach(cb => cb(null));
+            this.refreshQueue = [];
+            return null;
+        } finally {
+            this.isRefreshing = false;
+        }
+    }
+
+    /**
      * Make HTTP request
      */
     async request<T = any>(endpoint: string, options: RequestInit = {}): Promise<T> {
         const url = this.isAbsoluteURL(endpoint) ? endpoint : `${this.baseURL}${endpoint}`;
-        
-        const config: RequestInit = {
-            ...options,
-            headers: {
-                ...this.defaultHeaders,
-                ...auth.getAuthHeader(),
-                ...options.headers,
-            } as HeadersInit,
-        };
-        
+
+        const buildHeaders = (): HeadersInit => ({
+            ...this.defaultHeaders,
+            ...auth.getAuthHeader(),
+            ...options.headers,
+        } as HeadersInit);
+
+        const config: RequestInit = { ...options, headers: buildHeaders() };
+
         try {
             const response = await fetch(url, config);
-            
             const data = await this.parseResponse(response);
-            
+
             if (!response.ok) {
-                // Don't logout on 401 for login endpoint - it's just invalid credentials
-                if (response.status === 401 && !endpoint.includes('/auth/login')) {
+                const isAuthEndpoint = endpoint.includes('/auth/login') || endpoint.includes('/auth/refresh');
+
+                if (response.status === 401 && !isAuthEndpoint) {
+                    const newToken = await this.attemptTokenRefresh();
+
+                    if (newToken) {
+                        // Retry the original request with the fresh token
+                        const retryConfig: RequestInit = { ...options, headers: buildHeaders() };
+                        const retryResponse = await fetch(url, retryConfig);
+                        const retryData = await this.parseResponse(retryResponse);
+
+                        if (!retryResponse.ok) {
+                            auth.logout();
+                            window.dispatchEvent(new CustomEvent('unauthorized'));
+                            throw new Error('Unauthorized - please login again');
+                        }
+
+                        return retryData as T;
+                    }
+
                     auth.logout();
                     window.dispatchEvent(new CustomEvent('unauthorized'));
                     throw new Error('Unauthorized - please login again');
                 }
-                
-                // Try to get error message from response (supports both 'error' and 'message' fields)
+
                 const errorMessage = (data as any).error || (data as any).message || `HTTP ${response.status}`;
                 throw new Error(errorMessage);
             }
-            
+
             return data as T;
         } catch (error) {
             console.error('API Error:', error);

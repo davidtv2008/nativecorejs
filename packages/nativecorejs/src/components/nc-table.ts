@@ -1,4 +1,4 @@
-﻿/**
+/**
  * NcTable Component - lightweight sortable data table
  *
  * Renders a table from JSON data with optional sorting, striping, compact mode,
@@ -28,7 +28,7 @@
  *      rows='[{"name":"Alice","role":"Admin"},{"name":"Bob","role":"Editor"}]'>
  *   </nc-table>
  */
-import { Component, defineComponent } from '../core/component.js';
+import { Component, defineComponent } from '../../.nativecore/core/component.js';
 
 type TableAlign = 'left' | 'center' | 'right';
 interface TableColumn {
@@ -143,7 +143,7 @@ export class NcTable extends Component {
             const align    = col.align ?? 'left';
             const sortable = sortableAll && col.sortable !== false;
             const active   = this._sortKey === col.key;
-            const arrow    = active ? (this._sortDir === 'asc' ? '▲' : '▼') : '';
+            const arrow    = active ? (this._sortDir === 'asc' ? '?' : '?') : '';
             return `
                 <th style="text-align:${align};${col.width ? `width:${col.width};` : ''}">
                     <button class="head-btn ${sortable ? 'is-sortable' : ''} ${active ? 'is-active' : ''}" type="button" ${sortable ? `data-sort-key="${col.key}"` : 'disabled'}>
@@ -277,4 +277,5 @@ export class NcTable extends Component {
 }
 
 defineComponent('nc-table', NcTable);
+
 

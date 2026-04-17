@@ -1,4 +1,4 @@
-import { Component, defineComponent } from '../core/component.js';
+import { Component, defineComponent } from '../../.nativecore/core/component.js';
 
 const ICONS: Record<string, { filled: string; empty: string }> = {
     star: {
@@ -204,3 +204,4 @@ export class NcRating extends Component {
 }
 
 defineComponent('nc-rating', NcRating);
+

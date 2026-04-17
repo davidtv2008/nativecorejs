@@ -18,16 +18,16 @@
     "url": "git+https://github.com/davidtv2008/nativecorejs.git"
   },
   "type": "module",
-  "main": "./dist/index.js",
-  "types": "./dist/index.d.ts",
+  "main": "./dist/src/index.js",
+  "types": "./dist/src/index.d.ts",
   "exports": {
     ".": {
-      "types": "./dist/index.d.ts",
-      "import": "./dist/index.js"
+      "types": "./dist/src/index.d.ts",
+      "import": "./dist/src/index.js"
     },
     "./components": {
-      "types": "./dist/components/index.d.ts",
-      "import": "./dist/components/index.js"
+      "types": "./dist/src/components/index.d.ts",
+      "import": "./dist/src/components/index.js"
     },
     "./styles/base.css": "./src/styles/base.css"
   },

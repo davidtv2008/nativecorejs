@@ -32,7 +32,7 @@
 
 import { Component, defineComponent } from '@core/component.js';
 import router from '@core/router.js';
-import { html } from '@utils/templates.js';
+import { html } from '@core-utils/templates.js';
 
 export class NcA extends Component {
     static useShadowDOM = true;
@@ -311,3 +311,4 @@ export class NcA extends Component {
 }
 
 defineComponent('nc-a', NcA);
+

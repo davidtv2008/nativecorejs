@@ -1,4 +1,4 @@
-import { componentRegistry } from '../core/lazyComponents.js';
+import { componentRegistry } from '../../.nativecore/core/lazyComponents.js';
 
 export const builtinComponentManifest = [
     ['loading-spinner', './components/loading-spinner.js'],
@@ -72,3 +72,4 @@ export function registerBuiltinComponents(): void {
         componentRegistry.register(tagName, modulePath);
     });
 }
+

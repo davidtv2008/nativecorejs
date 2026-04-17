@@ -1,4 +1,4 @@
-﻿/**
+/**
  * NativeCore Menu Component (nc-menu)
  *
  * A vertical command menu. Place nc-menu-item elements inside as direct children.
@@ -47,8 +47,8 @@
  *   </nc-menu>
  */
 
-import { Component, defineComponent } from '../core/component.js';
-import { html, raw, escapeHTML } from '../utils/templates.js';
+import { Component, defineComponent } from '../../.nativecore/core/component.js';
+import { html, raw, escapeHTML } from '../../.nativecore/utils/templates.js';
 
 export class NcMenu extends Component {
     static useShadowDOM = true;
@@ -104,7 +104,7 @@ export class NcMenu extends Component {
                     width: 100%;
                 }
 
-                /* ── Variants ──────────────────────────────────────────────── */
+                /* -- Variants ------------------------------------------------ */
                 :host([variant="default"]) .menu,
                 :host(:not([variant])) .menu {
                     background: var(--nc-bg);
@@ -132,7 +132,7 @@ export class NcMenu extends Component {
                     padding: var(--nc-spacing-xs);
                 }
 
-                /* ── Label ─────────────────────────────────────────────────── */
+                /* -- Label --------------------------------------------------- */
                 .menu__label {
                     font-size: var(--nc-font-size-xs, 0.7rem);
                     font-weight: 700;
@@ -143,7 +143,7 @@ export class NcMenu extends Component {
                     margin-bottom: 2px;
                 }
 
-                /* ── Search ────────────────────────────────────────────────── */
+                /* -- Search -------------------------------------------------- */
                 .menu__search-wrap {
                     position: relative;
                     margin-bottom: var(--nc-spacing-xs);
@@ -183,7 +183,7 @@ export class NcMenu extends Component {
                     opacity: 0.6;
                 }
 
-                /* ── Empty state ───────────────────────────────────────────── */
+                /* -- Empty state --------------------------------------------- */
                 .menu__empty {
                     display: none;
                     font-size: var(--nc-font-size-sm);
@@ -291,7 +291,7 @@ export class NcMenu extends Component {
         if (this._mounted && oldValue !== newValue) this.render();
     }
 
-    // ─── Private ────────────────────────────────────────────────────────────────
+    // --- Private ----------------------------------------------------------------
 
     private _getEnabledItems(): HTMLElement[] {
         return Array.from(
@@ -374,4 +374,6 @@ export class NcMenu extends Component {
 }
 
 defineComponent('nc-menu', NcMenu);
+
+
 

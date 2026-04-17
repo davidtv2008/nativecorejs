@@ -1,15 +1,15 @@
 /**
  * Main Application Entry Point
  */
-import router from './core/router.js';
+import router from '@core/router.js';
 import auth from './services/auth.service.js';
 import type { User } from './services/auth.service.js';
 import api from './services/api.service.js';
 import { authMiddleware } from './middleware/auth.middleware.js';
 import { registerRoutes, protectedRoutes } from './routes/routes.js';
 import { initSidebar } from './utils/sidebar.js';
-import { initLazyComponents } from './core/lazyComponents.js';
-import './utils/dom.js';
+import { initLazyComponents } from '@core/lazyComponents.js';
+import '@core-utils/dom.js';
 import './components/registry.js';
 
 function isLocalhost(): boolean {
@@ -82,8 +82,14 @@ async function init(){
         if (!isAuth) {
             router.replace('/login');
             document.body.classList.remove('sidebar-enabled');
-            document.getElementById('app')?.classList.remove('sidebar-collapsed');
-            document.getElementById('app')?.classList.add('no-sidebar');
+            const app = document.getElementById('app');
+            app?.classList.remove('sidebar-collapsed');
+            app?.classList.add('no-sidebar');
+            // Reset sidebar to expanded so next login starts fresh
+            localStorage.removeItem('sidebar-collapsed');
+            const sidebar = document.getElementById('appSidebar');
+            sidebar?.removeAttribute('collapsed');
+            document.querySelector('.app-layout')?.classList.remove('sidebar-collapsed');
         } else {
             updateSidebarVisibility();
         }
@@ -122,3 +128,6 @@ function initDevTools(): void {
 }
 
 init();
+
+
+

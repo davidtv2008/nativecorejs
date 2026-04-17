@@ -5,7 +5,7 @@ Zero-dependency TypeScript SPA framework built on native browser APIs:
 - Web Components with Shadow DOM for encapsulation
 - History API router with middleware and lazy loading
 - Reactive signals (useState, computed) — no virtual DOM
-- Dual-shell JWT auth architecture
+- Single-shell JWT auth architecture
 - Bot-optimized SEO via Puppeteer pre-rendering
 
 ## Tech Stack
@@ -77,7 +77,7 @@ nfbs/
 
 ## Architecture Layers
 
-### 1. Core Layer (src/core/) — Framework Primitives
+### 1. Core Layer (.nativecore/core/) — Framework Primitives
 
 **router.ts** — History API SPA router
 - `register(path, htmlFile, controller?)` — chainable route registration
@@ -291,7 +291,7 @@ nfbs/
 
 ## Architecture Layers
 
-### 1. Core Layer (`src/core/`)
+### 1. Core Layer (`.nativecore/core/`)
 Framework primitives that power everything:
 
 - **router.ts** - History API-based SPA router with middleware
@@ -552,7 +552,7 @@ src/*.ts  →  tsc  →  dist/*.js  →  Browser
 ### Type Definitions
 - Component properties must be declared with types
 - Use `type` imports for interfaces: `import type { State } from '../core/state.js';`
-- Global types in `src/types/global.d.ts`
+- Global types in `.nativecore/types/global.d.ts`
 
 ### Build Commands
 - `npm start` - Auto-compiles TypeScript, starts dev server
@@ -643,3 +643,5 @@ try {
 - Component tests with Vitest + happy-dom
 - Integration tests for flows
 - TypeScript ensures type correctness
+
+

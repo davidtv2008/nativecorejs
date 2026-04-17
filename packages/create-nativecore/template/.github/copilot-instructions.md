@@ -19,7 +19,7 @@ You're working with **NativeCore** (formerly nativeCore) - a modern reactive Typ
 - Lazy loading (controllers + components)
 - Reactive signals (useState, computed)
 - Custom router with middleware
-- JWT auth with dual-shell architecture
+- JWT auth with single-shell architecture
 - Bot-optimized SEO (pre-rendered HTML)
 - Zero runtime dependencies
 
@@ -42,11 +42,10 @@ You're working with **NativeCore** (formerly nativeCore) - a modern reactive Typ
 
 ### Critical Files
 - `src/app.ts` - Entry point (keep minimal!)
-- `src/config/routes.ts` - Route definitions
-- `src/components/registry.ts` - Component registry
+- `src/routes/routes.ts` - Route definitions
+- `src/components/registry.ts` - Custom component lazy registry
 - `src/controllers/index.ts` - Controller exports
-- `index.html` - Public shell (landing, login, etc.)
-- `app.html` - Protected shell (dashboard, authenticated routes)
+- `index.html` - App HTML shell
 
 ### Path Aliases (use sparingly)
 ```typescript
@@ -56,7 +55,7 @@ import api from '@services/api.service.js';
 import { store } from '@stores/appStore.js';
 ```
 
-Available aliases: `@core/`, `@components/`, `@services/`, `@utils/`, `@stores/`, `@middleware/`, `@types/`, `@config/`
+Available aliases: `@core/`, `@core-utils/`, `@core-types/`, `@components/`, `@services/`, `@utils/`, `@stores/`, `@middleware/`, `@types/`, `@config/`
 
 ### Lazy Loading Pattern
 
@@ -100,10 +99,10 @@ componentRegistry.register('my-component', './ui/my-component.js');
 
 ### Controller cleanup (ALWAYS do this)
 Every controller that attaches events or watches state **must** return a cleanup function.
-Use `trackEvents()` and `trackSubscriptions()` from `@utils/events.js`:
+Use `trackEvents()` and `trackSubscriptions()` from `@core-utils/events.js`:
 
 ```typescript
-import { trackEvents, trackSubscriptions } from '@utils/events.js';
+import { trackEvents, trackSubscriptions } from '@core-utils/events.js';
 
 export async function myPageController() {
     const events = trackEvents();
@@ -179,12 +178,14 @@ src/
 
 ### File Placement:
 - Controllers → `src/controllers/`
-- UI Components → `src/components/ui/`
-- Core Components → `src/components/core/`
-- Views → `src/views/pages/public/` or `protected/`
+- Custom UI Components → `src/components/ui/`
+- Core/Layout Components → `src/components/core/`
+- Views → `src/views/public/` or `protected/`
 - Middleware → `src/middleware/`
-- Utilities → `src/utils/`
-- Core framework → `src/core/` (don't modify)
+- App utilities → `src/utils/` (formatters, validation, form helpers, etc.)
+- Framework utilities → `.nativecore/utils/` via `@core-utils/` (dom, events, templates)
+- Framework core → `.nativecore/core/` (do not modify)
+- Routes → `src/routes/routes.ts`
 
 ### Imports:
 - Never import controllers at top level
@@ -202,8 +203,8 @@ src/
 - Check: `auth.isAuthenticated()`
 - User: `auth.getUser()`
 - Tokens in `sessionStorage`
-- Protected routes in `protectedRoutes` array
-- Two shells: `index.html` (public) and `app.html` (protected)
+- Protected routes in `protectedRoutes` array in `src/routes/routes.ts`
+- Single HTML shell: `index.html`
 
 ## Suggestions Priority
 
@@ -322,7 +323,7 @@ defineComponent('my-component', MyComponent);
 
 ### Controller with API:
 ```typescript
-import { trackEvents, trackSubscriptions } from '@utils/events.js';
+import { trackEvents, trackSubscriptions } from '@core-utils/events.js';
 import api from '@services/api.service.js';
 
 export async function myController() {
@@ -351,3 +352,5 @@ export const protectedRoutes = ['/dashboard', '/admin'];
 ```
 
 Remember: This is vanilla JS with modern patterns. No JSX, no virtual DOM, just clean TypeScript + Web Components!
+
+

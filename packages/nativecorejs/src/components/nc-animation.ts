@@ -1,14 +1,14 @@
-﻿/**
+/**
  * NcAnimation Component
  *
  * A declarative animation wrapper that intelligently selects the most
  * GPU-efficient execution path for each animation type:
  *
- *   - Simple CSS keyframes  → runs entirely on the compositor thread (no JS)
- *   - Enter / exit          → Web Animations API via gpu-animation.ts
- *   - Scroll-reveal         → IntersectionObserver + Web Animations API
- *   - Continuous / looping  → CSS animation (compositor-only)
- *   - Particle effects      → WebGL (vertex shader) with canvas2d fallback
+ *   - Simple CSS keyframes  ? runs entirely on the compositor thread (no JS)
+ *   - Enter / exit          ? Web Animations API via gpu-animation.ts
+ *   - Scroll-reveal         ? IntersectionObserver + Web Animations API
+ *   - Continuous / looping  ? CSS animation (compositor-only)
+ *   - Particle effects      ? WebGL (vertex shader) with canvas2d fallback
  *
  * Attributes:
  *   name         - Animation preset name (see list below). Required.
@@ -71,7 +71,7 @@
  *   </nc-animation>
  */
 
-import { Component, defineComponent } from '../core/component.js';
+import { Component, defineComponent } from '../../.nativecore/core/component.js';
 import {
     animate,
     prepareForAnimation,
@@ -84,9 +84,9 @@ import {
     createWebGLParticleSystem,
     type AnimationOptions,
     type ParticleConfig,
-} from '../core/gpu-animation.js';
+} from '../../.nativecore/core/gpu-animation.js';
 
-// ── Types ─────────────────────────────────────────────────────────────────────
+// -- Types ---------------------------------------------------------------------
 
 type AnimationTrigger = 'mount' | 'visible' | 'hover' | 'click' | 'manual';
 
@@ -111,10 +111,10 @@ interface PresetDef {
     easing?: string;
 }
 
-// ── Preset registry ───────────────────────────────────────────────────────────
+// -- Preset registry -----------------------------------------------------------
 
 const PRESETS: Record<string, PresetDef> = {
-    // ── Enter / exit (WAAPI - GPU transform + opacity) ──────────────────────
+    // -- Enter / exit (WAAPI - GPU transform + opacity) ----------------------
     'fade-in': {
         path: 'waapi', duration: 400,
         run: (el, opts) => fadeIn(el, opts.duration),
@@ -187,7 +187,7 @@ const PRESETS: Record<string, PresetDef> = {
         },
     },
 
-    // ── Attention seekers (WAAPI - brief GPU motion) ─────────────────────────
+    // -- Attention seekers (WAAPI - brief GPU motion) -------------------------
     'pulse': {
         path: 'waapi', duration: 600,
         run: (el, opts) => {
@@ -302,7 +302,7 @@ const PRESETS: Record<string, PresetDef> = {
         },
     },
 
-    // ── Continuous / looping (CSS - compositor-only, zero rAF cost) ──────────
+    // -- Continuous / looping (CSS - compositor-only, zero rAF cost) ----------
     'spin': {
         path: 'css', duration: 1000,
         keyframes: `from { transform: rotate(0deg); } to { transform: rotate(360deg); }`,
@@ -331,7 +331,7 @@ const PRESETS: Record<string, PresetDef> = {
         `,
     },
 
-    // ── Particle system (WebGL → canvas2d fallback) ───────────────────────────
+    // -- Particle system (WebGL ? canvas2d fallback) ---------------------------
     'confetti': {
         path: 'particle', duration: 3000,
         particle: {
@@ -382,7 +382,7 @@ const PRESETS: Record<string, PresetDef> = {
             type: 'firework',
         },
     },
-    // ── New presets ───────────────────────────────────────────────────────────
+    // -- New presets -----------------------------------------------------------
     'electricity': {
         path: 'particle', duration: 2000,
         particle: {
@@ -425,7 +425,7 @@ const PRESETS: Record<string, PresetDef> = {
     },
 };
 
-// ── Component ─────────────────────────────────────────────────────────────────
+// -- Component -----------------------------------------------------------------
 
 // Global set - keyframes injected into document.head, deduplicated across all instances
 const _injectedKeyframes = new Set<string>();
@@ -484,7 +484,7 @@ export class NcAnimation extends Component {
         this._teardown();
     }
 
-    // ── Public methods ────────────────────────────────────────────────────────
+    // -- Public methods --------------------------------------------------------
 
     play() { this._run(); }
 
@@ -506,7 +506,7 @@ export class NcAnimation extends Component {
         this.dispatchEvent(new CustomEvent('cancel', { bubbles: true, composed: true }));
     }
 
-    // ── Setup ─────────────────────────────────────────────────────────────────
+    // -- Setup -----------------------------------------------------------------
 
     private _setup() {
         const trigger = this._attr('trigger', 'mount') as AnimationTrigger;
@@ -578,7 +578,7 @@ export class NcAnimation extends Component {
         this._clickOff = () => this.removeEventListener('click', onClick);
     }
 
-    // ── Core run dispatcher ───────────────────────────────────────────────────
+    // -- Core run dispatcher ---------------------------------------------------
 
     private _run() {
         const name = this._attr('name', 'fade-in');
@@ -597,7 +597,7 @@ export class NcAnimation extends Component {
         }
     }
 
-    // ── WAAPI path ────────────────────────────────────────────────────────────
+    // -- WAAPI path ------------------------------------------------------------
 
     private _runWAAPI(preset: PresetDef) {
         const target = this._target();
@@ -632,7 +632,7 @@ export class NcAnimation extends Component {
         });
     }
 
-    // ── CSS compositor path ───────────────────────────────────────────────────
+    // -- CSS compositor path ---------------------------------------------------
 
     private _runCSS(preset: PresetDef, name: string) {
         const target = this._target();
@@ -668,9 +668,9 @@ export class NcAnimation extends Component {
         }
     }
 
-    // ── Particle path ─────────────────────────────────────────────────────────
+    // -- Particle path ---------------------------------------------------------
 
-    /** Resolve 'top'|'bottom'|'left'|'right'|'center'|number-string → 0-1 float */
+    /** Resolve 'top'|'bottom'|'left'|'right'|'center'|number-string ? 0-1 float */
     private _resolvePos(raw: string | null, fallback: number): number {
         if (!raw) return fallback;
         const aliases: Record<string, number> = { top: 0, bottom: 1, left: 0, right: 1, center: 0.5 };
@@ -750,7 +750,7 @@ export class NcAnimation extends Component {
             return r ? [parseInt(r[1],16), parseInt(r[2],16), parseInt(r[3],16)] : [255,255,255];
         };
 
-        // ── Particle data arrays (avoid GC pressure) ─────────────────────────
+        // -- Particle data arrays (avoid GC pressure) -------------------------
         interface P {
             x: number; y: number; vx: number; vy: number;
             ax: number; ay: number;          // acceleration
@@ -764,7 +764,7 @@ export class NcAnimation extends Component {
         }
         const particles: P[] = [];
 
-        // ── Spawn logic per type ─────────────────────────────────────────────
+        // -- Spawn logic per type ---------------------------------------------
         const spawnParticle = (i: number): P => {
             const t = count > 1 ? i / (count - 1) : 0.5;
             switch (type) {
@@ -951,7 +951,7 @@ export class NcAnimation extends Component {
             for (let i = 0; i < count; i++) particles.push(spawnParticle(i));
         }
 
-        // ── Per-particle draw ─────────────────────────────────────────────────
+        // -- Per-particle draw -------------------------------------------------
         const drawParticle = (p: P) => {
             ctx.globalAlpha = Math.max(0, p.life) * (p.alpha ?? 1);
             ctx.fillStyle   = p.color;
@@ -1035,7 +1035,7 @@ export class NcAnimation extends Component {
         const loop = createAnimationLoop((dt) => {
             ctx.clearRect(0, 0, W, H);
 
-            // ── Electricity: regenerate jagged bolt paths each interval ────
+            // -- Electricity: regenerate jagged bolt paths each interval ----
             if (type === 'electricity') {
                 elecTimer += dt;
                 if (elecTimer >= elecInterval) {
@@ -1070,7 +1070,7 @@ export class NcAnimation extends Component {
                 return true; // electricity loops until duration expires
             }
 
-            // ── All other types ───────────────────────────────────────────
+            // -- All other types -------------------------------------------
             let alive = 0;
             const fadeRate = type === 'ripple' ? 0.3 : type === 'fire' ? 0.7 :
                              type === 'float' ? 0.15 :
@@ -1112,7 +1112,7 @@ export class NcAnimation extends Component {
         }
     }
 
-    // ── Helpers ───────────────────────────────────────────────────────────────
+    // -- Helpers ---------------------------------------------------------------
 
     /** First painted element assigned to the default slot. */
     private _target(): HTMLElement | null {
@@ -1148,4 +1148,5 @@ export class NcAnimation extends Component {
 }
 
 defineComponent('nc-animation', NcAnimation);
+
 

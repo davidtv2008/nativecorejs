@@ -1,4 +1,4 @@
-import { Component, defineComponent } from '../core/component.js';
+import { Component, defineComponent } from '../../.nativecore/core/component.js';
 
 export class NcCopyButton extends Component {
     static useShadowDOM = true;
@@ -100,3 +100,4 @@ export class NcCopyButton extends Component {
 }
 
 defineComponent('nc-copy-button', NcCopyButton);
+

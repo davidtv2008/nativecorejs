@@ -1,4 +1,4 @@
-﻿/**
+/**
  * NcTagInput Component - text input that creates dismissible tag chips
  *
  * Attributes:
@@ -29,7 +29,7 @@
  *   el.removeTag(index)   - programmatic remove
  *   el.clear()            - remove all tags
  */
-import { Component, defineComponent } from '../core/component.js';
+import { Component, defineComponent } from '../../.nativecore/core/component.js';
 
 export class NcTagInput extends Component {
     static useShadowDOM = true;
@@ -210,7 +210,7 @@ export class NcTagInput extends Component {
         });
     }
 
-    // ── Public API ─────────────────────────────────────────────────────────────
+    // -- Public API -------------------------------------------------------------
 
     getTags(): string[] { return [...this._tags]; }
 
@@ -277,4 +277,5 @@ export class NcTagInput extends Component {
 }
 
 defineComponent('nc-tag-input', NcTagInput);
+
 

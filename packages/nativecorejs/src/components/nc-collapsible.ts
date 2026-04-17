@@ -1,4 +1,4 @@
-﻿/**
+/**
  * NcCollapsible Component - single expand/collapse panel
  *
  * Attributes:
@@ -22,7 +22,7 @@
  *     <p>Hidden content revealed on click.</p>
  *   </nc-collapsible>
  */
-import { Component, defineComponent } from '../core/component.js';
+import { Component, defineComponent } from '../../.nativecore/core/component.js';
 
 export class NcCollapsible extends Component {
     static useShadowDOM = true;
@@ -152,4 +152,5 @@ export class NcCollapsible extends Component {
 }
 
 defineComponent('nc-collapsible', NcCollapsible);
+
 

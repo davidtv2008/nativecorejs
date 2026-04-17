@@ -1,4 +1,4 @@
-﻿/**
+/**
  * NcSlider Component
  *
  * NativeCore Framework Core Component
@@ -23,7 +23,7 @@
  *   <nc-slider name="opacity" min="0" max="1" step="0.01" value="0.5"></nc-slider>
  */
 
-import { Component, defineComponent } from '../core/component.js';
+import { Component, defineComponent } from '../../.nativecore/core/component.js';
 
 export class NcSlider extends Component {
     static useShadowDOM = true;
@@ -283,4 +283,5 @@ export class NcSlider extends Component {
 }
 
 defineComponent('nc-slider', NcSlider);
+
 

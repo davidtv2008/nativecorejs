@@ -1,4 +1,4 @@
-﻿/**
+/**
  * NcDiv Component - Responsive Container
  * 
  * A flexible container component with built-in responsive grid/flex layouts
@@ -30,12 +30,12 @@
  *   </nc-div>
  */
 
-import { Component, defineComponent } from '../core/component.js';
+import { Component, defineComponent } from '../../.nativecore/core/component.js';
 
 export class NcDiv extends Component {
     static useShadowDOM = true;
     
-    // ═══ Define dropdown options for dev tools ═══
+    // --- Define dropdown options for dev tools ---
     static attributeOptions = {
         layout: ['grid-auto', 'grid', 'flex', 'block'],
         cols: ['1', '2', '3', '4'],
@@ -46,7 +46,7 @@ export class NcDiv extends Component {
         align: ['start', 'center', 'end', 'stretch', 'baseline']
     };
     
-    // ═══ Conditional visibility for attributes based on layout ═══
+    // --- Conditional visibility for attributes based on layout ---
     static attributeConditions = {
         cols: (element: HTMLElement) => {
             const layout = element.getAttribute('layout') || 'grid-auto';
@@ -58,7 +58,7 @@ export class NcDiv extends Component {
         }
     };
     
-    // ═══ Attributes become editable in dev tools sidebar ═══
+    // --- Attributes become editable in dev tools sidebar ---
     static get observedAttributes() {
         return ['layout', 'cols', 'direction', 'gap', 'width', 'justify', 'align'];
     }
@@ -269,7 +269,7 @@ export class NcDiv extends Component {
         // Component logic here
     }
     
-    // ═══ Makes changes instant in dev tools preview ═══
+    // --- Makes changes instant in dev tools preview ---
     attributeChangedCallback(name: string, oldValue: string, newValue: string) {
         if (oldValue !== newValue && this._mounted) {
             this.render();
@@ -278,4 +278,5 @@ export class NcDiv extends Component {
 }
 
 defineComponent('nc-div', NcDiv);
+
 

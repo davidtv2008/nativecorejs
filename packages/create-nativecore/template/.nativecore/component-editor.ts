@@ -6,7 +6,7 @@
  */
 
 import type { ComponentMetadata } from './denc-tools.js';
-import dom from '../src/utils/dom.js';
+import dom from './utils/dom.js';
 
 interface ExtendedMetadata extends ComponentMetadata {
     hostStyles?: { property: string; value: string }[];
@@ -1361,3 +1361,4 @@ export class ComponentEditor {
         (window.dom?.query?.('#nativecore-editor-styles') || document.getElementById('nativecore-editor-styles'))?.remove();
     }
 }
+

@@ -1,4 +1,4 @@
-import { Component, defineComponent } from '../core/component.js';
+import { Component, defineComponent } from '../../.nativecore/core/component.js';
 
 export class NcCheckbox extends Component {
     static useShadowDOM = true;
@@ -204,3 +204,4 @@ export class NcCheckbox extends Component {
 }
 
 defineComponent('nc-checkbox', NcCheckbox);
+

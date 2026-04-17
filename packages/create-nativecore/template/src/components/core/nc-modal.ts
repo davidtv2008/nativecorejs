@@ -37,8 +37,8 @@
  */
 
 import { Component, defineComponent } from '@core/component.js';
-import { dom } from '@utils/dom.js';
-import { html } from '@utils/templates.js';
+import { dom } from '@core-utils/dom.js';
+import { html } from '@core-utils/templates.js';
 
 export class NcModal extends Component {
     static useShadowDOM = true;
@@ -237,3 +237,4 @@ export class NcModal extends Component {
 }
 
 defineComponent('nc-modal', NcModal);
+

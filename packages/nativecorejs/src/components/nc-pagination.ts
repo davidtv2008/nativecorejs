@@ -1,4 +1,4 @@
-﻿/**
+/**
  * NcPagination Component
  *
  * Attributes:
@@ -17,7 +17,7 @@
  *   <nc-pagination page="3" total="20"></nc-pagination>
  */
 
-import { Component, defineComponent } from '../core/component.js';
+import { Component, defineComponent } from '../../.nativecore/core/component.js';
 
 export class NcPagination extends Component {
     static useShadowDOM = true;
@@ -176,4 +176,5 @@ export class NcPagination extends Component {
 }
 
 defineComponent('nc-pagination', NcPagination);
+
 

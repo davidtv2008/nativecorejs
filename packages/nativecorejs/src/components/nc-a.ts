@@ -1,4 +1,4 @@
-﻿/**
+/**
  * NativeCore Link/Button Component (nc-a)
  *
  * A semantic <a> element styled as a button. Handles SPA navigation
@@ -30,9 +30,9 @@
  *   <nc-a href="https://github.com" target="_blank" variant="link">GitHub</nc-a>
  */
 
-import { Component, defineComponent } from '../core/component.js';
-import router from '../core/router.js';
-import { html, raw, sanitizeURL } from '../utils/templates.js';
+import { Component, defineComponent } from '../../.nativecore/core/component.js';
+import router from '../../.nativecore/core/router.js';
+import { html, raw, sanitizeURL } from '../../.nativecore/utils/templates.js';
 
 export class NcA extends Component {
     static useShadowDOM = true;
@@ -105,7 +105,7 @@ export class NcA extends Component {
                     outline-offset: 2px;
                 }
 
-                /* ── Sizes ─────────────────────────────────────────────────── */
+                /* -- Sizes --------------------------------------------------- */
                 :host([size="sm"]) a {
                     padding: var(--nc-spacing-xs) var(--nc-spacing-lg);
                     font-size: var(--nc-font-size-sm);
@@ -118,7 +118,7 @@ export class NcA extends Component {
                     min-height: 48px;
                 }
 
-                /* ── Variants ──────────────────────────────────────────────── */
+                /* -- Variants ------------------------------------------------ */
                 :host([variant="primary"]) a {
                     background: var(--nc-primary);
                     color: var(--nc-white);
@@ -211,7 +211,7 @@ export class NcA extends Component {
                     color: var(--nc-primary-dark);
                 }
 
-                /* ── Hero variants (landing page CTA style) ─────────────────── */
+                /* -- Hero variants (landing page CTA style) ------------------- */
                 :host([variant="hero-primary"]) a {
                     background: var(--nc-primary);
                     color: var(--nc-white);
@@ -242,7 +242,7 @@ export class NcA extends Component {
                     transform: translateY(-2px);
                 }
 
-                /* ── Disabled ────────────────────────────────────────────────── */
+                /* -- Disabled -------------------------------------------------- */
                 :host([disabled]) a {
                     opacity: 0.45;
                     cursor: not-allowed;
@@ -312,4 +312,6 @@ export class NcA extends Component {
 }
 
 defineComponent('nc-a', NcA);
+
+
 

@@ -2,7 +2,7 @@
 
 ## Project Overview
 NativeCore is a zero-dependency TypeScript SPA framework using native Web Components, a custom
-History API router, reactive signals (useState/computed), lazy loading, JWT auth with a dual-shell
+History API router, reactive signals (useState/computed), lazy loading, JWT auth with a single-shell
 architecture, and Puppeteer-based bot pre-rendering for SEO.
 
 ## Critical Rules
@@ -13,13 +13,14 @@ NEVER use emojis in code, console.logs, comments, or documentation. Plain text o
 ### TypeScript & Imports
 - Source: `src/**/*.ts` — compiled to `dist/**/*.js`
 - ALWAYS use `.js` extension in imports (ES modules requirement)
-- Use path aliases (`@core/`, `@services/`, `@utils/`, `@stores/`, `@components/`, `@middleware/`)
+- Use path aliases (`@core/`, `@core-utils/`, `@core-types/`, `@services/`, `@utils/`, `@stores/`, `@components/`, `@middleware/`)
+- `@core-utils/` is for framework utilities (dom, events, templates, cacheBuster) — `@utils/` is for app utilities only
 - Never import controllers at the top level — use `lazyController()` in routes
 
 ```typescript
 // Correct
 import { Component } from '@core/component.js';
-import { trackEvents, trackSubscriptions } from '@utils/events.js';
+import { trackEvents, trackSubscriptions } from '@core-utils/events.js';
 import api from '@services/api.service.js';
 
 // Wrong
@@ -30,42 +31,57 @@ import dashboardController from './dashboard.js';    // Direct controller import
 ## File Structure
 
 ```
+.nativecore/                        # Framework internals — DO NOT MODIFY
+├── core/                           # Framework primitives
+│   ├── component.ts                # Base Component class
+│   ├── router.ts                   # SPA router with middleware
+│   ├── state.ts                    # useState + computed
+│   ├── lazyComponents.ts           # Component registry system
+│   └── http.ts                     # Fetch wrapper
+├── utils/                          # Framework utilities (import via @core-utils/)
+│   ├── cacheBuster.ts              # Cache busting
+│   ├── dom.ts                      # dom.query, dom.listen, dom.create, dom.within
+│   ├── events.ts                   # trackEvents, trackSubscriptions, delegate
+│   └── templates.ts                # html``, css``, escapeHTML, sanitizeURL, raw
+└── types/
+    └── global.d.ts                 # Window, HTMLElementTagNameMap augmentations
+
 src/
-├── app.ts                      # Entry point — keep minimal, no logic here
-├── config/routes.ts            # All route definitions
-├── core/                       # Framework primitives — do not modify
-│   ├── component.ts            # Base Component class
-│   ├── router.ts               # SPA router with middleware
-│   ├── state.ts                # useState + computed
-│   ├── http.ts                 # Fetch wrapper
-│   └── lazyComponents.ts       # Component registry system
+├── app.ts                          # Entry point — keep minimal, no logic here
+├── routes/
+│   └── routes.ts                   # All route definitions
 ├── components/
-│   ├── core/                   # Layout components (app-header, app-sidebar)
-│   ├── ui/                     # All nc-* reusable UI components
-│   ├── registry.ts             # Component lazy loading registry
-│   └── preloadRegistry.ts      # Components to preload on startup
+│   ├── core/                       # Layout + all nc-* components
+│   ├── ui/                         # Your custom reusable components
+│   ├── registry.ts                 # Lazy registry — add custom components here
+│   ├── frameworkRegistry.ts        # Framework nc-* registrations (auto-managed)
+│   ├── appRegistry.ts              # App layout component registrations
+│   └── preloadRegistry.ts          # Critical components preloaded on startup
 ├── controllers/
-│   ├── index.ts                # Named exports for all controllers
-│   └── *.controller.ts         # Page controllers
+│   ├── index.ts                    # Named exports for all controllers
+│   └── *.controller.ts             # Page controllers
 ├── views/
-│   ├── public/                 # HTML templates — no auth required
-│   └── protected/              # HTML templates — auth required
+│   ├── public/                     # HTML templates — no auth required
+│   └── protected/                  # HTML templates — auth required
 ├── services/
 │   ├── api.service.ts
 │   ├── auth.service.ts
 │   └── logger.service.ts
 ├── stores/
-│   ├── appStore.ts             # user, isLoading, error
-│   └── uiStore.ts              # sidebarOpen, theme, notifications
-├── middleware/auth.middleware.ts
-├── utils/
-│   ├── events.ts               # trackEvents, trackSubscriptions, delegate
-│   ├── dom.ts                  # dom.query, dom.listen, dom.create, dom.within, etc.
-│   ├── formatters.ts
-│   ├── helpers.ts
-│   └── validation.ts
-├── constants/                  # apiEndpoints, routePaths, storageKeys, errorMessages
-└── types/global.d.ts
+│   ├── appStore.ts                 # user, isLoading, error
+│   └── uiStore.ts                  # sidebarOpen, theme, notifications
+├── middleware/
+│   └── auth.middleware.ts
+├── utils/                          # App-specific utilities only
+│   ├── form.ts                     # useForm helper
+│   ├── formatters.ts               # formatCurrency, formatDate, formatNumber
+│   ├── helpers.ts                  # debounce, throttle, generateId
+│   ├── markdown.ts                 # renderMarkdown, renderMarkdownToc
+│   └── validation.ts               # validateForm, isValidEmail
+├── constants/                      # apiEndpoints, routePaths, storageKeys, errorMessages
+├── types/
+│   └── global.d.ts                 # App-specific type augmentations
+└── styles/
 ```
 
 ## Naming Conventions
@@ -139,7 +155,7 @@ defineComponent('my-component', MyComponent);
 Every controller MUST return a cleanup function. Use `trackEvents` + `trackSubscriptions`.
 
 ```typescript
-import { trackEvents, trackSubscriptions } from '@utils/events.js';
+import { trackEvents, trackSubscriptions } from '@core-utils/events.js';
 import api from '@services/api.service.js';
 import { store } from '@stores/appStore.js';
 
@@ -172,7 +188,7 @@ export async function myPageController(params: Record<string, string> = {}): Pro
 ## Routing Pattern
 
 ```typescript
-// src/config/routes.ts
+// src/routes/routes.ts
 import { router, lazyController } from '@core/router.js';
 
 router
@@ -215,10 +231,10 @@ store.user.value = { id: 1, name: 'Alice' };
 store.isLoading.watch(loading => updateUI(loading));
 ```
 
-## DOM Utilities (src/utils/dom.ts)
+## DOM Utilities (.nativecore/utils/dom.ts)
 
 ```typescript
-import dom from '@utils/dom.js';
+import dom from '@core-utils/dom.js';
 
 dom.query('#btn')                          // null-safe querySelector
 dom.queryAll('.items')                     // querySelectorAll
@@ -260,15 +276,15 @@ npm run build                    # Production build
 - Import controllers directly — use `lazyController()`
 - Use `document.querySelector` in components — use `this.shadowRoot.querySelector` or `this.$()`
 - Skip cleanup — memory leaks accumulate across navigations
-- Add logic to `app.ts` — routes go in `config/routes.ts`
+- Add logic to `app.ts` — routes go in `src/routes/routes.ts`
 - Forget `static useShadowDOM = true` on UI components
 - Use emojis anywhere
 
 ## Auth Pattern
 
 - JWT tokens stored in `sessionStorage` (cleared when browser closes)
-- Two shells: `index.html` (public) and `app.html` (protected)
-- Protected routes listed in `protectedRoutes` export from `routes.ts`
+- Single HTML shell: `index.html`
+- Protected routes listed in `protectedRoutes` export from `src/routes/routes.ts`
 - Auth check: `auth.isAuthenticated()`, user: `auth.getUser()`
 - Shell mismatch triggers full page reload (router handles automatically)
 
@@ -278,7 +294,7 @@ This is **NativeCore** (formerly NFBS) - a modern **TypeScript SPA framework** w
 - Web Components with Shadow DOM
 - Custom router with lazy loading
 - Reactive state management (signals: useState, computed)
-- JWT authentication with dual-shell architecture
+- JWT authentication with single-shell architecture
 - Bot-optimized SEO (pre-rendered HTML)
 - Component and view generators
 - Path aliases with tsc-alias
@@ -286,17 +302,18 @@ This is **NativeCore** (formerly NFBS) - a modern **TypeScript SPA framework** w
 ## Architecture Principles
 
 ### 1. **Separation of Concerns**
-- `src/app.ts` - Minimal entry point, only initialization
-- `src/config/routes.ts` - All route definitions
-- `src/middleware/` - Request/response middleware
-- `src/controllers/` - Page-specific logic
-- `src/components/core/` - Layout components (header, sidebar, footer)
-- `src/components/ui/` - Reusable UI components (nc-button, nc-card, etc.)
-- `src/core/` - Framework primitives (router, signals, http, etc.)
-- `src/utils/` - Helper functions
-- `src/constants/` - App constants (API endpoints, routes, etc.)
-- `src/stores/` - Global state stores
-- `src/services/` - API, auth, logger services
+- `src/app.ts` — Minimal entry point, only initialization
+- `src/routes/routes.ts` — All route definitions
+- `src/middleware/` — Route middleware
+- `src/controllers/` — Page-specific logic
+- `src/components/core/` — Layout + all nc-* framework components
+- `src/components/ui/` — Your custom reusable components
+- `.nativecore/core/` — Framework primitives (router, signals, http, component) — do not modify
+- `.nativecore/utils/` — Framework utilities (dom, events, templates, cacheBuster) — import via `@core-utils/`
+- `src/utils/` — App-specific utilities (formatters, validation, form helpers)
+- `src/constants/` — App constants (API endpoints, routes, etc.)
+- `src/stores/` — Global state stores
+- `src/services/` — API, auth, logger services
 
 ### 2. **Lazy Loading Strategy**
 - **Controllers**: Lazy loaded via dynamic imports with `lazyController()`
@@ -310,280 +327,11 @@ This is **NativeCore** (formerly NFBS) - a modern **TypeScript SPA framework** w
 - **Files**: TypeScript `.ts` extension (e.g., `user-card.ts`, `dashboard.controller.ts`)
 - **Views**: kebab-case HTML files (e.g., `user-profile.html`)
 
-## File Structure
 
-```
-src/
-├── app.ts                      # Entry point (keep minimal!)
-├── config/
-│   └── routes.ts              # Route definitions with lazy controllers
-├── middleware/
-│   └── auth.middleware.ts     # Authentication logic
-├── controllers/
-│   ├── index.ts               # Controller exports
-│   └── *.controller.ts        # Page controllers
-├── components/
-│   ├── core/                  # Layout components (app-header, app-sidebar)
-│   ├── ui/                    # All nc-* UI components
-│   ├── registry.ts            # Component lazy loading registry
-│   └── preloadRegistry.ts     # Components to preload
-├── core/
-│   ├── component.ts           # Base Component class
-│   ├── router.ts              # SPA router
-│   ├── state.ts               # Reactive signals (useState, computed)
-│   └── lazyComponents.ts      # Component registry system
-├── services/
-│   ├── api.service.ts         # HTTP client
-│   ├── auth.service.ts        # Authentication
-│   └── logger.service.ts      # Logging
-├── stores/
-│   ├── appStore.ts            # Global app state
-│   └── uiStore.ts             # UI state
-├── constants/
-│   ├── apiEndpoints.ts        # API endpoints
-│   ├── routePaths.ts          # Route paths
-│   └── errorMessages.ts       # Error messages
-├── utils/                     # Helper functions
-├── types/                     # TypeScript definitions
-├── views/                     # HTML templates
-│   ├── public/                # Public routes
-│   └── protected/             # Protected routes
-└── styles/                    # Global CSS
-```
-│   ├── router.js              # SPA router
-│   ├── signals.js             # Reactive state
-│   ├── component.js           # Base component class
-│   ├── lazyComponents.js      # Lazy loading system
-│   ├── http.js                # HTTP client
-│   └── errorHandler.js        # Error handling
-├── stores/
-│   ├── appStore.js            # Global state
-│   └── uiStore.js             # UI state
-├── services/
-│   ├── auth.service.js        # Authentication
-│   ├── api.service.js         # API calls
-│   └── storage.service.js     # localStorage/sessionStorage
-├── utils/
-│   ├── sidebar.js             # Sidebar logic
-│   ├── formatters.js          # Data formatting
-│   ├── helpers.js             # Utilities
-│   └── validation.js          # Validation functions
-└── views/pages/
-    ├── public/                # Non-authenticated pages
-    └── protected/             # Authenticated pages
-```
 
-## Code Patterns
 
-### Creating Components (MUST use Shadow DOM)
-```typescript
-import { Component, defineComponent } from '@core/component.js';
-import { useState } from '@core/state.js';
 
-export class MyCard extends Component {
-    static useShadowDOM = true; // REQUIRED!
-    
-    constructor() {
-        super();
-        this.count = useState(0);
-    }
-    
-    template() {
-        return `
-            <style>
-                .my-card { padding: 1rem; }
-            </style>
-            <div class="my-card">
-                <div>Count: ${this.count.value}</div>
-                <button class="increment-btn">Increment</button>
-            </div>
-        `;
-    }
-    
-    onMount() {
-        // Use event delegation on shadowRoot
-        this.shadowRoot.addEventListener('click', (e) => {
-            if (e.target.matches('.increment-btn')) {
-                this.count.value++;
-            }
-        });
-        
-        // Watch state changes
-        this.count.watch(val => {
-            this.shadowRoot.querySelector('div').textContent = `Count: ${val}`;
-        });
-    }
-}
 
-defineComponent('my-card', MyCard);
-```
 
-### Creating Controllers
-```typescript
-import api from '@services/api.service.js';
 
-export async function myController(params, state) {
-    const element = document.getElementById('my-element');
-    
-    // Load data
-    const data = await api.get('/endpoint');
-    
-    // Render
-    element.innerHTML = `...`;
-    
-    // Cleanup (optional)
-    return () => {
-        console.log('Cleanup');
-    };
-}
-```
 
-### Registering Routes (in routes.ts)
-```typescript
-// Without controller
-.register('/about', 'views/pages/public/about.html')
-
-// With lazy controller
-.register('/dashboard', 'views/pages/protected/dashboard.html', 
-    lazyController('dashboardController', '../controllers/dashboard.controller.js'))
-```
-
-### Registering Components (in components/index.js)
-```javascript
-// Critical (preloaded)
-componentRegistry.register('app-header', './app-header.js');
-
-// Lazy loaded
-componentRegistry.register('user-card', './user-card.js');
-```
-
-## NPM Commands
-
-### Component Management
-```bash
-npm run make:component my-card        # Create new component
-npm run remove:component my-card      # Remove component + cleanup
-```
-
-### View Management
-```bash
-npm run make:view profile            # Create new view (with prompts)
-npm run remove:view profile          # Remove view + cleanup
-```
-Prompts will ask:
-- Is this protected (requires login)? (y/n)
-- Create a controller? (y/n)
-
-### Development
-```bash
-npm run dev                          # Start dev server
-npm test                             # Run tests
-npm run lint                         # Lint code
-```
-
-## Critical Rules
-
-### ✅ DO:
-1. **Keep app.js minimal** - Only imports and initialization
-2. **Use lazy loading** - All controllers/components should lazy load
-3. **Register in routes.js** - Never add routes directly in app.js
-4. **Use generators** - Always use `npm run make:*` commands
-5. **Follow naming** - kebab-case for components/views, camelCase for controllers
-6. **Export controllers** - Always export from `controllers/index.js`
-7. **Clean separation** - Controllers handle logic, components handle UI
-8. **Dynamic imports** - Use `lazyController()` for all route controllers
-
-### ❌ DON'T:
-1. **Don't eagerly import controllers** - Use `lazyController()` wrapper
-2. **Don't add routes to app.js** - Use `config/routes.js`
-3. **Don't forget hyphens** - Components MUST have hyphen (Web Component spec)
-4. **Don't mix concerns** - Keep controllers, components, and views separate
-5. **Don't manually edit index files** - Use generator scripts
-6. **Don't hardcode imports** - Register components in registry
-
-## State Management
-
-### Local State (useState)
-```javascript
-import { useState } from '../core/state.js';
-
-const count = useState(0);
-count.value = 5;              // Update
-count.watch(val => {...});    // Watch changes
-```
-
-### Global State (Store)
-```javascript
-import { store } from '../stores/appStore.js';
-
-store.count.value = 10;       // Update global state
-store.count.watch(val => {}); // Watch globally
-```
-
-## Authentication Flow
-
-1. User logs in → `auth.setTokens()` + `auth.setUser()`
-2. Tokens stored in `sessionStorage` (cleared on browser close)
-3. `authMiddleware` checks protected routes
-4. Protected routes in `config/routes.js` → `protectedRoutes` array
-5. Unauthorized → redirect to `/login`
-
-## When Making Changes
-
-### Adding a New View:
-```bash
-npm run make:view user-settings
-# Follow prompts → protected? controller?
-# Automatically updates routes.js and controllers/index.js
-```
-
-### Adding a New Component:
-```bash
-npm run make:component settings-panel
-# Automatically registers in components/index.js for lazy loading
-```
-
-### Adding Middleware:
-1. Create in `src/middleware/`
-2. Import in `app.js`
-3. Register with `router.use(middleware)`
-
-### Modifying Routes:
-- **Always edit** `src/config/routes.js`
-- Use `lazyController()` wrapper
-- Add to `protectedRoutes` array if protected
-
-## Testing Patterns
-- Unit tests in `tests/unit/`
-- Test utilities, formatters, validators
-- Component tests use jsdom
-- Use `vitest` for all tests
-
-## Key Conventions
-- **sessionStorage** for auth (cleared on close)
-- **localStorage** for UI preferences
-- **Signals** for reactive state
-- **Web Components** for UI
-- **Dynamic imports** for code splitting
-- **MutationObserver** for component discovery
-
-## Common Tasks
-
-### Add Protected Route:
-1. Run `npm run make:view my-page`
-2. Answer "y" to protected
-3. Answer "y" to controller
-4. Automatically added to `protectedRoutes` array
-
-### Add API Endpoint:
-1. Add to `src/constants/apiEndpoints.js`
-2. Use `api.get()` or `api.post()` in controllers
-3. Handle errors with try/catch
-
-### Style Components:
-- Scoped styles inside `template()` method
-- Use CSS variables from `src/styles/variables.css`
-- Responsive breakpoints at 768px (mobile)
-
-## Remember
-This is a **zero-dependency framework** for the core. Keep it vanilla, keep it simple, keep it fast!

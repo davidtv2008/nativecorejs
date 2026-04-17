@@ -1,5 +1,5 @@
-import { Component, defineComponent } from '../core/component.js';
-import { escapeHTML, sanitizeURL } from '../utils/templates.js';
+import { Component, defineComponent } from '../../.nativecore/core/component.js';
+import { escapeHTML, sanitizeURL } from '../../.nativecore/utils/templates.js';
 
 const SIZE_MAP: Record<string, string> = {
     xs: '24px',
@@ -138,3 +138,5 @@ export class NcAvatar extends Component {
 }
 
 defineComponent('nc-avatar', NcAvatar);
+
+

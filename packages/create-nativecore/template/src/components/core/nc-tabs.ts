@@ -42,7 +42,7 @@
  */
 
 import { Component, defineComponent } from '@core/component.js';
-import { html } from '@utils/templates.js';
+import { html } from '@core-utils/templates.js';
 
 export class NcTabs extends Component {
     static useShadowDOM = true;
@@ -552,3 +552,4 @@ export class NcTabs extends Component {
 }
 
 defineComponent('nc-tabs', NcTabs);
+

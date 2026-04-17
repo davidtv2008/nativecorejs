@@ -1,4 +1,4 @@
-import { Component, defineComponent } from '../core/component.js';
+import { Component, defineComponent } from '../../.nativecore/core/component.js';
 
 export class NcTextarea extends Component {
     static useShadowDOM = true;
@@ -170,3 +170,4 @@ export class NcTextarea extends Component {
 }
 
 defineComponent('nc-textarea', NcTextarea);
+

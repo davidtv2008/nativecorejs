@@ -1,4 +1,4 @@
-﻿/**
+/**
  * NativeCore Button Component
  * 
  * Framework core component using Shadow DOM and --nc- variables.
@@ -19,8 +19,8 @@
  *   
  */
 
-import { Component, defineComponent } from '../core/component.js';
-import { escapeHTML, sanitizeURL } from '../utils/templates.js';
+import { Component, defineComponent } from '../../.nativecore/core/component.js';
+import { escapeHTML, sanitizeURL } from '../../.nativecore/utils/templates.js';
 
 export class NcButton extends Component {
     static useShadowDOM = true;
@@ -306,4 +306,6 @@ export class NcButton extends Component {
 }
 
 defineComponent('nc-button', NcButton);
+
+
 

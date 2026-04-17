@@ -1,4 +1,4 @@
-import { Component, defineComponent } from '../core/component.js';
+import { Component, defineComponent } from '../../.nativecore/core/component.js';
 
 export class NcKbd extends Component {
     static useShadowDOM = true;
@@ -36,3 +36,4 @@ export class NcKbd extends Component {
 }
 
 defineComponent('nc-kbd', NcKbd);
+

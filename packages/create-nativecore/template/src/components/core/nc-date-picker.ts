@@ -22,7 +22,7 @@
  */
 
 import { Component, defineComponent } from '@core/component.js';
-import { html } from '@utils/templates.js';
+import { html } from '@core-utils/templates.js';
 
 const MONTHS = ['January','February','March','April','May','June','July','August','September','October','November','December'];
 const DAYS_SUN = ['Su','Mo','Tu','We','Th','Fr','Sa'];
@@ -442,3 +442,4 @@ export class NcDatePicker extends Component {
 }
 
 defineComponent('nc-date-picker', NcDatePicker);
+

@@ -19,7 +19,7 @@
  */
 
 import { Component, defineComponent } from '@core/component.js';
-import { html } from '@utils/templates.js';
+import { html } from '@core-utils/templates.js';
 
 const DEFAULT_SWATCHES = [
     '#ef4444','#f97316','#f59e0b','#eab308',
@@ -267,3 +267,4 @@ export class NcColorPicker extends Component {
 }
 
 defineComponent('nc-color-picker', NcColorPicker);
+

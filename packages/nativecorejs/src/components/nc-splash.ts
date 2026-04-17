@@ -1,4 +1,4 @@
-﻿/**
+/**
  * nc-splash Component
  * 
  * Standalone full-screen splash screen with dissolve effect.
@@ -10,11 +10,11 @@
  * 
  * 
  */
-import { Component, defineComponent } from '../core/component.js';
-import { escapeHTML } from '../utils/templates.js';
-import { useState } from '../core/state.js';
-import { createAnimationLoop, type AnimationLoop } from '../core/gpu-animation.js';
-import type { State } from '../core/state.js';
+import { Component, defineComponent } from '../../.nativecore/core/component.js';
+import { escapeHTML } from '../../.nativecore/utils/templates.js';
+import { useState } from '../../.nativecore/core/state.js';
+import { createAnimationLoop, type AnimationLoop } from '../../.nativecore/core/gpu-animation.js';
+import type { State } from '../../.nativecore/core/state.js';
 
 interface Particle {
     x: number;
@@ -342,4 +342,6 @@ export class NcSplash extends Component {
 }
 
 defineComponent('nc-splash', NcSplash);
+
+
 

@@ -1,4 +1,4 @@
-﻿/**
+/**
  * NcRichText Component
  *
  * A lightweight rich text editor built on contenteditable + execCommand,
@@ -25,8 +25,8 @@
  *   <nc-rich-text name="notes" toolbar="bold,italic,underline,|,ul,ol"></nc-rich-text>
  */
 
-import { Component, defineComponent } from '../core/component.js';
-import { sanitizeURL } from '../utils/templates.js';
+import { Component, defineComponent } from '../../.nativecore/core/component.js';
+import { sanitizeURL } from '../../.nativecore/utils/templates.js';
 
 const ICONS: Record<string, string> = {
     bold:         `<svg viewBox="0 0 16 16" fill="none" width="14" height="14"><text x="3" y="13" font-family="Georgia,serif" font-size="13" font-weight="bold" fill="currentColor">B</text></svg>`,
@@ -283,4 +283,6 @@ export class NcRichText extends Component {
 }
 
 defineComponent('nc-rich-text', NcRichText);
+
+
 

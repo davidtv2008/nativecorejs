@@ -1,4 +1,4 @@
-import { Component, defineComponent } from '../core/component.js';
+import { Component, defineComponent } from '../../.nativecore/core/component.js';
 
 export class NcAvatarGroup extends Component {
     static useShadowDOM = true;
@@ -91,3 +91,4 @@ export class NcAvatarGroup extends Component {
 }
 
 defineComponent('nc-avatar-group', NcAvatarGroup);
+

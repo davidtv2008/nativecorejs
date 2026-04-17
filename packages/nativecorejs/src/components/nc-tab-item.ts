@@ -1,4 +1,4 @@
-﻿/**
+/**
  * NativeCore Tab Item Component (nc-tab-item)
  *
  * A single content panel inside an nc-tabs container.
@@ -24,8 +24,8 @@
  *   (none - nc-tabs owns all interaction events)
  */
 
-import { Component, defineComponent } from '../core/component.js';
-import { html } from '../utils/templates.js';
+import { Component, defineComponent } from '../../.nativecore/core/component.js';
+import { html } from '../../.nativecore/utils/templates.js';
 
 export class NcTabItem extends Component {
     static useShadowDOM = true;
@@ -45,7 +45,7 @@ export class NcTabItem extends Component {
                     display: block;
                 }
 
-                /* ── Animation variants driven by data-nc-transition set by nc-tabs ── */
+                /* -- Animation variants driven by data-nc-transition set by nc-tabs -- */
                 :host([active]) .panel {
                     animation: nc-tab-fade 250ms ease both;
                 }
@@ -74,7 +74,7 @@ export class NcTabItem extends Component {
                     animation: none;
                 }
 
-                /* ── Keyframes ───────────────────────────────────────────────── */
+                /* -- Keyframes ------------------------------------------------- */
                 @keyframes nc-tab-fade {
                     from { opacity: 0; }
                     to   { opacity: 1; }
@@ -136,4 +136,6 @@ export class NcTabItem extends Component {
 }
 
 defineComponent('nc-tab-item', NcTabItem);
+
+
 

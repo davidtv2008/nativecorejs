@@ -1,4 +1,4 @@
-﻿/**
+/**
  * NcColorPicker Component
  *
  * Attributes:
@@ -18,7 +18,7 @@
  *   <nc-color-picker name="accent" swatches='["#ef4444","#f59e0b","#10b981","#3b82f6","#8b5cf6"]'></nc-color-picker>
  */
 
-import { Component, defineComponent } from '../core/component.js';
+import { Component, defineComponent } from '../../.nativecore/core/component.js';
 
 const DEFAULT_SWATCHES = [
     '#ef4444','#f97316','#f59e0b','#eab308',
@@ -266,4 +266,5 @@ export class NcColorPicker extends Component {
 }
 
 defineComponent('nc-color-picker', NcColorPicker);
+
 

@@ -23,7 +23,7 @@
  *   <nc-image src="/photo.jpg" alt="Mountain view" aspect="16/9" radius="md"></nc-image>
  */
 import { Component, defineComponent } from '@core/component.js';
-import { html } from '@utils/templates.js';
+import { html } from '@core-utils/templates.js';
 
 const RADIUS: Record<string, string> = {
     none: '0',
@@ -183,3 +183,4 @@ export class NcImage extends Component {
 }
 
 defineComponent('nc-image', NcImage);
+

@@ -23,7 +23,7 @@
  */
 
 import { Component, defineComponent } from '@core/component.js';
-import { html } from '@utils/templates.js';
+import { html } from '@core-utils/templates.js';
 
 function pad2(n: number) { return String(n).padStart(2, '0'); }
 
@@ -437,3 +437,4 @@ export class NcTimePicker extends Component {
 }
 
 defineComponent('nc-time-picker', NcTimePicker);
+

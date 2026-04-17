@@ -1,4 +1,4 @@
-﻿/**
+/**
  * NcSelect Component
  *
  * NativeCore Framework Core Component
@@ -27,8 +27,8 @@
  *   </nc-select>
  */
 
-import { Component, defineComponent } from '../core/component.js';
-import { escapeHTML } from '../utils/templates.js';
+import { Component, defineComponent } from '../../.nativecore/core/component.js';
+import { escapeHTML } from '../../.nativecore/utils/templates.js';
 
 interface SelectOption {
     value: string;
@@ -451,4 +451,6 @@ export class NcSelect extends Component {
 }
 
 defineComponent('nc-select', NcSelect);
+
+
 

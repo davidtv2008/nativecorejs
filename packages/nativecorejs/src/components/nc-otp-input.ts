@@ -1,4 +1,4 @@
-﻿/**
+/**
  * NcOtpInput Component - One-time password / verification code input
  *
  * Attributes:
@@ -22,8 +22,8 @@
  * Usage:
  *   <nc-otp-input length="6" type="numeric"></nc-otp-input>
  */
-import { Component, defineComponent } from '../core/component.js';
-import { escapeHTML } from '../utils/templates.js';
+import { Component, defineComponent } from '../../.nativecore/core/component.js';
+import { escapeHTML } from '../../.nativecore/utils/templates.js';
 
 export class NcOtpInput extends Component {
     static useShadowDOM = true;
@@ -234,4 +234,6 @@ export class NcOtpInput extends Component {
 }
 
 defineComponent('nc-otp-input', NcOtpInput);
+
+
 

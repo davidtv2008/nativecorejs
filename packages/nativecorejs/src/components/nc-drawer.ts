@@ -1,4 +1,4 @@
-﻿/**
+/**
  * NcDrawer Component
  *
  * Attributes:
@@ -27,7 +27,7 @@
  *   document.getElementById('nav-drawer').setAttribute('open', '');
  */
 
-import { Component, defineComponent } from '../core/component.js';
+import { Component, defineComponent } from '../../.nativecore/core/component.js';
 
 export class NcDrawer extends Component {
     static useShadowDOM = true;
@@ -228,4 +228,5 @@ export class NcDrawer extends Component {
 }
 
 defineComponent('nc-drawer', NcDrawer);
+
 

@@ -1,4 +1,4 @@
-﻿/**
+/**
  * NcBottomNav Component - mobile bottom navigation bar
  *
  * Container for nc-nav-bottom-item children. Handles active state management.
@@ -36,7 +36,7 @@
  *   disabled - boolean
  *   active   - boolean (managed by parent nc-bottom-nav)
  */
-import { Component, defineComponent } from '../core/component.js';
+import { Component, defineComponent } from '../../.nativecore/core/component.js';
 
 // Shared icon paths with nc-nav-item
 const NAV_ICONS: Record<string, string> = {
@@ -53,7 +53,7 @@ const NAV_ICONS: Record<string, string> = {
 const svgWrap = (p: string) =>
     `<svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">${p}</svg>`;
 
-// ── NcBottomNavItem ───────────────────────────────────────────────────────────
+// -- NcBottomNavItem -----------------------------------------------------------
 
 export class NcBottomNavItem extends Component {
     static useShadowDOM = true;
@@ -152,7 +152,7 @@ export class NcBottomNavItem extends Component {
 
 defineComponent('nc-bottom-nav-item', NcBottomNavItem);
 
-// ── NcBottomNav ───────────────────────────────────────────────────────────────
+// -- NcBottomNav ---------------------------------------------------------------
 
 export class NcBottomNav extends Component {
     static useShadowDOM = true;
@@ -212,4 +212,5 @@ export class NcBottomNav extends Component {
 }
 
 defineComponent('nc-bottom-nav', NcBottomNav);
+
 

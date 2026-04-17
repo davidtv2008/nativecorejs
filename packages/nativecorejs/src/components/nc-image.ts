@@ -1,5 +1,5 @@
-import { Component, defineComponent } from '../core/component.js';
-import { escapeHTML } from '../utils/templates.js';
+import { Component, defineComponent } from '../../.nativecore/core/component.js';
+import { escapeHTML } from '../../.nativecore/utils/templates.js';
 
 const RADIUS: Record<string, string> = {
     none: '0',
@@ -149,3 +149,5 @@ export class NcImage extends Component {
 }
 
 defineComponent('nc-image', NcImage);
+
+

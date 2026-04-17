@@ -1,4 +1,4 @@
-﻿/**
+/**
  * NcTimePicker Component
  *
  * Attributes:
@@ -22,7 +22,7 @@
  *   <nc-time-picker name="alarm" format="12" show-seconds></nc-time-picker>
  */
 
-import { Component, defineComponent } from '../core/component.js';
+import { Component, defineComponent } from '../../.nativecore/core/component.js';
 
 function pad2(n: number) { return String(n).padStart(2, '0'); }
 
@@ -436,4 +436,5 @@ export class NcTimePicker extends Component {
 }
 
 defineComponent('nc-time-picker', NcTimePicker);
+
 

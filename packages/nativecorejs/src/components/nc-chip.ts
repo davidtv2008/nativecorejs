@@ -1,5 +1,5 @@
-import { Component, defineComponent } from '../core/component.js';
-import { sanitizeURL } from '../utils/templates.js';
+import { Component, defineComponent } from '../../.nativecore/core/component.js';
+import { sanitizeURL } from '../../.nativecore/utils/templates.js';
 
 export class NcChip extends Component {
     static useShadowDOM = true;
@@ -95,3 +95,5 @@ export class NcChip extends Component {
 }
 
 defineComponent('nc-chip', NcChip);
+
+

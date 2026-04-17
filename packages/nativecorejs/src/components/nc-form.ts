@@ -1,4 +1,4 @@
-﻿/**
+/**
  * NcForm + NcField Components
  *
  * nc-form:
@@ -45,9 +45,9 @@
  *   });
  */
 
-import { Component, defineComponent } from '../core/component.js';
+import { Component, defineComponent } from '../../.nativecore/core/component.js';
 
-// ── NcField ──────────────────────────────────────────────────────────────────
+// -- NcField ------------------------------------------------------------------
 
 export class NcField extends Component {
     static useShadowDOM = true;
@@ -115,7 +115,7 @@ export class NcField extends Component {
 
 defineComponent('nc-field', NcField);
 
-// ── NcForm ───────────────────────────────────────────────────────────────────
+// -- NcForm -------------------------------------------------------------------
 
 const FORM_CONTROLS = [
     'nc-input', 'nc-textarea', 'nc-select', 'nc-checkbox', 'nc-radio',
@@ -310,4 +310,5 @@ export class NcForm extends Component {
 }
 
 defineComponent('nc-form', NcForm);
+
 

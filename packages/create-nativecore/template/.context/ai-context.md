@@ -3,7 +3,7 @@
 ## What is NativeCore
 NativeCore is a zero-dependency TypeScript SPA framework (~15KB). It uses native Web Components
 with Shadow DOM, a custom History API router with middleware, reactive signals (useState/computed),
-lazy loading for both components and controllers, JWT auth with a dual-shell architecture, and
+lazy loading for both components and controllers, JWT auth with a single-shell architecture, and
 Puppeteer-based bot HTML pre-rendering for SEO. No JSX, no virtual DOM.
 
 ## Critical Rule
@@ -21,7 +21,7 @@ NEVER use emojis in code, console.logs, comments, or documentation.
 // Correct
 import { Component, defineComponent } from '@core/component.js';
 import { useState, computed } from '@core/state.js';
-import { trackEvents, trackSubscriptions } from '@utils/events.js';
+import { trackEvents, trackSubscriptions } from '@core-utils/events.js';
 import api from '@services/api.service.js';
 import { store } from '@stores/appStore.js';
 import type { State, ComputedState } from '@core/state.js';
@@ -30,7 +30,7 @@ import type { State, ComputedState } from '@core/state.js';
 import { Component } from '@core/component';
 ```
 
-Available aliases: `@core/`, `@components/`, `@services/`, `@utils/`, `@stores/`, `@middleware/`, `@config/`, `@types/`
+Available aliases: `@core/`, `@core-utils/`, `@core-types/`, `@components/`, `@services/`, `@utils/`, `@stores/`, `@middleware/`, `@config/`, `@types/`
 
 ---
 
@@ -106,7 +106,7 @@ Controllers handle page-level logic. Every controller that touches the DOM or wa
 MUST return a cleanup function. Use `trackEvents()` + `trackSubscriptions()`.
 
 ```typescript
-import { trackEvents, trackSubscriptions } from '@utils/events.js';
+import { trackEvents, trackSubscriptions } from '@core-utils/events.js';
 import api from '@services/api.service.js';
 import { store } from '@stores/appStore.js';
 
@@ -156,20 +156,27 @@ Controllers:
 ## 4. Routing Pattern
 
 ```typescript
-// src/config/routes.ts
-import { router, lazyController } from '@core/router.js';
-import { authMiddleware } from '@middleware/auth.middleware.js';
+// src/routes/routes.ts
+import { bustCache } from '@core-utils/cacheBuster.js';
+import type { ControllerFunction } from '@core/router.js';
 
-router
-    .use(authMiddleware)
-    .register('/', 'views/pages/public/home.html')
-    .register('/about', 'views/pages/public/about.html')
-    .register('/login', 'views/pages/public/login.html',
-        lazyController('loginController', '../controllers/login.controller.js'))
-    .register('/dashboard', 'views/pages/protected/dashboard.html',
-        lazyController('dashboardController', '../controllers/dashboard.controller.js'))
-    .register('/user/:id', 'views/pages/protected/user-detail.html',
-        lazyController('userDetailController', '../controllers/user-detail.controller.js'));
+function lazyController(name: string, path: string): ControllerFunction {
+    return async (...args: any[]) => {
+        const m = await import(bustCache(path));
+        return m[name](...args);
+    };
+}
+
+export function registerRoutes(router: any): void {
+    router
+        .register('/', 'src/views/public/home.html')
+        .register('/login', 'src/views/public/login.html',
+            lazyController('loginController', '../controllers/login.controller.js'))
+        .register('/dashboard', 'src/views/protected/dashboard.html',
+            lazyController('dashboardController', '../controllers/dashboard.controller.js'))
+        .register('/user/:id', 'src/views/protected/user-detail.html',
+            lazyController('userDetailController', '../controllers/user-detail.controller.js'));
+}
 
 export const protectedRoutes = ['/dashboard', '/user'];
 ```
@@ -219,10 +226,10 @@ import { uiStore } from '@stores/uiStore.js';
 
 ---
 
-## 7. DOM Utilities (src/utils/dom.ts)
+## 7. DOM Utilities (.nativecore/utils/dom.ts)
 
 ```typescript
-import dom from '@utils/dom.js';
+import dom from '@core-utils/dom.js';
 
 // Query
 dom.query('#btn')                              // document.querySelector (typed)
@@ -249,12 +256,12 @@ off(); // removes the listener
 
 ---
 
-## 8. Event & Subscription Tracking (src/utils/events.ts)
+## 8. Event & Subscription Tracking (.nativecore/utils/events.ts)
 
 For controllers, use these instead of raw `addEventListener`:
 
 ```typescript
-import { trackEvents, trackSubscriptions } from '@utils/events.js';
+import { trackEvents, trackSubscriptions } from '@core-utils/events.js';
 
 // trackEvents — tracks DOM event listeners
 const events = trackEvents();
@@ -277,46 +284,61 @@ subs.cleanup()   // calls all unsubscribes at once
 ## 9. Project File Structure
 
 ```
+.nativecore/                         # Framework internals — DO NOT MODIFY
+├── core/                            # Framework primitives
+│   ├── component.ts                 # Base Component class
+│   ├── router.ts                    # SPA router
+│   ├── state.ts                     # useState, computed
+│   ├── lazyComponents.ts            # Component lazy loading
+│   └── http.ts                      # Fetch wrapper
+├── utils/                           # Framework utilities (import via @core-utils/)
+│   ├── cacheBuster.ts               # Cache busting
+│   ├── dom.ts                       # DOM helpers
+│   ├── events.ts                    # trackEvents, trackSubscriptions
+│   └── templates.ts                 # html``, escapeHTML, sanitizeURL, raw
+└── types/
+    └── global.d.ts                  # Window, HTMLElementTagNameMap augmentations
+
 src/
-├── app.ts                       # Entry point — minimal, no logic
-├── config/routes.ts             # All route definitions
-├── core/                        # Framework primitives (do not modify)
-│   ├── component.ts             # Base Component class
-│   ├── router.ts                # SPA router
-│   ├── state.ts                 # useState, computed
-│   ├── http.ts                  # Fetch wrapper
-│   └── lazyComponents.ts        # Component lazy loading
+├── app.ts                           # Entry point — minimal, no logic
+├── routes/
+│   └── routes.ts                    # All route definitions
 ├── components/
-│   ├── core/                    # Layout (app-header, app-sidebar, app-footer)
-│   ├── ui/                      # All nc-* reusable components
-│   ├── registry.ts              # Lazy registry (componentRegistry.register)
-│   └── preloadRegistry.ts       # Critical components to preload
+│   ├── core/                        # Layout + all nc-* components
+│   ├── ui/                          # Your custom nc-* components
+│   ├── registry.ts                  # Lazy registry for custom components
+│   ├── frameworkRegistry.ts         # Framework nc-* registrations (auto-managed)
+│   ├── appRegistry.ts               # App layout component registrations
+│   └── preloadRegistry.ts           # Critical components preloaded on startup
 ├── controllers/
-│   ├── index.ts                 # Named re-exports for all controllers
+│   ├── index.ts                     # Named re-exports for all controllers
 │   └── *.controller.ts
 ├── views/
-│   ├── public/                  # HTML templates, no auth
-│   └── protected/               # HTML templates, auth required
+│   ├── public/                      # HTML templates, no auth
+│   └── protected/                   # HTML templates, auth required
 ├── services/
 │   ├── api.service.ts
 │   ├── auth.service.ts
 │   └── logger.service.ts
 ├── stores/
-│   ├── appStore.ts              # user, isLoading, error
-│   └── uiStore.ts               # sidebarOpen, theme, notifications
-├── middleware/auth.middleware.ts
-├── utils/
-│   ├── events.ts                # trackEvents, trackSubscriptions, delegate
-│   ├── dom.ts                   # dom helpers
-│   ├── formatters.ts            # formatCurrency, formatDate, formatNumber, etc.
-│   ├── helpers.ts               # debounce, throttle, generateId, sanitizeHTML, etc.
-│   └── validation.ts            # validateForm, isValidEmail, etc.
+│   ├── appStore.ts                  # user, isLoading, error
+│   └── uiStore.ts                   # sidebarOpen, theme, notifications
+├── middleware/
+│   └── auth.middleware.ts
+├── utils/                           # App-specific utilities only
+│   ├── form.ts                      # useForm helper
+│   ├── formatters.ts                # formatCurrency, formatDate, formatNumber, etc.
+│   ├── helpers.ts                   # debounce, throttle, generateId, etc.
+│   ├── markdown.ts                  # renderMarkdown, renderMarkdownToc
+│   └── validation.ts                # validateForm, isValidEmail, etc.
 ├── constants/
 │   ├── apiEndpoints.ts
 │   ├── routePaths.ts
 │   ├── storageKeys.ts
 │   └── errorMessages.ts
-└── types/global.d.ts
+├── types/
+│   └── global.d.ts                  # App-specific type augmentations
+└── styles/
 ```
 
 ---
@@ -356,8 +378,7 @@ Always use generators when available instead of creating files manually.
 ## 12. Auth Pattern
 
 - JWT tokens stored in `sessionStorage` (auto-cleared on browser close)
-- Two HTML shells: `index.html` (public) and `app.html` (protected)
-- Shell mismatch → router triggers full page reload automatically
+- Single HTML shell: `index.html`
 - `authMiddleware` guards protected routes before loading controllers
 - `auth.isAuthenticated()` — boolean
 - `auth.getUser()` — returns current user or null
@@ -392,7 +413,7 @@ Always use generators when available instead of creating files manually.
 |---------------------------------|-------------------------------------------------------|
 | Module not found                | Missing `.js` extension on import                     |
 | Component not rendering         | Not registered in `components/registry.ts`            |
-| Route not found                 | Missing route in `config/routes.ts`                   |
+| Route not found                 | Missing route in `src/routes/routes.ts`               |
 | State not updating DOM          | Using `.set()` but not watching — call `.watch()`     |
 | Old controller still running    | Controller did not return a cleanup function          |
 | Computed keeps recomputing      | Mutating state inside computed — computed must be pure|
@@ -710,3 +731,4 @@ npm run make:view <name>
 - **Standards-based**: Web Components, ES modules
 
 This context should help AI assistants understand the framework architecture and provide accurate assistance!
+

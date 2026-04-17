@@ -1,4 +1,4 @@
-﻿/**
+/**
  * NativeCore Tabs Component (nc-tabs)
  *
  * Container that manages a group of nc-tab-item panels. Renders the tab bar,
@@ -41,8 +41,8 @@
  *   });
  */
 
-import { Component, defineComponent } from '../core/component.js';
-import { html, raw, escapeHTML } from '../utils/templates.js';
+import { Component, defineComponent } from '../../.nativecore/core/component.js';
+import { html, raw, escapeHTML } from '../../.nativecore/utils/templates.js';
 
 export class NcTabs extends Component {
     static useShadowDOM = true;
@@ -56,26 +56,26 @@ export class NcTabs extends Component {
         return ['variant', 'active', 'transition', 'persist', 'persist-key'];
     }
 
-    // ─── internal state ────────────────────────────────────────────────────────
+    // --- internal state --------------------------------------------------------
     private _activeIndex: number = 0;
 
-    // ─── cleanup refs ──────────────────────────────────────────────────────────
+    // --- cleanup refs ----------------------------------------------------------
     private _onSlotChange: (() => void) | null = null;
     private _onShadowClick: ((e: Event) => void) | null = null;
     private _onShadowKeydown: ((e: Event) => void) | null = null;
 
-    // ─── scroll arrow state ────────────────────────────────────────────────────
+    // --- scroll arrow state ----------------------------------------------------
     private _scrollListenerSet = false;
     private _resizeObserver: ResizeObserver | null = null;
 
-    // ────────────────────────────────────────────────────────────────────────────
+    // ----------------------------------------------------------------------------
 
     template(): string {
         const variant = this.attr('variant', 'line');
 
         return html`
             <style>
-                /* ── Host layout ─────────────────────────────────────────────── */
+                /* -- Host layout ----------------------------------------------- */
                 :host {
                     display: block;
                     width: 100%;
@@ -87,7 +87,7 @@ export class NcTabs extends Component {
                     width: 100%;
                 }
 
-                /* ── Tab bar ─────────────────────────────────────────────────── */
+                /* -- Tab bar --------------------------------------------------- */
                 .nc-tabs__bar {
                     display: flex;
                     align-items: flex-end;
@@ -106,7 +106,7 @@ export class NcTabs extends Component {
                     display: none;
                 }
 
-                /* ── Tab buttons ─────────────────────────────────────────────── */
+                /* -- Tab buttons ----------------------------------------------- */
                 .nc-tabs__btn {
                     display: inline-flex;
                     align-items: center;
@@ -171,7 +171,7 @@ export class NcTabs extends Component {
                     border-radius: var(--nc-radius-sm);
                 }
 
-                /* ── Pills variant ───────────────────────────────────────────── */
+                /* -- Pills variant --------------------------------------------- */
                 :host([variant="pills"]) .nc-tabs__bar {
                     border-bottom: none;
                     gap: var(--nc-spacing-xs);
@@ -199,7 +199,7 @@ export class NcTabs extends Component {
                     background: var(--nc-bg-tertiary);
                 }
 
-                /* ── Boxed variant ───────────────────────────────────────────── */
+                /* -- Boxed variant --------------------------------------------- */
                 :host([variant="boxed"]) .nc-tabs__bar {
                     border-bottom: 1px solid var(--nc-border);
                     gap: 2px;
@@ -222,12 +222,12 @@ export class NcTabs extends Component {
                     color: var(--nc-primary);
                 }
 
-                /* ── Content panels ──────────────────────────────────────────── */
+                /* -- Content panels -------------------------------------------- */
                 .nc-tabs__panels {
                     padding-top: var(--nc-spacing-sm);
                 }
 
-                /* ── Bar wrapper (anchors scroll arrows) ─────────────────────── */
+                /* -- Bar wrapper (anchors scroll arrows) ----------------------- */
                 .nc-tabs__bar-wrap {
                     position: relative;
                     /* contain the bar so overflow-x:auto has a definite boundary */
@@ -235,7 +235,7 @@ export class NcTabs extends Component {
                     overflow: hidden;
                 }
 
-                /* ── Scroll arrow buttons ────────────────────────────────────── */
+                /* -- Scroll arrow buttons -------------------------------------- */
                 .nc-tabs__scroll-btn {
                     display: none; /* JS sets to flex when scrollable */
                     position: absolute;
@@ -262,7 +262,7 @@ export class NcTabs extends Component {
                     background: linear-gradient(to left, var(--nc-bg) 45%, transparent 100%);
                 }
 
-                /* ── Responsive ──────────────────────────────────────────────── */
+                /* -- Responsive ------------------------------------------------ */
                 @media (max-width: 640px) {
                     .nc-tabs__panels {
                         padding-top: 0;
@@ -396,7 +396,7 @@ export class NcTabs extends Component {
         // variant + transition: :host([attr="..."]) CSS handles appearance - no JS needed
     }
 
-    // ─── Private helpers ────────────────────────────────────────────────────────
+    // --- Private helpers --------------------------------------------------------
 
     /** Returns all direct nc-tab-item children (light DOM). */
     private _getTabItems(): HTMLElement[] {
@@ -456,7 +456,7 @@ export class NcTabs extends Component {
         this._setupScrollArrows();
     }
 
-    // ─── Scroll arrow helpers ───────────────────────────────────────────────────
+    // --- Scroll arrow helpers ---------------------------------------------------
 
     private _setupScrollArrows(): void {
         const bar = this.$<HTMLElement>('.nc-tabs__bar');
@@ -552,4 +552,6 @@ export class NcTabs extends Component {
 }
 
 defineComponent('nc-tabs', NcTabs);
+
+
 

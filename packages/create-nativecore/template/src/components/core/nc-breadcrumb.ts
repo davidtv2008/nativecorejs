@@ -13,7 +13,7 @@
  */
 
 import { Component, defineComponent } from '@core/component.js';
-import { html } from '@utils/templates.js';
+import { html } from '@core-utils/templates.js';
 
 export class NcBreadcrumb extends Component {
     static useShadowDOM = true;
@@ -95,3 +95,4 @@ export class NcBreadcrumb extends Component {
 }
 
 defineComponent('nc-breadcrumb', NcBreadcrumb);
+

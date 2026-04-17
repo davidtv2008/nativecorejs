@@ -1,4 +1,4 @@
-﻿/**
+/**
  * NcSnackbar Component
  *
  * A singleton toast notification manager. Attach once to the app shell;
@@ -25,9 +25,9 @@
  *   - icon: boolean - show variant icon (default: true)
  */
 
-import { Component, defineComponent } from '../core/component.js';
-import { dom } from '../utils/dom.js';
-import { escapeHTML } from '../utils/templates.js';
+import { Component, defineComponent } from '../../.nativecore/core/component.js';
+import { dom } from '../../.nativecore/utils/dom.js';
+import { escapeHTML } from '../../.nativecore/utils/templates.js';
 
 interface ToastOptions {
     message: string;
@@ -229,4 +229,6 @@ export class NcSnackbar extends Component {
 }
 
 defineComponent('nc-snackbar', NcSnackbar);
+
+
 

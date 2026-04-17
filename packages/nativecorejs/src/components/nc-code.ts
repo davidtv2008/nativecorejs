@@ -1,4 +1,4 @@
-﻿/**
+/**
  * NcCode Component - syntax-highlighted code block with copy button
  *
  * Performs simple tokenization for common languages so it works
@@ -25,9 +25,9 @@
  *     const x = useState(0);
  *   </nc-code>
  */
-import { Component, defineComponent } from '../core/component.js';
+import { Component, defineComponent } from '../../.nativecore/core/component.js';
 
-// ── Simple tokenizer ─────────────────────────────────────────────────────────
+// -- Simple tokenizer ---------------------------------------------------------
 
 const KEYWORDS_JS  = new Set(['const','let','var','function','return','import','export','default','class','extends','new','this','super','if','else','for','while','do','switch','case','break','continue','try','catch','finally','throw','typeof','instanceof','in','of','async','await','yield','static','get','set','null','undefined','true','false','void','delete']);
 const KEYWORDS_TS  = new Set([...KEYWORDS_JS,'type','interface','enum','namespace','declare','abstract','as','from','implements','keyof','readonly','infer','never','unknown','any','string','number','boolean','object','symbol','bigint']);
@@ -136,7 +136,7 @@ function tokenizeCss(code: string): string {
         .replace(/([\w-]+)\s*:/g, '<span class="t-attr">$1</span>:');
 }
 
-// ── Component ─────────────────────────────────────────────────────────────────
+// -- Component -----------------------------------------------------------------
 
 export class NcCode extends Component {
     static useShadowDOM = true;
@@ -312,4 +312,5 @@ export class NcCode extends Component {
 }
 
 defineComponent('nc-code', NcCode);
+
 

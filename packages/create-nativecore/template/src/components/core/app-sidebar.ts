@@ -1,8 +1,8 @@
-﻿import { Component, defineComponent } from '@core/component.js';
+import { Component, defineComponent } from '@core/component.js';
 import { useState } from '@core/state.js';
 import type { State } from '@core/state.js';
-import { html } from '@utils/templates.js';
-import { dom } from '@utils/dom.js';
+import { html } from '@core-utils/templates.js';
+import { dom } from '@core-utils/dom.js';
 import auth from '@services/auth.service.js';
 import router from '@core/router.js';
 
@@ -128,7 +128,7 @@ export class AppSidebar extends Component {
             this.setAttribute('collapsed', '');
         }
 
-        // Watch state â€” update classes without full re-render
+        // Watch state — update classes without full re-render
         this._unwatchCollapsed = this.isCollapsed.watch(() => {
             this.updateSidebar();
         });
@@ -236,3 +236,4 @@ export class AppSidebar extends Component {
 }
 
 defineComponent('app-sidebar', AppSidebar);
+

@@ -92,25 +92,25 @@ function packageJsonTemplate(config) {
         type: 'module',
         main: 'server.js',
         scripts: {
-            prestart: 'npm run compile && node scripts/inject-version.mjs',
+            prestart: 'npm run compile && node .nativecore/scripts/inject-version.mjs',
             start: 'node server.js',
             validate: 'npm run typecheck && npm run build:client && npm run test -- --run',
-            dev: 'npm run compile && node scripts/inject-version.mjs && concurrently --kill-others --names "watch,server" -c "blue,green" "node scripts/watch-compile.mjs" "node server.js"',
-            'dev:watch': 'node scripts/watch-compile.mjs',
+            dev: 'npm run compile && node .nativecore/scripts/inject-version.mjs && concurrently --kill-others --names "watch,server" -c "blue,green" "node .nativecore/scripts/watch-compile.mjs" "node server.js"',
+            'dev:watch': 'node .nativecore/scripts/watch-compile.mjs',
             clean: 'node -e "const fs=require(\'fs\'); fs.rmSync(\'dist\',{recursive:true,force:true}); fs.rmSync(\'_deploy\',{recursive:true,force:true})"',
             prebuild: 'npm run clean && npm run lint && npm run typecheck',
-            build: 'node scripts/inject-version.mjs && npm run compile:prod && node scripts/minify.mjs && node scripts/prepare-static-assets.mjs && node scripts/strip-dev-blocks.mjs && node scripts/remove-dev.mjs',
-            'build:client': 'node scripts/inject-version.mjs && npm run compile:prod && node scripts/minify.mjs && node scripts/prepare-static-assets.mjs',
+            build: 'node .nativecore/scripts/inject-version.mjs && npm run compile:prod && node .nativecore/scripts/minify.mjs && node .nativecore/scripts/prepare-static-assets.mjs && node .nativecore/scripts/strip-dev-blocks.mjs && node .nativecore/scripts/remove-dev.mjs',
+            'build:client': 'node .nativecore/scripts/inject-version.mjs && npm run compile:prod && node .nativecore/scripts/minify.mjs && node .nativecore/scripts/prepare-static-assets.mjs',
             compile: 'tsc && tsc-alias',
-            'compile:prod': 'tsc -p tsconfig.build.json && tsc-alias -p tsconfig.build.json && node scripts/remove-dev.mjs',
+            'compile:prod': 'tsc -p tsconfig.build.json && tsc-alias -p tsconfig.build.json && node .nativecore/scripts/remove-dev.mjs',
             typecheck: 'tsc --noEmit',
-            'make:component': 'node scripts/make-component.mjs',
-            'make:core-component': 'node scripts/make-core-component.mjs',
-            'make:controller': 'node scripts/make-controller.mjs',
-            'remove:component': 'node scripts/remove-component.mjs',
-            'remove:core-component': 'node scripts/remove-core-component.mjs',
-            'make:view': 'node scripts/make-view.mjs',
-            'remove:view': 'node scripts/remove-view.mjs',
+            'make:component': 'node .nativecore/scripts/make-component.mjs',
+            'make:core-component': 'node .nativecore/scripts/make-core-component.mjs',
+            'make:controller': 'node .nativecore/scripts/make-controller.mjs',
+            'remove:component': 'node .nativecore/scripts/remove-component.mjs',
+            'remove:core-component': 'node .nativecore/scripts/remove-core-component.mjs',
+            'make:view': 'node .nativecore/scripts/make-view.mjs',
+            'remove:view': 'node .nativecore/scripts/remove-view.mjs',
             test: 'vitest',
             'test:ui': 'vitest --ui',
             'test:coverage': 'vitest --coverage',
@@ -165,8 +165,8 @@ function routesTemplate(config) {
     return `/**
  * Route Configuration
  */
-import { bustCache } from '../utils/cacheBuster.js';
-import type { ControllerFunction, Router } from '../core/router.js';
+import { bustCache } from '@core-utils/cacheBuster.js';
+import type { ControllerFunction, Router } from '@core/router.js';
 
 function lazyController(controllerName: string, controllerPath: string): ControllerFunction {
     return async (...args: any[]) => {
@@ -227,11 +227,11 @@ function appTsTemplate(config) {
     return `/**
  * Main Application Entry Point
  */
-import router from './core/router.js';
+import router from '@core/router.js';
 ${authImports}import { registerRoutes, protectedRoutes } from './routes/routes.js';
 import { initSidebar } from './utils/sidebar.js';
-import { initLazyComponents } from './core/lazyComponents.js';
-import './utils/dom.js';
+import { initLazyComponents } from '@core/lazyComponents.js';
+import '@core-utils/dom.js';
 import './components/registry.js';
 
 function isLocalhost(): boolean {
@@ -319,22 +319,30 @@ function homeControllerTemplate(config) {
  * Home Controller
  * Updates the primary landing CTA based on authentication status.
  */
-import auth from '../services/auth.service.js';
+import { trackEvents, trackSubscriptions } from '@core-utils/events.js';
+import { dom } from '@core-utils/dom.js';
+import auth from '@services/auth.service.js';
 
 export async function homeController(): Promise<() => void> {
-    const getStartedBtn = document.getElementById('get-started-btn') as HTMLAnchorElement | null;
+    const events = trackEvents();
+    const subs = trackSubscriptions();
+
+    const getStartedBtn = dom.$<HTMLAnchorElement>('#get-started-btn');
 
     if (getStartedBtn) {
         if (auth.isAuthenticated()) {
-            getStartedBtn.href = '${authenticatedHref}';
+            getStartedBtn.setAttribute('href', '${authenticatedHref}');
             getStartedBtn.textContent = 'Go to Dashboard';
         } else {
-            getStartedBtn.href = '${unauthenticatedHref}';
+            getStartedBtn.setAttribute('href', '${unauthenticatedHref}');
             getStartedBtn.textContent = '${unauthenticatedLabel}';
         }
     }
 
-    return () => {};
+    return () => {
+        events.cleanup();
+        subs.cleanup();
+    };
 }
 `;
 }
@@ -584,6 +592,16 @@ async function main() {
     const projectTitle = toTitleCase(projectName);
     const useDefaults = hasFlag('--defaults');
 
+    if (!useDefaults && !hasFlag('--no-auth')) {
+        console.log('Auth strategy note:');
+        console.log('  The included auth flow uses JWT tokens stored in sessionStorage with');
+        console.log('  automatic refresh token rotation. Tokens are cleared when the browser');
+        console.log('  tab closes. If your project requires a different strategy (HttpOnly');
+        console.log('  cookies, OAuth, SSO, etc.) it is your responsibility to replace the');
+        console.log('  auth.service.ts and api.service.ts implementations accordingly.');
+        console.log('');
+    }
+
     const includeAuth = hasFlag('--no-auth')
         ? false
         : useDefaults
@@ -650,3 +668,5 @@ main().catch(error => {
     rl.close();
     process.exit(1);
 });
+
+

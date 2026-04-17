@@ -1,4 +1,4 @@
-﻿/**
+/**
  * NcPopover Component - floating panel anchored to a trigger element
  *
  * More flexible than a dropdown: supports arbitrary slot content,
@@ -36,7 +36,7 @@
  *     </div>
  *   </nc-popover>
  */
-import { Component, defineComponent } from '../core/component.js';
+import { Component, defineComponent } from '../../.nativecore/core/component.js';
 
 type Placement = 'top'|'top-start'|'top-end'|'bottom'|'bottom-start'|'bottom-end'|'left'|'left-start'|'left-end'|'right'|'right-start'|'right-end';
 
@@ -113,7 +113,7 @@ export class NcPopover extends Component {
         this._cleanup();
     }
 
-    // ── Public API ──────────────────────────────────────────────────────────
+    // -- Public API ----------------------------------------------------------
 
     show()   { if (!this._open) { this._open = true;  this.render(); this._position(); this._setupOutside(); this.dispatchEvent(new CustomEvent('open',  { bubbles: true, composed: true })); } }
     hide()   { if (this._open)  { this._open = false; this.render(); this._cleanupOutside(); this.dispatchEvent(new CustomEvent('close', { bubbles: true, composed: true })); } }
@@ -122,7 +122,7 @@ export class NcPopover extends Component {
         else this.show();
     }
 
-    // ── Trigger binding ─────────────────────────────────────────────────────
+    // -- Trigger binding -----------------------------------------------------
 
     private _bindTrigger() {
         const triggerSlot = this.shadowRoot!.querySelector<HTMLSlotElement>('slot[name="trigger"]');
@@ -188,7 +188,7 @@ export class NcPopover extends Component {
         });
     }
 
-    // ── Position calculation ────────────────────────────────────────────────
+    // -- Position calculation ------------------------------------------------
 
     private _position() {
         const popover = this.shadowRoot!.querySelector<HTMLElement>('#popover');
@@ -270,4 +270,5 @@ export class NcPopover extends Component {
 }
 
 defineComponent('nc-popover', NcPopover);
+
 

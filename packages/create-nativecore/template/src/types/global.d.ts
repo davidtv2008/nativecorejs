@@ -1,4 +1,11 @@
 /**
+ * App-specific global type augmentations.
+ *
+ * Keep framework-owned declarations in .nativecore/types.
+ * Add per-app HTMLElementTagNameMap, Window, or global extensions here.
+ */
+
+export {};/**
  * Global Type Declarations
  */
 

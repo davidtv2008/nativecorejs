@@ -1,4 +1,4 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="en" prefix="og: https://ogp.me/ns#" data-public-route="ready">
 <head>
     <meta charset="UTF-8">
@@ -31,9 +31,9 @@
     <meta name="twitter:description" content="A modern, lightweight reactive framework using vanilla JavaScript, Web Components, reactive signals, and zero dependencies.">
     <meta name="twitter:image" content="https://nativecorejs.com/assets/twitter-card.png">
     <meta name="twitter:creator" content="@nativecorejs">
-    <!-- Inline SVG favicon to prevent fetch requests -->
-    <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>N</text></svg>">
-    <link rel="apple-touch-icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>N</text></svg>">
+    <!-- Favicon -->
+    <link rel="icon" type="image/svg+xml" href="/assets/icon.svg">
+    <link rel="apple-touch-icon" href="/assets/icon.svg">
     <!-- PWA Manifest -->
     <link rel="manifest" href="/manifest.json">
     <style>
@@ -87,15 +87,15 @@
             const isDev = location.hostname === 'localhost' || location.hostname === '127.0.0.1';
             const version = isDev ? Date.now() : '1.0.0-20260414231644';
             const modulePreloads = [
-                '/dist/app.js',
-                '/dist/controllers/home.controller.js',
-                '/dist/components/core/app-header.js',
-                '/dist/components/core/app-sidebar.js',
-                '/dist/components/core/app-footer.js',
-                '/dist/components/core/loading-spinner.js',
-                '/dist/components/core/nc-a.js',
-                '/dist/components/core/nc-scroll-top.js',
-                '/dist/components/core/nc-snackbar.js'
+                '/dist/src/app.js',
+                '/dist/src/controllers/home.controller.js',
+                '/dist/src/components/core/app-header.js',
+                '/dist/src/components/core/app-sidebar.js',
+                '/dist/src/components/core/app-footer.js',
+                '/dist/src/components/core/loading-spinner.js',
+                '/dist/src/components/core/nc-a.js',
+                '/dist/src/components/core/nc-scroll-top.js',
+                '/dist/src/components/core/nc-snackbar.js'
             ];
             modulePreloads.forEach(path => {
                 document.write(`<link rel="modulepreload" href="${path}?v=${version}">`);
@@ -130,7 +130,7 @@
         (function() {
             const isDev = location.hostname === 'localhost' || location.hostname === '127.0.0.1';
             const version = isDev ? Date.now() : '1.0.0-20260414231644';
-            import(`/dist/app.js?v=${version}`);
+            import(`/dist/src/app.js?v=${version}`);
         })();
     </script>
 </body>

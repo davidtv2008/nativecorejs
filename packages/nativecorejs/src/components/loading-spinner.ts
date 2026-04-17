@@ -1,4 +1,4 @@
-import { Component, defineComponent } from '../core/component.js';
+import { Component, defineComponent } from '../../.nativecore/core/component.js';
 
 export class LoadingSpinner extends Component {
     static get observedAttributes() {
@@ -51,3 +51,4 @@ export class LoadingSpinner extends Component {
 }
 
 defineComponent('loading-spinner', LoadingSpinner);
+

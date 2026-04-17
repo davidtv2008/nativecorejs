@@ -23,7 +23,7 @@
  */
 
 import { Component, defineComponent } from '@core/component.js';
-import { html } from '@utils/templates.js';
+import { html } from '@core-utils/templates.js';
 
 const ICONS: Record<string, { filled: string; empty: string }> = {
     star: {
@@ -265,3 +265,4 @@ export class NcRating extends Component {
 }
 
 defineComponent('nc-rating', NcRating);
+

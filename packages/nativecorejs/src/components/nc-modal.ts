@@ -1,10 +1,10 @@
-﻿/**
+/**
  * NcModal Component
  *
  * Attributes:
  *   - open: boolean - visible state
  *   - size: 'sm'|'md'|'lg'|'xl'|'full' (default: 'md')
- *   - no-close-btn: boolean - hide header × button
+ *   - no-close-btn: boolean - hide header � button
  *   - close-on-overlay: boolean - click backdrop to close (default: true)
  *   - no-overlay: boolean - skip backdrop rendering
  *   - sticky-header: boolean - header doesn't scroll with body
@@ -36,8 +36,8 @@
  *   NcModal.open('confirm-modal');
  */
 
-import { Component, defineComponent } from '../core/component.js';
-import { dom } from '../utils/dom.js';
+import { Component, defineComponent } from '../../.nativecore/core/component.js';
+import { dom } from '../../.nativecore/utils/dom.js';
 
 export class NcModal extends Component {
     static useShadowDOM = true;
@@ -236,4 +236,6 @@ export class NcModal extends Component {
 }
 
 defineComponent('nc-modal', NcModal);
+
+
 

@@ -23,7 +23,7 @@
  *   </nc-empty-state>
  */
 import { Component, defineComponent } from '@core/component.js';
-import { html } from '@utils/templates.js';
+import { html } from '@core-utils/templates.js';
 
 const ICONS: Record<string, string> = {
     inbox: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" fill="none">
@@ -133,3 +133,4 @@ export class NcEmptyState extends Component {
 }
 
 defineComponent('nc-empty-state', NcEmptyState);
+

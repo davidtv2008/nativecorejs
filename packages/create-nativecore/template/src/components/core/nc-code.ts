@@ -26,7 +26,7 @@
  *   </nc-code>
  */
 import { Component, defineComponent } from '@core/component.js';
-import { html } from '@utils/templates.js';
+import { html } from '@core-utils/templates.js';
 
 // ── Simple tokenizer ─────────────────────────────────────────────────────────
 
@@ -313,3 +313,4 @@ export class NcCode extends Component {
 }
 
 defineComponent('nc-code', NcCode);
+

@@ -155,9 +155,9 @@ class DevTools {
 
     private loadOverlayVisibilityPreference(): boolean {
         try {
-            return localStorage.getItem(DevTools.TOGGLE_STORAGE_KEY) !== 'false';
+            return localStorage.getItem(DevTools.TOGGLE_STORAGE_KEY) === 'true';
         } catch {
-            return true;
+            return false;
         }
     }
 

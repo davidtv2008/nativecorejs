@@ -91,7 +91,7 @@ defineComponent('my-component', MyComponent);
 ## Controller Template
 
 ```typescript
-import { trackEvents, trackSubscriptions } from '@utils/events.js';
+import { trackEvents, trackSubscriptions } from '@core-utils/events.js';
 import api from '@services/api.service.js';
 import { store } from '@stores/appStore.js';
 
@@ -768,7 +768,7 @@ chore: Update dependencies
 - ✅ Services → `src/services/`
 - ✅ Views → `src/views/pages/public/` or `protected/`
 - ✅ Utils → `src/utils/`
-- ✅ Core → `src/core/` (framework only)
+- ✅ Core → `.nativecore/core/` (framework only)
 
 ## Generator Usage
 
@@ -794,3 +794,5 @@ Never manually edit:
 - `components/index.js` (use generator)
 - `controllers/index.js` (use generator)
 - Route registrations (use generator)
+
+

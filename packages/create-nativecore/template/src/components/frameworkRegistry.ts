@@ -66,3 +66,5 @@ export function registerFrameworkComponents(): void {
     componentRegistry.register('nc-timeline', './core/nc-timeline.js');
     componentRegistry.register('nc-tooltip', './core/nc-tooltip.js');
 }
+
+

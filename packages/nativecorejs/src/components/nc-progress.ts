@@ -1,4 +1,4 @@
-import { Component, defineComponent } from '../core/component.js';
+import { Component, defineComponent } from '../../.nativecore/core/component.js';
 
 export class NcProgress extends Component {
     static useShadowDOM = true;
@@ -112,3 +112,4 @@ export class NcProgress extends Component {
 }
 
 defineComponent('nc-progress', NcProgress);
+

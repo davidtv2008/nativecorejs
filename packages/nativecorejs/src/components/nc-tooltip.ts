@@ -1,4 +1,4 @@
-﻿/**
+/**
  * NcTooltip Component
  *
  * Wraps any element and shows a tooltip on hover/focus.
@@ -15,8 +15,8 @@
  *   </nc-tooltip>
  */
 
-import { Component, defineComponent } from '../core/component.js';
-import { escapeHTML } from '../utils/templates.js';
+import { Component, defineComponent } from '../../.nativecore/core/component.js';
+import { escapeHTML } from '../../.nativecore/utils/templates.js';
 
 export class NcTooltip extends Component {
     static useShadowDOM = true;
@@ -142,4 +142,6 @@ export class NcTooltip extends Component {
 }
 
 defineComponent('nc-tooltip', NcTooltip);
+
+
 

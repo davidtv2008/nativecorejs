@@ -1,4 +1,4 @@
-﻿/**
+/**
  * NcAutocomplete Component
  *
  * Attributes:
@@ -21,8 +21,8 @@
  *   - change: CustomEvent<{ value: string; name: string }>
  */
 
-import { Component, defineComponent } from '../core/component.js';
-import { escapeHTML } from '../utils/templates.js';
+import { Component, defineComponent } from '../../.nativecore/core/component.js';
+import { escapeHTML } from '../../.nativecore/utils/templates.js';
 
 export class NcAutocomplete extends Component {
     static useShadowDOM = true;
@@ -296,4 +296,6 @@ export class NcAutocomplete extends Component {
 }
 
 defineComponent('nc-autocomplete', NcAutocomplete);
+
+
 

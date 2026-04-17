@@ -1,5 +1,5 @@
-import { Component, defineComponent } from '../core/component.js';
-import { escapeHTML } from '../utils/templates.js';
+import { Component, defineComponent } from '../../.nativecore/core/component.js';
+import { escapeHTML } from '../../.nativecore/utils/templates.js';
 
 const ICONS: Record<string, string> = {
     inbox: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" fill="none"><rect x="8" y="16" width="48" height="36" rx="4" stroke="currentColor" stroke-width="2.5"/><polyline points="8,30 26,42 38,42 56,30" stroke="currentColor" stroke-width="2.5" stroke-linejoin="round"/><line x1="20" y1="24" x2="44" y2="24" stroke="currentColor" stroke-width="2" stroke-linecap="round" opacity=".5"/><line x1="20" y1="30" x2="32" y2="30" stroke="currentColor" stroke-width="2" stroke-linecap="round" opacity=".5"/></svg>`,
@@ -84,3 +84,5 @@ export class NcEmptyState extends Component {
 }
 
 defineComponent('nc-empty-state', NcEmptyState);
+
+

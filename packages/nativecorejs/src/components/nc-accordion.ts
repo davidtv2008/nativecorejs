@@ -1,4 +1,4 @@
-﻿/**
+/**
  * NcAccordion + NcAccordionItem Components
  *
  * nc-accordion:
@@ -20,9 +20,9 @@
  *   </nc-accordion>
  */
 
-import { Component, defineComponent } from '../core/component.js';
+import { Component, defineComponent } from '../../.nativecore/core/component.js';
 
-// ── NcAccordionItem ──────────────────────────────────────────────────────────
+// -- NcAccordionItem ----------------------------------------------------------
 
 export class NcAccordionItem extends Component {
     static useShadowDOM = true;
@@ -130,7 +130,7 @@ export class NcAccordionItem extends Component {
     }
 }
 
-// ── NcAccordion ──────────────────────────────────────────────────────────────
+// -- NcAccordion --------------------------------------------------------------
 
 export class NcAccordion extends Component {
     static useShadowDOM = true;
@@ -184,4 +184,5 @@ export class NcAccordion extends Component {
 
 defineComponent('nc-accordion-item', NcAccordionItem);
 defineComponent('nc-accordion', NcAccordion);
+
 

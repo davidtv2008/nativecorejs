@@ -898,9 +898,15 @@ const server = http.createServer(async (req, res) => {
     
     // Strip query parameters for file path resolution
     const urlWithoutQuery = req.url.split('?')[0];
-    
+
     // Handle static files and SPA routing
-    let filePath = path.join(ROOT_DIR, urlWithoutQuery === '/' ? 'index.html' : urlWithoutQuery);
+    // public/ is the single source of truth for static assets — resolve /assets/* from there
+    let filePath;
+    if (urlWithoutQuery.startsWith('/assets/')) {
+        filePath = path.join(ROOT_DIR, 'public', urlWithoutQuery);
+    } else {
+        filePath = path.join(ROOT_DIR, urlWithoutQuery === '/' ? 'index.html' : urlWithoutQuery);
+    }
     const pathExists = fs.existsSync(filePath);
     const pathIsDirectory = pathExists ? fs.statSync(filePath).isDirectory() : false;
     

@@ -1,4 +1,4 @@
-import { Component, defineComponent } from '../core/component.js';
+import { Component, defineComponent } from '../../.nativecore/core/component.js';
 
 const VARIANT_COLORS: Record<string, string> = {
     primary: 'var(--nc-primary, #10b981)',
@@ -72,3 +72,4 @@ export class NcProgressCircular extends Component {
 }
 
 defineComponent('nc-progress-circular', NcProgressCircular);
+

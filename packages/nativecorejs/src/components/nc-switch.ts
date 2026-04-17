@@ -1,4 +1,4 @@
-import { Component, defineComponent } from '../core/component.js';
+import { Component, defineComponent } from '../../.nativecore/core/component.js';
 
 export class NcSwitch extends Component {
     static useShadowDOM = true;
@@ -203,3 +203,4 @@ export class NcSwitch extends Component {
 }
 
 defineComponent('nc-switch', NcSwitch);
+

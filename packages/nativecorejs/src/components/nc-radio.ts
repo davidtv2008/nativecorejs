@@ -1,4 +1,4 @@
-import { Component, defineComponent } from '../core/component.js';
+import { Component, defineComponent } from '../../.nativecore/core/component.js';
 
 export class NcRadio extends Component {
     static useShadowDOM = true;
@@ -179,3 +179,4 @@ export class NcRadio extends Component {
 }
 
 defineComponent('nc-radio', NcRadio);
+

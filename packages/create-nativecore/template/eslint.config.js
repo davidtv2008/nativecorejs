@@ -67,7 +67,7 @@ export default tseslint.config(
     },
     {
         // Controllers and router - allow document.querySelector since they're not components
-        files: ['src/controllers/**/*.{js,ts}', 'src/core/router.{js,ts}', 'src/app.{js,ts}', 'src/utils/**/*.{js,ts}'],
+        files: ['src/controllers/**/*.{js,ts}', '.nativecore/core/router.{js,ts}', 'src/app.{js,ts}', 'src/utils/**/*.{js,ts}'],
         rules: {
             'no-restricted-syntax': 'off'
         }

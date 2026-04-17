@@ -1,12 +1,12 @@
 import { fileURLToPath } from 'node:url';
 import { defineConfig } from 'vitest/config';
 
-const srcDir = fileURLToPath(new URL('./src', import.meta.url));
-
 export default defineConfig({
   resolve: {
     alias: {
-      '@core': fileURLToPath(new URL('./src/core', import.meta.url)),
+      '@core': fileURLToPath(new URL('./.nativecore/core', import.meta.url)),
+      '@core-utils': fileURLToPath(new URL('./.nativecore/utils', import.meta.url)),
+      '@core-types': fileURLToPath(new URL('./.nativecore/types', import.meta.url)),
       '@components': fileURLToPath(new URL('./src/components', import.meta.url)),
       '@config': fileURLToPath(new URL('./src/config', import.meta.url)),
       '@routes': fileURLToPath(new URL('./src/routes', import.meta.url)),

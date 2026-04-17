@@ -1,8 +1,8 @@
 /**
  * Route Configuration
  */
-import { bustCache } from '../utils/cacheBuster.js';
-import type { ControllerFunction } from '../core/router.js';
+import { bustCache } from '@core-utils/cacheBuster.js';
+import type { ControllerFunction } from '@core/router.js';
 
 function lazyController(controllerName: string, controllerPath: string): ControllerFunction {
     return async (...args: any[]) => {
@@ -26,3 +26,6 @@ export function registerRoutes(router: any): void {
 }
 
 export const protectedRoutes = ['/dashboard'];
+
+
+

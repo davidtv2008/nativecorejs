@@ -41,7 +41,7 @@
  *   </nc-timeline>
  */
 import { Component, defineComponent } from '@core/component.js';
-import { html } from '@utils/templates.js';
+import { html } from '@core-utils/templates.js';
 
 const STATUS_COLORS: Record<string, string> = {
     completed: 'var(--nc-success)',
@@ -185,3 +185,4 @@ export class NcTimeline extends Component {
 }
 
 defineComponent('nc-timeline', NcTimeline);
+

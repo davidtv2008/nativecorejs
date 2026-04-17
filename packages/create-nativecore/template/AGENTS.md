@@ -28,11 +28,11 @@ There is no JSX, no virtual DOM, no React, no Vue. Everything is TypeScript + na
 | Route definitions          | `src/config/routes.ts`                     |
 | Component registry         | `src/components/registry.ts`               |
 | Controller exports         | `src/controllers/index.ts`                 |
-| Base Component class       | `src/core/component.ts`                    |
-| State primitives           | `src/core/state.ts`                        |
-| Router                     | `src/core/router.ts`                       |
-| Event/subscription helpers | `src/utils/events.ts`                      |
-| DOM helpers                | `src/utils/dom.ts`                         |
+| Base Component class       | `.nativecore/core/component.ts`                    |
+| State primitives           | `.nativecore/core/state.ts`                        |
+| Router                     | `.nativecore/core/router.ts`                       |
+| Event/subscription helpers | `.nativecore/utils/events.ts`                      |
+| DOM helpers                | `.nativecore/utils/dom.ts`                         |
 | Global store               | `src/stores/appStore.ts`                   |
 | UI store                   | `src/stores/uiStore.ts`                    |
 | Auth service               | `src/services/auth.service.ts`             |
@@ -91,7 +91,7 @@ defineComponent('my-widget', MyWidget);
 ## Controller Pattern
 
 ```typescript
-import { trackEvents, trackSubscriptions } from '@utils/events.js';
+import { trackEvents, trackSubscriptions } from '@core-utils/events.js';
 import api from '@services/api.service.js';
 import { store } from '@stores/appStore.js';
 
@@ -143,7 +143,7 @@ Prompts for protected/public and whether to create a controller. Auto-updates `r
 ## Path Aliases
 
 ```typescript
-@core/        → src/core/
+@core/        → .nativecore/core/
 @components/  → src/components/
 @services/    → src/services/
 @utils/       → src/utils/
@@ -193,3 +193,5 @@ uiStore.removeNotification(id)
 - Not returning cleanup from a controller — old listeners accumulate across navigations
 - Writing `import { X } from '@core/component'` without `.js` — module not found at runtime
 - Adding a component to `registry.ts` with wrong path prefix — all UI components use `'./ui/'`
+
+

@@ -1,4 +1,4 @@
-﻿/**
+/**
  * NcFileUpload Component
  *
  * NativeCore Framework Core Component
@@ -20,8 +20,8 @@
  *   <nc-file-upload name="docs" accept=".pdf,.docx" multiple max-size="10"></nc-file-upload>
  */
 
-import { Component, defineComponent } from '../core/component.js';
-import { escapeHTML } from '../utils/templates.js';
+import { Component, defineComponent } from '../../.nativecore/core/component.js';
+import { escapeHTML } from '../../.nativecore/utils/templates.js';
 
 export class NcFileUpload extends Component {
     static useShadowDOM = true;
@@ -353,4 +353,6 @@ export class NcFileUpload extends Component {
 }
 
 defineComponent('nc-file-upload', NcFileUpload);
+
+
 

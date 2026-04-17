@@ -37,7 +37,7 @@
  *   </nc-popover>
  */
 import { Component, defineComponent } from '@core/component.js';
-import { html } from '@utils/templates.js';
+import { html } from '@core-utils/templates.js';
 
 type Placement = 'top'|'top-start'|'top-end'|'bottom'|'bottom-start'|'bottom-end'|'left'|'left-start'|'left-end'|'right'|'right-start'|'right-end';
 
@@ -259,3 +259,4 @@ export class NcPopover extends Component {
 }
 
 defineComponent('nc-popover', NcPopover);
+

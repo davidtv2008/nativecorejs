@@ -14,7 +14,7 @@ import { Component, defineComponent } from '@core/component.js';
 import { useState } from '@core/state.js';
 import { createAnimationLoop, type AnimationLoop } from '@core/gpu-animation.js';
 import type { State } from '@core/state.js';
-import { html } from '@utils/templates.js';
+import { html } from '@core-utils/templates.js';
 
 interface Particle {
     x: number;
@@ -342,3 +342,4 @@ export class NcSplash extends Component {
 }
 
 defineComponent('nc-splash', NcSplash);
+

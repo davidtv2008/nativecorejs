@@ -1,4 +1,4 @@
-﻿/**
+/**
  * NcTimeline Component - vertical event timeline
  *
  * Attributes:
@@ -40,8 +40,8 @@
  *     </nc-timeline-item>
  *   </nc-timeline>
  */
-import { Component, defineComponent } from '../core/component.js';
-import { escapeHTML } from '../utils/templates.js';
+import { Component, defineComponent } from '../../.nativecore/core/component.js';
+import { escapeHTML } from '../../.nativecore/utils/templates.js';
 
 const STATUS_COLORS: Record<string, string> = {
     completed: 'var(--nc-success)',
@@ -60,7 +60,7 @@ const SMALL_ICONS: Record<string, string> = {
 const iconSvg = (p: string, sz = 10) =>
     `<svg xmlns="http://www.w3.org/2000/svg" width="${sz}" height="${sz}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">${p}</svg>`;
 
-// ── NcTimelineItem ────────────────────────────────────────────────────────────
+// -- NcTimelineItem ------------------------------------------------------------
 
 export class NcTimelineItem extends Component {
     static useShadowDOM = true;
@@ -169,7 +169,7 @@ export class NcTimelineItem extends Component {
 
 defineComponent('nc-timeline-item', NcTimelineItem);
 
-// ── NcTimeline ────────────────────────────────────────────────────────────────
+// -- NcTimeline ----------------------------------------------------------------
 
 export class NcTimeline extends Component {
     static useShadowDOM = true;
@@ -185,4 +185,6 @@ export class NcTimeline extends Component {
 }
 
 defineComponent('nc-timeline', NcTimeline);
+
+
 

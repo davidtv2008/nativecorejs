@@ -2,8 +2,8 @@
  * Global Application Store
  * Manages global application state
  */
-import { useState } from '../core/state.js';
-import type { State } from '../core/state.js';
+import { useState } from '@core/state.js';
+import type { State } from '@core/state.js';
 
 export interface User {
     id: string | number;
@@ -55,3 +55,5 @@ class AppStore {
 }
 
 export const store = new AppStore();
+
+

@@ -17,8 +17,8 @@
  */
 import { Component, defineComponent } from '@core/component.js';
 import { addPassiveListener } from '@core/gpu-animation.js';
-import { dom } from '@utils/dom.js';
-import { html } from '@utils/templates.js';
+import { dom } from '@core-utils/dom.js';
+import { html } from '@core-utils/templates.js';
 
 export class NcScrollTop extends Component {
     static useShadowDOM = true;
@@ -115,3 +115,4 @@ export class NcScrollTop extends Component {
 }
 
 defineComponent('nc-scroll-top', NcScrollTop);
+

@@ -1,7 +1,7 @@
 import { Component, defineComponent } from '@core/component.js';
 import { useState, computed } from '@core/state.js';
 import type { State, ComputedState } from '@core/state.js';
-import { html } from '@utils/templates.js';
+import { html } from '@core-utils/templates.js';
 
 export class DashboardSignalLab extends Component {
     static useShadowDOM = true;

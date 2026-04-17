@@ -20,7 +20,7 @@
  *   </nc-avatar-group>
  */
 import { Component, defineComponent } from '@core/component.js';
-import { html } from '@utils/templates.js';
+import { html } from '@core-utils/templates.js';
 
 export class NcAvatarGroup extends Component {
     static useShadowDOM = true;
@@ -112,3 +112,4 @@ export class NcAvatarGroup extends Component {
 }
 
 defineComponent('nc-avatar-group', NcAvatarGroup);
+

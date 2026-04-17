@@ -26,8 +26,8 @@
  */
 
 import { Component, defineComponent } from '@core/component.js';
-import { dom } from '@utils/dom.js';
-import { html } from '@utils/templates.js';
+import { dom } from '@core-utils/dom.js';
+import { html } from '@core-utils/templates.js';
 
 interface ToastOptions {
     message: string;
@@ -229,3 +229,4 @@ export class NcSnackbar extends Component {
 }
 
 defineComponent('nc-snackbar', NcSnackbar);
+

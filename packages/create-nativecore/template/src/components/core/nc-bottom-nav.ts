@@ -37,7 +37,7 @@
  *   active   — boolean (managed by parent nc-bottom-nav)
  */
 import { Component, defineComponent } from '@core/component.js';
-import { html } from '@utils/templates.js';
+import { html } from '@core-utils/templates.js';
 
 // Shared icon paths with nc-nav-item
 const NAV_ICONS: Record<string, string> = {
@@ -213,3 +213,4 @@ export class NcBottomNav extends Component {
 }
 
 defineComponent('nc-bottom-nav', NcBottomNav);
+

@@ -1,4 +1,4 @@
-import { Component, defineComponent } from '../core/component.js';
+import { Component, defineComponent } from '../../.nativecore/core/component.js';
 
 export class NcBreadcrumb extends Component {
     static useShadowDOM = true;
@@ -81,3 +81,4 @@ export class NcBreadcrumb extends Component {
 }
 
 defineComponent('nc-breadcrumb', NcBreadcrumb);
+

@@ -2,8 +2,8 @@
  * UI State Store
  * Manages UI-specific state
  */
-import { useState } from '../core/state.js';
-import type { State } from '../core/state.js';
+import { useState } from '@core/state.js';
+import type { State } from '@core/state.js';
 
 class UIStore {
     sidebarOpen: State<boolean>;
@@ -34,3 +34,5 @@ class UIStore {
 }
 
 export const uiStore = new UIStore();
+
+

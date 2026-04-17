@@ -1,4 +1,4 @@
-﻿/**
+/**
  * NativeCore Menu Item Component (nc-menu-item)
  *
  * A single selectable row inside an nc-menu. Renders an optional icon,
@@ -31,8 +31,8 @@
  *   </nc-menu-item>
  */
 
-import { Component, defineComponent } from '../core/component.js';
-import { html, raw, sanitizeURL } from '../utils/templates.js';
+import { Component, defineComponent } from '../../.nativecore/core/component.js';
+import { html, raw, sanitizeURL } from '../../.nativecore/utils/templates.js';
 
 export class NcMenuItem extends Component {
     static useShadowDOM = true;
@@ -192,4 +192,6 @@ export class NcMenuItem extends Component {
 }
 
 defineComponent('nc-menu-item', NcMenuItem);
+
+
 
