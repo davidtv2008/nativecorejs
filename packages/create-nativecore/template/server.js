@@ -650,12 +650,12 @@ function checkRateLimit(ip) {
     const now = Date.now();
     const attempts = loginAttempts.get(ip) || [];
     const recent = attempts.filter(t => now - t < RATE_LIMIT_WINDOW);
+    recent.push(now);
     loginAttempts.set(ip, recent);
     
-    if (recent.length >= RATE_LIMIT_MAX) {
+    if (recent.length > RATE_LIMIT_MAX) {
         return false;
     }
-    recent.push(now);
     return true;
 }
 
