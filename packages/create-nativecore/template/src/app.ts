@@ -9,7 +9,7 @@ import { authMiddleware } from './middleware/auth.middleware.js';
 import { registerRoutes, protectedRoutes } from './routes/routes.js';
 import { initSidebar } from './utils/sidebar.js';
 import { initLazyComponents } from '@core/lazyComponents.js';
-import '@core-utils/dom.js';
+import { dom } from '@core-utils/dom.js';
 import './components/registry.js';
 
 function isLocalhost(): boolean {
@@ -24,7 +24,7 @@ function updateSidebarVisibility() {
     const isAuthenticated = auth.isAuthenticated();
     const currentPath = window.location.pathname;
     const isProtectedRoute = protectedRoutes.some(route => currentPath.startsWith(route));
-    const app = document.getElementById('app');
+    const app = dom.$('#app');
 
     // Show sidebar only when authenticated AND on a protected route
     if (isAuthenticated && isProtectedRoute) {
@@ -82,14 +82,14 @@ async function init(){
         if (!isAuth) {
             router.replace('/login');
             document.body.classList.remove('sidebar-enabled');
-            const app = document.getElementById('app');
+            const app = dom.$('#app');
             app?.classList.remove('sidebar-collapsed');
             app?.classList.add('no-sidebar');
             // Reset sidebar to expanded so next login starts fresh
             localStorage.removeItem('sidebar-collapsed');
-            const sidebar = document.getElementById('appSidebar');
+            const sidebar = dom.$('#appSidebar');
             sidebar?.removeAttribute('collapsed');
-            document.querySelector('.app-layout')?.classList.remove('sidebar-collapsed');
+            dom.$('.app-layout')?.classList.remove('sidebar-collapsed');
         } else {
             updateSidebarVisibility();
         }

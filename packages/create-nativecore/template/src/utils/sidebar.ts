@@ -2,13 +2,14 @@
  * Sidebar Initialization and Management
  */
 import auth from '../services/auth.service.js';
+import { dom } from '@core-utils/dom.js';
 
 /**
  * Initialize sidebar functionality
  */
 export function initSidebar() {
-    const sidebar = document.getElementById('appSidebar');
-    const appLayout = document.querySelector('.app-layout');
+    const sidebar   = dom.$('#appSidebar');
+    const appLayout = dom.$('.app-layout');
     
     // Listen for sidebar toggle events from nc-sidebar component
     sidebar?.addEventListener('toggle', ((e: CustomEvent) => {
@@ -66,18 +67,18 @@ export function initSidebar() {
     }
     
     // Handle sidebar logout button
-    const sidebarLogoutBtn = document.getElementById('sidebarLogoutBtn');
+    const sidebarLogoutBtn = dom.$('#sidebarLogoutBtn');
     if (sidebarLogoutBtn) {
         sidebarLogoutBtn.addEventListener('click', () => {
             auth.logout();
         });
     }
-    
+
     // Update active link on page load
     function updateActiveSidebarLink() {
         const currentPath = window.location.pathname;
-        const sidebarItems = document.querySelectorAll('.sidebar-item');
-        
+        const sidebarItems = dom.$$('.sidebar-item');
+
         sidebarItems.forEach(item => {
             item.classList.remove('active');
             const href = item.getAttribute('href');
