@@ -1110,7 +1110,7 @@ try {
                 notifyFile(pendingJsFile);
                 pendingJsFile = null;
             }
-        }, 50);
+        }, 800);
     });
 
     // Watch src/ — CSS and HTML only (TS is handled via dist/ above)

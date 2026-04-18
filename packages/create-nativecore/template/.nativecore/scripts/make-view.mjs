@@ -83,53 +83,67 @@ function isValidRoutePath(value) {
 
 function createViewTemplate({ accessLabel, flatName, viewTitle, withController }) {
   if (withController) {
-    return `<section class="features-section ${flatName}-page" data-view="${flatName}">
-    <div class="section-head">
-      <p class="eyebrow">${accessLabel}</p>
-      <h2 data-hook="title">${viewTitle}</h2>
-      <p class="subtitle" data-hook="summary">
-        This view is ready for page-specific markup while the controller wires behavior into the existing DOM.
-      </p>
+    return `<div class="${flatName}-page" data-view="${flatName}">
+    <div class="scaffold-hero">
+        <div class="scaffold-hero__inner">
+            <span class="page-eyebrow">${accessLabel}</span>
+            <h1 class="scaffold-hero__title" data-hook="title">${viewTitle}</h1>
+            <p class="scaffold-hero__desc" data-hook="summary">Your controller is wired up and ready. Replace this markup with your real page structure.</p>
+        </div>
     </div>
 
-    <div class="features-grid">
-      <article class="feature-card">
-        <h3>Keep markup in the view</h3>
-        <p>Lay out your structure here and let the controller work against stable DOM targets.</p>
-      </article>
-      <article class="feature-card">
-        <h3>Use NativeCore helpers</h3>
-        <p>Reach for dom helpers, signals, auth, and API services before falling back to imperative DOM manipulation.</p>
-      </article>
-    </div>
+    <div class="scaffold-body container">
+        <div class="card-grid">
+            <article class="card">
+                <div class="card__icon">&#9670;</div>
+                <h3 class="card__title">Structure lives here</h3>
+                <p class="card__body">Write your markup in this view. The controller targets stable <code>data-hook</code> and <code>data-action</code> attributes rather than fragile class names.</p>
+            </article>
+            <article class="card">
+                <div class="card__icon">&#10022;</div>
+                <h3 class="card__title">Logic lives in the controller</h3>
+                <p class="card__body">Use <code>dom.data('${flatName}')</code>, <code>trackEvents</code>, and <code>trackSubscriptions</code> to wire behavior without touching the DOM directly.</p>
+            </article>
+            <article class="card">
+                <div class="card__icon">&#9632;</div>
+                <h3 class="card__title">State stays reactive</h3>
+                <p class="card__body">Call <code>useState()</code> for local state and <code>computed()</code> for derived values. Watch them with <code>.watch()</code> and clean up on exit.</p>
+            </article>
+        </div>
 
-    <div class="hero-actions">
-      <nc-button data-action="primary-action" variant="primary">Refresh Context</nc-button>
+        <div class="page-actions">
+            <nc-button data-action="primary-action" variant="primary">Primary Action</nc-button>
+            <nc-button data-action="secondary-action" variant="outline">Learn More</nc-button>
+        </div>
     </div>
-  </section>
+</div>
 `;
   }
 
-  return `<section class="features-section ${flatName}-page" data-view="${flatName}">
-    <div class="section-head">
-      <p class="eyebrow">${accessLabel}</p>
-      <h2>${viewTitle}</h2>
-      <p class="subtitle">
-        This view is ready for page-specific content and already aligned with the rest of the application styling.
-      </p>
+  return `<div class="${flatName}-page">
+    <div class="scaffold-hero">
+        <div class="scaffold-hero__inner">
+            <span class="page-eyebrow">${accessLabel}</span>
+            <h1 class="scaffold-hero__title">${viewTitle}</h1>
+            <p class="scaffold-hero__desc">Start building. Add your content below and connect a controller when the page needs interactivity.</p>
+        </div>
     </div>
 
-    <div class="features-grid">
-      <article class="feature-card">
-        <h3>Start with structure</h3>
-        <p>Add the markup this route needs here, then connect behavior with a controller only when the page actually needs it.</p>
-      </article>
-      <article class="feature-card">
-        <h3>Stay within the system</h3>
-        <p>Re-use existing layout, feature-card, and section styles so new routes feel native to the app from the start.</p>
-      </article>
+    <div class="scaffold-body container">
+        <div class="card-grid">
+            <article class="card">
+                <div class="card__icon">&#9670;</div>
+                <h3 class="card__title">Start with structure</h3>
+                <p class="card__body">Add the markup this route needs here. Design around <code>data-hook</code> and <code>data-action</code> attributes from day one.</p>
+            </article>
+            <article class="card">
+                <div class="card__icon">&#10022;</div>
+                <h3 class="card__title">Stay within the system</h3>
+                <p class="card__body">Re-use existing <code>.card</code>, <code>.card-grid</code>, and <code>.page-header</code> classes so every route feels native from the start.</p>
+            </article>
+        </div>
     </div>
-  </section>
+</div>
 `;
 }
 

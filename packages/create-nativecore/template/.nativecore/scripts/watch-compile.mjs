@@ -46,7 +46,7 @@ function handleTscOutput(chunk, writer) {
     const text = chunk.toString();
     writer.write(text);
 
-    if (/Found 0 errors?\. Watching for file changes\./.test(text)) {
+    if (/Found \d+ errors?\. Watching for file changes\./.test(text)) // run tsc-alias on every compile, not just clean ones {
         runAlias();
     }
 }
