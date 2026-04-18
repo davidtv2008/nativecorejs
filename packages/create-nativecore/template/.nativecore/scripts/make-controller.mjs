@@ -54,17 +54,17 @@ async function main() {
  * ${titleName} Controller
  * Handles dynamic behavior for the ${titleName.toLowerCase()} route.
  */
-import { trackEvents, trackSubscriptions } from '@core-utils/events.js';
+import { trackEvents } from '@core-utils/events.js';
 import { dom } from '@core-utils/dom.js';
-import { useState, computed } from '@core/state.js';
+import { useState, computed, effect } from '@core/state.js';
 import auth from '@services/auth.service.js';
 import api from '@services/api.service.js';
 
 export async function ${camelName}Controller(params: Record<string, string> = {}): Promise<() => void> {
 
     // -- Setup ---------------------------------------------------------------
-    const events = trackEvents();
-    const subs   = trackSubscriptions();
+    const events    = trackEvents();
+    const disposers: Array<() => void> = [];
 
     // -- DOM refs ------------------------------------------------------------
     const titleEl   = dom.$<HTMLElement>('[data-hook="title"]');
@@ -81,21 +81,17 @@ export async function ${camelName}Controller(params: Record<string, string> = {}
 
     void params;
 
-    // -- Helpers -------------------------------------------------------------
-    const syncView = () => {
+    // -- Reactive bindings ---------------------------------------------------
+    // effect() auto-tracks every state it reads and re-runs on any change.
+    // Collect the returned disposer — call it in the cleanup below.
+    // No manual .watch() subscriptions or syncView() helpers needed.
+    disposers.push(effect(() => {
         if (titleEl)   titleEl.textContent   = titleText.value;
         if (summaryEl) summaryEl.textContent = summaryText.value;
-    };
-
-    // -- Watchers ------------------------------------------------------------
-    subs.watch(titleText.watch(syncView));
-    subs.watch(summaryText.watch(syncView));
-
-    // -- On load -------------------------------------------------------------
-    syncView();
+    }));
 
     // -- Events --------------------------------------------------------------
-    // events.onClick is shorthand for click; use events.on for any other event type
+    // events.onClick is shorthand for click; use events.on for any other event type.
     events.onClick('[data-action="primary"]', () => {
         userState.value = auth.getUser();
     });
@@ -105,7 +101,7 @@ export async function ${camelName}Controller(params: Record<string, string> = {}
         titleText.dispose();
         summaryText.dispose();
         events.cleanup();
-        subs.cleanup();
+        disposers.forEach(d => d());
     };
 }
 `;
