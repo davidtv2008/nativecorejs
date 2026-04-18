@@ -23,7 +23,7 @@
  *   <nc-image src="/photo.jpg" alt="Mountain view" aspect="16/9" radius="md"></nc-image>
  */
 import { Component, defineComponent } from '@core/component.js';
-import { html, trusted } from '@core-utils/templates.js';
+import { html, trusted, escapeHtml, sanitizeURL } from '@core-utils/templates.js';
 
 const RADIUS: Record<string, string> = {
     none: '0',
@@ -127,7 +127,7 @@ export class NcImage extends Component {
                 <div class="skeleton"></div>
                 <img
                     id="img"
-                    src="${src}"
+                    src="${sanitizeURL(src)}"
                     alt="${alt}"
                     loading="${loading}"
                     decoding="async"
@@ -141,7 +141,7 @@ export class NcImage extends Component {
                     <span>Image not found</span>
                 </div>
             </figure>
-            ${trusted(caption ? `<figcaption>${caption}</figcaption>` : '')}
+            ${trusted(caption ? `<figcaption>${escapeHtml(caption)}</figcaption>` : '')}
         `;
     }
 

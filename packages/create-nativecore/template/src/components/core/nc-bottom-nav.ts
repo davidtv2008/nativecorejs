@@ -37,7 +37,7 @@
  *   active   — boolean (managed by parent nc-bottom-nav)
  */
 import { Component, defineComponent } from '@core/component.js';
-import { html, trusted } from '@core-utils/templates.js';
+import { html, trusted, escapeHtml } from '@core-utils/templates.js';
 
 // Shared icon paths with nc-nav-item
 const NAV_ICONS: Record<string, string> = {
@@ -129,9 +129,9 @@ export class NcBottomNavItem extends Component {
                 <span class="icon-wrap">
                     ${trusted(iconHtml)}
                     <slot name="icon"></slot>
-                    ${trusted(badge ? `<span class="badge">${badge}</span>` : '')}
+                    ${trusted(badge ? `<span class="badge">${escapeHtml(badge)}</span>` : '')}
                 </span>
-                ${trusted(!iconOnly && label ? `<span>${label}</span>` : '')}
+                ${trusted(!iconOnly && label ? `<span>${escapeHtml(label)}</span>` : '')}
             </button>
         `;
     }

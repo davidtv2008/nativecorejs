@@ -49,6 +49,8 @@ const ICONS: Record<string, string> = {
     default: '',
 };
 
+const ALLOWED_VARIANTS = new Set(['default', 'success', 'warning', 'danger', 'info']);
+
 let _seq = 0;
 
 export class NcSnackbar extends Component {
@@ -172,10 +174,11 @@ export class NcSnackbar extends Component {
 
     _add(opts: ToastOptions) {
         const max = Number(this.getAttribute('max') || 5);
+        const variant = ALLOWED_VARIANTS.has(opts.variant ?? '') ? opts.variant! : 'default';
         const toast: Toast = {
             id: ++_seq,
             message: opts.message,
-            variant: opts.variant || 'default',
+            variant,
             duration: opts.duration ?? 4000,
             dismissible: opts.dismissible ?? true,
             icon: opts.icon ?? true,

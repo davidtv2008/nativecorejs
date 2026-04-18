@@ -1,5 +1,5 @@
 import { Component, defineComponent } from '../../.nativecore/core/component.js';
-import { escapeHTML } from '../../.nativecore/utils/templates.js';
+import { escapeHTML, sanitizeURL } from '../../.nativecore/utils/templates.js';
 
 const RADIUS: Record<string, string> = {
     none: '0',
@@ -98,7 +98,7 @@ export class NcImage extends Component {
             </style>
             <figure>
                 <div class="skeleton"></div>
-                <img id="img" src="${src}" alt="${alt}" loading="${loading}" decoding="async" ${width ? `width="${width}"` : ''} ${height ? `height="${height}"` : ''} />
+                <img id="img" src="${sanitizeURL(src)}" alt="${escapeHTML(alt)}" loading="${loading}" decoding="async" ${width ? `width="${width}"` : ''} ${height ? `height="${height}"` : ''} />
                 <div class="error-plate" aria-hidden="true">
                     <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
                     <span>Image not found</span>

@@ -72,3 +72,26 @@ export const html = (strings: TemplateStringsArray, ...values: unknown[]): strin
  */
 export const css = (strings: TemplateStringsArray, ...values: any[]): string =>
     String.raw({ raw: strings }, ...values);
+
+/**
+ * Validate a URL and block dangerous protocols.
+ * Returns the URL if safe, or an empty string if blocked.
+ * Allows: http, https, mailto, tel, relative paths, data:image/*
+ */
+export function sanitizeURL(url: string | null | undefined): string {
+    if (!url) return '';
+    const trimmed = url.trim();
+    if (trimmed === '') return '';
+
+    // Block javascript:, vbscript:, data: (except images)
+    const lower = trimmed.toLowerCase().replace(/[\s\u0000-\u001F]+/g, '');
+    if (lower.startsWith('javascript:') || lower.startsWith('vbscript:')) {
+        return '';
+    }
+    // Allow data:image/* only
+    if (lower.startsWith('data:') && !lower.startsWith('data:image/')) {
+        return '';
+    }
+
+    return trimmed;
+}
