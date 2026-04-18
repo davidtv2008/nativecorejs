@@ -2,7 +2,7 @@
  * Home Controller
  * Updates the primary landing CTA based on authentication status.
  */
-import { trackEvents, trackSubscriptions } from '@core-utils/events.js';
+import { trackEvents } from '@core-utils/events.js';
 import { dom } from '@core-utils/dom.js';
 import auth from '@services/auth.service.js';
 
@@ -10,7 +10,6 @@ export async function homeController(): Promise<() => void> {
 
     // -- Setup ---------------------------------------------------------------
     const events = trackEvents();
-    const subs = trackSubscriptions();
 
     // -- DOM refs ------------------------------------------------------------
     const getStartedBtn = dom.$<HTMLAnchorElement>('#get-started-btn');
@@ -30,6 +29,5 @@ export async function homeController(): Promise<() => void> {
     // -- Cleanup -------------------------------------------------------------
     return () => {
         events.cleanup();
-        subs.cleanup();
     };
 }
