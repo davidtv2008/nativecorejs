@@ -32,7 +32,7 @@
  */
 
 import { Component, defineComponent } from '@core/component.js';
-import { html, trusted } from '@core-utils/templates.js';
+import { html, trusted, escapeHtml, sanitizeURL } from '@core-utils/templates.js';
 
 export class NcMenuItem extends Component {
     static useShadowDOM = true;
@@ -50,7 +50,7 @@ export class NcMenuItem extends Component {
         const disabled = this.hasAttribute('disabled');
 
         const iconHTML = icon
-            ? `<img class="item__icon" src="${icon}" alt="${alt}" />`
+            ? `<img class="item__icon" src="${sanitizeURL(icon)}" alt="${escapeHtml(alt)}" />`
             : '';
 
         return html`

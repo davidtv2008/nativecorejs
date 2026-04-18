@@ -1,4 +1,5 @@
 import { Component, defineComponent } from '../../.nativecore/core/component.js';
+import { escapeHTML } from '../../.nativecore/utils/templates.js';
 
 const EYE_OPEN = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" width="16" height="16"><path d="M1 10s3-6 9-6 9 6 9 6-3 6-9 6-9-6-9-6z"/><circle cx="10" cy="10" r="2.5"/></svg>`;
 const EYE_CLOSED = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" width="16" height="16"><path d="M2 2l16 16M7.5 7.5A3 3 0 0012.5 12.5M4.2 4.2C2.6 5.5 1 8 1 10s3 6 9 6c2 0 3.8-.5 5.3-1.3M8 4.3A8.7 8.7 0 0110 4c6 0 9 6 9 6s-.9 1.8-2.5 3.2"/></svg>`;
@@ -187,17 +188,17 @@ export class NcInput extends Component {
             <div class="wrap">
                 ${hasLeft ? `<span class="icon icon--left">${iconLeft}</span>` : ''}
                 <input
-                    type="${inputType}"
-                    name="${name}"
-                    value="${this.currentValue}"
-                    placeholder="${placeholder}"
-                    autocomplete="${autocomplete}"
+                    type="${escapeHTML(inputType)}"
+                    name="${escapeHTML(name)}"
+                    value="${escapeHTML(this.currentValue)}"
+                    placeholder="${escapeHTML(placeholder)}"
+                    autocomplete="${escapeHTML(autocomplete)}"
                     ${disabled ? 'disabled' : ''}
                     ${readonly ? 'readonly' : ''}
                     ${required ? 'required' : ''}
-                    ${maxlength ? `maxlength="${maxlength}"` : ''}
-                    ${minlength ? `minlength="${minlength}"` : ''}
-                    ${pattern ? `pattern="${pattern}"` : ''}
+                    ${maxlength ? `maxlength="${escapeHTML(maxlength)}"` : ''}
+                    ${minlength ? `minlength="${escapeHTML(minlength)}"` : ''}
+                    ${pattern ? `pattern="${escapeHTML(pattern)}"` : ''}
                     ${error ? 'class="has-error"' : ''}
                     aria-invalid="${!!error}"
                     aria-describedby="${error ? 'subtext' : hint ? 'subtext' : ''}"
@@ -216,8 +217,8 @@ export class NcInput extends Component {
                 </span>` : ''}
             </div>
 
-            ${error ? `<span class="subtext subtext--error" id="subtext" role="alert">${error}</span>` : ''}
-            ${hint && !error ? `<span class="subtext subtext--hint" id="subtext">${hint}</span>` : ''}
+            ${error ? `<span class="subtext subtext--error" id="subtext" role="alert">${escapeHTML(error)}</span>` : ''}
+            ${hint && !error ? `<span class="subtext subtext--hint" id="subtext">${escapeHTML(hint)}</span>` : ''}
         `;
     }
 

@@ -32,7 +32,7 @@
  */
 
 import { Component, defineComponent } from '../../.nativecore/core/component.js';
-import { html, raw, sanitizeURL } from '../../.nativecore/utils/templates.js';
+import { html, raw, sanitizeURL, escapeHTML } from '../../.nativecore/utils/templates.js';
 
 export class NcMenuItem extends Component {
     static useShadowDOM = true;
@@ -51,7 +51,7 @@ export class NcMenuItem extends Component {
 
         const safeIcon = sanitizeURL(icon);
         const iconHTML = safeIcon
-            ? `<img class="item__icon" src="${safeIcon}" alt="${alt}" />`
+            ? `<img class="item__icon" src="${safeIcon}" alt="${escapeHTML(alt)}" />`
             : '';
 
         return html`

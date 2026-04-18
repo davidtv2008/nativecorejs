@@ -37,6 +37,7 @@
  *   active   - boolean (managed by parent nc-bottom-nav)
  */
 import { Component, defineComponent } from '../../.nativecore/core/component.js';
+import { escapeHTML } from '../../.nativecore/utils/templates.js';
 
 // Shared icon paths with nc-nav-item
 const NAV_ICONS: Record<string, string> = {
@@ -124,13 +125,13 @@ export class NcBottomNavItem extends Component {
                     border: 1.5px solid var(--nc-bg-elevated, #fff);
                 }
             </style>
-            <button type="button" ${disabled ? 'disabled' : ''} aria-label="${label}" aria-current="${active ? 'page' : 'false'}" data-value="${value}">
+            <button type="button" ${disabled ? 'disabled' : ''} aria-label="${escapeHTML(label)}" aria-current="${active ? 'page' : 'false'}" data-value="${escapeHTML(value)}">
                 <span class="icon-wrap">
                     ${iconHtml}
                     <slot name="icon"></slot>
-                    ${badge ? `<span class="badge">${badge}</span>` : ''}
+                    ${badge ? `<span class="badge">${escapeHTML(badge)}</span>` : ''}
                 </span>
-                ${!iconOnly && label ? `<span>${label}</span>` : ''}
+                ${!iconOnly && label ? `<span>${escapeHTML(label)}</span>` : ''}
             </button>
         `;
     }
