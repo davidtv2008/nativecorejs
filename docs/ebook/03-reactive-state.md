@@ -146,10 +146,10 @@ The underlying `State<T>` object is the same; `useSignal()` is purely a style pr
 Let's build a component that shows a live summary: total tasks, completed tasks, and the completion percentage. Generate it:
 
 ```bash
-npm run make:component TaskStats
+npm run make:component task-stats
 ```
 
-Open `src/components/task-stats/TaskStats.ts`.
+Open `src/components/ui/task-stats.ts`.
 
 ### State and Computed Values
 

@@ -40,21 +40,20 @@ npm run make:component <name>
 
 ```
 src/components/
-└── task-card/
-    └── TaskCard.ts
+└── ui/
+    └── task-card.ts
 ```
 
-The generated `TaskCard.ts` file includes:
+The generated `task-card.ts` file includes:
 
-- `import { Component } from '@core/component.js'`
-- `import { defineComponent } from 'nativecorejs'`
+- `import { Component, defineComponent } from '@core/component.js'`
 - `import { useState } from '@core/state.js'`
 - `class TaskCard extends Component` with `static useShadowDOM = true`
 - A shadow DOM `template()` with a `<style>` block and placeholder markup
 - `onMount()` and `onUnmount()` stubs
 - `defineComponent('task-card', TaskCard)` at the bottom — auto-registers the element globally
 
-You never need to add the component to a registry file. The `defineComponent` call in the file itself is sufficient — import the file once anywhere in your application bootstrap and the element is available everywhere.
+The generator also appends `componentRegistry.register('task-card', './ui/task-card.js')` to `src/components/appRegistry.ts` so the lazy loader can auto-import it when the tag appears in a view.
 
 **Example:**
 
@@ -62,7 +61,7 @@ You never need to add the component to a registry file. The `defineComponent` ca
 npm run make:component priority-badge
 ```
 
-Generates `src/components/priority-badge/PriorityBadge.ts`. Open it and customize the template, attributes, and handlers.
+Generates `src/components/ui/priority-badge.ts`. Open it and customize the template, attributes, and handlers.
 
 ---
 
@@ -200,7 +199,7 @@ npm run remove:view tasks/new-task-form
 # removes the export from controllers/index.ts
 
 npm run remove:component priority-badge
-# Removes src/components/priority-badge/ entirely
+# Removes src/components/ui/priority-badge.ts and unregisters it
 ```
 
 Always use `remove:*` rather than manually deleting files. A manual delete leaves orphaned route registrations and index exports that cause runtime errors.
@@ -213,7 +212,8 @@ The generators enforce these conventions throughout the project:
 
 | Artifact | Convention | Example |
 |----------|-----------|---------|
-| Component file name (class) | PascalCase | `TaskCard` |
+| Component file name | kebab-case `.ts` | `task-card.ts` |
+| Component class name | PascalCase | `TaskCard` |
 | Component element name | kebab-case, min 1 hyphen | `task-card` |
 | View path | kebab-case segments | `tasks/new-task-form` |
 | Controller file name | kebab-case | `tasks.controller.ts` |

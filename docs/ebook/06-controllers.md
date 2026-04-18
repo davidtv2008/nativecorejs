@@ -173,8 +173,8 @@ import { dom }         from '@core-utils/dom.js';
 import { trackEvents } from '@core-utils/events.js';
 import { useState, computed, effect } from '@core/state.js';
 import { apiService }  from '@services/api.service.js';
-import '@components/task-card/TaskCard.ts';
-import '@components/task-stats/TaskStats.ts';
+import '@components/ui/task-card.ts';
+import '@components/ui/task-stats.ts';
 import type { RouteParams } from '@core/router.js';
 
 interface Task {
