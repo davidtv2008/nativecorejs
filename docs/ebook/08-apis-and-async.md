@@ -145,7 +145,7 @@ import { api }       from '@services/api.service.js';
 import { useState }  from '@core/state.js';
 import { trackEvents } from '@core-utils/events.js';
 import { router }    from '@core/router.js';
-import { escapeHTML } from '@core-utils/sanitize.js';
+import { escapeHtml } from '@core-utils/templates.js';
 
 interface Project {
   id:        number;
@@ -208,7 +208,7 @@ export async function projectsController(): Promise<() => void> {
 
     table.rows = projects.map(p => ({
       ...p,
-      name:      escapeHTML(p.name),
+      name:      escapeHtml(p.name),
       updatedAt: new Date(p.updatedAt).toLocaleDateString(),
       _actions:  `<nc-button size="sm" data-id="${p.id}" class="btn-view">View</nc-button>`,
     }));

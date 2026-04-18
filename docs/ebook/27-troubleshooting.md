@@ -39,7 +39,7 @@ NativeCoreJS bugs are usually localised to one of four places: route registratio
 
 ### Symptom: Custom element renders as a plain `<div>` with no styles
 
-1. Is the tag registered? Check `src/components/registry.ts` for a matching `componentRegistry.register()` call.
+1. Is the tag registered? Check `src/components/appRegistry.ts` for a matching `componentRegistry.register()` call.
 2. Is `static useShadowDOM = true` set on the class?
 3. Is there a typo in the tag name (kebab-case, not PascalCase in HTML)?
 4. Run `npm run build` and check that the compiled JS file exists in `dist/components/`.

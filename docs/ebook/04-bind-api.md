@@ -150,7 +150,7 @@ attributeChangedCallback(name: string, _old: string | null, value: string | null
 ## The Complete Refactored `<task-stats>`
 
 ```typescript
-// src/components/task-stats/TaskStats.ts
+// src/components/ui/task-stats.ts
 import { Component } from '@core/component.js';
 import { defineComponent } from '@core/define.js';
 import { useState, computed } from '@core/state.js';

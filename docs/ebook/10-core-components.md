@@ -299,10 +299,10 @@ A `MutationObserver` watches the entire document. When a new element is added wh
 
 ### Your Own Components
 
-When you run `npm run make:component task-card`, the generator creates the component file **and** adds a `componentRegistry.register()` call to `src/components/registry.ts`:
+When you run `npm run make:component task-card`, the generator creates the component file **and** adds a `componentRegistry.register()` call to `src/components/appRegistry.ts`:
 
 ```typescript
-// src/components/registry.ts — auto-updated by the generator
+// src/components/appRegistry.ts — auto-updated by the generator
 import { componentRegistry } from '@core/lazyComponents.js';
 
 componentRegistry.register('task-card', './ui/task-card.js');
@@ -314,7 +314,7 @@ This means your component is available in every view without an explicit import.
 
 ### The `remove:component` Generator
 
-To remove a component cleanly — unregistering it from `registry.ts` and deleting its file — use the companion command rather than deleting files manually:
+To remove a component cleanly — unregistering it from `appRegistry.ts` and deleting its file — use the companion command rather than deleting files manually:
 
 ```bash
 npm run remove:component task-card

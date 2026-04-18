@@ -197,11 +197,11 @@ disposers.push(() => window.removeEventListener('scroll', handleScroll));
 ### The Component
 
 ```bash
-npm run make:component ProjectFilter
+npm run make:component project-filter
 ```
 
 ```typescript
-// src/components/project-filter/project-filter.component.ts
+// src/components/ui/project-filter.ts
 import { Component }        from '@core/component.js';
 import { defineComponent }  from '@core/define.js';
 import { useState }         from '@core/state.js';

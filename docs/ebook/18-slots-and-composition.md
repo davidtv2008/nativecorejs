@@ -35,7 +35,7 @@ Always start with the generator:
 npm run make:component task-list
 ```
 
-This creates `src/components/task-list/TaskList.ts` with a shadow DOM template stub, `onMount`, and `onUnmount` already wired up. Open that file and work from there.
+This creates `src/components/ui/task-list.ts` with a shadow DOM template stub, `onMount`, and `onUnmount` already wired up. Open that file and work from there.
 
 ---
 
@@ -259,6 +259,7 @@ When you receive an array of task objects from a store and need to render them p
 ```typescript
 import { effect } from '@core/state.js';
 import { taskStore } from '@stores/task.store.js';
+import { escapeHtml } from '@core-utils/templates.js';
 
 onMount(): void {
     const listEl = this.$('.list-body');
@@ -266,7 +267,7 @@ onMount(): void {
         const tasks = taskStore.tasks.value;
         if (!listEl) return;
         listEl.innerHTML = tasks
-            .map(t => `<task-card task-id="${t.id}" title="${t.title}" status="${t.status}"></task-card>`)
+            .map(t => `<task-card task-id="${escapeHtml(t.id)}" title="${escapeHtml(t.title)}" status="${escapeHtml(t.status)}"></task-card>`)
             .join('');
     });
     // store disposer for cleanup
