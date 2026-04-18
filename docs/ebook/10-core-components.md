@@ -278,6 +278,50 @@ An ordered list of events — useful for task activity feeds.
 
 ---
 
+## How Component Lazy Loading Works
+
+All `nc-*` components are lazy-loaded — the browser only downloads a component's JavaScript the first time a tag appears in the DOM. Understanding this mechanism helps when you build your own components and want the same behaviour.
+
+### The Registry
+
+`src/components/frameworkRegistry.ts` maps every `nc-*` tag name to a module path using `componentRegistry.register()`:
+
+```typescript
+import { componentRegistry } from '@core/lazyComponents.js';
+
+componentRegistry.register('nc-button',  './core/nc-button.js');
+componentRegistry.register('nc-badge',   './core/nc-badge.js');
+componentRegistry.register('nc-modal',   './core/nc-modal.js');
+// ... and all other nc-* components
+```
+
+A `MutationObserver` watches the entire document. When a new element is added whose tag name is in the registry, the framework dynamically imports the corresponding module, which defines and registers the custom element. From that point on the browser handles all future instances natively.
+
+### Your Own Components
+
+When you run `npm run make:component task-card`, the generator creates the component file **and** adds a `componentRegistry.register()` call to `src/components/registry.ts`:
+
+```typescript
+// src/components/registry.ts — auto-updated by the generator
+import { componentRegistry } from '@core/lazyComponents.js';
+
+componentRegistry.register('task-card', './ui/task-card.js');
+```
+
+This means your component is available in every view without an explicit import. You never need to call `customElements.define()` manually or import the component file in your controllers.
+
+> **Tip:** If you ever need a component to be available *instantly* on first paint — before the MutationObserver fires — add it to `src/components/preloadRegistry.ts`. The preload list is imported in `app.ts` and downloads eagerly. Use this sparingly (typically just `<app-header>`, `<app-sidebar>`, and `<loading-spinner>`).
+
+### The `remove:component` Generator
+
+To remove a component cleanly — unregistering it from `registry.ts` and deleting its file — use the companion command rather than deleting files manually:
+
+```bash
+npm run remove:component task-card
+```
+
+---
+
 ## What's Next
 
 Chapter 11 moves beyond individual components and controllers to explore advanced patterns: global stores, cross-component communication with custom events, `patchState`, debounced effects, and a real `<project-filter>` component that drives the tasks list.

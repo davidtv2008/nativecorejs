@@ -77,7 +77,85 @@ For numeric fields like estimated hours:
 
 ## Reading and Validating a Form
 
-A clean validation helper returns either an errors object or `null`:
+### Option A — `useForm()` Helper (Recommended)
+
+The template ships with a `useForm()` utility in `src/utils/form.ts` that manages field state, dirty/touched tracking, computed validation, and form submission in one clean API:
+
+```typescript
+import { useForm } from '@utils/form.js';
+import { isRequired, minLength, maxLength } from '@utils/validation.js';
+
+const form = useForm({
+    initialValues: {
+        title:     '',
+        priority:  'medium',
+        projectId: '',
+        hours:     0,
+    },
+    rules: {
+        title:     [isRequired, maxLength(80)],
+        projectId: [isRequired],
+    },
+});
+```
+
+`useForm()` returns:
+
+| Property | Type | Purpose |
+|---|---|---|
+| `fields.title` | `State<string>` | Reactive field value |
+| `touched.title` | `State<boolean>` | True after first blur |
+| `dirty.title` | `State<boolean>` | True if value differs from initial |
+| `errors` | `ComputedState<Record<string,string>>` | Validation errors map |
+| `isValid` | `ComputedState<boolean>` | True when `errors` is empty |
+| `isDirty` | `ComputedState<boolean>` | True when any field is dirty |
+| `getValues()` | `() => T` | Snapshot of all field values |
+| `reset(values?)` | `(partial?) => void` | Reset to initial or given values |
+| `submit(handler)` | `(fn) => async fn` | Wraps submit: marks all touched, checks validity, calls handler |
+| `bindField(name, target)` | `(key, el) => cleanup` | Two-way bind a field to a native `<input>`/`<select>` |
+
+**Using `submit()`** eliminates the boilerplate `e.preventDefault()` + validity check + error display pattern:
+
+```typescript
+const handleSubmit = form.submit(async (values) => {
+    await api.post('/tasks', values);
+    api.invalidateTags('tasks');
+    modal.close();
+    form.reset();
+});
+
+events.on(scope.$('#btn-create'), 'click', handleSubmit);
+```
+
+If `isValid` is `false` when `handleSubmit` fires, `submit()` marks all fields as touched (so errors appear) and returns `false` without calling the handler.
+
+**Binding reactive errors to `nc-*` fields:**
+
+```typescript
+const stopErrorEffect = effect(() => {
+    const errs = form.errors.value;
+    for (const id of ['title', 'projectId', 'hours']) {
+        scope.$(`#task-${id}`)?.setAttribute('error', errs[id] ?? '');
+    }
+});
+disposers.push(stopErrorEffect);
+```
+
+**Cleanup** — `useForm()` creates internal `computed()` nodes (`errors`, `isValid`, `isDirty`). Dispose them when the controller cleans up:
+
+```typescript
+return () => {
+    form.errors.dispose();
+    form.isValid.dispose();
+    form.isDirty.dispose();
+    disposers.forEach(d => d());
+    events.cleanup();
+};
+```
+
+### Option B — Inline Validation Helper
+
+For simpler forms you can write a plain validation function without `useForm()`:
 
 ```typescript
 function validateTaskForm(scope: any) {
@@ -96,7 +174,32 @@ function validateTaskForm(scope: any) {
 }
 ```
 
-Apply or clear per-field errors in one loop:
+### The `@utils/validation.js` Primitives
+
+Whether you use `useForm()` or roll your own, the template's validators are composable building blocks:
+
+```typescript
+import {
+    isRequired, minLength, maxLength,
+    isValidEmail, isNumber, isInteger,
+    isValidURL, matchesPattern,
+    validateForm,
+} from '@utils/validation.js';
+
+// Use as validators in useForm rules:
+rules: { email: [isRequired, isValidEmail] }
+
+// Or call validateForm() directly with an ad-hoc rules map:
+const errors = validateForm(
+    { email: 'bad', age: 'abc' },
+    { email: [isRequired, isValidEmail], age: [isNumber] }
+);
+// → { email: 'Validation failed for email', age: 'Validation failed for age' }
+```
+
+> **Rule of thumb:** Use `useForm()` for any form with three or more fields, or whenever you need dirty/touched tracking. Use the inline pattern for quick one-field confirmations (e.g. a "reason for deletion" text box).
+
+Apply or clear per-field errors in one loop (used by both approaches):
 
 ```typescript
 function applyErrors(scope: any, errors: Record<string, string> | null, fieldIds: string[]) {

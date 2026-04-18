@@ -129,32 +129,66 @@ return () => {
 
 ---
 
-## Debouncing Effects
+## Debouncing and Throttling Effects
 
-An `effect` that fires on every keystroke can flood the network with search requests. Debounce it by storing a timer reference in the effect body.
+### Debounce
+
+An `effect` that fires on every keystroke can flood the network with search requests. Debounce it by using the `debounce` helper from `@utils/helpers.js`:
 
 ```typescript
+import { debounce } from '@utils/helpers.js';
 import { effect } from '@core/state.js';
 
+const debouncedSearch = debounce(async (term: string) => {
+    const { data } = await api.get(`/tasks?q=${encodeURIComponent(term)}`);
+    tasks.value = data ?? [];
+}, 300);
+
+const stopEffect = effect(() => {
+    debouncedSearch(searchQuery.value); // called on every change, fires network after 300ms quiet
+});
+
+disposers.push(stopEffect);
+```
+
+If you prefer not to import the helper, you can manage the timer manually:
+
+```typescript
 let debounceTimer: ReturnType<typeof setTimeout> | null = null;
 
 const stopEffect = effect(() => {
-  const term = searchQuery.value; // tracked dep
-
+  const term = searchQuery.value;
   if (debounceTimer) clearTimeout(debounceTimer);
-
   debounceTimer = setTimeout(async () => {
     const { data } = await api.get(`/tasks?q=${encodeURIComponent(term)}`);
     tasks.value = data ?? [];
   }, 300);
 });
 
-// In cleanup:
 disposers.push(() => {
   stopEffect();
   if (debounceTimer) clearTimeout(debounceTimer);
 });
 ```
+
+### Throttle
+
+`throttle` is the complement to `debounce`: instead of waiting for silence, it lets a function run at most once per interval. Use it for high-frequency events like `scroll` or `mousemove` that should trigger periodic updates but not on every tick:
+
+```typescript
+import { throttle } from '@utils/helpers.js';
+
+const updateScrollIndicator = throttle((scrollY: number) => {
+    const indicator = scope.$('[data-hook="scroll-indicator"]') as HTMLElement;
+    if (indicator) indicator.style.width = `${Math.min(100, scrollY / 10)}%`;
+}, 100); // at most once every 100ms
+
+const handleScroll = () => updateScrollIndicator(window.scrollY);
+window.addEventListener('scroll', handleScroll);
+disposers.push(() => window.removeEventListener('scroll', handleScroll));
+```
+
+> **When to use which:** Debounce when you only care about the *final* value after the user stops acting (search, autocomplete, resize). Throttle when you want *regular* updates during a continuous action but not every frame (scroll position, drag, live chart updates).
 
 ---
 

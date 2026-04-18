@@ -300,6 +300,8 @@ The project's `tsconfig.json` maps short aliases to source directories so import
       "@services/*":    ["./src/services/*"],
       "@stores/*":      ["./src/stores/*"],
       "@components/*":  ["./src/components/*"],
+      "@utils/*":       ["./src/utils/*"],
+      "@constants/*":   ["./src/constants/*"],
       "@views/*":       ["./src/views/*"]
     }
   }
@@ -318,6 +320,98 @@ import { useState } from '../../core/state.js';
 ```
 
 Never import from `node_modules` directly using a relative path.
+
+---
+
+## 20.12 Constants — API Endpoints, Routes, and Storage Keys
+
+The `src/constants/` folder centralises every magic string in the app. The template generates three files:
+
+### `src/constants/apiEndpoints.ts`
+
+```typescript
+export const API_ENDPOINTS = {
+    AUTH: {
+        LOGIN:   '/auth/login',
+        LOGOUT:  '/auth/logout',
+        REFRESH: '/auth/refresh',
+    },
+    TASKS: {
+        LIST:   '/tasks',
+        DETAIL: (id: string) => `/tasks/${id}`,
+        CREATE: '/tasks',
+        UPDATE: (id: string) => `/tasks/${id}`,
+        DELETE: (id: string) => `/tasks/${id}`,
+    },
+    PROJECTS: {
+        LIST:   '/projects',
+        DETAIL: (id: string) => `/projects/${id}`,
+    },
+    DASHBOARD: {
+        STATS:    '/dashboard/stats',
+        ACTIVITY: '/dashboard/activity',
+    },
+} as const;
+```
+
+Use it instead of inline strings so a backend path change requires a single edit:
+
+```typescript
+import { API_ENDPOINTS } from '@constants/apiEndpoints.js';
+
+// ✅ Type-safe, centralised
+const tasks = await api.getCached(API_ENDPOINTS.TASKS.LIST, { tags: ['tasks'] });
+const task  = await api.get(API_ENDPOINTS.TASKS.DETAIL(params.id));
+
+// ❌ Scattered strings — easy to mistype, hard to refactor
+const tasks = await api.getCached('/tasks', { tags: ['tasks'] });
+```
+
+### `src/constants/routePaths.ts`
+
+```typescript
+export const ROUTES = {
+    HOME:        '/',
+    LOGIN:       '/login',
+    DASHBOARD:   '/dashboard',
+    TASKS:       '/tasks',
+    TASK_DETAIL: (id: string) => `/tasks/${id}`,
+    PROJECTS:    '/projects',
+    PROFILE:     '/profile',
+} as const;
+```
+
+Use it in `router.navigate()` calls and in `routes.ts` registrations:
+
+```typescript
+import { ROUTES } from '@constants/routePaths.js';
+
+router.navigate(ROUTES.TASK_DETAIL(newTask.id));
+router.register(ROUTES.TASKS, 'src/views/protected/tasks.html', lazyController(…));
+```
+
+### `src/constants/storageKeys.ts`
+
+```typescript
+export const STORAGE_KEYS = {
+    ACCESS_TOKEN:    'access_token',
+    REFRESH_TOKEN:   'refresh_token',
+    USER_DATA:       'user_data',
+    SIDEBAR_COLLAPSED: 'sidebar-collapsed',
+    THEME:           'theme',
+} as const;
+```
+
+Use in `auth.service.ts` and any component that reads `localStorage`:
+
+```typescript
+import { STORAGE_KEYS } from '@constants/storageKeys.js';
+
+localStorage.setItem(STORAGE_KEYS.ACCESS_TOKEN, token);
+const token = localStorage.getItem(STORAGE_KEYS.ACCESS_TOKEN);
+```
+
+> **Tip:** Adding `as const` to the constants object gives TypeScript narrowed literal types for every value. `ROUTES.LOGIN` has type `'/login'` rather than `string`, which lets the compiler catch invalid route strings at compile time.
 
 ---
 

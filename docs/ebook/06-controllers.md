@@ -318,4 +318,67 @@ export default tasksController;
 
 ---
 
+## Formatting Data for Display
+
+The template ships with `src/utils/formatters.ts` and `src/utils/helpers.ts` — ready-to-use utility functions you will reach for in almost every controller. Import them with the `@utils/` alias:
+
+```typescript
+import { formatDate, formatRelativeTime, formatCurrency, truncate } from '@utils/formatters.js';
+import { debounce, throttle, generateId, copyToClipboard } from '@utils/helpers.js';
+```
+
+### Key Formatter Functions
+
+| Function | Example output |
+|---|---|
+| `formatDate(date)` | `"Apr 18, 2026"` |
+| `formatDate(date, 'long')` | `"April 18, 2026"` |
+| `formatDate(date, 'short')` | `"4/18/26"` |
+| `formatDateTime(date)` | `"Apr 18, 2026 at 3:45 PM"` |
+| `formatRelativeTime(date)` | `"2 hours ago"` |
+| `formatCurrency(4999)` | `"$4,999.00"` |
+| `formatNumber(1234567)` | `"1,234,567"` |
+| `formatFileSize(2048000)` | `"1.95 MB"` |
+| `formatPercentage(0.75)` | `"75%"` |
+| `truncate(longString, 50)` | `"This string gets cut at fifty chara..."` |
+| `capitalize('hello')` | `"Hello"` |
+
+### Key Helper Functions
+
+| Function | Purpose |
+|---|---|
+| `debounce(fn, ms)` | Delay fn until ms of silence (search boxes) |
+| `throttle(fn, ms)` | Limit fn to at most once per ms (scroll handlers) |
+| `generateId()` | Collision-resistant ID string for optimistic UI |
+| `deepClone(obj)` | JSON round-trip copy of a plain object |
+| `sanitizeHTML(str)` | Strips tags via a temporary DOM node |
+| `parseQueryString('?q=hello')` | `{ q: 'hello' }` |
+| `buildQueryString({ q: 'hello' })` | `"q=hello"` |
+| `copyToClipboard(text)` | Async clipboard write, returns `boolean` |
+| `isInViewport(element)` | Checks bounding box against the viewport |
+| `sleep(ms)` | `await sleep(500)` — deferred continuation |
+
+### Using Formatters in Taskflow
+
+Render task due dates with relative and absolute formatting side by side:
+
+```typescript
+import { formatRelativeTime, formatDate } from '@utils/formatters.js';
+
+function renderTaskRow(task: Task): string {
+    const rel = task.dueDate ? formatRelativeTime(task.dueDate) : '—';
+    const abs = task.dueDate ? formatDate(task.dueDate) : '';
+    return `
+        <tr data-task-id="${task.id}">
+            <td>${task.title}</td>
+            <td title="${abs}">${rel}</td>
+        </tr>
+    `;
+}
+```
+
+> **Tip:** Both `debounce` and `throttle` are also exported directly from the `nativecorejs` package itself (`import { debounce, throttle } from 'nativecorejs'`), but importing from `@utils/helpers.js` keeps your source portable and easy to customise.
+
+---
+
 **What's Next:** [Chapter 07 — Authentication](./07-authentication.md) — protect routes, handle login/logout, and guard your Taskflow pages with the auth service.

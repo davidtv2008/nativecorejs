@@ -125,6 +125,42 @@ onMount(): void {
 
 ---
 
+## Firing Custom Events with `this.emitEvent()`
+
+Components communicate outward by dispatching custom events. The `Component` base class provides `this.emitEvent<T>(name, detail, options?)` as a typed shorthand over the native `dispatchEvent(new CustomEvent(...))`:
+
+```typescript
+// Preferred shorthand — typed, bubbles + composed by default
+this.emitEvent<{ taskId: string; status: string }>(
+    'task-status-changed',
+    { taskId: this.getAttribute('task-id')!, status: newStatus }
+);
+
+// Equivalent manual form — more verbose, same result
+this.dispatchEvent(new CustomEvent<{ taskId: string; status: string }>(
+    'task-status-changed',
+    {
+        detail: { taskId: this.getAttribute('task-id')!, status: newStatus },
+        bubbles: true,
+        composed: true,   // crosses the shadow boundary
+    }
+));
+```
+
+`bubbles: true` lets the event travel up the DOM tree. `composed: true` lets it cross the shadow boundary so a controller listening on `document` can receive it. Both are set automatically by `this.emitEvent()`.
+
+Listen for the event in a controller:
+
+```typescript
+events.on(document, 'task-status-changed', (e: CustomEvent<{ taskId: string; status: string }>) => {
+    console.log(e.detail.taskId, e.detail.status);
+});
+```
+
+> **Tip:** Always use `this.emitEvent()` for component events rather than wiring up inter-component logic inside `onMount()`. It keeps components loosely coupled and testable in isolation.
+
+---
+
 ## Slotted Content
 
 Shadow DOM's `<slot>` element lets consumers project light-DOM children into specific positions in your component's template. Add a slot to `<task-card>` for optional action buttons:

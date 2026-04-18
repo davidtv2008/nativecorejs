@@ -82,6 +82,49 @@ onUnmount(): void {
 
 ---
 
+## `createStates<T>(record)` — Batch State Creation
+
+When a component or store needs several independent state values, `createStates<T>()` lets you declare them all in one call and get back a typed object:
+
+```typescript
+import { createStates } from '@core/state.js';
+
+const { title, priority, loading, error } = createStates({
+    title:    '',
+    priority: 'medium' as 'low' | 'medium' | 'high',
+    loading:  false,
+    error:    null as string | null,
+});
+
+// Each property is a full State<T> with .value, .watch(), .set()
+title.value = 'Write tests';
+loading.value = true;
+```
+
+This is purely a convenience wrapper — each returned value is the same `State<T>` object you get from calling `useState()` individually. The advantage is readability: a store module's entire state structure is visible at a glance in a single object literal.
+
+```typescript
+// src/stores/task.store.ts
+import { createStates, computed } from '@core/state.js';
+
+export const taskStore = (() => {
+    const { tasks, loading, error } = createStates({
+        tasks:   [] as Task[],
+        loading: false,
+        error:   null as string | null,
+    });
+
+    const taskCount   = computed(() => tasks.value.length);
+    const doneTasks   = computed(() => tasks.value.filter(t => t.status === 'done'));
+
+    return { tasks, loading, error, taskCount, doneTasks };
+})();
+```
+
+> **Tip:** `createStates` does not add any runtime behaviour — it is entirely equivalent to multiple `useState()` calls. Use it whenever you have three or more related state values to keep your code tidy.
+
+---
+
 ## `useSignal(initialValue)` — Tuple API
 
 `useSignal()` is a convenience wrapper over `useState()` that returns a two-element tuple: a getter function and a setter function. This style will feel familiar if you have used React hooks:
