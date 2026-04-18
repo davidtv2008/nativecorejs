@@ -182,12 +182,14 @@ await api.getCached('/dashboard/summary', {
 
 ## Summary — Congratulations!
 
-You have built Taskflow from scratch using NativeCoreJS.
+You have built the core of Taskflow using NativeCoreJS.
 
-Over the course of this book you learned how the **Component base class** and `useShadowDOM` give you true encapsulation without a virtual DOM. You mastered **fine-grained reactivity** — `useState`, `computed`, `bind`, and `effect` — and saw how they compose into controller-driven views without framework magic. You wired up **authentication** with protected routes, fetched and cached **async data** through `api.service`, built **validated forms** inside `<nc-modal>` dialogs, and toured the entire `nc-*` component library. Finally, in the advanced patterns chapter, you created a **global store**, used **custom events** for cross-component communication, and built a filtered task list powered by `computed` and debounced effects.
+Over the course of the first twelve chapters you learned how the **Component base class** and `useShadowDOM` give you true encapsulation without a virtual DOM. You mastered **fine-grained reactivity** — `useState`, `computed`, `bind`, and `effect` — and saw how they compose into controller-driven views without framework magic. You wired up **authentication** with protected routes, fetched and cached **async data** through `api.service`, built **validated forms** inside `<nc-modal>` dialogs, and toured the entire `nc-*` component library. In the advanced patterns chapter, you created a **global store**, used **custom events** for cross-component communication, and built a filtered task list powered by `computed` and debounced effects.
 
 The production chapter showed you that the output of `npm run build` is a plain static site that deploys to any CDN in seconds, can be enhanced with a service worker for offline support, and scales gracefully through lazy controllers and route caching.
 
-NativeCoreJS is deliberately close to the platform. The patterns you have learned here — Web Components, custom events, `fetch`, Shadow DOM — are standard web APIs, not proprietary abstractions. That investment carries forward regardless of where the framework ecosystem goes next.
+But there is more to explore. The next chapters take you deeper into the framework's routing system, caching strategies, global state, component composition, TypeScript patterns, accessibility, testing, and the generator workflow.
 
-Go ship Taskflow. Then build something bigger.
+---
+
+**What's Next:** [Chapter 13 — Dynamic Routes, URL Parameters, and Wildcards](./13-dynamic-routes.md) — add the task-detail page at `/tasks/:id` and learn how URL parameters flow all the way into your controller.
