@@ -74,23 +74,19 @@ export class Component extends HTMLElement {
     }
 
     bind<T>(state: Readable<T>, selector: string, property: string = 'textContent'): void {
+        const el = this.$(selector);
+        if (!el) return;
         const dispose = effect(() => {
-            const value = state.value;
-            const el = this.$(selector);
-            if (el) {
-                (el as any)[property] = String(value);
-            }
+            (el as any)[property] = String(state.value);
         });
         this._bindings.push(dispose);
     }
 
     bindAttr<T>(state: Readable<T>, selector: string, attributeName: string): void {
+        const el = this.$(selector);
+        if (!el) return;
         const dispose = effect(() => {
-            const value = state.value;
-            const el = this.$(selector);
-            if (el) {
-                el.setAttribute(attributeName, String(value));
-            }
+            el.setAttribute(attributeName, String(state.value));
         });
         this._bindings.push(dispose);
     }
