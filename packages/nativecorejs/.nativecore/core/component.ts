@@ -75,7 +75,10 @@ export class Component extends HTMLElement {
 
     bind<T>(state: Readable<T>, selector: string, property: string = 'textContent'): void {
         const el = this.$(selector);
-        if (!el) return;
+        if (!el) {
+            console.warn(`[${this.tagName.toLowerCase()}] bind(): no element found for selector "${selector}"`);
+            return;
+        }
         const dispose = effect(() => {
             (el as any)[property] = String(state.value);
         });
@@ -84,13 +87,24 @@ export class Component extends HTMLElement {
 
     bindAttr<T>(state: Readable<T>, selector: string, attributeName: string): void {
         const el = this.$(selector);
-        if (!el) return;
+        if (!el) {
+            console.warn(`[${this.tagName.toLowerCase()}] bindAttr(): no element found for selector "${selector}"`);
+            return;
+        }
         const dispose = effect(() => {
             el.setAttribute(attributeName, String(state.value));
         });
         this._bindings.push(dispose);
     }
 
+    /**
+     * Batch-bind multiple selectors to reactive states.
+     * Each key is a CSS selector; each value is the reactive state to watch.
+     * Updates each element's textContent by default.
+     *
+     * Note: keys are CSS selectors, values are state objects —
+     * the reverse of bind(state, selector) — to allow concise object literals.
+     */
     bindAll(bindings: Record<string, Readable<any>>): void {
         for (const [selector, state] of Object.entries(bindings)) {
             this.bind(state, selector);

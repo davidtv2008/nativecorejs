@@ -217,7 +217,17 @@ export class ${className} extends Component {
     }
     
     onMount() {
-        // Component logic here
+        // ========== Fine-Grained Reactive Bindings ==========
+        // For components with internal reactive state (useState), use bind() instead
+        // of the manual watch() + cleanup pattern. Bindings are automatically disposed
+        // in disconnectedCallback — no _unwatch fields or onUnmount cleanup needed.
+        //
+        // const count = useState(0);
+        // this.bind(count, '.counter-value');               // updates textContent
+        // this.bindAttr(count, '.track', 'aria-valuenow'); // updates an attribute
+        //
+        // ========== Event Handling ==========
+        // this.on('click', '.btn', () => { ... });
     }
     
     // ═══ Makes changes instant in dev tools preview ═══
