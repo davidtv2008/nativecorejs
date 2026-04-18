@@ -138,17 +138,17 @@ function createControllerTemplate({ flatName, viewTitle, controllerName }) {
  * ${viewTitle} Controller
  * Handles dynamic behavior for the ${viewTitle.toLowerCase()} page.
  */
-import { trackEvents, trackSubscriptions } from '@core-utils/events.js';
+import { trackEvents } from '@core-utils/events.js';
 import { dom } from '@core-utils/dom.js';
-import { useState, computed } from '@core/state.js';
+import { useState, computed, effect } from '@core/state.js';
 import auth from '@services/auth.service.js';
 import api from '@services/api.service.js';
 
 export async function ${controllerName}Controller(params: Record<string, string> = {}): Promise<() => void> {
 
     // -- Setup ---------------------------------------------------------------
-    const events = trackEvents();
-    const subs   = trackSubscriptions();
+    const events    = trackEvents();
+    const disposers: Array<() => void> = [];
 
     // -- DOM refs ------------------------------------------------------------
     // Use dom.data('${flatName}') for scoped queries within a [data-view="${flatName}"] container,
@@ -164,19 +164,16 @@ export async function ${controllerName}Controller(params: Record<string, string>
 
     void params;
 
-    // -- Helpers -------------------------------------------------------------
-    const syncView = () => {
+    // -- Reactive bindings ---------------------------------------------------
+    // effect() auto-tracks every state it reads and re-runs on any change.
+    // Collect the returned disposer — call it in the cleanup below.
+    // No manual .watch() subscriptions or syncView() helpers needed.
+    disposers.push(effect(() => {
         if (titleEl) titleEl.textContent = titleText.value;
-    };
-
-    // -- Watchers ------------------------------------------------------------
-    subs.watch(titleText.watch(syncView));
-
-    // -- On load -------------------------------------------------------------
-    syncView();
+    }));
 
     // -- Events --------------------------------------------------------------
-    // events.onClick is shorthand for click; use events.on for any other event type
+    // events.onClick is shorthand for click; use events.on for any other event type.
     events.onClick(view.actionSelector('primary'), () => {
         userState.value = auth.getUser();
     });
@@ -185,7 +182,7 @@ export async function ${controllerName}Controller(params: Record<string, string>
     return () => {
         titleText.dispose();
         events.cleanup();
-        subs.cleanup();
+        disposers.forEach(d => d());
     };
 }
 `;

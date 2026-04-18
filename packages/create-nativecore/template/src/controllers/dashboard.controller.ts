@@ -2,18 +2,18 @@
  * Dashboard Controller
  * Loads API metrics, drives the signal demo, and wires all dashboard interactions.
  */
-import { trackEvents, trackSubscriptions } from '@core-utils/events.js';
+import { trackEvents } from '@core-utils/events.js';
 import { dom } from '@core-utils/dom.js';
 import { html } from '@core-utils/templates.js';
-import { useState, computed } from '@core/state.js';
+import { useState, computed, effect } from '@core/state.js';
 import auth from '@services/auth.service.js';
 import api from '@services/api.service.js';
 
 export async function dashboardController(): Promise<() => void> {
 
     // -- Setup ---------------------------------------------------------------
-    const events = trackEvents();
-    const subs   = trackSubscriptions();
+    const events    = trackEvents();
+    const disposers: Array<() => void> = [];
 
     // -- DOM refs ------------------------------------------------------------
     const welcomeMsg         = dom.$('#welcome-message');
@@ -55,19 +55,24 @@ export async function dashboardController(): Promise<() => void> {
         return                                  { title: 'Needs attention',  body: 'Completion dipped below the target threshold. Add or finish scope items to recover.',     variant: 'warning' };
     });
 
-    // -- Helpers -------------------------------------------------------------
-    const renderSignalDemo = () => {
+    // -- Reactive bindings ---------------------------------------------------
+    // effect() auto-tracks completedState, totalState, completionState, remainingState,
+    // and statusState. It runs immediately on creation and re-runs whenever any of them
+    // changes. No manual .watch() subscriptions or renderSignalDemo() call needed.
+    disposers.push(effect(() => {
         if (signalCompleted)  signalCompleted.textContent  = String(completedState.value);
         if (signalRemaining)  signalRemaining.textContent  = String(remainingState.value);
         if (signalCompletion) signalCompletion.textContent = `${completionState.value}%`;
         signalProgress?.setAttribute('value', String(completionState.value));
         if (signalStatus) {
-            signalStatus.setAttribute('variant', statusState.value.variant);
-            signalStatus.setAttribute('title',   statusState.value.title);
-            signalStatus.textContent = statusState.value.body;
+            const s = statusState.value;
+            signalStatus.setAttribute('variant', s.variant);
+            signalStatus.setAttribute('title',   s.title);
+            signalStatus.textContent = s.body;
         }
-    };
+    }));
 
+    // -- Data loading --------------------------------------------------------
     const loadData = async (forceRefresh = false) => {
         try {
             const data = await api.getCached('/dashboard/stats', {
@@ -130,10 +135,10 @@ export async function dashboardController(): Promise<() => void> {
                     { key: 'status', label: 'Status', format: 'badge' },
                 ]));
                 metricsTable.setAttribute('rows', JSON.stringify([
-                    { metric: 'Authenticated users', value: users.toLocaleString(),        status: userScore    >= 80 ? 'Healthy' : 'Watch'  },
-                    { metric: 'Active sessions',     value: sessions.toLocaleString(),     status: sessionScore >= 80 ? 'Healthy' : 'Watch'  },
-                    { metric: 'Revenue pipeline',    value: `$${revenue.toLocaleString()}`, status: revenueScore >= 80 ? 'Healthy' : 'Watch' },
-                    { metric: 'New today',           value: newToday.toLocaleString(),     status: newTodayScore >= 80 ? 'Strong'  : 'Normal' },
+                    { metric: 'Authenticated users', value: users.toLocaleString(),         status: userScore    >= 80 ? 'Healthy' : 'Watch'  },
+                    { metric: 'Active sessions',     value: sessions.toLocaleString(),      status: sessionScore >= 80 ? 'Healthy' : 'Watch'  },
+                    { metric: 'Revenue pipeline',    value: `$${revenue.toLocaleString()}`, status: revenueScore >= 80 ? 'Healthy' : 'Watch'  },
+                    { metric: 'New today',           value: newToday.toLocaleString(),      status: newTodayScore >= 80 ? 'Strong'  : 'Normal' },
                 ]));
             }
 
@@ -165,20 +170,12 @@ export async function dashboardController(): Promise<() => void> {
         }
     };
 
-    // -- Watchers ------------------------------------------------------------
-    subs.watch(completedState.watch(renderSignalDemo));
-    subs.watch(totalState.watch(renderSignalDemo));
-    subs.watch(completionState.watch(renderSignalDemo));
-    subs.watch(remainingState.watch(renderSignalDemo));
-    subs.watch(statusState.watch(renderSignalDemo));
-
     // -- On load -------------------------------------------------------------
     const user = auth.getUser();
     if (user && welcomeMsg) {
         welcomeMsg.textContent = `Welcome back, ${user.name || 'User'}. This workspace demonstrates a cleaner executive layout with authenticated data, core components, and live state patterns.`;
     }
 
-    renderSignalDemo();
     await loadData();
 
     // -- Events --------------------------------------------------------------
@@ -204,6 +201,6 @@ export async function dashboardController(): Promise<() => void> {
         remainingState.dispose();
         statusState.dispose();
         events.cleanup();
-        subs.cleanup();
+        disposers.forEach(d => d());
     };
 }
