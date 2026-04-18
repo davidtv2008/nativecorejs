@@ -23,7 +23,7 @@
  *   </nc-collapsible>
  */
 import { Component, defineComponent } from '@core/component.js';
-import { html } from '@core-utils/templates.js';
+import { html, trusted } from '@core-utils/templates.js';
 
 export class NcCollapsible extends Component {
     static useShadowDOM = true;
@@ -119,7 +119,7 @@ export class NcCollapsible extends Component {
                 ${disabled ? 'disabled' : ''}
             >
                 <slot name="trigger"></slot>
-                ${iconSvg[icon] ?? iconSvg.chevron}
+                ${trusted(iconSvg[icon] ?? iconSvg.chevron)}
             </button>
             <div class="body" role="region">
                 <div class="body-inner">

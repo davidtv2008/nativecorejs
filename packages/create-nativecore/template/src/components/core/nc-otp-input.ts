@@ -23,7 +23,7 @@
  *   <nc-otp-input length="6" type="numeric"></nc-otp-input>
  */
 import { Component, defineComponent } from '@core/component.js';
-import { html } from '@core-utils/templates.js';
+import { html, trusted } from '@core-utils/templates.js';
 
 export class NcOtpInput extends Component {
     static useShadowDOM = true;
@@ -109,9 +109,9 @@ export class NcOtpInput extends Component {
                 .error { font-size: var(--nc-font-size-xs); color: var(--nc-danger);      margin-top: 6px; }
             </style>
             <div class="wrap" role="group" aria-label="${label || 'OTP input'}">
-                ${boxesHtml}
+                ${trusted(boxesHtml)}
             </div>
-            ${error ? `<p class="error">${error}</p>` : hint ? `<p class="hint">${hint}</p>` : ''}
+            ${trusted(error ? `<p class="error">${error}</p>` : hint ? `<p class="hint">${hint}</p>` : '')}
         `;
     }
 

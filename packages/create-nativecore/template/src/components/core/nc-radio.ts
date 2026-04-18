@@ -22,7 +22,7 @@
  */
 
 import { Component, defineComponent } from '@core/component.js';
-import { html } from '@core-utils/templates.js';
+import { html, trusted } from '@core-utils/templates.js';
 
 export class NcRadio extends Component {
     static useShadowDOM = true;
@@ -169,7 +169,7 @@ export class NcRadio extends Component {
                 <span class="ring">
                     <span class="dot"></span>
                 </span>
-                ${label ? `<span class="label">${label}</span>` : '<slot></slot>'}
+                ${trusted(label ? `<span class="label">${label}</span>` : '<slot></slot>')}
             </label>
         `;
     }

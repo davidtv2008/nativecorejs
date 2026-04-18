@@ -53,7 +53,7 @@ const className = componentName
 const componentsDir = path.resolve(__dirname, '../..', 'src', 'components');
 const uiDir = path.join(componentsDir, 'ui');
 const componentFile = path.join(uiDir, `${componentName}.ts`);
-const registryFile = path.join(componentsDir, 'registry.ts');
+const registryFile = path.join(componentsDir, 'appRegistry.ts');
 
 // Ensure ui directory exists
 if (!fs.existsSync(uiDir)) {
@@ -78,7 +78,7 @@ const jsTemplate = `/**
  * - Changes can be saved to instance (HTML) or globally (component file)
  * 
  * REGISTRATION:
- * This component is automatically registered in src/components/registry.ts
+ * This component is automatically registered in src/components/appRegistry.ts
  * Usage: <${componentName}></${componentName}>
  * 
  * PERFORMANCE:
@@ -86,13 +86,15 @@ const jsTemplate = `/**
  * - For critical components: Add to src/components/preloadRegistry.ts
  */
 import { Component, defineComponent } from '@core/component.js';
-import { useState, computed } from '@core/state.js';
-import type { State, ComputedState } from '@core/state.js';
 import { html } from '@core-utils/templates.js';
+// Uncomment as needed:
+// import { useState, computed } from '@core/state.js';
+// import type { State, ComputedState } from '@core/state.js';
 
 export class ${className} extends Component {
     // ========== Shadow DOM ==========
-    // Enable for CSS encapsulation and <slot> support
+    // Required for CSS encapsulation and <slot> support.
+    // All UI components must have this set to true.
     static useShadowDOM = true;
     
     // ========== Dev Tools: Attribute Options ==========
@@ -114,25 +116,24 @@ export class ${className} extends Component {
     }
     
     // ========== Local Reactive State ==========
-    // Declare state here; initialize in constructor.
+    // Declare state fields here; initialize them in the constructor.
+    // Store the watcher unsubscribe function so it can be cleaned up in onUnmount.
+    //
     // private count?: State<number>;
-    // private name?: State<string>;
+    // private _unwatchCount?: () => void;
     
     // ========== Computed State ==========
-    // Auto-updates when dependencies change. Dispose in onUnmount().
+    // Auto-updates when dependencies change. Must call .dispose() in onUnmount().
     // private doubleCount?: ComputedState<number>;
-    // private greeting?: ComputedState<string>;
     
     constructor() {
         super();
         
         // ========== Initialize Local State ==========
         // this.count = useState(0);
-        // this.name = useState('World');
         
         // ========== Initialize Computed Values ==========
         // this.doubleCount = computed(() => this.count!.value * 2);
-        // this.greeting = computed(() => \`Hello, \${this.name!.value}!\`);
     }
     
     template() {
@@ -203,8 +204,8 @@ export class ${className} extends Component {
     
     /**
      * Live attribute updates (Dev Tools Integration)
-     * Called automatically when observed attributes change
-     * Enables instant preview without full re-render
+     * Called automatically when observed attributes change.
+     * Performs surgical DOM updates instead of a full re-render.
      */
     attributeChangedCallback(name: string, oldValue: string | null, newValue: string | null): void {
         if (!this._mounted) return;
@@ -215,20 +216,15 @@ export class ${className} extends Component {
         switch (name) {
             case 'variant':
             case 'size':
-                // Update classes instantly
                 this.updateClasses(container);
                 break;
                 
             case 'disabled':
-                // Update disabled state
                 container.toggleAttribute('disabled', this.hasAttribute('disabled'));
                 break;
         }
     }
     
-    /**
-     * Helper: Update element classes based on current attributes
-     */
     private updateClasses(element: HTMLElement): void {
         const variant = this.attr('variant', 'primary');
         const size = this.attr('size', 'medium');
@@ -236,36 +232,48 @@ export class ${className} extends Component {
     }
     
     onMount() {
-        // ========== Fine-Grained Reactive Bindings ==========
-        // bind(state, selector) watches a reactive state and surgically patches
-        // only the matched DOM element — no full re-render on every change.
-        // Bindings are automatically cleaned up in disconnectedCallback.
+        // ========== Event Delegation (Recommended Pattern) ==========
+        // Always listen on this.shadowRoot, not on this (the host element).
+        // Attaching to the host causes event retargeting to lose the original
+        // e.target inside Shadow DOM, making selector matching fail.
         //
-        // this.bind(this.count, '.count-display');            // updates textContent
-        // this.bind(this.name,  '.greeting', 'innerHTML');    // updates a specific property
+        // this.shadowRoot!.addEventListener('click', (e) => {
+        //     const target = e.target as HTMLElement;
+        //     if (target.matches('.btn-increment')) {
+        //         if (this.count) this.count.value++;
+        //     }
+        // });
+        
+        // ========== Fine-Grained Reactive Bindings ==========
+        // bind(state, selector) watches a reactive state and surgically updates
+        // only the matched DOM element. Bindings are auto-disposed on unmount.
+        //
+        // this.bind(this.count, '.count-display');              // updates textContent
+        // this.bind(this.count, '.track', 'innerHTML');         // updates a property
         // this.bindAttr(this.count, '.track', 'aria-valuenow'); // updates an attribute
         //
         // Batch form:
         // this.bindAll({
         //     '.count-display': this.count,
-        //     '.greeting':      this.name,
         // });
         
-        // ========== Event Delegation (Recommended Pattern) ==========
-        // this.on('click', '.btn-increment', () => {
-        //     if (this.count) this.count.value++;
-        // });
+        // ========== Manual State Watchers ==========
+        // For side effects that are not covered by bind(), use state.watch() directly.
+        // Store the returned unsubscribe function and call it in onUnmount.
         //
-        // this.on('click', '.btn-decrement', () => {
-        //     if (this.count) this.count.value--;
+        // this._unwatchCount = this.count!.watch(val => {
+        //     console.log('count changed:', val);
         // });
     }
     
     onUnmount() {
-        // bind() / bindAll() / bindAttr() are disposed automatically.
-        // Only manually dispose computed values here.
+        // bind() / bindAll() / bindAttr() are disposed automatically — no action needed.
+        //
+        // Manual state watchers must be unsubscribed here:
+        // this._unwatchCount?.();
+        //
+        // Computed values must be disposed here to prevent memory leaks:
         // this.doubleCount?.dispose();
-        // this.greeting?.dispose();
     }
 }
 
@@ -387,7 +395,7 @@ rl.question('Would you like to prefetch this component? (y/N): ', (answer) => {
 
   // Success message
   console.log(`Location: src/components/ui/${componentName}.ts`);
-  console.log(`Registered in: src/components/registry.ts`);
+  console.log(`Registered in: src/components/appRegistry.ts`);
   if (shouldPreload) {
     console.log(`Preloaded in: src/components/preloadRegistry.ts`);
   }

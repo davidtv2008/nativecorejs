@@ -3,7 +3,7 @@
  * Simple reusable loading indicator
  */
 import { Component, defineComponent } from '@core/component.js';
-import { html } from '@core-utils/templates.js';
+import { html, trusted } from '@core-utils/templates.js';
 
 class LoadingSpinner extends Component {
     static get observedAttributes() {
@@ -17,7 +17,7 @@ class LoadingSpinner extends Component {
         return html`
             <div class="loading-spinner ${size}">
                 <div class="spinner"></div>
-                ${message ? `<p class="loading-message">${message}</p>` : ''}
+                ${trusted(message ? `<p class="loading-message">${message}</p>` : '')}
             </div>
         `;
     }

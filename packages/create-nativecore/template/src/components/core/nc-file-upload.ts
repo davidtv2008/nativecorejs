@@ -21,7 +21,7 @@
  */
 
 import { Component, defineComponent } from '@core/component.js';
-import { html } from '@core-utils/templates.js';
+import { html, trusted } from '@core-utils/templates.js';
 
 export class NcFileUpload extends Component {
     static useShadowDOM = true;
@@ -232,7 +232,7 @@ export class NcFileUpload extends Component {
                 }
             </div>
 
-            ${this._files.length ? `<div class="file-list">${fileList}</div>` : ''}
+            ${trusted(this._files.length ? `<div class="file-list">${fileList}</div>` : '')}
         `;
     }
 

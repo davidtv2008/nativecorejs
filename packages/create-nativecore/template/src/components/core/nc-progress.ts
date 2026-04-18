@@ -19,7 +19,7 @@
  */
 
 import { Component, defineComponent } from '@core/component.js';
-import { html } from '@core-utils/templates.js';
+import { html, trusted } from '@core-utils/templates.js';
 
 export class NcProgress extends Component {
     static useShadowDOM = true;
@@ -122,7 +122,7 @@ export class NcProgress extends Component {
                 >
                     <div class="bar bar--${variant}"></div>
                 </div>
-                ${showValue && !indeterminate ? `<span class="value-label">${pct}%</span>` : ''}
+                ${trusted(showValue && !indeterminate ? `<span class="value-label">${pct}%</span>` : '')}
             </div>
         `;
     }

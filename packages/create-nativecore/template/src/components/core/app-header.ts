@@ -6,7 +6,7 @@ import { Component, defineComponent } from '@core/component.js';
 import router from '@core/router.js';
 import auth from '@services/auth.service.js';
 import './nc-avatar.js';
-import { html } from '@core-utils/templates.js';
+import { html, trusted, escapeHtml } from '@core-utils/templates.js';
 
 class AppHeader extends Component {
     // Bound references so addEventListener and removeEventListener use the same fn
@@ -25,7 +25,7 @@ class AppHeader extends Component {
 
     private renderUserMenu(): string {
         const user = auth.getUser();
-        const userName = user?.name || 'User';
+        const userName = escapeHtml(user?.name || 'User');
 
         return `
             <div class="user-menu desktop-only">
@@ -43,13 +43,13 @@ class AppHeader extends Component {
         return html`
                 <div class="header-container">
                     <div class="header-left">
-                        ${isAuthenticated ? `
+                        ${trusted(isAuthenticated ? `
                             <button class="mobile-menu-toggle" id="mobileMenuToggle" aria-label="Toggle sidebar">
                                 <span class="burger-line"></span>
                                 <span class="burger-line"></span>
                                 <span class="burger-line"></span>
                             </button>
-                        ` : ''}
+                        ` : '')}
 
                         <a href="${logoHref}" class="logo" id="logoLink">
                             <img class="logo-mark" src="/assets/logo.svg" alt="NativeCore logo">
@@ -58,19 +58,19 @@ class AppHeader extends Component {
                     </div>
 
                     <nav class="header-nav desktop-nav">
-                        ${!isAuthenticated ? `
+                        ${trusted(!isAuthenticated ? `
                             <a href="/" data-link class="nanc-link">Home</a>
                             <a href="/docs" data-link class="nanc-link">Docs</a>
                             <a href="/components" data-link class="nanc-link">Components</a>
-                        ` : ''}
+                        ` : '')}
                     </nav>
 
                     <div class="header-right">
-                        ${isAuthenticated ? `
+                        ${trusted(isAuthenticated ? `
                             ${this.renderUserMenu()}
                         ` : `
                             <a href="/login" data-link class="header-login-btn desktop-only">Sign in</a>
-                        `}
+                        `)}
                     </div>
                 </div>
         `;

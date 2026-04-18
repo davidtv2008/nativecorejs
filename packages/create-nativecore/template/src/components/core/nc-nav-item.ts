@@ -26,7 +26,7 @@
  *   <nc-nav-item href="/users" label="Users" icon="users" badge="14"></nc-nav-item>
  */
 import { Component, defineComponent } from '@core/component.js';
-import { html } from '@core-utils/templates.js';
+import { html, trusted } from '@core-utils/templates.js';
 
 const NAV_ICONS: Record<string, string> = {
     home:        `<path d="M3 9.5L12 3l9 6.5V20a1 1 0 0 1-1 1H14v-5h-4v5H4a1 1 0 0 1-1-1V9.5z"/>`,
@@ -127,9 +127,9 @@ export class NcNavItem extends Component {
                 }
             </style>
             <${tag} ${tagAttrs} ${disabled ? (href ? 'aria-disabled="true"' : 'disabled') : ''} aria-current="${active ? 'page' : 'false'}">
-                ${iconHtml ? `<span class="icon">${iconHtml}<slot name="icon"></slot></span>` : '<slot name="icon"></slot>'}
+                ${trusted(iconHtml ? `<span class="icon">${iconHtml}<slot name="icon"></slot></span>` : '<slot name="icon"></slot>')}
                 <span class="label">${label}<slot></slot></span>
-                ${badge ? `<span class="badge">${badge}<slot name="badge"></slot></span>` : '<slot name="badge"></slot>'}
+                ${trusted(badge ? `<span class="badge">${badge}<slot name="badge"></slot></span>` : '<slot name="badge"></slot>')}
             </${tag}>
         `;
     }

@@ -46,7 +46,10 @@ function handleTscOutput(chunk, writer) {
     const text = chunk.toString();
     writer.write(text);
 
-    if (/Found \d+ errors?\. Watching for file changes\./.test(text)) // run tsc-alias on every compile, not just clean ones {
+    if (/Found \d+ errors?\. Watching for file changes\./.test(text)) {
+        // Run tsc-alias on every compile pass, not just zero-error builds.
+        // Without this, newly created files with TS errors (e.g. from make:view)
+        // leave @core-utils/* aliases unresolved and crash the browser.
         runAlias();
     }
 }

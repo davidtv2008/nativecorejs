@@ -7,10 +7,24 @@ Every NativeCoreJS component is a native Web Component — a class that extends 
 Generate the `<task-card>` component now:
 
 ```bash
-npm run make:component TaskCard
+npm run make:component task-card
 ```
 
-This creates `src/components/task-card/TaskCard.ts`. Open it — it has the scaffold already in place. We will build it out together in this chapter.
+> **Naming requirement:** Component names must be `kebab-case` with at least one hyphen. This is enforced by the browser's Custom Elements spec — a tag name without a hyphen is rejected at registration time. Pass `task-card`, not `TaskCard` or `taskcard`. The generator will error if the name does not meet this requirement.
+
+The generator will ask one question:
+
+```
+Performance optimization:
+   All components are lazy-loaded by default (loads on first use).
+   For critical layout components (header, sidebar, footer), prefetching improves performance.
+
+Would you like to prefetch this component? (y/N):
+```
+
+Answer **N** (or press Enter) for `task-card`. Prefetching is only worth enabling for layout-critical components that are needed on every page — things like `app-header` or `app-sidebar`. For feature components like `task-card`, lazy loading on first use is the right default.
+
+This creates `src/components/ui/task-card.ts` and registers it in `src/components/appRegistry.ts`. Open it — it has the scaffold already in place. We will build it out together in this chapter.
 
 ---
 
@@ -19,8 +33,7 @@ This creates `src/components/task-card/TaskCard.ts`. Open it — it has the scaf
 The first thing to understand about `Component` is how it handles encapsulation:
 
 ```typescript
-import { Component } from '@core/component.js';
-import { defineComponent } from '@core/define.js';
+import { Component, defineComponent } from '@core/component.js';
 
 export class TaskCard extends Component {
   static useShadowDOM = true;
@@ -62,7 +75,26 @@ template(): string {
 }
 ```
 
-`template()` is called exactly once per component instance. After the shadow root is populated, NativeCoreJS uses the `bind()` API (Chapter 04) to update individual nodes in place — it does not re-call `template()` on state changes. This is an important distinction from frameworks that re-render on each update.
+`template()` is called by `render()`, which the framework invokes on first mount and again whenever an observed attribute changes (unless you override `attributeChangedCallback` directly, which suppresses the automatic re-render). For high-frequency updates driven by reactive state, use the `bind()` API (Chapter 04) to surgically update individual DOM nodes without triggering a full re-render.
+
+> **Security — XSS protection:** The `html` tag auto-escapes every interpolated value by default. Numbers, strings, and booleans you interpolate directly are safe:
+>
+> ```typescript
+> return html`<div class="${variant}">${title}</div>`;
+> // variant and title are both escaped — XSS-safe
+> ```
+>
+> When you intentionally interpolate a developer-authored HTML string (icon markup, a `map().join('')` result, a sub-template), wrap it in `trusted()` to bypass escaping:
+>
+> ```typescript
+> import { html, trusted, escapeHtml } from '@core-utils/templates.js';
+>
+> // Build HTML sub-strings safely: escape user data inside, then trust the whole result
+> const itemsHtml = items.map(i => `<li>${escapeHtml(i.label)}</li>`).join('');
+> return html`<ul>${trusted(itemsHtml)}</ul>`;
+> ```
+>
+> Rule: static structure (tags, class names) in `template()` is safe. User-supplied values (API responses, attribute values from external sources) belong in `textContent` assignments or are auto-escaped by the `html` tag. Use `trusted()` only for HTML you construct yourself in component code.
 
 ---
 
@@ -132,7 +164,7 @@ The full sequence for a NativeCoreJS component is:
 3. **`connectedCallback()`** — browser fires this when the element enters the DOM.
 4. **`render()`** — the framework calls `template()` and patches the shadow root.
 5. **`onMount()`** — your hook, called after the render. Shadow root queries are safe here.
-6. **`attributeChangedCallback()`** — fires for attribute mutations after mount; triggers `onAttributeChange()` and a targeted re-render.
+6. **`attributeChangedCallback()`** — fires for attribute mutations after mount. The base class implementation calls `this.onAttributeChange()` then `this.render()`. If you override `attributeChangedCallback` directly (as the scaffold does), you take full control of that step and must call `this.render()` yourself if you want a full re-render, or perform surgical DOM updates instead.
 7. **`disconnectedCallback()`** → **`onUnmount()`** — cleanup runs when the element leaves the DOM.
 
 The key rules that flow from this order:
@@ -223,11 +255,12 @@ this.dispatchEvent(new CustomEvent<{ taskId: string; status: string }>(
 
 `bubbles: true` lets the event travel up the DOM tree. `composed: true` lets it cross the shadow boundary so a controller listening on `document` can receive it. Both are set automatically by `this.emitEvent()`.
 
-Listen for the event in a controller:
+Listen for the event in a controller (the `trackEvents` helper is covered in Chapter 06, but the plain form works today):
 
 ```typescript
-events.on(document, 'task-status-changed', (e: CustomEvent<{ taskId: string; status: string }>) => {
-    console.log(e.detail.taskId, e.detail.status);
+document.addEventListener('task-status-changed', (e: Event) => {
+    const { taskId, status } = (e as CustomEvent<{ taskId: string; status: string }>).detail;
+    console.log(taskId, status);
 });
 ```
 
@@ -264,9 +297,8 @@ template(): string {
 Here is the full file with everything assembled:
 
 ```typescript
-// src/components/task-card/TaskCard.ts
-import { Component } from '@core/component.js';
-import { defineComponent } from '@core/define.js';
+// src/components/ui/task-card.ts
+import { Component, defineComponent } from '@core/component.js';
 
 export class TaskCard extends Component {
   static useShadowDOM = true;
@@ -370,11 +402,7 @@ With the component registered, you can drop it into any HTML view. Open `src/vie
 </div>
 ```
 
-Import the component in your controller (or in a shared `components.ts` barrel file) so the custom element is registered before the view renders:
-
-```typescript
-import '@components/task-card/TaskCard.ts';
-```
+You do not need to import the component in your controller or view. Because you registered it in `src/components/appRegistry.ts` when you ran `make:component`, the framework's lazy loader will fetch and define the custom element automatically the first time it appears in a rendered view.
 
 Save and check the browser — you should see two styled task cards with correct status badges.
 

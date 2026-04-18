@@ -48,7 +48,7 @@
  */
 
 import { Component, defineComponent } from '@core/component.js';
-import { html } from '@core-utils/templates.js';
+import { html, trusted } from '@core-utils/templates.js';
 
 export class NcMenu extends Component {
     static useShadowDOM = true;
@@ -198,8 +198,8 @@ export class NcMenu extends Component {
                 }
             </style>
             <div class="menu" role="menu">
-                ${labelHTML}
-                ${searchHTML}
+                ${trusted(labelHTML)}
+                ${trusted(searchHTML)}
                 <slot></slot>
                 <div class="menu__empty">No results</div>
             </div>

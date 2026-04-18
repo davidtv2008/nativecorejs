@@ -18,7 +18,7 @@
  */
 
 import { Component, defineComponent } from '@core/component.js';
-import { html } from '@core-utils/templates.js';
+import { html, trusted } from '@core-utils/templates.js';
 
 const ICONS: Record<string, string> = {
     info:    `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" width="18" height="18"><path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clip-rule="evenodd"/></svg>`,
@@ -103,9 +103,9 @@ export class NcAlert extends Component {
                 .alert__close:hover { opacity: 1; }
             </style>
             <div class="alert alert--${variant}" role="alert" aria-live="polite">
-                ${showIcon ? `<span class="alert__icon">${ICONS[variant] ?? ICONS.info}</span>` : ''}
+                ${trusted(showIcon ? `<span class="alert__icon">${ICONS[variant] ?? ICONS.info}</span>` : '')}
                 <div class="alert__body">
-                    ${title ? `<strong class="alert__title">${title}</strong>` : ''}
+                    ${trusted(title ? `<strong class="alert__title">${title}</strong>` : '')}
                     <slot></slot>
                 </div>
                 ${dismissible ? `

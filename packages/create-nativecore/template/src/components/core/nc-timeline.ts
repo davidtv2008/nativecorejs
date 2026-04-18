@@ -41,7 +41,7 @@
  *   </nc-timeline>
  */
 import { Component, defineComponent } from '@core/component.js';
-import { html } from '@core-utils/templates.js';
+import { html, trusted } from '@core-utils/templates.js';
 
 const STATUS_COLORS: Record<string, string> = {
     completed: 'var(--nc-success)',
@@ -155,7 +155,7 @@ export class NcTimelineItem extends Component {
             <div class="content">
                 <div class="header">
                     <p class="title"><slot name="title">${title}</slot></p>
-                    ${time ? `<span class="time"><slot name="time">${time}</slot></span>` : '<slot name="time"></slot>'}
+                    ${trusted(time ? `<span class="time"><slot name="time">${time}</slot></span>` : '<slot name="time"></slot>')}
                 </div>
                 <div class="body"><slot></slot></div>
             </div>

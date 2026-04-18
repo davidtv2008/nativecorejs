@@ -23,7 +23,7 @@
  */
 
 import { Component, defineComponent } from '@core/component.js';
-import { html } from '@core-utils/templates.js';
+import { html, trusted } from '@core-utils/templates.js';
 
 export class NcCheckbox extends Component {
     static useShadowDOM = true;
@@ -226,7 +226,7 @@ export class NcCheckbox extends Component {
                         <path d="M2 6h8" stroke="white" stroke-width="2" stroke-linecap="round"/>
                     </svg>
                 </span>
-                ${label ? `<span class="label">${label}</span>` : '<slot></slot>'}
+                ${trusted(label ? `<span class="label">${label}</span>` : '<slot></slot>')}
             </label>
         `;
     }

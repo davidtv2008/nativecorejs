@@ -32,7 +32,7 @@
  */
 
 import { Component, defineComponent } from '@core/component.js';
-import { html } from '@core-utils/templates.js';
+import { html, trusted } from '@core-utils/templates.js';
 
 export class NcMenuItem extends Component {
     static useShadowDOM = true;
@@ -149,7 +149,7 @@ export class NcMenuItem extends Component {
                 }
             </style>
             <div class="item" role="menuitem" tabindex="${disabled ? -1 : 0}" aria-disabled="${disabled}">
-                ${iconHTML}
+                ${trusted(iconHTML)}
                 <span class="item__label"><slot></slot></span>
                 <span class="item__end"><slot name="end"></slot></span>
             </div>

@@ -30,7 +30,7 @@
  *   el.clear()            — remove all tags
  */
 import { Component, defineComponent } from '@core/component.js';
-import { html } from '@core-utils/templates.js';
+import { html, trusted } from '@core-utils/templates.js';
 
 export class NcTagInput extends Component {
     static useShadowDOM = true;
@@ -149,10 +149,10 @@ export class NcTagInput extends Component {
                 .hint  { font-size: var(--nc-font-size-xs); color: var(--nc-text-muted); margin-top: 5px; }
                 .error { font-size: var(--nc-font-size-xs); color: var(--nc-danger);      margin-top: 5px; }
             </style>
-            ${label ? `<label class="label">${label}</label>` : ''}
+            ${trusted(label ? `<label class="label">${label}</label>` : '')}
             <div class="field" id="field">
-                ${tagsHtml}
-                ${!readonly
+                ${trusted(tagsHtml)}
+                ${trusted(!readonly
                     ? `<input
                         type="text"
                         id="input"
@@ -161,9 +161,9 @@ export class NcTagInput extends Component {
                         autocomplete="off"
                         spellcheck="false"
                       />`
-                    : ''}
+                    : '')}
             </div>
-            ${error ? `<p class="error">${error}</p>` : hint ? `<p class="hint">${hint}</p>` : ''}
+            ${trusted(error ? `<p class="error">${error}</p>` : hint ? `<p class="hint">${hint}</p>` : '')}
         `;
     }
 

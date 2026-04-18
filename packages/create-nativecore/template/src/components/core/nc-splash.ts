@@ -14,7 +14,7 @@ import { Component, defineComponent } from '@core/component.js';
 import { useState } from '@core/state.js';
 import { createAnimationLoop, type AnimationLoop } from '@core/gpu-animation.js';
 import type { State } from '@core/state.js';
-import { html } from '@core-utils/templates.js';
+import { html, trusted } from '@core-utils/templates.js';
 
 interface Particle {
     x: number;
@@ -162,7 +162,7 @@ export class NcSplash extends Component {
                 <div class="splash-glow"></div>
                 <div class="splash-content" id="content">
                     <h1 class="splash-title">${title}</h1>
-                    ${subtitle ? `<p class="splash-subtitle">${subtitle}</p>` : ''}
+                    ${trusted(subtitle ? `<p class="splash-subtitle">${subtitle}</p>` : '')}
                     <div class="splash-prompt" id="prompt">
                         Click to start <span class="splash-cursor"></span>
                     </div>

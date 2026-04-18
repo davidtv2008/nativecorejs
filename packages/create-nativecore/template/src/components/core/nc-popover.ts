@@ -37,7 +37,7 @@
  *   </nc-popover>
  */
 import { Component, defineComponent } from '@core/component.js';
-import { html } from '@core-utils/templates.js';
+import { html, trusted } from '@core-utils/templates.js';
 
 type Placement = 'top'|'top-start'|'top-end'|'bottom'|'bottom-start'|'bottom-end'|'left'|'left-start'|'left-end'|'right'|'right-start'|'right-end';
 
@@ -97,7 +97,7 @@ export class NcPopover extends Component {
                 <slot name="trigger"></slot>
             </div>
             <div class="popover" id="popover" role="dialog" aria-modal="false">
-                ${arrow ? '<div class="arrow" id="arrow"></div>' : ''}
+                ${trusted(arrow ? '<div class="arrow" id="arrow"></div>' : '')}
                 <slot></slot>
             </div>
         `;

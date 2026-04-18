@@ -24,7 +24,7 @@
  */
 
 import { Component, defineComponent } from '@core/component.js';
-import { html } from '@core-utils/templates.js';
+import { html, trusted } from '@core-utils/templates.js';
 
 export class NcSlider extends Component {
     static useShadowDOM = true;
@@ -208,7 +208,7 @@ export class NcSlider extends Component {
             </style>
 
             <div class="slider-wrap">
-                ${showValue ? `<span class="value-bubble">${value}</span>` : ''}
+                ${trusted(showValue ? `<span class="value-bubble">${value}</span>` : '')}
                 <input
                     type="range"
                     min="${min}"

@@ -15,7 +15,7 @@
  *   error — CustomEvent<{ error: unknown }> — fires if clipboard write fails
  */
 import { Component, defineComponent } from '@core/component.js';
-import { html } from '@core-utils/templates.js';
+import { html, trusted } from '@core-utils/templates.js';
 
 export class NcCopyButton extends Component {
     static useShadowDOM = true;
@@ -80,8 +80,8 @@ export class NcCopyButton extends Component {
                 .icon { flex-shrink: 0; display: flex; }
             </style>
             <button type="button" aria-label="${isCopied ? copiedLabel : label}" ${isCopied ? 'disabled' : ''}>
-                <span class="icon">${isCopied ? checkIcon : copyIcon}</span>
-                ${!iconOnly ? `<span>${isCopied ? copiedLabel : label}</span>` : ''}
+                <span class="icon">${trusted(isCopied ? checkIcon : copyIcon)}</span>
+                ${trusted(!iconOnly ? `<span>${isCopied ? copiedLabel : label}</span>` : '')}
             </button>
         `;
     }

@@ -17,7 +17,7 @@
  */
 
 import { Component, defineComponent } from '@core/component.js';
-import { html } from '@core-utils/templates.js';
+import { html, trusted } from '@core-utils/templates.js';
 
 export class NcChip extends Component {
     static useShadowDOM = true;
@@ -83,14 +83,14 @@ export class NcChip extends Component {
                 ::slotted(*) { pointer-events: none; }
             </style>
             <span class="chip chip--${variant}">
-                ${icon ? `<img class="chip__icon" src="${icon}" alt="" aria-hidden="true" />` : ''}
+                ${trusted(icon ? `<img class="chip__icon" src="${icon}" alt="" aria-hidden="true" />` : '')}
                 <slot></slot>
-                ${dismissible ? `
+                ${trusted(dismissible ? `
                 <button class="chip__dismiss" type="button" aria-label="Remove">
                     <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 12 12" fill="none" width="10" height="10">
                         <path d="M2 2l8 8M10 2l-8 8" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
                     </svg>
-                </button>` : ''}
+                </button>` : '')}
             </span>
         `;
     }

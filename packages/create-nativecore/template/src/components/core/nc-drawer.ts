@@ -28,7 +28,7 @@
  */
 
 import { Component, defineComponent } from '@core/component.js';
-import { html } from '@core-utils/templates.js';
+import { html, trusted } from '@core-utils/templates.js';
 
 export class NcDrawer extends Component {
     static useShadowDOM = true;
@@ -126,7 +126,7 @@ export class NcDrawer extends Component {
                 .close-btn:hover { color: var(--nc-text); background: var(--nc-bg-secondary); }
             </style>
 
-            ${showOverlay ? `<div class="overlay" aria-hidden="true"></div>` : ''}
+            ${trusted(showOverlay ? `<div class="overlay" aria-hidden="true"></div>` : '')}
 
             <div
                 class="panel"

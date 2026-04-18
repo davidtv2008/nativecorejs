@@ -37,7 +37,7 @@
  *   active   — boolean (managed by parent nc-bottom-nav)
  */
 import { Component, defineComponent } from '@core/component.js';
-import { html } from '@core-utils/templates.js';
+import { html, trusted } from '@core-utils/templates.js';
 
 // Shared icon paths with nc-nav-item
 const NAV_ICONS: Record<string, string> = {
@@ -127,11 +127,11 @@ export class NcBottomNavItem extends Component {
             </style>
             <button type="button" ${disabled ? 'disabled' : ''} aria-label="${label}" aria-current="${active ? 'page' : 'false'}" data-value="${value}">
                 <span class="icon-wrap">
-                    ${iconHtml}
+                    ${trusted(iconHtml)}
                     <slot name="icon"></slot>
-                    ${badge ? `<span class="badge">${badge}</span>` : ''}
+                    ${trusted(badge ? `<span class="badge">${badge}</span>` : '')}
                 </span>
-                ${!iconOnly && label ? `<span>${label}</span>` : ''}
+                ${trusted(!iconOnly && label ? `<span>${label}</span>` : '')}
             </button>
         `;
     }

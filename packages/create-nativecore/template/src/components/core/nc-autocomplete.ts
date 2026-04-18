@@ -22,7 +22,7 @@
  */
 
 import { Component, defineComponent } from '@core/component.js';
-import { html } from '@core-utils/templates.js';
+import { html, trusted, escapeHtml } from '@core-utils/templates.js';
 
 export class NcAutocomplete extends Component {
     static useShadowDOM = true;
@@ -142,10 +142,16 @@ export class NcAutocomplete extends Component {
                 />
             </div>
             <div class="dropdown" role="listbox">
-                ${results.map((opt, i) => {
-                    const hl = opt.replace(new RegExp(`(${this._inputValue.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')})`, 'gi'), '<mark>$1</mark>');
-                    return `<div class="option${i === this._activeIndex ? ' active' : ''}" role="option" data-value="${opt}" aria-selected="${i === this._activeIndex}">${hl}</div>`;
-                }).join('')}
+                ${trusted(results.map((opt, i) => {
+                    // Escape the option text first, then safely insert <mark> around the match.
+                    // This ensures user-typed input cannot inject HTML via the highlight pattern.
+                    const safeOpt = escapeHtml(opt);
+                    const escapedQuery = this._inputValue.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+                    const hl = escapedQuery
+                        ? safeOpt.replace(new RegExp(`(${escapedQuery})`, 'gi'), '<mark>$1</mark>')
+                        : safeOpt;
+                    return `<div class="option${i === this._activeIndex ? ' active' : ''}" role="option" data-value="${escapeHtml(opt)}" aria-selected="${i === this._activeIndex}">${hl}</div>`;
+                }).join(''))}
             </div>
         `;
     }
@@ -242,9 +248,10 @@ export class NcAutocomplete extends Component {
         if (!results.length) { dropdown.style.display = 'none'; return; }
         dropdown.style.display = 'block';
         dropdown.innerHTML = results.map((opt, i) => {
+            const safeOpt = escapeHtml(opt);
             const escaped = this._inputValue.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-            const hl = escaped ? opt.replace(new RegExp(`(${escaped})`, 'gi'), '<mark>$1</mark>') : opt;
-            return `<div class="option${i === this._activeIndex ? ' active' : ''}" role="option" data-value="${opt}" aria-selected="${i === this._activeIndex}">${hl}</div>`;
+            const hl = escaped ? safeOpt.replace(new RegExp(`(${escaped})`, 'gi'), '<mark>$1</mark>') : safeOpt;
+            return `<div class="option${i === this._activeIndex ? ' active' : ''}" role="option" data-value="${escapeHtml(opt)}" aria-selected="${i === this._activeIndex}">${hl}</div>`;
         }).join('');
         const input = this.$<HTMLInputElement>('input');
         if (input) input.setAttribute('aria-expanded', String(results.length > 0));

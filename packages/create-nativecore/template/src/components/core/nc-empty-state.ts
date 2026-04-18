@@ -23,7 +23,7 @@
  *   </nc-empty-state>
  */
 import { Component, defineComponent } from '@core/component.js';
-import { html } from '@core-utils/templates.js';
+import { html, trusted } from '@core-utils/templates.js';
 
 const ICONS: Record<string, string> = {
     inbox: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" fill="none">
@@ -122,10 +122,10 @@ export class NcEmptyState extends Component {
             </style>
             <div class="wrap">
                 <div class="icon-wrap">
-                    ${hasCustomIcon ? '<slot name="icon"></slot>' : iconHtml}
+                    ${trusted(hasCustomIcon ? '<slot name="icon"></slot>' : iconHtml)}
                 </div>
-                ${title ? `<p class="title">${title}</p>` : '<slot name="title"></slot>'}
-                ${description ? `<p class="desc">${description}</p>` : '<slot name="description"></slot>'}
+                ${trusted(title ? `<p class="title">${title}</p>` : '<slot name="title"></slot>')}
+                ${trusted(description ? `<p class="desc">${description}</p>` : '<slot name="description"></slot>')}
                 <div class="actions"><slot name="actions"></slot></div>
             </div>
         `;

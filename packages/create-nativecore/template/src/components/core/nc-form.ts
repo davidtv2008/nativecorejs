@@ -46,7 +46,7 @@
  */
 
 import { Component, defineComponent } from '@core/component.js';
-import { html } from '@core-utils/templates.js';
+import { html, trusted } from '@core-utils/templates.js';
 
 // ── NcField ──────────────────────────────────────────────────────────────────
 
@@ -90,14 +90,14 @@ export class NcField extends Component {
                 .subtext--error { color: var(--nc-danger, #ef4444); }
             </style>
             <div class="field">
-                ${label ? `
+                ${trusted(label ? `
                 <label ${forAttr ? `for="${forAttr}"` : ''}>
                     ${label}${required ? `<span class="required" aria-hidden="true">*</span>` : ''}
-                </label>` : ''}
+                </label>` : '')}
                 <slot></slot>
-                ${error
+                ${trusted(error
                     ? `<span class="subtext subtext--error" role="alert">${error}</span>`
-                    : hint ? `<span class="subtext subtext--hint">${hint}</span>` : ''}
+                    : hint ? `<span class="subtext subtext--hint">${hint}</span>` : '')}
             </div>
         `;
     }

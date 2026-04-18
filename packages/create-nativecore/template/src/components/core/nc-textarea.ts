@@ -25,7 +25,7 @@
  */
 
 import { Component, defineComponent } from '@core/component.js';
-import { html } from '@core-utils/templates.js';
+import { html, trusted } from '@core-utils/templates.js';
 
 export class NcTextarea extends Component {
     static useShadowDOM = true;
@@ -142,8 +142,8 @@ export class NcTextarea extends Component {
                     name="${this.getAttribute('name') || ''}"
                     aria-multiline="true"
                 >${value}</textarea>
-                ${maxlength ? `
-                <span class="counter${charCount > Number(maxlength) ? ' over' : ''}">${charCount} / ${maxlength}</span>` : ''}
+                ${trusted(maxlength ? `
+                <span class="counter${charCount > Number(maxlength) ? ' over' : ''}">${charCount} / ${maxlength}</span>` : '')}
             </div>
         `;
     }

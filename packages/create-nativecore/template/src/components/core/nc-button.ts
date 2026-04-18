@@ -20,7 +20,7 @@
  */
 
 import { Component, defineComponent } from '@core/component.js';
-import { html } from '@core-utils/templates.js';
+import { html, trusted } from '@core-utils/templates.js';
 
 export class NcButton extends Component {
     static useShadowDOM = true;
@@ -267,7 +267,7 @@ export class NcButton extends Component {
                     justify-content: center;
                 }
             </style>
-            ${iconHTML}
+            ${trusted(iconHTML)}
             <slot></slot>
         `;
     }

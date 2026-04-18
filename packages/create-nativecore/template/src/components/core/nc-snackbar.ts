@@ -27,7 +27,7 @@
 
 import { Component, defineComponent } from '@core/component.js';
 import { dom } from '@core-utils/dom.js';
-import { html } from '@core-utils/templates.js';
+import { html, trusted, escapeHtml } from '@core-utils/templates.js';
 
 interface ToastOptions {
     message: string;
@@ -132,7 +132,7 @@ export class NcSnackbar extends Component {
                 }
                 .toast__close:hover { opacity: 1; }
             </style>
-            ${this._toasts.map(t => this._renderToast(t)).join('')}
+            ${trusted(this._toasts.map(t => this._renderToast(t)).join(''))}
         `;
     }
 
@@ -141,7 +141,7 @@ export class NcSnackbar extends Component {
         return `
             <div class="toast toast--${t.variant}" data-id="${t.id}" role="alert" aria-live="polite">
                 ${icon && t.icon ? `<span class="toast__icon">${icon}</span>` : ''}
-                <span class="toast__msg">${t.message}</span>
+                <span class="toast__msg">${escapeHtml(t.message)}</span>
                 ${t.dismissible ? `
                 <button class="toast__close" data-dismiss="${t.id}" type="button" aria-label="Dismiss">
                     <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 12 12" fill="none" width="12" height="12">

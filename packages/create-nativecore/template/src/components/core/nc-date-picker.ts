@@ -22,7 +22,7 @@
  */
 
 import { Component, defineComponent } from '@core/component.js';
-import { html } from '@core-utils/templates.js';
+import { html, trusted } from '@core-utils/templates.js';
 
 const MONTHS = ['January','February','March','April','May','June','July','August','September','October','November','December'];
 const DAYS_SUN = ['Su','Mo','Tu','We','Th','Fr','Sa'];
@@ -292,8 +292,8 @@ export class NcDatePicker extends Component {
                 </button>
             </div>
             <div class="cal-grid">
-                ${dayLabelsHtml}
-                ${daysHtml}
+                ${trusted(dayLabelsHtml)}
+                ${trusted(daysHtml)}
             </div>
             <div class="cal-footer">
                 <button class="cal-btn" data-action="today" type="button">Today</button>

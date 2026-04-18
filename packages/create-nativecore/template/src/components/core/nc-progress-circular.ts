@@ -20,7 +20,7 @@
  */
 
 import { Component, defineComponent } from '@core/component.js';
-import { html } from '@core-utils/templates.js';
+import { html, trusted } from '@core-utils/templates.js';
 
 const VARIANT_COLORS: Record<string, string> = {
     primary: 'var(--nc-primary)',
@@ -107,7 +107,7 @@ export class NcProgressCircular extends Component {
                     stroke-dashoffset="${dashOffset}"
                     transform="rotate(-90 ${cx} ${cy})"
                 />
-                ${showValue && !indeterminate ? `<text class="label" x="${cx}" y="${cy}">${pct}%</text>` : ''}
+                ${trusted(showValue && !indeterminate ? `<text class="label" x="${cx}" y="${cy}">${pct}%</text>` : '')}
             </svg>
         `;
     }

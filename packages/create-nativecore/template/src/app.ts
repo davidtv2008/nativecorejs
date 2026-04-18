@@ -1,5 +1,18 @@
 /**
  * Main Application Entry Point
+ *
+ * Boot order:
+ *   1. Verify any existing JWT session with the server (keeps users logged in on refresh)
+ *   2. Lazy-load Web Components registered in components/registry.ts
+ *   3. Expose a frozen router API on window for use inside component templates
+ *   4. Register the auth middleware (redirects unauthenticated users away from protected routes)
+ *   5. Register all routes from routes/routes.ts
+ *   6. Start the router (begins listening for navigation events and renders the first view)
+ *   7. Initialize sidebar state
+ *   8. Load dev tools (localhost only — never ships to production)
+ *
+ * Keep this file minimal. Business logic belongs in controllers and services.
+ * Routes belong in routes/routes.ts. Components belong in components/registry.ts.
  */
 import router from '@core/router.js';
 import auth from './services/auth.service.js';
@@ -10,7 +23,7 @@ import { registerRoutes, protectedRoutes } from './routes/routes.js';
 import { initSidebar } from './utils/sidebar.js';
 import { initLazyComponents } from '@core/lazyComponents.js';
 import { dom } from '@core-utils/dom.js';
-import './components/registry.js';
+import './components/registry.js'; // side-effect import: registers all lazy components
 
 function isLocalhost(): boolean {
     const hostname = window.location.hostname;
@@ -20,13 +33,17 @@ function isLocalhost(): boolean {
         hostname.endsWith('.local');
 }
 
+/**
+ * Sync sidebar visibility with the current auth state and route.
+ * The sidebar is only shown when the user is authenticated AND on a protected route.
+ * Called after every navigation and after auth state changes.
+ */
 function updateSidebarVisibility() {
     const isAuthenticated = auth.isAuthenticated();
     const currentPath = window.location.pathname;
     const isProtectedRoute = protectedRoutes.some(route => currentPath.startsWith(route));
     const app = dom.$('#app');
 
-    // Show sidebar only when authenticated AND on a protected route
     if (isAuthenticated && isProtectedRoute) {
         document.body.classList.add('sidebar-enabled');
         app?.classList.remove('no-sidebar');
@@ -36,9 +53,14 @@ function updateSidebarVisibility() {
     }
 }
 
+/**
+ * On page load, check whether a stored JWT token is still valid by hitting /auth/verify.
+ * If the token is expired or the server rejects it, the user is logged out silently.
+ * This prevents a page refresh from dropping a valid session.
+ */
 async function verifyExistingSession(): Promise<void> {
     if (!auth.getToken()) {
-        return;
+        return; // no token stored — nothing to verify
     }
 
     try {
@@ -50,15 +72,19 @@ async function verifyExistingSession(): Promise<void> {
 
         auth.setUser(response.user);
     } catch {
+        // Network error or 401 — clear the stale session
         auth.logout();
     }
 }
 
 async function init(){
     await verifyExistingSession();
+
+    // Register and prepare lazy-loaded Web Components before the first route renders
     await initLazyComponents();
     
-    // Expose router globally for components (frozen to prevent XSS manipulation)
+    // Expose a minimal, frozen router API on window so components can navigate
+    // without importing the router directly. Frozen to prevent runtime tampering.
     Object.defineProperty(window, 'router', {
         value: Object.freeze({
             navigate: router.navigate.bind(router),
@@ -70,13 +96,20 @@ async function init(){
         configurable: false,
     });
     
+    // Auth middleware runs before every route — it redirects to /login if the
+    // target route is in protectedRoutes and the user is not authenticated.
     router.use(authMiddleware);
+
+    // Register all app routes (defined in routes/routes.ts)
     registerRoutes(router);
+
+    // Start the router: match the current URL and render the first view
     router.start();
     
     initSidebar();
     
-    // Update sidebar on auth changes
+    // When auth state changes (login / logout), update sidebar and redirect if needed.
+    // The 'auth-change' event is dispatched by auth.service.ts.
     window.addEventListener('auth-change', () => {
         const isAuth = auth.isAuthenticated();
         if (!isAuth) {
@@ -85,7 +118,7 @@ async function init(){
             const app = dom.$('#app');
             app?.classList.remove('sidebar-collapsed');
             app?.classList.add('no-sidebar');
-            // Reset sidebar to expanded so next login starts fresh
+            // Reset sidebar collapse state so the next login starts fresh
             localStorage.removeItem('sidebar-collapsed');
             const sidebar = dom.$('#appSidebar');
             sidebar?.removeAttribute('collapsed');
@@ -95,25 +128,24 @@ async function init(){
         }
     });
     
-    // Update sidebar on navigation
+    // After each navigation the router dispatches 'pageloaded' — re-sync sidebar visibility
     window.addEventListener('pageloaded', () => {
         updateSidebarVisibility();
     });
     
-    // Initialize Dev Tools (ONLY in development - localhost)
     initDevTools();
 }
 
 /**
- * Initialize Dev Tools
- * SECURITY: Only loads on localhost, completely excluded from production builds
+ * Load HMR and the component inspector dev tools.
+ * SECURITY: guarded by isLocalhost() — these modules are never loaded in production.
+ * The build script also strips the entire .nativecore/ import block from the production bundle.
  */
 function initDevTools(): void {
     if (!isLocalhost()) {
-        return; // SECURITY: Never load dev tools on production
+        return;
     }
     
-    // Load HMR and dev tools (both TypeScript modules now)
     Promise.all([
         import('../.nativecore/hmr.js'),
         import('../.nativecore/denc-tools.js')

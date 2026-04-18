@@ -17,7 +17,7 @@
  */
 
 import { Component, defineComponent } from '@core/component.js';
-import { html } from '@core-utils/templates.js';
+import { html, trusted } from '@core-utils/templates.js';
 
 export class NcDivider extends Component {
     static useShadowDOM = true;
@@ -69,7 +69,7 @@ export class NcDivider extends Component {
             </style>
             <div class="divider" role="separator" aria-orientation="${orientation}">
                 <span class="line"></span>
-                ${label ? `<span class="label">${label}</span><span class="line"></span>` : ''}
+                ${trusted(label ? `<span class="label">${label}</span><span class="line"></span>` : '')}
             </div>
         `;
     }
