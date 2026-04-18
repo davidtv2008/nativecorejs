@@ -323,6 +323,39 @@ The router pushes the full path to browser history, and `taskDetailController` r
 
 ---
 
+## History State
+
+Beyond URL params and query strings, the router lets you attach an arbitrary state object to a navigation entry. This state survives back/forward clicks and is available instantly on arrival — without encoding anything in the URL.
+
+```typescript
+// Push navigation with attached state
+router.navigate('/tasks/' + taskId, {
+    fromView: 'kanban',
+    scrollPosition: window.scrollY,
+});
+
+// In the receiving controller — state is on window.history.state
+const navState = (window.history.state ?? {}) as { fromView?: string; scrollPosition?: number };
+if (navState.fromView === 'kanban') {
+    // Show a "Back to Board" link instead of the default breadcrumb
+}
+```
+
+**Good uses for history state:**
+- Which tab or panel should be pre-selected on arrival
+- Scroll position to restore when navigating back
+- Whether the user came from a compact flow (e.g. quick-add dialog) or the full list view
+- A notification message to flash once ("Task created successfully")
+
+**Do not use history state for:**
+- Durable application state — if the user refreshes, `window.history.state` may be `null`
+- Data that other controllers or components need — use a store for shared state
+- Large objects — keep it small; it is serialized by the browser as JSON
+
+> **Tip:** Always guard against `null`: `const state = (window.history.state ?? {}) as MyStateType`. First-load navigations, hard refreshes, and external links will all have a `null` state object.
+
+---
+
 ## Built-in 404 Behaviour
 
 If no route matches and you haven't registered a `/*` wildcard, the router simply does nothing — the current view stays visible and the URL does not change. Registering a `/*` wildcard is the idiomatic way to show a proper 404 experience. The router itself does not render a built-in error page; the wildcard route *is* your 404 page.

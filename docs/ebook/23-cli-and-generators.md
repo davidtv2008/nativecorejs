@@ -253,10 +253,20 @@ You have reached the end of the NativeCoreJS ebook. Over 23 chapters you built *
 
 ### Where to Go Next
 
-- **[NativeCoreJS Documentation](https://nativecorejs.dev/docs)** — the full API reference, including advanced router features, the `<nc-*>` built-in component library, and the service layer
-- **[Component Gallery](https://nativecorejs.dev/gallery)** — community-contributed components you can drop into Taskflow
-- **[GitHub — davidtv2008/nativecorejs](https://github.com/davidtv2008/nativecorejs)** — open issues, review the roadmap, and consider contributing. The generators, the core state library, and the built-in components all welcome pull requests
+The ebook continues in **Part 7 — Real-World Scenarios**:
 
-The best way to deepen your understanding is to extend Taskflow: add a `<calendar-view>` component, build a drag-and-drop task board, integrate a WebSocket for real-time updates. Every feature is an opportunity to practice the patterns in this book.
+- **[Chapter 24 — Real-Time Features and WebSockets](./24-real-time-and-websockets.md)** — controller-owned socket lifecycle, message rendering, optimistic updates, and reconnect logic
+- **[Chapter 25 — Internationalization (i18n)](./25-internationalization.md)** — locale store, `t()` helper, `Intl`-based formatters, and reactive locale switching
+- **[Chapter 26 — Mobile Patterns](./26-mobile-patterns.md)** — `nc-drawer`, `nc-bottom-nav`, responsive shell layout, and mobile testing strategy
+- **[Chapter 27 — Troubleshooting Guide](./27-troubleshooting.md)** — diagnostic checklists for routing, component, reactivity, and build failures
+- **[Chapter 28 — Migration Guide](./28-migration-guide.md)** — mapping mental models from React, Vue, and vanilla JavaScript to NativeCoreJS
+
+External resources:
+
+- **[NativeCoreJS Documentation](https://nativecorejs.dev/docs)** — the full API reference
+- **[Component Gallery](https://nativecorejs.dev/gallery)** — community-contributed components
+- **[GitHub — davidtv2008/nativecorejs](https://github.com/davidtv2008/nativecorejs)** — open issues, review the roadmap, and consider contributing
+
+The best way to deepen your understanding is to extend Taskflow: add a `<calendar-view>` component, build a drag-and-drop task board, or integrate a WebSocket for real-time updates (Chapter 24 walks you through exactly that). Every feature is an opportunity to practice the patterns in this book.
 
 Happy building.

@@ -123,6 +123,80 @@ onMount(): void {
 
 `onUnmount()` runs when the element is removed from the document. Use it to dispose of anything that the framework cannot clean up automatically (raw `addEventListener` calls, timers, etc.). Bindings registered through `this.bind()` and `this.on()` are auto-disposed — you do not need to clean those up manually.
 
+### Lifecycle Execution Order
+
+The full sequence for a NativeCoreJS component is:
+
+1. **`constructor()`** — initialise properties and call `super()`. No DOM access yet.
+2. **Shadow DOM attaches** — if `static useShadowDOM = true`, an open shadow root is created.
+3. **`connectedCallback()`** — browser fires this when the element enters the DOM.
+4. **`render()`** — the framework calls `template()` and patches the shadow root.
+5. **`onMount()`** — your hook, called after the render. Shadow root queries are safe here.
+6. **`attributeChangedCallback()`** — fires for attribute mutations after mount; triggers `onAttributeChange()` and a targeted re-render.
+7. **`disconnectedCallback()`** → **`onUnmount()`** — cleanup runs when the element leaves the DOM.
+
+The key rules that flow from this order:
+
+- Never query the shadow root in `constructor()` — it is not rendered yet.
+- If you need to read an attribute value on first render, do it in `onMount()` or in `attributeChangedCallback()`.
+- Every watcher, timer, observer, or computed you create should be cleaned up in `onUnmount()`.
+
+### Component Cleanup Rules
+
+Any resource you open in a component must be explicitly closed. The framework auto-disposes bindings created via `this.bind()` and listeners created via `this.on()`. Everything else is your responsibility:
+
+| Resource | How to clean up in `onUnmount()` |
+|---|---|
+| `state.watch()` call | Store the returned `unsubscribe` fn; call it |
+| `computed()` value | Call `.dispose()` |
+| `setTimeout` / `setInterval` | Store the ID; call `clearTimeout` / `clearInterval` |
+| `addEventListener` on `window`/`document` | Store the handler reference; call `removeEventListener` |
+| `ResizeObserver` / `IntersectionObserver` | Call `.disconnect()` |
+
+```typescript
+private _unwatch?: () => void;
+private _timer?: ReturnType<typeof setInterval>;
+
+onMount(): void {
+    this._unwatch = this.count.watch(v => this.render());
+    this._timer   = setInterval(() => this.tick(), 1000);
+}
+
+onUnmount(): void {
+    this._unwatch?.();
+    if (this._timer !== undefined) clearInterval(this._timer);
+}
+```
+
+### Component Public API Design
+
+A well-designed NativeCoreJS component has a small, explicit public surface. For every reusable component, document these five things:
+
+| Surface | Example |
+|---|---|
+| Tag name | `task-card` |
+| Observed attributes | `task-id`, `status`, `priority` |
+| Emitted events | `task-status-changed` (detail: `{ taskId, status }`) |
+| Slots | `default` (card body), `actions` (footer buttons) |
+| Keyboard behaviour | `Enter`/`Space` activate; `Escape` dismisses |
+
+**Attribute design rules:**
+- Attributes describe configuration, not implementation details (`status="done"` not `is-completed="true"`)
+- Event names describe intent, not DOM mechanics (`row-select`, not `clicked`)
+- Default values should be safe and visually stable
+
+**Variant attributes** give components predictable visual modes without exposing internals. Treat `variant` as a short, closed list of semantic names:
+
+```typescript
+// Good variant list — semantic, maintainable
+// variant="primary" | "secondary" | "danger" | "ghost" | "compact"
+
+// Bad variant list — too many, or too implementation-specific
+// variant="blue-filled" | "gray-outline-with-shadow" | ...
+```
+
+The variant value drives only CSS custom property choices or class toggles — not branching logic in `template()`. Keep the default variant safe and accessible.
+
 ---
 
 ## Firing Custom Events with `this.emitEvent()`

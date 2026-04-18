@@ -132,6 +132,30 @@ Add a `manifest.json` at the project root with `name`, `icons`, `start_url`, and
 
 ## Performance Tips
 
+### Skeleton Loading Screens
+
+Before data arrives, show a skeleton placeholder instead of an empty or partially-rendered view. NativeCoreJS ships `<nc-skeleton>` for this purpose:
+
+```typescript
+// In the controller, before the async fetch
+const root = dom.$('#content-root');
+if (root) root.innerHTML = '<nc-skeleton lines="4"></nc-skeleton>';
+
+// After data arrives
+const data = await api.getCached('/tasks');
+if (root) root.innerHTML = renderTaskList(data);
+```
+
+`<nc-skeleton>` renders animated grey bars that fill the content area while the real data loads. Use it any time a fetch takes more than ~150 ms — which is almost always on a production connection. It is far better than a loading spinner for content-heavy pages because it signals the *shape* of the data that is coming.
+
+Attributes:
+
+| Attribute | Purpose |
+|---|---|
+| `lines` | Number of text-line bars to show (default: 3) |
+| `avatar` | Show a circular avatar placeholder before the lines |
+| `full-width` | Stretch bars to 100% width instead of varying widths |
+
 ### Lazy Controllers
 
 Every route controller loaded via `lazyController()` is code-split automatically. The controller module is not downloaded until the user navigates to that route:
@@ -165,6 +189,29 @@ export const preloadComponents = [
 ```
 
 These imports fire after `requestIdleCallback`, so they never compete with the first meaningful paint.
+
+### Preload vs Lazy — Decision Guide
+
+| Component type | Where to register |
+|---|---|
+| Shell nav, sidebar, header | `preloadRegistry.ts` — needed on every page immediately |
+| Loading spinner | `preloadRegistry.ts` — must be available before any fetch |
+| Most `nc-*` primitives | `frameworkRegistry.ts` (already done) — lazy by default |
+| Your domain components (`task-card`, etc.) | `registry.ts` — lazy unless profiling shows a first-paint cost |
+| Very heavy charts or editors | `registry.ts` — definitely lazy; show `nc-skeleton` first |
+
+### GPU-Friendly Motion
+
+When animating with CSS or the `nc-animation` component, prefer `transform` and `opacity` over properties that trigger layout (like `height`, `top`, `left`, `margin`). Transform/opacity changes are composited entirely on the GPU and do not block the main thread:
+
+```css
+/* ✅ GPU-composited — smooth 60fps */
+.card { transition: transform 0.2s ease, opacity 0.2s ease; }
+.card.exiting { transform: translateY(8px); opacity: 0; }
+
+/* ❌ Triggers layout reflow — janky on low-end devices */
+.card { transition: height 0.2s ease, margin 0.2s ease; }
+```
 
 ### `getCached` with `revalidate`
 

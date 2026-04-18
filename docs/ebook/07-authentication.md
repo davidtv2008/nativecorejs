@@ -79,6 +79,32 @@ The canonical login sequence is:
 
 On failure, surface the error message without leaving the page.
 
+### Login Flow Checklist
+
+A robust NativeCoreJS login flow does this in order:
+
+1. Collect credentials from a form field — never log raw passwords
+2. POST to the auth endpoint over HTTPS
+3. Validate the response contains an `accessToken` before proceeding
+4. Call `auth.setTokens(access, refresh)` — persist both JWTs
+5. Call `auth.setUser(user)` — persist the minimal user profile (id, name, email, role)
+6. Navigate into the protected area (`router.navigate('/dashboard')`)
+7. Update protected-only UI like the sidebar (if not driven reactively from the user store)
+
+### A Note on XSS and DOM Safety
+
+When syncing auth-related user data into views (name, email, role), **always use `textContent` or `setAttribute()`** — never `innerHTML` with untrusted values:
+
+```typescript
+// ✅ Safe — textContent escapes HTML entities automatically
+welcomeEl.textContent = `Hello, ${user.name}`;
+
+// ❌ Unsafe — XSS if user.name contains <script> or crafted HTML
+welcomeEl.innerHTML = `Hello, ${user.name}`;
+```
+
+Use `innerHTML` only for static, developer-controlled template strings. Never interpolate user-supplied or server-supplied strings directly into `innerHTML`. NativeCoreJS's `html` tagged template (in `@core-utils/templates.js`) auto-escapes all interpolated values — prefer it whenever you build dynamic HTML strings.
+
 ---
 
 ## Building the Taskflow Login Controller
@@ -208,6 +234,28 @@ on('click', '#btn-logout', () => auth.logout());
 ```
 
 `auth.logout()` clears both tokens and the cached user, then redirects to `/login`. Any in-flight requests will fail with a 401, but because the user is already being redirected that is harmless.
+
+### Logout Flow Checklist
+
+A robust logout flow should, in order:
+
+1. Clear access token and refresh token (`auth.logout()` does this)
+2. Clear stored user data
+3. Cancel any in-flight API requests if your service supports it
+4. Navigate back to a public route (`/login` or `/`)
+5. Ensure protected-only UI elements (sidebar, user avatar) are hidden or reset
+
+> **Tip:** Never rely on `auth.logout()` to call the backend `/auth/logout` endpoint for you. If your server issues refresh token families or session-bound JWTs that need server-side revocation, make the `api.post('/auth/logout')` call yourself *before* clearing local tokens — that way the server can invalidate the token even if the network request fails.
+
+### Security Notes
+
+NativeCoreJS provides a clean structure for auth. It does not solve:
+
+- **Backend authorization** — the server must validate tokens on every request
+- **Token refresh policy** — if you need silent refresh or refresh rotation, build that as a service extension
+- **CSRF** — JWT-in-`Authorization`-header flows are CSRF-resistant; cookie-based flows need additional CSRF protection
+- **Session revocation** — clearing local storage does not invalidate a still-valid JWT on the server
+- **Role-based access** — route guards can read `auth.getUser().role`, but the server must enforce it too
 
 ---
 

@@ -110,6 +110,23 @@ npm run make:controller <name>   # standalone controller
 23. **[23 — CLI Mastery and the Generator Workflow](./23-cli-and-generators.md)**
     Deep dive into all `npm run make:*` generators, the complete Taskflow command history, remove commands, and the path forward.
 
+### Part 7 — Real-World Scenarios
+
+24. **[24 — Real-Time Features and WebSockets](./24-real-time-and-websockets.md)**
+    Controller-owned WebSocket lifecycle, reactive message rendering, optimistic updates, reconnect patterns, and a complete chat thread example.
+
+25. **[25 — Internationalization (i18n)](./25-internationalization.md)**
+    Locale store, `t()` message lookup helper, `Intl`-based price/date/relative-time formatters, locale switcher, and component-level re-rendering on locale change.
+
+26. **[26 — Mobile Patterns](./26-mobile-patterns.md)**
+    `<nc-drawer>`, `<nc-bottom-nav>`, responsive shell layout, form behaviour with the software keyboard, safe area insets, and mobile testing strategy.
+
+27. **[27 — Troubleshooting Guide](./27-troubleshooting.md)**
+    Structured diagnostic checklists for routing failures, component registration issues, reactivity bugs, and build errors.
+
+28. **[28 — Migration Guide](./28-migration-guide.md)**
+    Mapping mental models from React, Vue, and vanilla JavaScript to NativeCoreJS with direct concept-to-concept tables and a side-by-side component migration example.
+
 ---
 
 ## How to Read This Book
