@@ -133,14 +133,12 @@ Inside a component you use `this.bind()`. Inside a controller there is no `this`
 ```typescript
 import { effect } from '@core/state.js';
 
-const stopEffect = effect(() => {
+disposers.push(effect(() => {
   taskCount.textContent = String(tasks.value.length);
-});
-
-disposers.push(stopEffect);
+}));
 ```
 
-`effect()` returns a stop function. Push it into `disposers` so it is stopped when the controller cleans up.
+`effect()` returns a stop function. Push it into `disposers` — the `disposers.forEach(d => d())` call in the returned cleanup function is the **automatic cleanup** that runs all of them when the router unmounts the view. You never call the stop function manually; you just make sure every `effect()` result is in `disposers` and the rest is handled for you.
 
 ---
 
@@ -265,7 +263,7 @@ async function tasksController(params: RouteParams): Promise<() => void> {
     if (!btn) return;
 
     // Update active button styling
-    document.querySelectorAll(view.actionSelector('filter'))
+    dom.$$(view.actionSelector('filter'))
       .forEach(b => b.classList.remove('filter-btn--active'));
     btn.classList.add('filter-btn--active');
 
@@ -306,11 +304,11 @@ export default tasksController;
 
 **Data Fetch** — `await apiService.get()` loads tasks. If it throws, we log the error and leave `tasks` as an empty array rather than crashing the view.
 
-**Reactive Bindings** — a single `effect()` re-renders the task list whenever `filteredTasks.value` or `completedCount.value` changes. This is the "one effect for the list" pattern — efficient for moderate list sizes. For very large lists you would diff the previous and next arrays; Chapter 11 covers optimisation strategies.
+**Reactive Bindings** — a single `effect()` re-renders the task list whenever `filteredTasks.value` or `completedCount.value` changes. Its stop function is pushed into `disposers` so the `disposers.forEach(d => d())` auto-cleanup handles it automatically. This is the "one effect for the list" pattern — efficient for moderate list sizes. For very large lists you would diff the previous and next arrays; Chapter 11 covers optimisation strategies.
 
-**Events** — `trackEvents().on()` registers all delegated listeners. The filter click handler reads `btn.dataset.filter` and writes to `filter.value`, which triggers the computed, which triggers the effect — a clean reactive loop.
+**Events** — `trackEvents().on()` registers all delegated listeners. The filter click handler uses `dom.$$()` to query matching buttons and reads `btn.dataset.filter` and writes to `filter.value`, which triggers the computed, which triggers the effect — a clean reactive loop.
 
-**Cleanup** — the returned function runs every disposer. The router calls this function before mounting the next view.
+**Cleanup** — the returned function calls `disposers.forEach(d => d())`, which is the automatic cleanup that stops every `effect()` and `computed()` whose disposer was pushed into the array. The router calls this function before mounting the next view.
 
 ---
 
