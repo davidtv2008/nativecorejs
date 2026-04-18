@@ -632,7 +632,22 @@ async function main() {
     let installError = null;
 
     if (config.shouldInstall) {
-        console.log('\nInstalling dependencies with npm...\n');
+        console.log('\nInstalling dev dependencies...');
+        console.log('These are development and build tools only — none ship to production:\n');
+        console.log('  typescript        — TypeScript compiler');
+        console.log('  tsc-alias         — resolves path aliases (@core/*, @services/*, etc.) after compile');
+        console.log('  concurrently      — runs the dev server and TypeScript watcher in parallel');
+        console.log('  ws                — WebSocket server used by the HMR dev server');
+        console.log('  terser            — minifies JS output for production builds');
+        console.log('  vitest            — unit test runner');
+        console.log('  happy-dom         — lightweight DOM environment for unit tests');
+        console.log('  puppeteer         — headless browser used for bot pre-rendering (npm run build:bots)');
+        console.log('  eslint            — linter');
+        console.log('  typescript-eslint — TypeScript-aware ESLint rules');
+        console.log('  @eslint/js        — ESLint core rules');
+        console.log('  globals           — browser/node global definitions for ESLint');
+        console.log('  @types/node       — TypeScript types for Node.js (scripts and build tools only)');
+        console.log('  htmlhint          — HTML linter for view files\n');
 
         try {
             await installDependencies(targetDir);
@@ -642,22 +657,21 @@ async function main() {
         }
     }
 
-    console.log('\nProject created successfully.');
-    console.log(`cd ${config.projectName}`);
+    console.log('\nProject ready.');
+    console.log(`\n  cd ${config.projectName}`);
 
     if (config.shouldInstall && installSucceeded) {
-        console.log('Dependencies installed.');
+        console.log('  npm run dev\n');
+        console.log('Your project has no runtime dependencies — only the dev tools listed above.');
     } else {
-        console.log('npm install');
+        console.log('  npm install');
+        console.log('  npm run dev\n');
     }
 
     if (installError) {
-        console.log('\nDependency installation did not complete.');
+        console.log('\nDependency installation did not complete:');
         console.log(installError.message);
     }
-
-    console.log('npm run dev');
-    console.log('\nThis scaffold now ships a full NativeCore-style project structure with scripts, dev tools, HMR, services, stores, middleware, mock API, and source folders included.');
 
     rl.close();
 }
