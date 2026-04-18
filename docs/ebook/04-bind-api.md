@@ -13,11 +13,16 @@ The `bind()` API decouples state from DOM. You declare, once, which DOM node eac
 `bind()` subscribes a selector to a `State<T>` (or `ComputedState<T>`) and updates the matched element's `textContent` whenever the state changes:
 
 ```typescript
+// basic bind — writes String(state.value) to textContent
 this.bind(this.total, '.stats__total');
+
+// with optional formatter — transforms the value before writing
+this.bind(this.percentage, '.stats__percentage', v => `${v}%`);
 ```
 
 - The selector is scoped to `this.shadowRoot` (or `this` if Shadow DOM is off).
 - When `this.total.value` changes, `.stats__total` gets `textContent = String(newValue)`.
+- The optional **third argument** is a formatter function — a pure function that transforms the raw state value into the string written to `textContent`. Here `v => \`${v}%\`` appends a percent sign without requiring a separate computed.
 - The subscription is **automatically disposed** when the component is unmounted. You do not need to call anything in `onUnmount()`.
 
 You must call `bind()` from `onMount()`, after the shadow root has been stamped:
@@ -34,9 +39,6 @@ onMount(): void {
   this.bind(this.completed,  '.stats__completed');
   this.bind(this.percentage, '.stats__percentage', v => `${v}%`);
 }
-```
-
-The optional third argument is a **formatter function** — a pure function that transforms the raw state value into the string written to `textContent`. Here we append a `%` sign to the percentage without creating a separate computed.
 
 ---
 

@@ -298,7 +298,7 @@ export default tasksController;
 
 ## Walking Through the Controller
 
-**Setup** — `disposers` is declared first. Every subscriptions and listener the controller creates is paired with an entry in this array.
+**Setup** — `disposers` is declared first. Every subscription and listener the controller creates is paired with an entry in this array.
 
 **DOM Refs** — all `dom.data()` lookups happen before the async fetch. The DOM is already mounted when the controller runs.
 
