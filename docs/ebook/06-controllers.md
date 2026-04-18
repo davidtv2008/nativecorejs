@@ -318,4 +318,4 @@ export default tasksController;
 
 ---
 
-**What's Next:** [Chapter 07 — Services and the API Layer](./07-services.md) — build a typed API service, handle loading states and errors, and integrate the auth service into Taskflow.
+**What's Next:** [Chapter 07 — Authentication](./07-authentication.md) — protect routes, handle login/logout, and guard your Taskflow pages with the auth service.

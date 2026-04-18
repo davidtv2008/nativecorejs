@@ -48,19 +48,19 @@ Store environment-specific values in `.env` files at the project root:
 
 ```
 # .env
-VITE_API_BASE_URL=https://api.taskflow.app
-VITE_APP_NAME=Taskflow
+API_BASE_URL=https://api.taskflow.app
+APP_NAME=Taskflow
 ```
 
-Access them at build time via `import.meta.env`:
+NativeCoreJS does not use Vite. The template's build step is pure `tsc` (TypeScript compiler). Environment variables are read at server start from `.env` via `process.env` in `server.js`, or injected into `window` by your hosting provider's build pipeline. A simple pattern used in the template is:
 
 ```typescript
-const base = import.meta.env.VITE_API_BASE_URL as string;
+// src/constants/env.ts
+export const API_BASE_URL =
+    (window as any).__ENV__?.API_BASE_URL ?? 'http://localhost:3000';
 ```
 
-> **Warning:** Variables prefixed with `VITE_` are inlined at build time and become part of the JavaScript bundle. Never store secrets (private keys, service tokens) in `.env` files that are committed to source control. Use your hosting provider's secret management for anything sensitive.
-
-For different deployment stages, create `.env.production` and `.env.staging`. The build command picks up the appropriate file automatically based on the `NODE_ENV` value.
+Then set `window.__ENV__` in `index.html` at deploy time via your CI/CD pipeline's find-and-replace step.
 
 ---
 

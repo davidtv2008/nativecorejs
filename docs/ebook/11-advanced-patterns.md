@@ -77,20 +77,20 @@ disposers.push(() =>
 
 ---
 
-## `patchState()` — Batch DOM Updates
+## `patchState()` — Silent State Updates
 
-Every Component instance exposes `patchState()` for applying multiple state changes that should be flushed as a single DOM update, avoiding intermediate renders.
+Every Component instance exposes `patchState()` for merging new values into `this.state` without triggering a full re-render. This is useful when your component drives all DOM updates through `bind()` bindings exclusively.
 
 ```typescript
-// In a Component method
-this.patchState(() => {
-  this.projectName.value  = 'New Name';
-  this.taskCount.value    = 14;
-  this.lastUpdated.value  = new Date().toISOString();
+// In a Component method — merges into this.state, no re-render
+this.patchState({
+    projectName: 'New Name',
+    taskCount:   14,
+    lastUpdated: new Date().toISOString(),
 });
 ```
 
-Without `patchState`, each `.value =` assignment would trigger its own synchronous DOM patch. Batching is especially important when three or more state values drive a single complex template fragment.
+Because `bind()` bindings react to their own `State<T>` objects — not `this.state` — `patchState()` is best paired with a component that stores plain serializable values in `this.state` for external tooling access while driving the UI through separate `useState()` instances and `bind()`.
 
 ---
 
