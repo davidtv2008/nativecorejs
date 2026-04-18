@@ -2,7 +2,7 @@
  * Login Controller
  * Handles form submission, validation, and auth flow for the login page.
  */
-import { trackEvents, trackSubscriptions } from '@core-utils/events.js';
+import { trackEvents } from '@core-utils/events.js';
 import { dom } from '@core-utils/dom.js';
 import router from '@core/router.js';
 import auth from '@services/auth.service.js';
@@ -12,7 +12,6 @@ export async function loginController(): Promise<() => void> {
 
     // -- Setup ---------------------------------------------------------------
     const events = trackEvents();
-    const subs = trackSubscriptions();
 
     // -- DOM refs ------------------------------------------------------------
     const form             = dom.$<HTMLElement & { getValues?: () => Record<string, string> }>('#loginForm');
@@ -130,7 +129,6 @@ export async function loginController(): Promise<() => void> {
     // -- Cleanup -------------------------------------------------------------
     return () => {
         events.cleanup();
-        subs.cleanup();
     };
 }
 

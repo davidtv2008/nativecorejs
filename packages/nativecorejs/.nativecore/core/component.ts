@@ -1,3 +1,6 @@
+import { effect } from './state.js';
+import type { State, ComputedState } from './state.js';
+
 export interface ComponentState {
     [key: string]: any;
 }
@@ -9,9 +12,12 @@ export interface ComponentConstructor {
 
 type RenderContainer = HTMLElement | ShadowRoot | Element | DocumentFragment;
 
+type Readable<T = any> = State<T> | ComputedState<T>;
+
 export class Component extends HTMLElement {
     state: ComponentState;
     protected _mounted: boolean;
+    private _bindings: Array<() => void> = [];
     shadowRoot!: ShadowRoot | null;
 
     static useShadowDOM?: boolean;
@@ -39,6 +45,8 @@ export class Component extends HTMLElement {
     }
 
     disconnectedCallback(): void {
+        this._bindings.forEach(dispose => dispose());
+        this._bindings.length = 0;
         this.onUnmount();
         this._mounted = false;
     }
@@ -59,6 +67,48 @@ export class Component extends HTMLElement {
 
     getState(): ComponentState {
         return { ...this.state };
+    }
+
+    patchState(newState: Partial<ComponentState>): void {
+        this.state = { ...this.state, ...newState };
+    }
+
+    bind<T>(state: Readable<T>, selector: string, property: string = 'textContent'): void {
+        const el = this.$(selector);
+        if (!el) {
+            console.warn(`[${this.tagName.toLowerCase()}] bind(): no element found for selector "${selector}"`);
+            return;
+        }
+        const dispose = effect(() => {
+            (el as any)[property] = String(state.value);
+        });
+        this._bindings.push(dispose);
+    }
+
+    bindAttr<T>(state: Readable<T>, selector: string, attributeName: string): void {
+        const el = this.$(selector);
+        if (!el) {
+            console.warn(`[${this.tagName.toLowerCase()}] bindAttr(): no element found for selector "${selector}"`);
+            return;
+        }
+        const dispose = effect(() => {
+            el.setAttribute(attributeName, String(state.value));
+        });
+        this._bindings.push(dispose);
+    }
+
+    /**
+     * Batch-bind multiple selectors to reactive states.
+     * Each key is a CSS selector; each value is the reactive state to watch.
+     * Updates each element's textContent by default.
+     *
+     * Note: keys are CSS selectors, values are state objects —
+     * the reverse of bind(state, selector) — to allow concise object literals.
+     */
+    bindAll(bindings: Record<string, Readable<any>>): void {
+        for (const [selector, state] of Object.entries(bindings)) {
+            this.bind(state, selector);
+        }
     }
 
     render(): void {

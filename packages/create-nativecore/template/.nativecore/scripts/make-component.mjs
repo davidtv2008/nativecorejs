@@ -113,17 +113,15 @@ export class ${className} extends Component {
         return ['variant', 'size', 'disabled'];
     }
     
-    // ========== Local State ==========
-    private count?: State<number>;
-    private name?: State<string>;
+    // ========== Local Reactive State ==========
+    // Declare state here; initialize in constructor.
+    // private count?: State<number>;
+    // private name?: State<string>;
     
     // ========== Computed State ==========
-    private doubleCount?: ComputedState<number>;
-    private greeting?: ComputedState<string>;
-    
-    // ========== Watcher unsubscribes (call in onUnmount) ==========
-    private _unwatchCount?: () => void;
-    private _unwatchName?: () => void;
+    // Auto-updates when dependencies change. Dispose in onUnmount().
+    // private doubleCount?: ComputedState<number>;
+    // private greeting?: ComputedState<string>;
     
     constructor() {
         super();
@@ -133,7 +131,6 @@ export class ${className} extends Component {
         // this.name = useState('World');
         
         // ========== Initialize Computed Values ==========
-        // Auto-updates when dependencies change
         // this.doubleCount = computed(() => this.count!.value * 2);
         // this.greeting = computed(() => \`Hello, \${this.name!.value}!\`);
     }
@@ -239,77 +236,36 @@ export class ${className} extends Component {
     }
     
     onMount() {
-        // ========== Event Delegation (Recommended Pattern) ==========
-        // Handles clicks even after re-renders
-        this.shadowRoot.addEventListener('click', (e) => {
-            const target = e.target as HTMLElement;
-            
-            // if (target.matches('.btn-increment')) {
-            //     this.handleIncrement();
-            // }
-        });
-        
-        // ========== State Watchers ==========
-        // Store the returned unsubscribe — call it in onUnmount
-        // this._unwatchCount = this.count?.watch(value => {
-        //     const display = this.shadowRoot.querySelector('#count-display');
-        //     if (display) display.textContent = value.toString();
+        // ========== Fine-Grained Reactive Bindings ==========
+        // bind(state, selector) watches a reactive state and surgically patches
+        // only the matched DOM element — no full re-render on every change.
+        // Bindings are automatically cleaned up in disconnectedCallback.
+        //
+        // this.bind(this.count, '.count-display');            // updates textContent
+        // this.bind(this.name,  '.greeting', 'innerHTML');    // updates a specific property
+        // this.bindAttr(this.count, '.track', 'aria-valuenow'); // updates an attribute
+        //
+        // Batch form:
+        // this.bindAll({
+        //     '.count-display': this.count,
+        //     '.greeting':      this.name,
         // });
         
-        // this._unwatchName = this.name?.watch(value => {
-        //     const display = this.shadowRoot.querySelector('#greeting');
-        //     if (display) display.textContent = value;
+        // ========== Event Delegation (Recommended Pattern) ==========
+        // this.on('click', '.btn-increment', () => {
+        //     if (this.count) this.count.value++;
+        // });
+        //
+        // this.on('click', '.btn-decrement', () => {
+        //     if (this.count) this.count.value--;
         // });
     }
     
-    // ========== Event Handlers ==========
-    // private handleIncrement(): void {
-    //     if (this.count) {
-    //         this.count.value++;
-    //     }
-    //     
-    //     // Emit event to parent
-    //     this.emitEvent('increment', { value: this.count?.value });
-    // }
-    
-    // private handleDecrement(): void {
-    //     if (this.count) {
-    //         this.count.value--;
-    //     }
-    //     
-    //     // Emit event to parent
-    //     this.emitEvent('decrement', { value: this.count?.value });
-    // }
-    
-    /**
-     * Emit custom events to parent components
-     * 
-     * Usage in parent:
-     * <${componentName}></${componentName}>
-     * 
-     * // In controller:
-     * document.querySelector('${componentName}')
-     *   .addEventListener('custom-event', (e) => {
-     *     console.log(e.detail); // Your data here
-     *   });
-     */
-    // emitEvent(name: string, detail: any = {}, options = {}) {
-    //     this.dispatchEvent(new CustomEvent(name, {
-    //         detail,
-    //         bubbles: true,
-    //         composed: true,
-    //         ...options
-    //     }));
-    // }
-    
     onUnmount() {
-        // Unsubscribe all state watchers
-        this._unwatchCount?.();
-        this._unwatchName?.();
-        
-        // Dispose computed values to release dependency subscriptions
-        this.doubleCount?.dispose();
-        this.greeting?.dispose();
+        // bind() / bindAll() / bindAttr() are disposed automatically.
+        // Only manually dispose computed values here.
+        // this.doubleCount?.dispose();
+        // this.greeting?.dispose();
     }
 }
 
