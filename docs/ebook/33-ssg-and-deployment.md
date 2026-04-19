@@ -283,4 +283,4 @@ To exclude a route from the sitemap while still pre-rendering it (for example, a
 ---
 
 **Back:** [Chapter 32 — Capacitor: Packaging for Android and iOS](./32-capacitor-mobile-deployment.md)  
-**Next:** [Ebook Index](./README.md)
+**Next:** [Chapter 34 — Building Plugins](./34-building-plugins.md)

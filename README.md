@@ -2,6 +2,13 @@
 
 Public monorepo for the NativeCore framework runtime and the official app installer.
 
+## Quick Links
+
+- **[Quick Start](./docs/QUICK_START.md)** — 10 commands from zero to a running app
+- **[Cheat Sheet](./docs/CHEATSHEET.md)** — copy-paste patterns for the 20 most common tasks
+- **[Ebook](./docs/ebook/README.md)** — 36-chapter deep-dive covering every framework feature
+- **[Contributing](./CONTRIBUTING.md)** — how to contribute components, plugins, and docs
+
 ## Packages
 
 - `packages/nativecorejs` - framework runtime, primitives, components, utilities, and build helpers

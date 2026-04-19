@@ -124,4 +124,12 @@ export type {
 	State
 } from '../.nativecore/core/state.js';
 
+export {
+	registerPlugin,
+	unregisterPlugin,
+	listPlugins
+} from './plugin.js';
+
+export type { NCPlugin, NCPluginNavigateContext } from './plugin.js';
+
 

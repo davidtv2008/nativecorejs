@@ -173,11 +173,11 @@ async function startServer() {
 // ---------------------------------------------------------------------------
 
 function buildSitemapXml(routes, baseUrl) {
-    const today = new Date().toISOString().slice(0, 10);
+    const buildDate = new Date().toISOString().slice(0, 10);
     const urls = routes.map(route => {
         const loc = route === '/' ? baseUrl + '/' : `${baseUrl}${route}`;
         const priority = route === '/' ? '1.0' : '0.8';
-        return `  <url>\n    <loc>${loc}</loc>\n    <lastmod>${today}</lastmod>\n    <changefreq>weekly</changefreq>\n    <priority>${priority}</priority>\n  </url>`;
+        return `  <url>\n    <loc>${loc}</loc>\n    <lastmod>${buildDate}</lastmod>\n    <changefreq>weekly</changefreq>\n    <priority>${priority}</priority>\n  </url>`;
     });
     return `<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n${urls.join('\n')}\n</urlset>\n`;
 }
