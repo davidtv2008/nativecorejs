@@ -408,4 +408,5 @@ function renderTaskRow(task: Task): string {
 
 ---
 
-**What's Next:** [Chapter 07 — Authentication](./07-authentication.md) — protect routes, handle login/logout, and guard your Taskflow pages with the auth service.
+**Back:** [Chapter 05 — Views and Routing](./05-views-and-routing.md)  
+**Next:** [Chapter 07 — Authentication](./07-authentication.md)

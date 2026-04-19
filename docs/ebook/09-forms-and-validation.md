@@ -371,6 +371,5 @@ export async function tasksController(): Promise<() => void> {
 
 ---
 
-## What's Next
-
-Chapter 10 takes a complete tour of every `nc-*` component — attributes, slots, and short usage examples — so you can make the most of the Taskflow UI.
+**Back:** [Chapter 08 — APIs and Async Data](./08-apis-and-async.md)  
+**Next:** [Chapter 10 — Core Components](./10-core-components.md)

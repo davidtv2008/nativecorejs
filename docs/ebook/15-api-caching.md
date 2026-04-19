@@ -280,6 +280,5 @@ Keep this map updated as Taskflow grows. A missing entry means stale data will l
 
 ---
 
-## What's Next
-
-You now have two caching layers working in concert: route HTML and API data, each with targeted invalidation. Chapter 16 adds a third control mechanism: middleware. You'll build authentication guards that run before every navigation, logging middleware for debugging, and "save before leaving" guards that protect unsaved form data.
+**Back:** [Chapter 14 — Route Caching and Prefetching](./14-route-caching.md)  
+**Next:** [Chapter 16 — Router Middleware and Navigation Guards](./16-middleware.md)

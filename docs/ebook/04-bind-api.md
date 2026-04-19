@@ -290,4 +290,5 @@ The rule is simple: if you call it on `this` (bind/on), the framework disposes i
 
 ---
 
-**What's Next:** [Chapter 05 — Views and Routing](./05-views-and-routing.md) — understand the HTML view model, register routes, use `lazyController()`, and set up the Taskflow navigation structure.
+**Back:** [Chapter 03 — Reactive State](./03-reactive-state.md)  
+**Next:** [Chapter 05 — Views and Routing](./05-views-and-routing.md)

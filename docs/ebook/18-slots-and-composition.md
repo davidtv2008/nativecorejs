@@ -283,6 +283,5 @@ onUnmount(): void {
 
 ---
 
-## What's Next
-
-Chapter 19 dives into **Styling and Theming** — how to use CSS custom properties as design tokens, how dark mode works with `data-theme`, and how to use `::part()` and `::slotted()` together for a fully themeable Taskflow UI.
+**Back:** [Chapter 17 — Global Stores and Cross-Route State](./17-global-stores.md)  
+**Next:** [Chapter 19 — Styling, Theming, and CSS Custom Properties](./19-styling-and-theming.md)

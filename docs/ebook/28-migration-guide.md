@@ -187,6 +187,5 @@ A safe migration from an existing codebase:
 
 ---
 
-## What's Next
-
-You have reached the end of the NativeCoreJS ebook. Every concept covered here is grounded in real browser APIs and explicit TypeScript — no magic, no hidden runtime. The best next step is to extend Taskflow: add a calendar view, build a drag-and-drop task board, integrate WebSocket real-time updates (Chapter 24), or add internationalization (Chapter 25). Every feature is an opportunity to practice the patterns in this book.
+**Back:** [Chapter 27 — Troubleshooting Guide](./27-troubleshooting.md)  
+**Next:** [Chapter 29 — Error Boundaries](./29-error-boundaries.md)

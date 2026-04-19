@@ -429,6 +429,5 @@ jobs:
 
 ---
 
-## What's Next
-
-Chapter 23 is **CLI Mastery and the Generator Workflow** — a complete reference for every `npm run make:*` command, the workflow table showing which commands built Taskflow chapter by chapter, and the rule that should govern every new file you create in a NativeCoreJS project.
+**Back:** [Chapter 21 — Accessibility and ARIA](./21-accessibility.md)  
+**Next:** [Chapter 23 — CLI Mastery and the Generator Workflow](./23-cli-and-generators.md)

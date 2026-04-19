@@ -201,6 +201,5 @@ nc-bottom-nav {
 
 ---
 
-## What's Next
-
-Chapter 27 is the **Troubleshooting Guide** — a structured diagnostic checklist for the most common routing, component, reactivity, and build failures you will encounter while building NativeCoreJS applications.
+**Back:** [Chapter 25 — Internationalization (i18n)](./25-internationalization.md)  
+**Next:** [Chapter 27 — Troubleshooting Guide](./27-troubleshooting.md)

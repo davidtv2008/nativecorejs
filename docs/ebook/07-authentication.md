@@ -259,6 +259,5 @@ NativeCoreJS provides a clean structure for auth. It does not solve:
 
 ---
 
-## What's Next
-
-Chapter 8 dives into the full async data layer — `api.get`, caching with `getCached`, invalidation, and loading/error state patterns you will use in every controller that touches the network.
+**Back:** [Chapter 06 — Controllers](./06-controllers.md)  
+**Next:** [Chapter 08 — APIs and Async Data](./08-apis-and-async.md)

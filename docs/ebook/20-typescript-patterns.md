@@ -415,6 +415,5 @@ const token = localStorage.getItem(STORAGE_KEYS.ACCESS_TOKEN);
 
 ---
 
-## What's Next
-
-Chapter 21 tackles **Accessibility and ARIA** — how ARIA attributes behave inside shadow roots, building keyboard-navigable task cards, managing focus when modals open and close, and testing the Taskflow UI with the axe DevTools extension.
+**Back:** [Chapter 19 — Styling, Theming, and CSS Custom Properties](./19-styling-and-theming.md)  
+**Next:** [Chapter 21 — Accessibility and ARIA](./21-accessibility.md)
