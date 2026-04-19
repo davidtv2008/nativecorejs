@@ -172,7 +172,8 @@ export class NcDrawer extends Component {
             });
         }
 
-        // Close on Escape
+        // Remove old keydown listener before adding a new one to prevent accumulation
+        if (this._onKeydown) document.removeEventListener('keydown', this._onKeydown);
         this._onKeydown = (e: KeyboardEvent) => {
             if (e.key === 'Escape' && this.hasAttribute('open')) this._close();
         };

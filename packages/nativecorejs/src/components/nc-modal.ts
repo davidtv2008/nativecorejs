@@ -4,7 +4,7 @@
  * Attributes:
  *   - open: boolean - visible state
  *   - size: 'sm'|'md'|'lg'|'xl'|'full' (default: 'md')
- *   - no-close-btn: boolean - hide header × button
+ *   - no-close-btn: boolean - hide header ï¿½ button
  *   - close-on-overlay: boolean - click backdrop to close (default: true)
  *   - no-overlay: boolean - skip backdrop rendering
  *   - sticky-header: boolean - header doesn't scroll with body
@@ -193,6 +193,8 @@ export class NcModal extends Component {
             if (!dialog.contains(e.target as Node)) this._close();
         });
 
+        // Remove old keydown listener before adding a new one to prevent accumulation
+        if (this._onKeydown) document.removeEventListener('keydown', this._onKeydown);
         this._onKeydown = (e: KeyboardEvent) => {
             if (e.key === 'Escape' && this.hasAttribute('open')) this._close();
         };

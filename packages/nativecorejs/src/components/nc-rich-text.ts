@@ -278,7 +278,8 @@ export class NcRichText extends Component {
             this.setValue(newValue || '');
             return;
         }
-        if (this._mounted) { this.render(); this._bindEvents(); }
+        if (this._mounted) { this.render(); }
+        // Do not re-call _bindEvents() — the .toolbar and .editable delegation survives re-renders
     }
 }
 

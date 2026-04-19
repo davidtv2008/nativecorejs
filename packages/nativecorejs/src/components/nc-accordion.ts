@@ -126,7 +126,8 @@ export class NcAccordionItem extends Component {
             if (trigger) trigger.setAttribute('aria-expanded', String(open));
             return;
         }
-        if (this._mounted) { this.render(); this.onMount(); }
+        if (this._mounted) { this.render(); }
+        // Do not re-call onMount() — the .trigger click listener survives re-renders
     }
 }
 

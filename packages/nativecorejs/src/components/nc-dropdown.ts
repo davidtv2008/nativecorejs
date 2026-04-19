@@ -86,17 +86,25 @@ export class NcDropdown extends Component {
         `;
     }
 
+    private _triggerCleanups: Array<() => void> = [];
+    private _slotChangeCleanup: (() => void) | null = null;
+
     onMount() {
         this._bindEvents();
     }
 
     private _bindEvents() {
-        // Toggle on trigger click
+        // Toggle on trigger click — bind slotchange once, clean up on unmount
         const triggerSlot = this.shadowRoot!.querySelector<HTMLSlotElement>('slot[name="trigger"]')!;
-        triggerSlot.addEventListener('slotchange', () => this._hookTrigger());
+        if (!this._slotChangeCleanup) {
+            const slotChangeHandler = () => this._hookTrigger();
+            triggerSlot.addEventListener('slotchange', slotChangeHandler);
+            this._slotChangeCleanup = () => triggerSlot.removeEventListener('slotchange', slotChangeHandler);
+        }
         this._hookTrigger();
 
-        // Close on outside click
+        // Remove old document listeners before adding new ones to prevent accumulation
+        if (this._outsideClick) document.removeEventListener('mousedown', this._outsideClick);
         this._outsideClick = (e: MouseEvent) => {
             if (!this.contains(e.target as Node) && !this.shadowRoot!.contains(e.target as Node)) {
                 this._setOpen(false);
@@ -104,36 +112,47 @@ export class NcDropdown extends Component {
         };
         document.addEventListener('mousedown', this._outsideClick);
 
-        // Close on Escape
+        if (this._escKeydown) document.removeEventListener('keydown', this._escKeydown);
         this._escKeydown = (e: KeyboardEvent) => {
             if (e.key === 'Escape' && this.hasAttribute('open')) this._setOpen(false);
         };
         document.addEventListener('keydown', this._escKeydown);
 
-        // Select via [data-value] children in light DOM
-        this.addEventListener('click', (e: Event) => {
-            const target = (e.target as HTMLElement).closest<HTMLElement>('[data-value]');
-            if (!target) return;
-            const value = target.dataset.value ?? '';
-            const label = target.textContent?.trim() ?? '';
-            this.dispatchEvent(new CustomEvent('select', {
-                bubbles: true, composed: true,
-                detail: { value, label }
-            }));
-            if (this.getAttribute('close-on-select') !== 'false') {
-                this._setOpen(false);
-            }
-        });
+        // Select via [data-value] children in light DOM — bind once via a flag
+        if (!this._selectListenerBound) {
+            this._selectListenerBound = true;
+            this.addEventListener('click', (e: Event) => {
+                const target = (e.target as HTMLElement).closest<HTMLElement>('[data-value]');
+                if (!target) return;
+                const value = target.dataset.value ?? '';
+                const label = target.textContent?.trim() ?? '';
+                this.dispatchEvent(new CustomEvent('select', {
+                    bubbles: true, composed: true,
+                    detail: { value, label }
+                }));
+                if (this.getAttribute('close-on-select') !== 'false') {
+                    this._setOpen(false);
+                }
+            });
+        }
     }
 
+    private _selectListenerBound = false;
+
     private _hookTrigger() {
+        // Clean up old trigger listeners before re-hooking
+        this._triggerCleanups.forEach(fn => fn());
+        this._triggerCleanups = [];
+
         const slot = this.shadowRoot!.querySelector<HTMLSlotElement>('slot[name="trigger"]')!;
         const nodes = slot.assignedElements();
         nodes.forEach(node => {
-            (node as HTMLElement).addEventListener('click', (e: Event) => {
+            const handler = (e: Event) => {
                 e.stopPropagation();
                 if (!this.hasAttribute('disabled')) this._setOpen(!this.hasAttribute('open'));
-            });
+            };
+            (node as HTMLElement).addEventListener('click', handler);
+            this._triggerCleanups.push(() => (node as HTMLElement).removeEventListener('click', handler));
         });
     }
 
@@ -148,6 +167,9 @@ export class NcDropdown extends Component {
     onUnmount() {
         if (this._outsideClick) document.removeEventListener('mousedown', this._outsideClick);
         if (this._escKeydown) document.removeEventListener('keydown', this._escKeydown);
+        this._triggerCleanups.forEach(fn => fn());
+        this._triggerCleanups = [];
+        if (this._slotChangeCleanup) { this._slotChangeCleanup(); this._slotChangeCleanup = null; }
     }
 
     attributeChangedCallback(name: string, oldValue: string, newValue: string) {

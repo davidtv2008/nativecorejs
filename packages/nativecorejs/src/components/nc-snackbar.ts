@@ -58,6 +58,7 @@ export class NcSnackbar extends Component {
 
     private _toasts: Toast[] = [];
     private _timers = new Map<number, ReturnType<typeof setTimeout>>();
+    private _toastHandler: ((e: Event) => void) | null = null;
 
     static get observedAttributes() { return ['position', 'max']; }
 
@@ -156,10 +157,11 @@ export class NcSnackbar extends Component {
     onMount() {
         this._bindEvents();
 
-        // Global event listener
-        document.addEventListener('nc-toast', (e: Event) => {
+        // Store the global nc-toast handler so it can be removed in onUnmount
+        this._toastHandler = (e: Event) => {
             this._add((e as CustomEvent<ToastOptions>).detail);
-        });
+        };
+        document.addEventListener('nc-toast', this._toastHandler);
     }
 
     private _bindEvents() {
@@ -193,7 +195,6 @@ export class NcSnackbar extends Component {
         }
 
         this.render();
-        this._bindEvents();
 
         if (toast.duration > 0) {
             const timer = setTimeout(() => this._dismiss(toast.id), toast.duration);
@@ -209,7 +210,6 @@ export class NcSnackbar extends Component {
             el.addEventListener('animationend', () => {
                 this._toasts = this._toasts.filter(t => t.id !== id);
                 this.render();
-                this._bindEvents();
             }, { once: true });
         } else {
             this._toasts = this._toasts.filter(t => t.id !== id);
@@ -224,6 +224,10 @@ export class NcSnackbar extends Component {
     onUnmount() {
         this._timers.forEach(t => clearTimeout(t));
         this._timers.clear();
+        if (this._toastHandler) {
+            document.removeEventListener('nc-toast', this._toastHandler);
+            this._toastHandler = null;
+        }
     }
 
     attributeChangedCallback(name: string, oldValue: string, newValue: string) {

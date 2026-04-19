@@ -136,21 +136,22 @@ export class NcRating extends Component {
             this.commit(next);
         });
 
-        this.$$<HTMLElement>('.item').forEach(item => {
-            item.addEventListener('keydown', (event: KeyboardEvent) => {
-                if (event.key === 'Enter' || event.key === ' ') {
-                    event.preventDefault();
-                    item.click();
-                }
-                if (event.key === 'ArrowRight' || event.key === 'ArrowUp') {
-                    event.preventDefault();
-                    this.commit(Math.min(this.getMax(), this.getValue() + 1));
-                }
-                if (event.key === 'ArrowLeft' || event.key === 'ArrowDown') {
-                    event.preventDefault();
-                    this.commit(Math.max(0, this.getValue() - 1));
-                }
-            });
+        // Use event delegation on the container for keydown instead of per-item listeners
+        container.addEventListener('keydown', (event: KeyboardEvent) => {
+            const item = (event.target as HTMLElement).closest<HTMLElement>('.item');
+            if (!item) return;
+            if (event.key === 'Enter' || event.key === ' ') {
+                event.preventDefault();
+                item.click();
+            }
+            if (event.key === 'ArrowRight' || event.key === 'ArrowUp') {
+                event.preventDefault();
+                this.commit(Math.min(this.getMax(), this.getValue() + 1));
+            }
+            if (event.key === 'ArrowLeft' || event.key === 'ArrowDown') {
+                event.preventDefault();
+                this.commit(Math.max(0, this.getValue() - 1));
+            }
         });
     }
 
@@ -199,7 +200,7 @@ export class NcRating extends Component {
     attributeChangedCallback(name: string, oldValue: string, newValue: string) {
         if (oldValue === newValue || !this._mounted) return;
         this.render();
-        this.bindEvents();
+        // Do not re-call bindEvents() — the .items container delegation survives re-renders
     }
 }
 
