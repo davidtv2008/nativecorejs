@@ -22,7 +22,7 @@
  */
 
 import { Component, defineComponent } from '../../.nativecore/core/component.js';
-import { escapeHTML } from '../../.nativecore/utils/templates.js';
+import { html, raw, escapeHTML } from '../../.nativecore/utils/templates.js';
 
 export class NcAutocomplete extends Component {
     static useShadowDOM = true;
@@ -66,7 +66,7 @@ export class NcAutocomplete extends Component {
         const name = this.getAttribute('name') || '';
         const results = this._open ? this._filtered() : [];
 
-        return `
+        return html`
             <style>
                 :host { display: block; position: relative; width: 100%; font-family: var(--nc-font-family); }
 
@@ -144,10 +144,10 @@ export class NcAutocomplete extends Component {
                 />
             </div>
             <div class="dropdown" role="listbox">
-                ${results.map((opt, i) => {
+                ${raw(results.map((opt, i) => {
                     const safeOpt = escapeHTML(opt);
-                    const escaped = this._inputValue.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-                    const hl = escaped ? safeOpt.replace(new RegExp(`(${escapeHTML(escaped)})`, 'gi'), '<mark>$1</mark>') : safeOpt;
+                    const escaped = this._inputValue.replace(/[.*+?^${)}()|[\]\\]/g, '\\$&');
+                    const hl = escaped ? safeOpt.replace(new RegExp(`(${raw(escapeHTML(escaped))})`, 'gi'), '<mark>$1</mark>') : safeOpt;
                     return `<div class="option${i === this._activeIndex ? ' active' : ''}" role="option" data-value="${safeOpt}" aria-selected="${i === this._activeIndex}">${hl}</div>`;
                 }).join('')}
             </div>
@@ -279,7 +279,7 @@ export class NcAutocomplete extends Component {
         dropdown.innerHTML = results.map((opt, i) => {
             const safeOpt = escapeHTML(opt);
             const escaped = this._inputValue.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-            const hl = escaped ? safeOpt.replace(new RegExp(`(${escapeHTML(escaped)})`, 'gi'), '<mark>$1</mark>') : safeOpt;
+            const hl = escaped ? safeOpt.replace(new RegExp(`(${raw(escapeHTML(escaped))})`, 'gi'), '<mark>$1</mark>') : safeOpt;
             return `<div class="option${i === this._activeIndex ? ' active' : ''}" role="option" data-value="${safeOpt}" aria-selected="${i === this._activeIndex}">${hl}</div>`;
         }).join('');
         const input = this.$<HTMLInputElement>('input');

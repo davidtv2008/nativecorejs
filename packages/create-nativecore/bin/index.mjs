@@ -293,10 +293,12 @@ function initDevTools(): void {
 
     Promise.all([
         import('../.nativecore/hmr.js'),
-        import('../.nativecore/denc-tools.js')
+        import('../.nativecore/denc-tools.js'),
+        import('./utils/devOverlay.js'),
     ])
-        .then(() => {
+        .then(([, , { initDevOverlay }]) => {
             window.__NATIVECORE_DEV__ = true;
+            initDevOverlay();
         })
         .catch(() => {
             // Dev tools not available.

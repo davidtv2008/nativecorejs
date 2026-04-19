@@ -28,7 +28,7 @@
  */
 
 import { Component, defineComponent } from '../../.nativecore/core/component.js';
-import { escapeHTML } from '../../.nativecore/utils/templates.js';
+import { html, raw, escapeHTML } from '../../.nativecore/utils/templates.js';
 
 interface SelectOption {
     value: string;
@@ -87,19 +87,19 @@ export class NcSelect extends Component {
 
         const optionItems = filtered.map(o => `
             <div class="option${o.value === value ? ' option--selected' : ''}${o.disabled ? ' option--disabled' : ''}"
-                 data-value="${escapeHTML(o.value)}"
+                 data-value="${raw(escapeHTML(o.value))}"
                  role="option"
                  aria-selected="${o.value === value}"
                  aria-disabled="${o.disabled ? 'true' : 'false'}">
-                ${escapeHTML(o.label)}
-                ${o.value === value ? `
+                ${raw(escapeHTML(o.label))}
+                ${raw(o.value === value ? `
                 <svg class="option__check" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 12 12" fill="none" width="12" height="12">
                     <path d="M2 6l3 3 5-5" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-                </svg>` : ''}
+                </svg>` : '')}
             </div>
         `).join('');
 
-        return `
+        return html`
             <style>
                 :host {
                     display: inline-block;
@@ -276,12 +276,12 @@ export class NcSelect extends Component {
             </div>
 
             <div class="dropdown${this._open ? ' open' : ''}" role="listbox">
-                ${searchable ? `
+                ${raw(searchable ? `
                 <div class="search-wrap">
                     <input class="search-input" type="text" placeholder="Search..." value="${this._filterText}" autocomplete="off" />
-                </div>` : ''}
+                </div>` : '')}
                 <div class="options-list">
-                    ${optionItems || `<div class="empty">No options</div>`}
+                    ${raw(optionItems || `<div class="empty">No options</div>`)}
                 </div>
             </div>
         `;
@@ -386,15 +386,15 @@ export class NcSelect extends Component {
 
         list.innerHTML = filtered.length ? filtered.map(o => `
             <div class="option${o.value === value ? ' option--selected' : ''}${o.disabled ? ' option--disabled' : ''}"
-                 data-value="${escapeHTML(o.value)}"
+                 data-value="${raw(escapeHTML(o.value))}"
                  role="option"
                  aria-selected="${o.value === value}"
                  aria-disabled="${o.disabled ? 'true' : 'false'}">
-                ${escapeHTML(o.label)}
-                ${o.value === value ? `
+                ${raw(escapeHTML(o.label))}
+                ${raw(o.value === value ? `
                 <svg class="option__check" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 12 12" fill="none" width="12" height="12">
                     <path d="M2 6l3 3 5-5" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-                </svg>` : ''}
+                </svg>` : '')}
             </div>
         `).join('') : '<div class="empty">No results</div>';
     }

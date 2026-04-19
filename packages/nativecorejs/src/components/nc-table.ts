@@ -37,7 +37,7 @@ interface TableColumn {
     sortable?: boolean;
     align?: TableAlign;
     width?: string;
-    format?: 'text' | 'number' | 'currency' | 'date' | 'badge';
+    format?: 'text' | 'number' | 'currency' | 'date' | 'badge' | 'html';
 }
 
 type TableRow = Record<string, unknown>;
@@ -113,6 +113,8 @@ export class NcTable extends Component {
             }
             case 'badge':
                 return `<span class="badge">${esc(value)}</span>`;
+            case 'html':
+                return String(value ?? '');
             default:
                 return esc(value);
         }
@@ -134,7 +136,7 @@ export class NcTable extends Component {
                 <tr data-row-index="${rowIndex}">
                     ${columns.map(col => {
                         const align = col.align ?? 'left';
-                        return `<td style="text-align:${align}">${this._fmt(row[col.key], col)}</td>`;
+                        return html`<td style="text-align:${align}">${this._fmt(row[col.key], col)}</td>`;
                     }).join('')}
                 </tr>
             `).join('');
@@ -145,8 +147,8 @@ export class NcTable extends Component {
             const active   = this._sortKey === col.key;
             const arrow    = active ? (this._sortDir === 'asc' ? '?' : '?') : '';
             return `
-                <th style="text-align:${align};${col.width ? `width:${col.width};` : ''}">
-                    <button class="head-btn ${sortable ? 'is-sortable' : ''} ${active ? 'is-active' : ''}" type="button" ${sortable ? `data-sort-key="${col.key}"` : 'disabled'}>
+                <th style="text-align:${align};${raw(col.width ? `width:${col.width};` : '')}">
+                    <button class="head-btn ${sortable ? 'is-sortable' : ''} ${active ? 'is-active' : ''}" type="button" ${raw(sortable ? `data-sort-key="${col.key}"` : 'disabled')}>
                         <span>${esc(col.label ?? col.key)}</span>
                         <span class="sort-indicator">${arrow}</span>
                     </button>
@@ -162,7 +164,7 @@ export class NcTable extends Component {
                     border-radius: var(--nc-radius-lg);
                     overflow: auto;
                     background: var(--nc-bg);
-                    ${maxHeight ? `max-height:${maxHeight};` : ''}
+                    ${raw(maxHeight ? `max-height:${maxHeight};` : '')}
                 }
                 table {
                     width: 100%;
@@ -238,7 +240,7 @@ export class NcTable extends Component {
             <div class="wrap">
                 <table role="table">
                     <thead><tr>${headers}</tr></thead>
-                    <tbody>${tableRows}</tbody>
+                    <tbody>${raw(tableRows)}</tbody>
                 </table>
             </div>
         `;

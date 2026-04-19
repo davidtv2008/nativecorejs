@@ -41,7 +41,7 @@
  *   </nc-timeline>
  */
 import { Component, defineComponent } from '../../.nativecore/core/component.js';
-import { escapeHTML } from '../../.nativecore/utils/templates.js';
+import { html, raw, escapeHTML } from '../../.nativecore/utils/templates.js';
 
 const STATUS_COLORS: Record<string, string> = {
     completed: 'var(--nc-success)',
@@ -84,7 +84,7 @@ export class NcTimelineItem extends Component {
         const isActive = status === 'active';
         const dotSz   = isActive ? 14 : 12;
 
-        return `
+        return html`
             <style>
                 :host { display: flex; font-family: var(--nc-font-family); }
                 .col-dot {
@@ -105,7 +105,7 @@ export class NcTimelineItem extends Component {
                     justify-content: center;
                     flex-shrink: 0;
                     color: #fff;
-                    ${isActive ? `box-shadow: 0 0 0 4px rgba(0,0,0,.1), 0 0 0 3px ${color}33;` : ''}
+                    ${raw(isActive ? `box-shadow: 0 0 0 4px rgba(0,0,0,.1), 0 0 0 3px ${color}33;` : '')}
                     margin-top: 4px;
                 }
                 .line {
@@ -148,14 +148,14 @@ export class NcTimelineItem extends Component {
             </style>
             <div class="col-dot">
                 <div class="dot">
-                    <slot name="icon">${dotContent}</slot>
+                    <slot name="icon">${raw(dotContent)}</slot>
                 </div>
                 <div class="line"></div>
             </div>
             <div class="content">
                 <div class="header">
-                    <p class="title"><slot name="title">${escapeHTML(title)}</slot></p>
-                    ${time ? `<span class="time"><slot name="time">${escapeHTML(time)}</slot></span>` : '<slot name="time"></slot>'}
+                    <p class="title"><slot name="title">${raw(escapeHTML(title))}</slot></p>
+                    ${raw(time ? `<span class="time"><slot name="time">${raw(escapeHTML(time)))}</slot></span>` : '<slot name="time"></slot>'}
                 </div>
                 <div class="body"><slot></slot></div>
             </div>
@@ -175,7 +175,7 @@ export class NcTimeline extends Component {
     static useShadowDOM = true;
 
     template() {
-        return `
+        return html`
             <style>
                 :host { display: block; padding: var(--nc-spacing-sm) 0; }
             </style>

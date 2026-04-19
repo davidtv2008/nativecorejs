@@ -54,6 +54,15 @@ export class Component extends HTMLElement {
             this.onMount();
         } catch (error) {
             console.error(`Error rendering ${this.tagName.toLowerCase()}:`, error);
+            this.dispatchEvent(new CustomEvent('nativecore:component-error', {
+                bubbles: true,
+                composed: true,
+                detail: {
+                    error,
+                    component: this.tagName.toLowerCase(),
+                    route: window.location.pathname,
+                }
+            }));
         }
     }
     

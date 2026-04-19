@@ -27,7 +27,7 @@
 
 import { Component, defineComponent } from '../../.nativecore/core/component.js';
 import { dom } from '../../.nativecore/utils/dom.js';
-import { escapeHTML } from '../../.nativecore/utils/templates.js';
+import { html, raw, escapeHTML } from '../../.nativecore/utils/templates.js';
 
 interface ToastOptions {
     message: string;
@@ -72,7 +72,7 @@ export class NcSnackbar extends Component {
         const position = this.getAttribute('position') || 'bottom-right';
         const [vPos, hPos] = position.split('-');
 
-        return `
+        return html`
             <style>
                 :host {
                     position: fixed;
@@ -143,14 +143,14 @@ export class NcSnackbar extends Component {
         const icon = ICONS[t.variant] || '';
         return `
             <div class="toast toast--${t.variant}" data-id="${t.id}" role="alert" aria-live="polite">
-                ${icon && t.icon ? `<span class="toast__icon">${icon}</span>` : ''}
-                <span class="toast__msg">${escapeHTML(t.message)}</span>
-                ${t.dismissible ? `
+                ${raw(icon && t.icon ? `<span class="toast__icon">${icon}</span>` : '')}
+                <span class="toast__msg">${raw(escapeHTML(t.message))}</span>
+                ${raw(t.dismissible ? `
                 <button class="toast__close" data-dismiss="${t.id}" type="button" aria-label="Dismiss">
                     <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 12 12" fill="none" width="12" height="12">
                         <path d="M2 2l8 8M10 2l-8 8" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
                     </svg>
-                </button>` : ''}
+                </button>` : '')}
             </div>`;
     }
 

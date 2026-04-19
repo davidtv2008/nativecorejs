@@ -16,7 +16,7 @@
  */
 
 import { Component, defineComponent } from '../../.nativecore/core/component.js';
-import { escapeHTML } from '../../.nativecore/utils/templates.js';
+import { html, raw, escapeHTML } from '../../.nativecore/utils/templates.js';
 
 export class NcTooltip extends Component {
     static useShadowDOM = true;
@@ -33,7 +33,7 @@ export class NcTooltip extends Component {
         const variant = this.getAttribute('variant') || 'default';
         const tip = this.getAttribute('tip') || '';
 
-        return `
+        return html`
             <style>
                 :host { display: inline-flex; position: relative; }
 
@@ -94,7 +94,7 @@ export class NcTooltip extends Component {
                 data-placement="${placement}"
                 role="tooltip"
                 aria-hidden="true"
-            >${escapeHTML(tip)}</div>
+            >${raw(escapeHTML(tip))}</div>
         `;
     }
 

@@ -27,7 +27,7 @@ export class NcSkeleton extends Component {
         if (variant === 'text') {
             content = Array.from({ length: lines }, (_, index) => {
                 const lineWidth = index === lines - 1 && lines > 1 ? '75%' : '100%';
-                return `<span class="bone bone--text" style="width:${lineWidth}"></span>`;
+                return html`<span class="bone bone--text" style="width:${lineWidth}"></span>`;
             }).join('');
         } else if (variant === 'circle') {
             content = `<span class="bone bone--circle" style="width:${width};height:${width}"></span>`;
@@ -63,7 +63,7 @@ export class NcSkeleton extends Component {
                 .bone--circle { border-radius: 50%; flex-shrink: 0; }
                 .bone--rect { border-radius: var(--nc-radius-md, 8px); width: 100%; }
 
-                ${animate === 'wave' ? `
+                ${raw(animate === 'wave' ? `
                 @keyframes nc-skeleton-wave {
                     0% { transform: translateX(-100%); }
                     100% { transform: translateX(100%); }
@@ -74,14 +74,14 @@ export class NcSkeleton extends Component {
                     inset: 0;
                     background: linear-gradient(90deg, transparent 0%, rgba(255,255,255,.08) 50%, transparent 100%);
                     animation: nc-skeleton-wave 1.6s ease-in-out infinite;
-                }` : ''}
+                }` : '')}
 
-                ${animate === 'pulse' ? `
+                ${raw(animate === 'pulse' ? `
                 @keyframes nc-skeleton-pulse {
                     0%, 100% { opacity: 1; }
                     50% { opacity: 0.4; }
                 }
-                .bone { animation: nc-skeleton-pulse 1.8s ease-in-out infinite; }` : ''}
+                .bone { animation: nc-skeleton-pulse 1.8s ease-in-out infinite; }` : '')}
             </style>
             <div class="skeleton" aria-hidden="true">${content}</div>
         `;

@@ -68,7 +68,7 @@ export class NcDiv extends Component {
     }
     
     template() {
-        return `
+        return html`
             <style>
                 :host {
                     display: block;

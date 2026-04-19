@@ -26,7 +26,7 @@
  *   <nc-nav-item href="/users" label="Users" icon="users" badge="14"></nc-nav-item>
  */
 import { Component, defineComponent } from '../../.nativecore/core/component.js';
-import { escapeHTML, sanitizeURL } from '../../.nativecore/utils/templates.js';
+import { html, raw, escapeHTML, sanitizeURL } from '../../.nativecore/utils/templates.js';
 
 const NAV_ICONS: Record<string, string> = {
     home:        `<path d="M3 9.5L12 3l9 6.5V20a1 1 0 0 1-1 1H14v-5h-4v5H4a1 1 0 0 1-1-1V9.5z"/>`,
@@ -77,10 +77,10 @@ export class NcNavItem extends Component {
         const paddingLeft = `calc(var(--nc-spacing-md) + ${indent * 16}px)`;
         const tag = href ? 'a' : 'button';
         const tagAttrs = href
-            ? `href="${sanitizeURL(href)}" target="${escapeHTML(target)}"`
+            ? `href="${raw(sanitizeURL(href))}" target="${raw(escapeHTML(target))}"`
             : `type="button"`;
 
-        return `
+        return html`
             <style>
                 :host { display: block; }
                 ${tag} {
@@ -88,7 +88,7 @@ export class NcNavItem extends Component {
                     align-items: center;
                     gap: var(--nc-spacing-sm);
                     width: 100%;
-                    padding: 9px ${paddingLeft === 'calc(var(--nc-spacing-md) + 0px)' ? 'var(--nc-spacing-md)' : `var(--nc-spacing-md) var(--nc-spacing-md) var(--nc-spacing-md) ${paddingLeft}`};
+                    padding: 9px ${raw(paddingLeft === 'calc(var(--nc-spacing-md) + 0px)' ? 'var(--nc-spacing-md)' : `var(--nc-spacing-md) var(--nc-spacing-md) var(--nc-spacing-md) ${paddingLeft}`)};
                     border-radius: var(--nc-radius-md);
                     text-decoration: none;
                     font-family: var(--nc-font-family);
@@ -105,7 +105,7 @@ export class NcNavItem extends Component {
                     user-select: none;
                     position: relative;
                 }
-                ${active ? `${tag}::before { content: ''; position: absolute; left: 0; top: 20%; height: 60%; width: 3px; background: var(--nc-primary); border-radius: 0 2px 2px 0; }` : ''}
+                ${raw(active ? `${tag}::before { content: ''; position: absolute; left: 0; top: 20%; height: 60%; width: 3px; background: var(--nc-primary); border-radius: 0 2px 2px 0; }` : '')}
                 ${tag}:hover:not([disabled]) {
                     background: ${active ? 'rgba(var(--nc-primary-rgb, 99,102,241), 0.14)' : 'var(--nc-bg-secondary)'};
                     color: ${active ? 'var(--nc-primary)' : 'var(--nc-text)'};
@@ -127,9 +127,9 @@ export class NcNavItem extends Component {
                 }
             </style>
             <${tag} ${tagAttrs} ${disabled ? (href ? 'aria-disabled="true"' : 'disabled') : ''} aria-current="${active ? 'page' : 'false'}">
-                ${iconHtml ? `<span class="icon">${iconHtml}<slot name="icon"></slot></span>` : '<slot name="icon"></slot>'}
-                <span class="label">${escapeHTML(label)}<slot></slot></span>
-                ${badge ? `<span class="badge">${escapeHTML(badge)}<slot name="badge"></slot></span>` : '<slot name="badge"></slot>'}
+                ${raw(iconHtml ? `<span class="icon">${raw(iconHtml)}<slot name="icon"></slot></span>` : '<slot name="icon"></slot>')}
+                <span class="label">${raw(escapeHTML(label))}<slot></slot></span>
+                ${raw(badge ? `<span class="badge">${raw(escapeHTML(badge)))}<slot name="badge"></slot></span>` : '<slot name="badge"></slot>'}
             </${tag}>
         `;
     }

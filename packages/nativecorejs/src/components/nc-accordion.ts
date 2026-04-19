@@ -34,7 +34,7 @@ export class NcAccordionItem extends Component {
         const open = this.hasAttribute('open');
         const disabled = this.hasAttribute('disabled');
 
-        return `
+        return html`
             <style>
                 :host { display: block; }
 
@@ -139,7 +139,7 @@ export class NcAccordion extends Component {
     static get observedAttributes() { return ['multiple', 'variant']; }
 
     template() {
-        return `
+        return html`
             <style>
                 :host { display: block; }
 

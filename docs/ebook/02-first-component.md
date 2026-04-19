@@ -84,17 +84,17 @@ template(): string {
 > // variant and title are both escaped — XSS-safe
 > ```
 >
-> When you intentionally interpolate a developer-authored HTML string (icon markup, a `map().join('')` result, a sub-template), wrap it in `trusted()` to bypass escaping:
+> When you intentionally interpolate a developer-authored HTML string (icon markup, a `map().join('')` result, a sub-template), wrap it in `raw()` to bypass escaping:
 >
 > ```typescript
-> import { html, trusted, escapeHtml } from '@core-utils/templates.js';
+> import { html, raw, escapeHTML } from 'nativecorejs/utils/templates.js';
 >
-> // Build HTML sub-strings safely: escape user data inside, then trust the whole result
-> const itemsHtml = items.map(i => `<li>${escapeHtml(i.label)}</li>`).join('');
-> return html`<ul>${trusted(itemsHtml)}</ul>`;
+> // Build HTML sub-strings safely: escape user data inside, then mark the result as safe
+> const itemsHtml = items.map(i => `<li>${escapeHTML(i.label)}</li>`).join('');
+> return html`<ul>${raw(itemsHtml)}</ul>`;
 > ```
 >
-> Rule: static structure (tags, class names) in `template()` is safe. User-supplied values (API responses, attribute values from external sources) belong in `textContent` assignments or are auto-escaped by the `html` tag. Use `trusted()` only for HTML you construct yourself in component code.
+> Rule: static structure (tags, class names) in `template()` is safe. User-supplied values (API responses, attribute values from external sources) belong in `textContent` assignments or are auto-escaped by the `html` tag. Use `raw()` only for HTML you construct yourself in component code — never pass user input through `raw()`.
 
 ---
 
@@ -413,4 +413,4 @@ Save and check the browser — you should see two styled task cards with correct
 ---
 
 **Back:** [Chapter 01 — Project Setup](./01-project-setup.md)  
-**Next:** [Chapter 03 — Reactive State](./03-reactive-state.md)
+**Next:** [Chapter 03 — Error Boundaries](./03-error-boundaries.md)

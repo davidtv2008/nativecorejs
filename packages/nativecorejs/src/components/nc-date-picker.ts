@@ -69,7 +69,7 @@ export class NcDatePicker extends Component {
         const firstDay = Number(this.getAttribute('first-day') ?? 0);
         const dayLabels = firstDay === 1 ? DAYS_MON : DAYS_SUN;
 
-        return `
+        return html`
             <style>
                 :host { display: block; position: relative; font-family: var(--nc-font-family); }
 
@@ -291,8 +291,8 @@ export class NcDatePicker extends Component {
                 </button>
             </div>
             <div class="cal-grid">
-                ${dayLabelsHtml}
-                ${daysHtml}
+                ${raw(dayLabelsHtml)}
+                ${raw(daysHtml)}
             </div>
             <div class="cal-footer">
                 <button class="cal-btn" data-action="today" type="button">Today</button>

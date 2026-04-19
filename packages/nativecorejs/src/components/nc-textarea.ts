@@ -22,7 +22,7 @@ export class NcTextarea extends Component {
         const autoresize = this.hasAttribute('autoresize');
         const charCount = value.length;
 
-        return `
+        return html`
             <style>
                 :host {
                     display: block;
@@ -91,14 +91,14 @@ export class NcTextarea extends Component {
             <div class="wrap">
                 <textarea
                     rows="${rows}"
-                    ${maxlength ? `maxlength="${maxlength}"` : ''}
+                    ${raw(maxlength ? `maxlength="${maxlength}"` : '')}
                     ${disabled ? 'disabled' : ''}
                     ${readonly ? 'readonly' : ''}
                     placeholder="${placeholder}"
                     name="${this.getAttribute('name') || ''}"
                     aria-multiline="true"
                 >${value}</textarea>
-                ${maxlength ? `<span class="counter${charCount > Number(maxlength) ? ' over' : ''}">${charCount} / ${maxlength}</span>` : ''}
+                ${raw(maxlength ? `<span class="counter${charCount > Number(maxlength) ? ' over' : ''}">${charCount} / ${maxlength}</span>` : '')}
             </div>
         `;
     }

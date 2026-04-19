@@ -8,7 +8,7 @@ export class NcKbd extends Component {
         const padding = size === 'sm' ? '1px 5px' : size === 'lg' ? '4px 12px' : '2px 8px';
         const fontSize = size === 'sm' ? '11px' : size === 'lg' ? '15px' : '12px';
 
-        return `
+        return html`
             <style>
                 :host { display: inline-block; }
                 kbd {

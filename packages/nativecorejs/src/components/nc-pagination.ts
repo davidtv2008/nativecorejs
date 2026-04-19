@@ -60,7 +60,7 @@ export class NcPagination extends Component {
                 }
             </button>`;
 
-        return `
+        return html`
             <style>
                 :host { display: block; font-family: var(--nc-font-family); }
 

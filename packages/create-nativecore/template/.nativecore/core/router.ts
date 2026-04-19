@@ -347,6 +347,13 @@ export class Router {
             if (progressBar) {
                 progressBar.classList.remove('loading');
             }
+            window.dispatchEvent(new CustomEvent('nativecore:route-error', {
+                detail: {
+                    error,
+                    route: route.path,
+                    controller: route.config.htmlFile,
+                }
+            }));
             
             // Show 404 page when file doesn't exist
             this.handle404(route.path);

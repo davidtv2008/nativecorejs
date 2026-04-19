@@ -55,7 +55,7 @@ export class NcDrawer extends Component {
             bottom: 'translateY(100%)',
         }[placement];
 
-        return `
+        return html`
             <style>
                 :host { display: contents; }
 
@@ -125,7 +125,7 @@ export class NcDrawer extends Component {
                 .close-btn:hover { color: var(--nc-text); background: var(--nc-bg-secondary); }
             </style>
 
-            ${showOverlay ? `<div class="overlay" aria-hidden="true"></div>` : ''}
+            ${raw(showOverlay ? `<div class="overlay" aria-hidden="true"></div>` : '')}
 
             <div
                 class="panel"
@@ -136,12 +136,12 @@ export class NcDrawer extends Component {
             >
                 <div class="panel__header">
                     <slot name="header"></slot>
-                    ${!noCloseBtn ? `
+                    ${raw(!noCloseBtn ? `
                     <button class="close-btn" type="button" aria-label="Close drawer">
                         <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16" fill="none" width="18" height="18">
                             <path d="M3 3l10 10M13 3L3 13" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
                         </svg>
-                    </button>` : ''}
+                    </button>` : '')}
                 </div>
                 <div class="panel__body">
                     <slot></slot>

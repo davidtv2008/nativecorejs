@@ -249,14 +249,15 @@ Add a `key=` attribute to each repeated element and NativeCoreJS switches to a *
 
 ```typescript
 template(): string {
-    return `
+    const itemsHtml = this.tasks.value.map(task => `
+        <li key="${task.id}" class="task-item ${task.status}">
+            <span class="task-title">${escapeHTML(task.title)}</span>
+            <span class="task-status">${escapeHTML(task.status)}</span>
+        </li>
+    `).join('');
+    return html`
         <ul class="task-list">
-            ${this.tasks.value.map(task => `
-                <li key="${task.id}" class="task-item ${task.status}">
-                    <span class="task-title">${escapeHTML(task.title)}</span>
-                    <span class="task-status">${escapeHTML(task.status)}</span>
-                </li>
-            `).join('')}
+            ${raw(itemsHtml)}
         </ul>
     `;
 }

@@ -56,7 +56,7 @@ export class NcPopover extends Component {
         const width    = this.getAttribute('width') ?? 'auto';
         const maxWidth = this.getAttribute('max-width') ?? '320px';
 
-        return `
+        return html`
             <style>
                 :host { display: inline-block; position: relative; }
                 .trigger-wrap { display: contents; }

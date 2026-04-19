@@ -1,5 +1,5 @@
 import { Component, defineComponent } from '../../.nativecore/core/component.js';
-import { escapeHTML, sanitizeURL } from '../../.nativecore/utils/templates.js';
+import { html, raw, escapeHTML, sanitizeURL } from '../../.nativecore/utils/templates.js';
 
 const SIZE_MAP: Record<string, string> = {
     xs: '24px',
@@ -60,7 +60,7 @@ export class NcAvatar extends Component {
             neutral: 'var(--nc-bg-tertiary, #e5e7eb)'
         };
 
-        return `
+        return html`
             <style>
                 :host { display: inline-flex; position: relative; flex-shrink: 0; }
 
@@ -108,11 +108,11 @@ export class NcAvatar extends Component {
                     display: ${status ? 'block' : 'none'};
                 }
             </style>
-            <div class="avatar" title="${escapeHTML(alt)}" aria-label="${escapeHTML(alt)}" role="img">
-                ${showImage ? `<img src="${sanitizeURL(src)}" alt="${escapeHTML(alt)}" />` : ''}
+            <div class="avatar" title="${raw(escapeHTML(alt))}" aria-label="${raw(escapeHTML(alt))}" role="img">
+                ${raw(showImage ? `<img src="${raw(sanitizeURL(src)))}" alt="${raw(escapeHTML(alt))}" />` : ''}
                 <span class="initials">${letters || '?'}</span>
             </div>
-            ${status ? `<span class="status-dot" aria-label="${escapeHTML(status)}"></span>` : ''}
+            ${raw(status ? `<span class="status-dot" aria-label="${raw(escapeHTML(status)))}"></span>` : ''}
         `;
     }
 

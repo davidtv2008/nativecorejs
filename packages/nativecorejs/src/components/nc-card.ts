@@ -13,7 +13,7 @@ export class NcCard extends Component {
     }
 
     template() {
-        return `
+        return html`
             <style>
                 :host {
                     display: block;

@@ -10,6 +10,7 @@ export { NcBadge } from './nc-badge.js';
 export { NcBottomNav, NcBottomNavItem } from './nc-bottom-nav.js';
 export { NcBreadcrumb } from './nc-breadcrumb.js';
 export { NcButton } from './nc-button.js';
+export { NcCanvas } from './nc-canvas.js';
 export { NcCard } from './nc-card.js';
 export { NcCheckbox } from './nc-checkbox.js';
 export { NcChip } from './nc-chip.js';

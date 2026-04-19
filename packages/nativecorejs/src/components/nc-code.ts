@@ -173,7 +173,7 @@ export class NcCode extends Component {
             const lineNum = i + 1;
             const hl = hlLines.has(lineNum) ? ' class="hl"' : '';
             const lnHtml = noLines ? '' : `<span class="ln" aria-hidden="true">${lineNum}</span>`;
-            return `<span${hl}>${lnHtml}<span class="lc">${line || '&ZeroWidthSpace;'}</span></span>`;
+            return html`<span${hl}>${raw(lnHtml)}<span class="lc">${line || '&ZeroWidthSpace;'}</span></span>`;
         }).join('\n');
 
         const langLabels: Record<string, string> = {
@@ -233,7 +233,7 @@ export class NcCode extends Component {
                     margin: 0;
                     padding: 14px 0;
                     overflow-x: auto;
-                    ${maxH ? `max-height: ${maxH}; overflow-y: auto;` : ''}
+                    ${raw(maxH ? `max-height: ${maxH}; overflow-y: auto;` : '')}
                     ${wrap ? 'white-space: pre-wrap; word-break: break-word;' : ''}
                     scrollbar-width: thin;
                     scrollbar-color: rgba(255,255,255,.12) transparent;
@@ -274,15 +274,15 @@ export class NcCode extends Component {
                 <span>${label || '&nbsp;'}</span>
                 <div style="display:flex;gap:8px;align-items:center">
                     <span class="lang-badge">${langLabels[lang] ?? lang}</span>
-                    ${!noCopy ? `<button class="copy-btn" id="copy-btn" type="button">
+                    ${raw(!noCopy ? `<button class="copy-btn" id="copy-btn" type="button">
                         <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                             <rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/>
                         </svg>
                         Copy
-                    </button>` : ''}
+                    </button>` : '')}
                 </div>
             </div>
-            <pre><code id="code">${linesHtml}</code></pre>
+            <pre><code id="code">${raw(linesHtml)}</code></pre>
             <div class="hidden-slot"><slot></slot></div>
         `;
     }

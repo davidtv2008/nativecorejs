@@ -11,7 +11,7 @@
  * 
  */
 import { Component, defineComponent } from '../../.nativecore/core/component.js';
-import { escapeHTML } from '../../.nativecore/utils/templates.js';
+import { html, raw, escapeHTML } from '../../.nativecore/utils/templates.js';
 import { useState } from '../../.nativecore/core/state.js';
 import { createAnimationLoop, type AnimationLoop } from '../../.nativecore/core/gpu-animation.js';
 import type { State } from '../../.nativecore/core/state.js';
@@ -47,7 +47,7 @@ export class NcSplash extends Component {
     template() {
         const title = this.attr('title', 'NativeCore');
         const subtitle = this.attr('subtitle', '');
-        return `
+        return html`
             <style>
                 :host {
                     display: block;
@@ -161,8 +161,8 @@ export class NcSplash extends Component {
             <div class="splash-overlay" id="overlay">
                 <div class="splash-glow"></div>
                 <div class="splash-content" id="content">
-                    <h1 class="splash-title">${escapeHTML(title)}</h1>
-                    ${subtitle ? `<p class="splash-subtitle">${escapeHTML(subtitle)}</p>` : ''}
+                    <h1 class="splash-title">${raw(escapeHTML(title))}</h1>
+                    ${raw(subtitle ? `<p class="splash-subtitle">${raw(escapeHTML(subtitle)))}</p>` : ''}
                     <div class="splash-prompt" id="prompt">
                         Click to start <span class="splash-cursor"></span>
                     </div>

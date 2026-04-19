@@ -8,7 +8,7 @@ export class NcBreadcrumb extends Component {
     }
 
     template() {
-        return `
+        return html`
             <style>
                 :host { display: block; font-family: var(--nc-font-family); }
 

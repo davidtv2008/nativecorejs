@@ -61,17 +61,17 @@ export class NcTagInput extends Component {
         const tagsHtml = this._tags.map((tag, i) => `
             <span class="tag" data-index="${i}">
                 <span class="tag-text">${this._escape(tag)}</span>
-                ${!disabled && !readonly
+                ${raw(!disabled && !readonly
                     ? `<button class="tag-remove" type="button" data-index="${i}" aria-label="Remove ${this._escape(tag)}">
                           <svg xmlns="http://www.w3.org/2000/svg" width="10" height="10" viewBox="0 0 12 12" fill="none">
                               <path d="M2 2l8 8M10 2l-8 8" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>
                           </svg>
                        </button>`
-                    : ''}
+                    : '')}
             </span>
         `).join('');
 
-        return `
+        return html`
             <style>
                 :host { display: block; font-family: var(--nc-font-family); }
                 .label {
@@ -148,10 +148,10 @@ export class NcTagInput extends Component {
                 .hint  { font-size: var(--nc-font-size-xs); color: var(--nc-text-muted); margin-top: 5px; }
                 .error { font-size: var(--nc-font-size-xs); color: var(--nc-danger);      margin-top: 5px; }
             </style>
-            ${label ? `<label class="label">${label}</label>` : ''}
+            ${raw(label ? `<label class="label">${label}</label>` : '')}
             <div class="field" id="field">
-                ${tagsHtml}
-                ${!readonly
+                ${raw(tagsHtml)}
+                ${raw(!readonly
                     ? `<input
                         type="text"
                         id="input"
@@ -160,7 +160,7 @@ export class NcTagInput extends Component {
                         autocomplete="off"
                         spellcheck="false"
                       />`
-                    : ''}
+                    : '')}
             </div>
             ${error ? `<p class="error">${error}</p>` : hint ? `<p class="hint">${hint}</p>` : ''}
         `;

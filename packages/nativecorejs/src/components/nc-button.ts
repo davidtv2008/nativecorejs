@@ -20,7 +20,7 @@
  */
 
 import { Component, defineComponent } from '../../.nativecore/core/component.js';
-import { escapeHTML, sanitizeURL } from '../../.nativecore/utils/templates.js';
+import { html, raw, escapeHTML, sanitizeURL } from '../../.nativecore/utils/templates.js';
 
 export class NcButton extends Component {
     static useShadowDOM = true;
@@ -54,9 +54,9 @@ export class NcButton extends Component {
         const loading = this.hasAttribute('loading');
         const fullWidth = this.hasAttribute('full-width');
         
-        const iconHTML = icon ? `<img class="nc-button-icon" src="${sanitizeURL(icon)}" alt="${escapeHTML(alt)}" />` : '';
+        const iconHTML = icon ? `<img class="nc-button-icon" src="${raw(sanitizeURL(icon))}" alt="${raw(escapeHTML(alt))}" />` : '';
         
-        return`
+        return html`
             <style>
                 :host {
                     display: ${fullWidth ? 'block' : 'inline-flex'};
@@ -267,7 +267,7 @@ export class NcButton extends Component {
                     justify-content: center;
                 }
             </style>
-            ${iconHTML}
+            ${raw(iconHTML)}
             <slot></slot>
         `;
     }

@@ -167,7 +167,7 @@ The tasks list controller now becomes lean — it delegates data management to t
 import { effect } from '@core/state.js';
 import { dom } from '@core-utils/dom.js';
 import { trackEvents } from '@core-utils/events.js';
-import { escapeHtml } from '@core-utils/templates.js';
+import { escapeHTML } from '@core-utils/templates.js';
 import { router } from '@core/router.js';
 import {
     tasks,
@@ -198,9 +198,9 @@ export async function tasksController(
 
         listEl.innerHTML = tasks.value
             .map(t => `
-                <li data-task-id="${escapeHtml(t.id)}" data-action="open-task">
-                    <span>${escapeHtml(t.title)}</span>
-                    <span data-status="${escapeHtml(t.status)}">${escapeHtml(t.status)}</span>
+                <li data-task-id="${escapeHTML(t.id)}" data-action="open-task">
+                    <span>${escapeHTML(t.title)}</span>
+                    <span data-status="${escapeHTML(t.status)}">${escapeHTML(t.status)}</span>
                 </li>
             `)
             .join('');

@@ -23,7 +23,7 @@
  *   <nc-otp-input length="6" type="numeric"></nc-otp-input>
  */
 import { Component, defineComponent } from '../../.nativecore/core/component.js';
-import { escapeHTML } from '../../.nativecore/utils/templates.js';
+import { html, raw, escapeHTML } from '../../.nativecore/utils/templates.js';
 
 export class NcOtpInput extends Component {
     static useShadowDOM = true;
@@ -57,7 +57,7 @@ export class NcOtpInput extends Component {
         const boxesHtml = Array.from({ length: len }, (_, i) => {
             const val = this._values[i] ?? '';
             const showSep = separator > 0 && i === separator - 1 && i < len - 1;
-            return `
+            return html`
                 <input
                     class="box"
                     type="${masked ? 'password' : 'text'}"
@@ -109,9 +109,9 @@ export class NcOtpInput extends Component {
                 .error { font-size: var(--nc-font-size-xs); color: var(--nc-danger);      margin-top: 6px; }
             </style>
             <div class="wrap" role="group" aria-label="${label || 'OTP input'}">
-                ${boxesHtml}
+                ${raw(boxesHtml)}
             </div>
-            ${error ? `<p class="error">${escapeHTML(error)}</p>` : hint ? `<p class="hint">${escapeHTML(hint)}</p>` : ''}
+            ${raw(error ? `<p class="error">${raw(escapeHTML(error)))}</p>` : hint ? `<p class="hint">${raw(escapeHTML(hint))}</p>` : ''}
         `;
     }
 

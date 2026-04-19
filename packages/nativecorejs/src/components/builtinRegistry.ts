@@ -15,6 +15,7 @@ export const builtinComponentManifest = [
     ['nc-bottom-nav', './components/nc-bottom-nav.js'],
     ['nc-breadcrumb', './components/nc-breadcrumb.js'],
     ['nc-button', './components/nc-button.js'],
+    ['nc-canvas', './components/nc-canvas.js'],
     ['nc-card', './components/nc-card.js'],
     ['nc-checkbox', './components/nc-checkbox.js'],
     ['nc-chip', './components/nc-chip.js'],

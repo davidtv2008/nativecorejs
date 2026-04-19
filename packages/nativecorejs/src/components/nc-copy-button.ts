@@ -1,5 +1,5 @@
 import { Component, defineComponent } from '../../.nativecore/core/component.js';
-import { escapeHTML } from '../../.nativecore/utils/templates.js';
+import { html, raw, escapeHTML } from '../../.nativecore/utils/templates.js';
 
 export class NcCopyButton extends Component {
     static useShadowDOM = true;
@@ -33,7 +33,7 @@ export class NcCopyButton extends Component {
             ? 'var(--nc-success, #10b981)'
             : variant === 'primary' ? 'var(--nc-white, #ffffff)' : 'var(--nc-text, #111827)';
 
-        return `
+        return html`
             <style>
                 :host { display: inline-block; }
                 button {
@@ -58,9 +58,9 @@ export class NcCopyButton extends Component {
                 button:disabled { opacity: 0.5; cursor: default; }
                 .icon { flex-shrink: 0; display: flex; }
             </style>
-            <button type="button" aria-label="${escapeHTML(isCopied ? copiedLabel : label)}" ${isCopied ? 'disabled' : ''}>
+            <button type="button" aria-label="${raw(escapeHTML(isCopied ? copiedLabel : label))}" ${isCopied ? 'disabled' : ''}>
                 <span class="icon">${isCopied ? checkIcon : copyIcon}</span>
-                ${!iconOnly ? `<span>${escapeHTML(isCopied ? copiedLabel : label)}</span>` : ''}
+                ${raw(!iconOnly ? `<span>${raw(escapeHTML(isCopied ? copiedLabel : label)))}</span>` : ''}
             </button>
         `;
     }

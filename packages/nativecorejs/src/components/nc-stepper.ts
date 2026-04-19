@@ -32,7 +32,7 @@
  */
 
 import { Component, defineComponent } from '../../.nativecore/core/component.js';
-import { escapeHTML } from '../../.nativecore/utils/templates.js';
+import { html, raw, escapeHTML } from '../../.nativecore/utils/templates.js';
 
 const CHECK_ICON = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16" fill="none" width="14" height="14"><path d="M3 8l4 4 6-7" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>`;
 const ERROR_ICON = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16" fill="none" width="14" height="14"><path d="M8 5v4M8 11v1" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>`;
@@ -89,21 +89,21 @@ export class NcStepper extends Component {
                     ? ERROR_ICON
                     : String(i + 1);
 
-            return `
+            return html`
                 <div
                     class="step ${stateClass}"
                     data-index="${i}"
                     role="tab"
                     aria-selected="${isActive}"
-                    aria-label="Step ${i + 1}: ${escapeHTML(label)}"
+                    aria-label="Step ${i + 1}: ${raw(escapeHTML(label))}"
                     tabindex="${isActive ? '0' : '-1'}"
                 >
-                    <div class="step__indicator">${iconContent}</div>
+                    <div class="step__indicator">${raw(iconContent)}</div>
                     <div class="step__text">
-                        <span class="step__label">${escapeHTML(label)}</span>
-                        ${desc ? `<span class="step__desc">${escapeHTML(desc)}</span>` : ''}
+                        <span class="step__label">${raw(escapeHTML(label))}</span>
+                        ${raw(desc ? `<span class="step__desc">${raw(escapeHTML(desc)))}</span>` : ''}
                     </div>
-                    ${i < total - 1 ? `<div class="step__connector"></div>` : ''}
+                    ${raw(i < total - 1 ? `<div class="step__connector"></div>` : '')}
                 </div>`;
         }).join('');
 
@@ -180,15 +180,15 @@ export class NcStepper extends Component {
                     position: absolute;
                     background: var(--nc-border);
                     transition: background var(--nc-transition-fast);
-                    ${isHorizontal
+                    ${raw(isHorizontal
                         ? `top: 16px; left: calc(50% + 20px); right: calc(-50% + 20px); height: 2px;`
-                        : `top: 36px; left: 15px; width: 2px; height: calc(100% - 4px);`}
+                        : `top: 36px; left: 15px; width: 2px; height: calc(100% - 4px);`)}
                 }
                 .step--done .step__connector,
                 .step--active .step__connector { background: var(--nc-primary); }
             </style>
             <div class="stepper" role="tablist" aria-orientation="${orientation}">
-                ${stepItems}
+                ${raw(stepItems)}
             </div>
         `;
     }

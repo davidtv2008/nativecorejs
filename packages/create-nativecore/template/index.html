@@ -115,9 +115,11 @@
         <app-sidebar></app-sidebar>
 
         <main class="main-content">
-            <div id="main-content" class="page">
-                <loading-spinner message="Loading page..."></loading-spinner>
-            </div>
+            <nc-error-boundary mode="dev">
+                <div id="main-content" class="page">
+                    <loading-spinner message="Loading page..."></loading-spinner>
+                </div>
+            </nc-error-boundary>
             <app-footer></app-footer>
         </main>
 

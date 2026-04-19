@@ -18,7 +18,7 @@ export class NcAvatarGroup extends Component {
         const fontSize = Math.round(resolvedSize * 0.32);
         const borderWidth = Math.max(2, Math.round(resolvedSize * 0.06));
 
-        return `
+        return html`
             <style>
                 :host { display: inline-block; }
                 .group {

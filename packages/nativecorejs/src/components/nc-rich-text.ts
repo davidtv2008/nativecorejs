@@ -26,7 +26,7 @@
  */
 
 import { Component, defineComponent } from '../../.nativecore/core/component.js';
-import { sanitizeURL } from '../../.nativecore/utils/templates.js';
+import { html, raw, sanitizeURL } from '../../.nativecore/utils/templates.js';
 
 const ICONS: Record<string, string> = {
     bold:         `<svg viewBox="0 0 16 16" fill="none" width="14" height="14"><text x="3" y="13" font-family="Georgia,serif" font-size="13" font-weight="bold" fill="currentColor">B</text></svg>`,
@@ -76,7 +76,7 @@ export class NcRichText extends Component {
         const items = this._getToolbarItems();
 
         const toolbarHtml = items.map(id => {
-            if (id === '|') return `<span class="tb-sep"></span>`;
+            if (id === '|') return html`<span class="tb-sep"></span>`;
             const icon = ICONS[id] ?? '';
             return `<button class="tb-btn" type="button" data-cmd="${id}" title="${id}" tabindex="-1">${icon}</button>`;
         }).join('');
@@ -159,7 +159,7 @@ export class NcRichText extends Component {
                 .editable a { color: var(--nc-primary); text-decoration: underline; }
             </style>
             <div class="editor-wrap">
-                <div class="toolbar">${toolbarHtml}</div>
+                <div class="toolbar">${raw(toolbarHtml)}</div>
                 <div
                     class="editable"
                     contenteditable="${!disabled && !readonly ? 'true' : 'false'}"

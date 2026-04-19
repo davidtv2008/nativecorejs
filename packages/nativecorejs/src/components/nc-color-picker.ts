@@ -54,7 +54,7 @@ export class NcColorPicker extends Component {
         const disabled = this.hasAttribute('disabled');
         const swatches = this._getSwatches();
 
-        return `
+        return html`
             <style>
                 :host { display: inline-block; font-family: var(--nc-font-family); }
 
@@ -157,13 +157,13 @@ export class NcColorPicker extends Component {
                     }).join('')}
                 </div>
 
-                ${showInput ? `
+                ${raw(showInput ? `
                 <div class="input-row">
                     <div class="preview" style="background:${value}" title="Click to open color picker">
                         <input class="native-input" type="color" value="${value}" aria-label="Color picker" />
                     </div>
                     <input class="hex-input" type="text" value="${value}" maxlength="7" placeholder="#rrggbb" aria-label="Hex color value" />
-                </div>` : ''}
+                </div>` : '')}
 
                 <input type="hidden" name="${this.getAttribute('name') || ''}" value="${value}" />
             </div>

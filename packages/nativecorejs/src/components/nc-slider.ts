@@ -59,7 +59,7 @@ export class NcSlider extends Component {
         // Set fill % as a host CSS variable so it can be updated without re-render
         this.style.setProperty('--_fill-pct', `${pct}%`);
 
-        return `
+        return html`
             <style>
                 :host {
                     display: block;
@@ -207,7 +207,7 @@ export class NcSlider extends Component {
             </style>
 
             <div class="slider-wrap">
-                ${showValue ? `<span class="value-bubble">${value}</span>` : ''}
+                ${raw(showValue ? `<span class="value-bubble">${value}</span>` : '')}
                 <input
                     type="range"
                     min="${min}"

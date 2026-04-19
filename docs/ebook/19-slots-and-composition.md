@@ -259,7 +259,7 @@ When you receive an array of task objects from a store and need to render them p
 ```typescript
 import { effect } from '@core/state.js';
 import { taskStore } from '@stores/task.store.js';
-import { escapeHtml } from '@core-utils/templates.js';
+import { escapeHTML } from '@core-utils/templates.js';
 
 onMount(): void {
     const listEl = this.$('.list-body');
@@ -267,7 +267,7 @@ onMount(): void {
         const tasks = taskStore.tasks.value;
         if (!listEl) return;
         listEl.innerHTML = tasks
-            .map(t => `<task-card task-id="${escapeHtml(t.id)}" title="${escapeHtml(t.title)}" status="${escapeHtml(t.status)}"></task-card>`)
+            .map(t => `<task-card task-id="${escapeHTML(t.id)}" title="${escapeHTML(t.title)}" status="${escapeHTML(t.status)}"></task-card>`)
             .join('');
     });
     // store disposer for cleanup

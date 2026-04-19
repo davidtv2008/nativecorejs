@@ -35,20 +35,20 @@ export class NcProgressCircular extends Component {
         const centerY = size / 2;
         const fontSize = Math.max(10, Math.round(size * 0.22));
 
-        return `
+        return html`
             <style>
                 :host { display: inline-flex; align-items: center; justify-content: center; }
                 svg { display: block; }
                 .track { fill: none; stroke: var(--nc-bg-tertiary, #e5e7eb); }
                 .fill { fill: none; stroke: ${color}; stroke-linecap: round; transition: stroke-dashoffset 0.4s ease; }
-                ${indeterminate ? `
+                ${raw(indeterminate ? `
                 @keyframes nc-spin {
                     from { transform: rotate(0deg); }
                     to { transform: rotate(360deg); }
                 }
                 svg { animation: nc-spin 1s linear infinite; transform-origin: center; }
                 .fill { stroke-dashoffset: ${dashOffset}; }
-                ` : ''}
+                ` : '')}
                 .label {
                     font-family: var(--nc-font-family);
                     font-size: ${fontSize}px;
@@ -61,7 +61,7 @@ export class NcProgressCircular extends Component {
             <svg width="${size}" height="${size}" viewBox="0 0 ${size} ${size}" role="progressbar" aria-label="${label}" aria-valuenow="${indeterminate ? '' : value}" aria-valuemin="0" aria-valuemax="${max}">
                 <circle class="track" cx="${centerX}" cy="${centerY}" r="${radius}" stroke-width="${thickness}" />
                 <circle class="fill" cx="${centerX}" cy="${centerY}" r="${radius}" stroke-width="${thickness}" stroke-dasharray="${circumference}" stroke-dashoffset="${dashOffset}" transform="rotate(-90 ${centerX} ${centerY})" />
-                ${showValue && !indeterminate ? `<text class="label" x="${centerX}" y="${centerY}">${pct}%</text>` : ''}
+                ${raw(showValue && !indeterminate ? `<text class="label" x="${centerX}" y="${centerY}">${pct}%</text>` : '')}
             </svg>
         `;
     }

@@ -188,4 +188,4 @@ A safe migration from an existing codebase:
 ---
 
 **Back:** [Chapter 27 — Troubleshooting Guide](./27-troubleshooting.md)  
-**Next:** [Chapter 29 — Error Boundaries](./29-error-boundaries.md)
+**Next:** [Chapter 30 — Framework API Quick Reference](./30-framework-api-quick-reference.md)

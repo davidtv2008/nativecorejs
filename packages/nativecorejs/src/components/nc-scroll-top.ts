@@ -37,7 +37,7 @@ export class NcScrollTop extends Component {
             pos === 'bottom-center' ? `left:50%;transform:translateX(-50%);` :
             `right:${offset}px;left:auto;`;
 
-        return `
+        return html`
             <style>
                 :host { display: contents; }
                 button {

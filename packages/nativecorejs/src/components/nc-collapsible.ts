@@ -55,7 +55,7 @@ export class NcCollapsible extends Component {
             none:    '',
         };
 
-        return `
+        return html`
             <style>
                 :host {
                     display: block;

@@ -20,7 +20,7 @@ export class NcBadge extends Component {
 
         const [verticalPosition, horizontalPosition] = position.split('-');
 
-        return `
+        return html`
             <style>
                 :host { display: inline-flex; position: relative; vertical-align: middle; }
 
@@ -58,7 +58,7 @@ export class NcBadge extends Component {
                 ::slotted(*) { display: inline-flex; }
             </style>
             <slot></slot>
-            <span class="badge badge--${variant}" aria-label="${dot ? 'indicator' : `${label} notifications`}">${label}</span>
+            <span class="badge badge--${variant}" aria-label="${raw(dot ? 'indicator' : `${label} notifications`)}">${label}</span>
         `;
     }
 

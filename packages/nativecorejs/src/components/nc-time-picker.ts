@@ -77,7 +77,7 @@ export class NcTimePicker extends Component {
         if (!this._initialized && !this.getAttribute('value')) return '';
         if (this._is12()) {
             const { display } = to12(this._h);
-            return `${pad2(display)}:${pad2(this._m)}${this._showSec() ? `:${pad2(this._s)}` : ''} ${this._ampm}`;
+            return `${pad2(display)}:${pad2(this._m)}${raw(this._showSec() ? `:${pad2(this._s)}` : '')} ${this._ampm}`;
         }
         return formatValue(this._h, this._m, this._s, this._showSec());
     }
@@ -98,7 +98,7 @@ export class NcTimePicker extends Component {
         const hourRange = is12 ? 12 : 24;
         const hourOptions = Array.from({ length: hourRange }, (_, i) => is12 ? i + 1 : i);
 
-        return `
+        return html`
             <style>
                 :host { display: block; position: relative; font-family: var(--nc-font-family); }
 
@@ -253,13 +253,13 @@ export class NcTimePicker extends Component {
                             return `<div class="col-item${isSelected ? ' selected' : ''}" data-col="second" data-value="${s}">${pad2(s)}</div>`;
                         }).join('')}
                     </div>` : ''}
-                    ${is12 ? `
+                    ${raw(is12 ? `
                     <!-- AM/PM -->
                     <div class="col" data-col="ampm">
                         <div class="col-header">AM/PM</div>
                         <div class="col-item${this._ampm === 'AM' ? ' selected' : ''}" data-col="ampm" data-value="AM">AM</div>
                         <div class="col-item${this._ampm === 'PM' ? ' selected' : ''}" data-col="ampm" data-value="PM">PM</div>
-                    </div>` : ''}
+                    </div>` : '')}
                 </div>
                 <div class="panel-footer">
                     <button class="panel-btn" data-action="clear" type="button">Clear</button>

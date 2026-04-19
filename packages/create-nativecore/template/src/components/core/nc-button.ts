@@ -56,7 +56,7 @@ export class NcButton extends Component {
         
         const iconHTML = icon ? `<img class="nc-button-icon" src="${icon}" alt="${alt}" />` : '';
         
-        return`
+        return html`
             <style>
                 :host {
                     display: ${fullWidth ? 'block' : 'inline-flex'};

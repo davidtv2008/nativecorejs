@@ -33,7 +33,7 @@ export class NcCheckbox extends Component {
         const checked = this.hasAttribute('checked');
         const disabled = this.hasAttribute('disabled');
 
-        return `
+        return html`
             <style>
                 :host {
                     display: inline-flex;
@@ -152,7 +152,7 @@ export class NcCheckbox extends Component {
                     <svg class="check-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 12 12" fill="none" width="${size === 'sm' ? '8' : size === 'lg' ? '14' : '11'}" height="${size === 'sm' ? '8' : size === 'lg' ? '14' : '11'}"><path d="M2 6l3 3 5-5" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
                     <svg class="indeterminate-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 12 12" fill="none" width="${size === 'sm' ? '8' : size === 'lg' ? '14' : '11'}" height="${size === 'sm' ? '8' : size === 'lg' ? '14' : '11'}"><path d="M2 6h8" stroke="white" stroke-width="2" stroke-linecap="round"/></svg>
                 </span>
-                ${label ? `<span class="label">${label}</span>` : '<slot></slot>'}
+                ${raw(label ? `<span class="label">${label}</span>` : '<slot></slot>')}
             </label>
         `;
     }

@@ -1,5 +1,5 @@
 import { Component, defineComponent } from '../../.nativecore/core/component.js';
-import { escapeHTML } from '../../.nativecore/utils/templates.js';
+import { html, raw, escapeHTML } from '../../.nativecore/utils/templates.js';
 
 export class NcDivider extends Component {
     static useShadowDOM = true;
@@ -18,7 +18,7 @@ export class NcDivider extends Component {
 
         const isHorizontal = orientation === 'horizontal';
 
-        return `
+        return html`
             <style>
                 :host {
                     display: ${isHorizontal ? 'block' : 'inline-flex'};
@@ -51,7 +51,7 @@ export class NcDivider extends Component {
             </style>
             <div class="divider" role="separator" aria-orientation="${orientation}">
                 <span class="line"></span>
-                ${label ? `<span class="label">${escapeHTML(label)}</span><span class="line"></span>` : ''}
+                ${raw(label ? `<span class="label">${raw(escapeHTML(label)))}</span><span class="line"></span>` : ''}
             </div>
         `;
     }

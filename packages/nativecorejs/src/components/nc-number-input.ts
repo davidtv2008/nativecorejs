@@ -45,7 +45,7 @@ export class NcNumberInput extends Component {
         const atMin = min !== null && value <= Number(min);
         const atMax = max !== null && value >= Number(max);
 
-        return `
+        return html`
             <style>
                 :host { display: inline-flex; font-family: var(--nc-font-family); }
                 .wrap {
@@ -125,7 +125,7 @@ export class NcNumberInput extends Component {
                 <button class="btn btn-dec" type="button" aria-label="Decrease" aria-disabled="${atMin || disabled || readonly}" tabindex="${disabled ? '-1' : '0'}">
                     <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16" fill="none" width="14" height="14"><path d="M3 8h10" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
                 </button>
-                <input type="number" value="${value}" ${min !== null ? `min="${min}"` : ''} ${max !== null ? `max="${max}"` : ''} step="${step}" ${disabled ? 'disabled' : ''} ${readonly ? 'readonly' : ''} placeholder="${placeholder}" name="${this.getAttribute('name') || ''}" aria-label="${this.getAttribute('name') || 'number'}" />
+                <input type="number" value="${value}" ${raw(min !== null ? `min="${min}"` : '')} ${raw(max !== null ? `max="${max}"` : '')} step="${step}" ${disabled ? 'disabled' : ''} ${readonly ? 'readonly' : ''} placeholder="${placeholder}" name="${this.getAttribute('name') || ''}" aria-label="${this.getAttribute('name') || 'number'}" />
                 <button class="btn btn-inc" type="button" aria-label="Increase" aria-disabled="${atMax || disabled || readonly}" tabindex="${disabled ? '-1' : '0'}">
                     <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16" fill="none" width="14" height="14"><path d="M8 3v10M3 8h10" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
                 </button>

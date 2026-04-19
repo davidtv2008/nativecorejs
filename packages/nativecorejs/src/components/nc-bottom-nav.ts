@@ -37,7 +37,7 @@
  *   active   - boolean (managed by parent nc-bottom-nav)
  */
 import { Component, defineComponent } from '../../.nativecore/core/component.js';
-import { escapeHTML } from '../../.nativecore/utils/templates.js';
+import { html, raw, escapeHTML } from '../../.nativecore/utils/templates.js';
 
 // Shared icon paths with nc-nav-item
 const NAV_ICONS: Record<string, string> = {
@@ -72,7 +72,7 @@ export class NcBottomNavItem extends Component {
 
         const iconHtml = NAV_ICONS[iconName] ? svgWrap(NAV_ICONS[iconName]) : '';
 
-        return `
+        return html`
             <style>
                 :host { display: flex; flex: 1; }
                 button {
@@ -125,13 +125,13 @@ export class NcBottomNavItem extends Component {
                     border: 1.5px solid var(--nc-bg-elevated, #fff);
                 }
             </style>
-            <button type="button" ${disabled ? 'disabled' : ''} aria-label="${escapeHTML(label)}" aria-current="${active ? 'page' : 'false'}" data-value="${escapeHTML(value)}">
+            <button type="button" ${disabled ? 'disabled' : ''} aria-label="${raw(escapeHTML(label))}" aria-current="${active ? 'page' : 'false'}" data-value="${raw(escapeHTML(value))}">
                 <span class="icon-wrap">
-                    ${iconHtml}
+                    ${raw(iconHtml)}
                     <slot name="icon"></slot>
-                    ${badge ? `<span class="badge">${escapeHTML(badge)}</span>` : ''}
+                    ${raw(badge ? `<span class="badge">${raw(escapeHTML(badge)))}</span>` : ''}
                 </span>
-                ${!iconOnly && label ? `<span>${escapeHTML(label)}</span>` : ''}
+                ${raw(!iconOnly && label ? `<span>${raw(escapeHTML(label)))}</span>` : ''}
             </button>
         `;
     }
@@ -164,7 +164,7 @@ export class NcBottomNav extends Component {
         const elevated = this.hasAttribute('elevated');
         const bordered = !this.hasAttribute('no-border');
 
-        return `
+        return html`
             <style>
                 :host { display: block; }
                 nav {

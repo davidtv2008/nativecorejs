@@ -63,7 +63,7 @@ export class NcField extends Component {
         const hint = this.getAttribute('hint') || '';
         const error = this.getAttribute('error') || '';
 
-        return `
+        return html`
             <style>
                 :host { display: block; font-family: var(--nc-font-family); }
 
@@ -90,8 +90,8 @@ export class NcField extends Component {
             </style>
             <div class="field">
                 ${label ? `
-                <label ${forAttr ? `for="${forAttr}"` : ''}>
-                    ${label}${required ? `<span class="required" aria-hidden="true">*</span>` : ''}
+                <label ${raw(forAttr ? `for="${forAttr}"` : '')}>
+                    ${label}${raw(required ? `<span class="required" aria-hidden="true">*</span>` : '')}
                 </label>` : ''}
                 <slot></slot>
                 ${error
@@ -146,7 +146,7 @@ export class NcForm extends Component {
     };
 
     template() {
-        return `
+        return html`
             <style>
                 :host {
                     display: block;

@@ -47,7 +47,7 @@ export class NcDropdown extends Component {
         const [vSide, hAlign] = placement.split('-') as [string, string | undefined];
         const above = vSide === 'top';
 
-        return `
+        return html`
             <style>
                 :host { display: inline-flex; position: relative; vertical-align: middle; }
 

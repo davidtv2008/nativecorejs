@@ -456,7 +456,7 @@ export class NcAnimation extends Component {
     private _visibleFired = false;
 
     template() {
-        return `
+        return html`
             <style>
                 :host {
                     display: contents;

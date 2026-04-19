@@ -21,7 +21,7 @@ export class NcSwitch extends Component {
         const labelElement = label ? `<span class="label">${label}</span>` : '<slot></slot>';
         const track = `<span class="track"><span class="thumb"></span></span>`;
 
-        return `
+        return html`
             <style>
                 :host {
                     display: inline-flex;

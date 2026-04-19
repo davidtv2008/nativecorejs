@@ -14,12 +14,14 @@
 import { ComponentOverlay } from './component-overlay.js';
 import { ComponentEditor } from './component-editor.js';
 import { OutlinePanel } from './outline-panel.js';
+import { DrawingOverlay } from './drawing-overlay.js';
 
 class DevTools {
     private static readonly TOGGLE_STORAGE_KEY = 'nativecore-devtools-visible';
     private overlay: ComponentOverlay | null = null;
     private editor: ComponentEditor | null = null;
     private outlinePanel: OutlinePanel | null = null;
+    private drawingOverlay: DrawingOverlay | null = null;
     private indicator: HTMLButtonElement | null = null;
     private enabled: boolean = false;
     private overlayVisible: boolean = true;
@@ -39,6 +41,8 @@ class DevTools {
         this.overlay = new ComponentOverlay(this.onEditComponent.bind(this));
         this.editor = new ComponentEditor();
         this.outlinePanel = new OutlinePanel(this.onEditComponent.bind(this));
+        this.drawingOverlay = new DrawingOverlay();
+        this.drawingOverlay.init();
         this.enabled = true;
         this.overlayVisible = this.loadOverlayVisibilityPreference();
         this.overlay.setVisible(this.overlayVisible);
@@ -133,6 +137,9 @@ class DevTools {
                     opacity: 0.95;
                     border: none;
                     cursor: pointer;
+                    display: flex;
+                    align-items: center;
+                    gap: 8px;
                 }
 
                 #nativecore-denc-indicator:hover {
@@ -143,11 +150,46 @@ class DevTools {
                 #nativecore-denc-indicator.is-off {
                     background: linear-gradient(135deg, #475569 0%, #334155 100%);
                 }
+
+                #nativecore-denc-brush-btn {
+                    background: rgba(255,255,255,0.15);
+                    border: 1px solid rgba(255,255,255,0.25);
+                    border-radius: 10px;
+                    color: white;
+                    font-size: 13px;
+                    cursor: pointer;
+                    padding: 1px 6px;
+                    line-height: 1.4;
+                    transition: background 0.15s;
+                    display: none;
+                }
+
+                #nativecore-denc-indicator:not(.is-off) #nativecore-denc-brush-btn {
+                    display: inline-block;
+                }
+
+                #nativecore-denc-brush-btn:hover {
+                    background: rgba(255,255,255,0.28);
+                }
+
+                #nativecore-denc-brush-btn.drawing-on {
+                    background: rgba(255,200,0,0.35);
+                    border-color: rgba(255,200,0,0.6);
+                }
             </style>
-            DEV MODE: ${this.overlayVisible ? 'ON' : 'OFF'}
+            <span id="nativecore-denc-label">DEV MODE: ${this.overlayVisible ? 'ON' : 'OFF'}</span>
+            <button id="nativecore-denc-brush-btn" type="button" title="Toggle annotation drawing mode">🖌️</button>
         `;
         indicator.classList.toggle('is-off', !this.overlayVisible);
         indicator.addEventListener('click', () => this.toggleOverlayVisibility());
+
+        // Brush button — stops propagation so it doesn't also toggle dev mode
+        const brushBtn = indicator.querySelector('#nativecore-denc-brush-btn') as HTMLButtonElement | null;
+        brushBtn?.addEventListener('click', (e) => {
+            e.stopPropagation();
+            this.drawingOverlay?.toggle();
+            brushBtn.classList.toggle('drawing-on', this.drawingOverlay?.isOn ?? false);
+        });
         
         document.body.appendChild(indicator);
         this.indicator = indicator;
@@ -174,12 +216,19 @@ class DevTools {
 
         if (!this.overlayVisible) {
             document.dispatchEvent(new CustomEvent('nc-close-editor'));
+            // Clear all drawings and exit drawing mode when dev mode is turned off
+            if (this.drawingOverlay) {
+                this.drawingOverlay.setVisible(false);
+                this.drawingOverlay.clear();
+            }
         }
 
         this.overlay?.setVisible(this.overlayVisible);
         this.outlinePanel?.setVisible(this.overlayVisible);
         this.saveOverlayVisibilityPreference();
         this.addDevIndicator();
+
+        document.dispatchEvent(new CustomEvent('nc-devtools-visibility', { detail: { visible: this.overlayVisible } }));
     }
 
     /**
@@ -194,6 +243,9 @@ class DevTools {
         }
         if (this.outlinePanel) {
             this.outlinePanel.destroy();
+        }
+        if (this.drawingOverlay) {
+            this.drawingOverlay.destroy();
         }
         // Use dom.query for consistency
         const indicator = (window.dom?.query?.('#nativecore-denc-indicator') || document.getElementById('nativecore-denc-indicator')) as HTMLElement;

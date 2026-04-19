@@ -21,7 +21,7 @@ export class NcRadio extends Component {
         const dotSize = size === 'sm' ? '6px' : size === 'lg' ? '10px' : '8px';
         const boxSize = size === 'sm' ? '16px' : size === 'lg' ? '24px' : '20px';
 
-        return `
+        return html`
             <style>
                 :host {
                     display: inline-flex;
@@ -115,7 +115,7 @@ export class NcRadio extends Component {
             <label class="radio-wrapper">
                 <input type="radio" ${checked ? 'checked' : ''} ${disabled ? 'disabled' : ''} name="${this.getAttribute('name') || ''}" value="${this.getAttribute('value') || ''}" />
                 <span class="ring"><span class="dot"></span></span>
-                ${label ? `<span class="label">${label}</span>` : '<slot></slot>'}
+                ${raw(label ? `<span class="label">${label}</span>` : '<slot></slot>')}
             </label>
         `;
     }

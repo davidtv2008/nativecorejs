@@ -18,7 +18,7 @@ export class NcProgress extends Component {
         const animated = this.hasAttribute('animated');
         const label = this.getAttribute('label') || `${percentage}%`;
 
-        return `
+        return html`
             <style>
                 :host { display: block; width: 100%; font-family: var(--nc-font-family); }
 
@@ -42,7 +42,7 @@ export class NcProgress extends Component {
                     height: 100%;
                     border-radius: 999px;
                     transition: width 0.4s ease;
-                    width: ${indeterminate ? '40%' : `${percentage}%`};
+                    width: ${raw(indeterminate ? '40%' : `${percentage}%`)};
                 }
 
                 .bar--primary { background: var(--nc-primary, #10b981); }
@@ -51,7 +51,7 @@ export class NcProgress extends Component {
                 .bar--danger { background: var(--nc-danger, #ef4444); }
                 .bar--neutral { background: var(--nc-text-muted, #6b7280); }
 
-                ${striped ? `
+                ${raw(striped ? `
                 .bar {
                     background-image: linear-gradient(
                         45deg,
@@ -64,16 +64,16 @@ export class NcProgress extends Component {
                         transparent
                     );
                     background-size: 1rem 1rem;
-                }` : ''}
+                }` : '')}
 
-                ${animated ? `
+                ${raw(animated ? `
                 @keyframes nc-progress-stripes {
                     from { background-position: 1rem 0; }
                     to { background-position: 0 0; }
                 }
-                .bar { animation: nc-progress-stripes 1s linear infinite; }` : ''}
+                .bar { animation: nc-progress-stripes 1s linear infinite; }` : '')}
 
-                ${indeterminate ? `
+                ${raw(indeterminate ? `
                 @keyframes nc-indeterminate {
                     0% { left: -40%; }
                     100% { left: 100%; }
@@ -81,7 +81,7 @@ export class NcProgress extends Component {
                 .bar {
                     position: absolute;
                     animation: nc-indeterminate 1.4s ease infinite;
-                }` : ''}
+                }` : '')}
 
                 .value-label {
                     font-size: var(--nc-font-size-xs, 0.75rem);
@@ -101,7 +101,7 @@ export class NcProgress extends Component {
                 >
                     <div class="bar bar--${variant}"></div>
                 </div>
-                ${showValue && !indeterminate ? `<span class="value-label">${percentage}%</span>` : ''}
+                ${raw(showValue && !indeterminate ? `<span class="value-label">${percentage}%</span>` : '')}
             </div>
         `;
     }

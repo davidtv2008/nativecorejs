@@ -11,7 +11,7 @@ export class LoadingSpinner extends Component {
 
         const dimension = size === 'small' ? '20px' : size === 'large' ? '40px' : '28px';
 
-        return `
+        return html`
             <style>
                 :host {
                     display: inline-flex;
@@ -44,7 +44,7 @@ export class LoadingSpinner extends Component {
             </style>
             <div class="loading-spinner ${size}">
                 <div class="spinner"></div>
-                ${message ? `<p class="loading-message">${message}</p>` : ''}
+                ${raw(message ? `<p class="loading-message">${message}</p>` : '')}
             </div>
         `;
     }

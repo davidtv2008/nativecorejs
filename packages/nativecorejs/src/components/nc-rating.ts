@@ -53,7 +53,7 @@ export class NcRating extends Component {
         const items = Array.from({ length: max }, (_, index) => {
             const position = index + 1;
             const filled = position <= value;
-            return `<span class="item${filled ? ' filled' : ''}" data-pos="${position}" role="${interactive ? 'radio' : 'presentation'}" aria-checked="${filled}" aria-label="${position} of ${max}" tabindex="${interactive ? '0' : '-1'}">${icon.filled}${icon.empty}</span>`;
+            return html`<span class="item${filled ? ' filled' : ''}" data-pos="${position}" role="${interactive ? 'radio' : 'presentation'}" aria-checked="${filled}" aria-label="${position} of ${max}" tabindex="${interactive ? '0' : '-1'}">${icon.filled}${icon.empty}</span>`;
         }).join('');
 
         return `

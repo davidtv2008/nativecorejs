@@ -62,7 +62,7 @@ export class NcModal extends Component {
         };
         const maxWidth = widths[size] ?? widths.md;
 
-        return `
+        return html`
             <style>
                 :host {
                     display: block;
@@ -159,12 +159,12 @@ export class NcModal extends Component {
                 <div class="dialog">
                     <div class="dialog__header">
                         <slot name="header"></slot>
-                        ${!noCloseBtn ? `
+                        ${raw(!noCloseBtn ? `
                         <button class="close-btn" type="button" aria-label="Close modal">
                             <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16" fill="none" width="18" height="18">
                                 <path d="M3 3l10 10M13 3L3 13" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
                             </svg>
-                        </button>` : ''}
+                        </button>` : '')}
                     </div>
                     <div class="dialog__body">
                         <slot></slot>
