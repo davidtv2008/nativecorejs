@@ -272,7 +272,61 @@ The `attributeChangedCallback` fires, writes the new value into `this.completed`
 
 ---
 
-> **Note:** The `render()` pattern is straightforward but has a cost: it touches every stat node on every attribute change, even the ones that did not change. Chapter 04 introduces `bind()`, which eliminates this waste by patching only the DOM node tied to the state that actually changed.
+## `batch(fn)` — Coalesced State Updates
+
+By default, every write to a state immediately notifies all subscribers synchronously. For simple cases this is ideal. But when you need to update several states at once — say, setting `items`, `loading`, and `error` all in a single API response handler — each write would trigger a separate round of DOM updates. `batch()` defers all notifications until the function completes, so subscribers are called at most once per state, once the batch exits.
+
+```typescript
+import { batch } from '@core/state.js';
+
+// Without batch: three separate re-renders
+user.value    = fetchedUser;
+loading.value = false;
+error.value   = null;
+
+// With batch: a single re-render
+batch(() => {
+    user.value    = fetchedUser;
+    loading.value = false;
+    error.value   = null;
+});
+```
+
+### When to use `batch()`
+
+- **Async handlers**: after `await fetch(...)`, update all related states in one batch so the UI does not flicker between half-applied states.
+- **Store actions**: any action that writes more than one state belongs in a `batch()` — use the generated store template for a ready-made example.
+- **Optimistic UI rollbacks**: when reverting a failed mutation, batch the rollback writes so the UI jumps back atomically.
+
+```typescript
+// Store action — batch the success and failure paths
+export async function loadTasks(): Promise<void> {
+    batch(() => { loading.value = true; error.value = null; });
+    try {
+        const data = await api.getCached('/tasks', { ttl: 60_000 });
+        batch(() => { items.value = data as Task[]; loading.value = false; });
+    } catch (err) {
+        batch(() => {
+            error.value   = err instanceof Error ? err.message : 'Failed';
+            loading.value = false;
+        });
+    }
+}
+```
+
+### Nesting
+
+`batch()` calls can be nested. Notifications are deferred until the **outermost** batch exits:
+
+```typescript
+batch(() => {
+    a.value = 1;
+    batch(() => {
+        b.value = 2; // still inside the outer batch
+    });
+    // no notifications yet
+}); // all notifications fire here
+```
 
 ---
 

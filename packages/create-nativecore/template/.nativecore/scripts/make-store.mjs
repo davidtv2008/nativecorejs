@@ -41,7 +41,7 @@ async function main() {
         process.exit(1);
     }
 
-    // Normalise to kebab-case
+    // Normalize to kebab-case
     const kebabName = storeName.toLowerCase().replace(/\s+/g, '-');
     const camelName = kebabName.replace(/-([a-z])/g, (_, g) => g.toUpperCase());
     const PascalName = camelName.charAt(0).toUpperCase() + camelName.slice(1);
@@ -69,8 +69,9 @@ async function main() {
  * entire app session, and is shared by every controller / component that
  * imports it.
  *
- * Pattern — call pausePageCleanupCollection() before creating module-level
- * state so the Page Cleanup Registry does not tear it down on navigation.
+ * Pattern — wrap module-level state declarations between
+ * pausePageCleanupCollection() and resumePageCleanupCollection() so the
+ * Page Cleanup Registry does not tear them down on navigation.
  */
 import { useState, computed, batch } from '@core/state.js';
 import { pausePageCleanupCollection, resumePageCleanupCollection } from '@core/pageCleanupRegistry.js';

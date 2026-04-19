@@ -20,6 +20,7 @@ Before creating any component, view, or controller file manually, check whether 
 npm run make:component <name>    # kebab-case, e.g. task-card
 npm run make:view <path>         # interactive: view + optional controller
 npm run make:controller <name>   # standalone controller
+npm run make:store <name>        # global reactive store with actions
 ```
 
 ---
@@ -126,6 +127,9 @@ npm run make:controller <name>   # standalone controller
 
 28. **[28 — Migration Guide](./28-migration-guide.md)**
     Mapping mental models from React, Vue, and vanilla JavaScript to NativeCoreJS with direct concept-to-concept tables and a side-by-side component migration example.
+
+29. **[29 — Error Boundaries](./29-error-boundaries.md)**
+    `<nc-error-boundary>`, fallback UI, `nc-error` event, `catchError()` for async errors, multiple boundaries, and monitoring integration.
 
 ---
 
