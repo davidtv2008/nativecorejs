@@ -139,6 +139,11 @@ npm run make:store <name>        # global reactive store with actions
 31. **[32 — Capacitor: Packaging for Android and iOS](./32-capacitor-mobile-deployment.md)**
     What Capacitor is, the full Android + iOS workflow, what you can build without a Mac, what requires macOS, Capacitor plugins, and a complete development cycle guide.
 
+### Part 9 — SEO and Static Deployment
+
+32. **[33 — SSG and Static Deployment](./33-ssg-and-deployment.md)**
+    SSG vs SSR, the `build:ssg` and `build:full` commands, deploying to Cloudflare Pages and S3 + CloudFront, sitemap generation, and when true SSR is actually needed.
+
 ---
 
 ## How to Read This Book

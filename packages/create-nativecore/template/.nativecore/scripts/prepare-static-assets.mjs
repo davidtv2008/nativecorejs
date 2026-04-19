@@ -70,7 +70,6 @@ function isCompiledJS(name) {
 
 function prepareDeployDirectory() {
     cleanDir(deployDir);
-    const botDistDir = path.join(distDir, 'bot');
 
     // ---------------------------------------------------------------
     // 1. HTML shells (version-injected by inject-version.mjs earlier)
@@ -126,12 +125,7 @@ function prepareDeployDirectory() {
     );
 
     // ---------------------------------------------------------------
-    // 6. Bot-rendered HTML → _deploy/bot/ when available
-    // ---------------------------------------------------------------
-    copyDirectory(botDistDir, path.join(deployDir, 'bot'));
-
-    // ---------------------------------------------------------------
-    // 7. Public static assets → _deploy/ root (robots.txt, etc.)
+    // 6. Public static assets → _deploy/ root (robots.txt, etc.)
     // ---------------------------------------------------------------
     copyDirectory(path.join(rootDir, 'public'), deployDir);
 

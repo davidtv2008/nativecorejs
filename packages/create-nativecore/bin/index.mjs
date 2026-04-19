@@ -95,6 +95,8 @@ function packageJsonTemplate(config) {
         prebuild: 'npm run clean && npm run lint && npm run typecheck',
         build: 'node .nativecore/scripts/inject-version.mjs && npm run compile:prod && node .nativecore/scripts/minify.mjs && node .nativecore/scripts/prepare-static-assets.mjs && node .nativecore/scripts/strip-dev-blocks.mjs && node .nativecore/scripts/remove-dev.mjs',
         'build:client': 'node .nativecore/scripts/inject-version.mjs && npm run compile:prod && node .nativecore/scripts/minify.mjs && node .nativecore/scripts/prepare-static-assets.mjs',
+        'build:ssg': 'node .nativecore/scripts/ssg.mjs --yes',
+        'build:full': 'npm run build && npm run build:ssg',
         compile: 'tsc && tsc-alias',
         'compile:prod': 'tsc -p tsconfig.build.json && tsc-alias -p tsconfig.build.json && node .nativecore/scripts/remove-dev.mjs',
         typecheck: 'tsc --noEmit',
