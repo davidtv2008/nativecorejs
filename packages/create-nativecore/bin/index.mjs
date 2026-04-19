@@ -107,6 +107,7 @@ function packageJsonTemplate(config) {
             'make:component': 'node .nativecore/scripts/make-component.mjs',
             'make:core-component': 'node .nativecore/scripts/make-core-component.mjs',
             'make:controller': 'node .nativecore/scripts/make-controller.mjs',
+            'make:store': 'node .nativecore/scripts/make-store.mjs',
             'remove:component': 'node .nativecore/scripts/remove-component.mjs',
             'remove:core-component': 'node .nativecore/scripts/remove-core-component.mjs',
             'make:view': 'node .nativecore/scripts/make-view.mjs',

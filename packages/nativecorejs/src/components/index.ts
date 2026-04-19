@@ -23,6 +23,7 @@ export { NcDivider } from './nc-divider.js';
 export { NcDrawer } from './nc-drawer.js';
 export { NcDropdown } from './nc-dropdown.js';
 export { NcEmptyState } from './nc-empty-state.js';
+export { NcErrorBoundary } from './nc-error-boundary.js';
 export { NcField, NcForm } from './nc-form.js';
 export { NcFileUpload } from './nc-file-upload.js';
 export { NcImage } from './nc-image.js';

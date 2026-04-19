@@ -28,6 +28,7 @@ export const builtinComponentManifest = [
     ['nc-drawer', './components/nc-drawer.js'],
     ['nc-dropdown', './components/nc-dropdown.js'],
     ['nc-empty-state', './components/nc-empty-state.js'],
+    ['nc-error-boundary', './components/nc-error-boundary.js'],
     ['nc-field', './components/nc-form.js'],
     ['nc-file-upload', './components/nc-file-upload.js'],
     ['nc-form', './components/nc-form.js'],

@@ -35,6 +35,36 @@ type Unsubscribe = () => void;
 // Global tracker for dependency collection
 let currentTracker: Tracker | null = null;
 
+// ─── Batch support ───────────────────────────────────────────────────────────
+let batchDepth = 0;
+const pendingNotifications = new Set<() => void>();
+
+/**
+ * Execute `fn` and defer all state-change notifications until it returns.
+ * Multiple writes inside a single batch fire each subscriber at most once.
+ *
+ * @example
+ * batch(() => {
+ *   user.value = fetchedUser;
+ *   loading.value = false;
+ *   error.value = null;
+ * }); // subscribers notified once, not three times
+ */
+export function batch(fn: () => void): void {
+    batchDepth++;
+    try {
+        fn();
+    } finally {
+        batchDepth--;
+        if (batchDepth === 0) {
+            const notifications = Array.from(pendingNotifications);
+            pendingNotifications.clear();
+            notifications.forEach(notify => notify());
+        }
+    }
+}
+// ─────────────────────────────────────────────────────────────────────────────
+
 const FORBIDDEN_KEYS = new Set(['__proto__', 'constructor', 'prototype']);
 
 /** Recursively strip prototype-polluting keys from a value. */
@@ -100,7 +130,11 @@ function createState<T>(initialValue: T): State<T> {
     };
 
     function notify(): void {
-        subscribers.forEach(fn => fn());
+        if (batchDepth > 0) {
+            subscribers.forEach(fn => pendingNotifications.add(fn));
+        } else {
+            subscribers.forEach(fn => fn());
+        }
     }
 
     return state;

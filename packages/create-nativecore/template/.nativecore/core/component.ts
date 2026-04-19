@@ -284,11 +284,29 @@ function patchHTML(target: HTMLElement | ShadowRoot, html: string): void {
 }
 
 /**
- * Reconcile child nodes by index and patch matching nodes in place when possible.
+ * Reconcile child nodes. When all element children carry a `key=` attribute,
+ * uses a key-map algorithm (reorder/reuse nodes by key) for O(n) diffing.
+ * Falls back to positional reconciliation when keys are absent.
  */
 function reconcileChildren(target: RenderContainer, source: RenderContainer): void {
     const currentNodes = Array.from(target.childNodes);
     const nextNodes = Array.from(source.childNodes);
+
+    // Key-based reconciliation: active when EVERY element node in both
+    // old and new sets carries a key= attribute.
+    const currentElements = currentNodes.filter(n => n.nodeType === Node.ELEMENT_NODE) as Element[];
+    const nextElements    = nextNodes.filter(n => n.nodeType === Node.ELEMENT_NODE) as Element[];
+    const useKeys =
+        nextElements.length > 0 &&
+        nextElements.every(el => el.hasAttribute('key')) &&
+        (currentElements.length === 0 || currentElements.every(el => el.hasAttribute('key')));
+
+    if (useKeys) {
+        reconcileByKey(target, currentElements, nextElements);
+        return;
+    }
+
+    // --- positional fallback ---
     const maxLength = Math.max(currentNodes.length, nextNodes.length);
 
     for (let index = 0; index < maxLength; index++) {
@@ -307,6 +325,55 @@ function reconcileChildren(target: RenderContainer, source: RenderContainer): vo
 
         if (currentNode && nextNode) {
             reconcileNode(currentNode, nextNode);
+        }
+    }
+}
+
+/**
+ * Key-based list reconciliation: reuse existing DOM nodes by their `key=`
+ * attribute, moving them into the correct position rather than replacing them.
+ * This is the algorithm React, Vue, and Svelte use for keyed lists — it
+ * preserves component state and avoids unnecessary DOM creation.
+ */
+function reconcileByKey(target: RenderContainer, current: Element[], next: Element[]): void {
+    // Build a map of key → existing element
+    const keyMap = new Map<string, Element>();
+    for (const el of current) {
+        const k = el.getAttribute('key')!;
+        keyMap.set(k, el);
+    }
+
+    // Remove elements whose keys are gone
+    const nextKeys = new Set(next.map(el => el.getAttribute('key')!));
+    for (const el of current) {
+        if (!nextKeys.has(el.getAttribute('key')!)) {
+            el.remove();
+        }
+    }
+
+    // Insert / reorder into correct positions
+    for (let i = 0; i < next.length; i++) {
+        const nextEl = next[i];
+        const key = nextEl.getAttribute('key')!;
+        const existing = keyMap.get(key);
+
+        if (existing) {
+            // Patch attributes and children in place
+            syncAttributes(existing, nextEl);
+            syncFormControlState(existing, nextEl);
+            reconcileChildren(existing, nextEl);
+
+            // Move to correct position if needed
+            const siblings = Array.from(target.childNodes);
+            if (siblings[i] !== existing) {
+                const refNode = siblings[i] ?? null;
+                target.insertBefore(existing, refNode);
+            }
+        } else {
+            // New key — insert at correct position
+            const siblings = Array.from(target.childNodes);
+            const refNode = siblings[i] ?? null;
+            target.insertBefore(nextEl, refNode);
         }
     }
 }
