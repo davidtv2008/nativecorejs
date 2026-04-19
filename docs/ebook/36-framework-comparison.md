@@ -459,4 +459,4 @@ The cases where a mainstream framework is clearly preferable:
 ---
 
 **Back:** [Chapter 35 — Enterprise Architecture](./35-enterprise-architecture.md)  
-**Next:** [Ebook Index](./README.md)
+**Next:** [Chapter 37 — Using NativeCoreJS Components in Other Frameworks](./37-web-components-in-other-frameworks.md)

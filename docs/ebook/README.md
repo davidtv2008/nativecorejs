@@ -155,6 +155,9 @@ npm run make:store <name>        # global reactive store with actions
 35. **[36 — Framework Comparison](./36-framework-comparison.md)**
     Side-by-side comparison with React, Vue 3, Svelte, and Lit across 10 patterns (reactive state, routing, data fetching, global state, forms, testing, accessibility, production build). Includes a summary scorecard and honest assessment of when to choose a mainstream framework instead.
 
+36. **[37 — Using NativeCoreJS Components in Other Frameworks](./37-web-components-in-other-frameworks.md)**
+    Build `<nc-greeting>` once, then use it unchanged in plain HTML, React 19+, React 18, Vue 3, Svelte, and Angular — with exact code for each. Covers attribute bindings, custom events, TypeScript declarations, CSS custom properties, and how to publish your components as a cross-framework npm package.
+
 ---
 
 ## How to Read This Book
