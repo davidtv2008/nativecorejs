@@ -29,6 +29,7 @@ The generators know all of this. Run them first, every time.
 
 ```bash
 npm run make:component <name>
+npm run make:component <name> -- --with-tests
 ```
 
 **Requirements:**
@@ -36,12 +37,21 @@ npm run make:component <name>
 - Valid: `task-card`, `priority-badge`, `project-panel`, `task-list-item`
 - Invalid: `taskcard`, `TaskCard`, `task_card`
 
+**Flags:**
+
+| Flag | Effect |
+|---|---|
+| *(none)* | Generates the component file only |
+| `--with-tests` | Also generates `src/components/ui/__tests__/<name>.test.ts` with starter tests using `mountComponent` and `waitFor` |
+
 **What it generates:**
 
 ```
 src/components/
 └── ui/
-    └── task-card.ts
+    ├── task-card.ts
+    └── __tests__/
+        └── task-card.test.ts  (only with --with-tests)
 ```
 
 The generated `task-card.ts` file includes:
@@ -58,18 +68,21 @@ The generator also appends `componentRegistry.register('task-card', './ui/task-c
 **Example:**
 
 ```bash
-npm run make:component priority-badge
+npm run make:component priority-badge -- --with-tests
 ```
 
-Generates `src/components/ui/priority-badge.ts`. Open it and customize the template, attributes, and handlers.
+Generates `src/components/ui/priority-badge.ts` and `src/components/ui/__tests__/priority-badge.test.ts`. Open both and customize the template, attributes, handlers, and starter tests.
 
 ---
 
-## 23.3 `npm run make:view` Deep Dive
+## 23.3 `npm run make:view` / `npm run make:page` Deep Dive
 
 ```bash
 npm run make:view <path>
+npm run make:page <path>   # alias — identical behaviour
 ```
+
+`make:page` is a convenience alias for `make:view` for developers whose mental model maps to "pages" rather than "views". Both commands are identical.
 
 The path supports nesting:
 

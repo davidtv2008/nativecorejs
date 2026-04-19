@@ -244,5 +244,53 @@ Because the projects route uses `.cache()` on the router registration, the contr
 
 ---
 
+## HTTP Retry and Exponential Back-Off
+
+Transient network failures (momentary disconnections, server cold-starts, load-balancer hiccups) are common in real-world deployments. The `http` client supports automatic retries with configurable back-off so your controllers stay clean:
+
+### `retries`, `backoff`, `retryDelay`
+
+Add these three options to any request config:
+
+| Option | Type | Default | Description |
+|---|---|---|---|
+| `retries` | `number` | `0` | Maximum number of retry attempts after the first failure |
+| `backoff` | `'exponential' \| 'linear'` | none (fixed) | Delay growth strategy |
+| `retryDelay` | `number` (ms) | `200` | Base delay for the first retry |
+
+```typescript
+import http from '@core/http.js';
+
+// Retry up to 3 times with exponential back-off:
+// attempt 1 → 200 ms, attempt 2 → 400 ms, attempt 3 → 800 ms
+const data = await http.get('/api/tasks', {
+    retries: 3,
+    backoff: 'exponential',
+    retryDelay: 200,
+});
+```
+
+```typescript
+// Linear back-off: 300 ms, 600 ms, 900 ms
+const projects = await http.post('/api/projects', payload, {
+    retries: 2,
+    backoff: 'linear',
+    retryDelay: 300,
+});
+```
+
+### When to use retries
+
+| Scenario | Recommendation |
+|---|---|
+| Background data sync | `retries: 3, backoff: 'exponential'` |
+| User-triggered action (form submit) | 1–2 retries with `linear` back-off |
+| Real-time mutation (drag-and-drop) | 0 retries — fail fast, show feedback immediately |
+| Auth token refresh | 0 retries — a 401 is intentional |
+
+> **Note:** All retry semantics are opt-in per request. Retries are **not** enabled globally because some request types (delete, payment) must never be silently retried.
+
+---
+
 **Back:** [Chapter 07 — Authentication](./07-authentication.md)  
 **Next:** [Chapter 09 — Forms and Validation](./09-forms-and-validation.md)

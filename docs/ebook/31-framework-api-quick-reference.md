@@ -38,6 +38,8 @@ Use this chapter as a fast lookup for NativeCoreJS framework APIs. Each entry in
 | `useState` | `useState<T>(initialValue: T): State<T>` | Creates reactive state object (`.value`, `.set`, `.watch`) | [03 — Reactive State](./03-reactive-state.md) |
 | `useSignal` | `useSignal<T>(initialValue: T): [() => T, (value: T \| ((prev: T) => T)) => void]` | Tuple-style getter/setter state | [03 — Reactive State](./03-reactive-state.md) |
 | `createStates` | `createStates<T extends Record<string, any>>(initialStates: T): { [K in keyof T]: State<T[K]> }` | Creates multiple states from one object | [03 — Reactive State](./03-reactive-state.md) |
+| `createStore` | `createStore<T>(name: string, initial: T): State<T>` | Creates (or retrieves) a named global store registered in `globalThis.__NC_STORES__` | [17 — Global Stores](./18-global-stores.md) |
+| `getStore` | `getStore<T>(name: string): State<T> \| undefined` | Retrieves a named store by key; `undefined` if not yet created | [17 — Global Stores](./18-global-stores.md) |
 | `computed` | `computed<T>(computeFn: () => T): ComputedState<T>` | Creates derived reactive values | [03 — Reactive State](./03-reactive-state.md) |
 | `effect` | `effect(effectFn: () => void \| (() => void)): () => void` | Runs side effects with auto dependency tracking | [06 — Controllers](./06-controllers.md) |
 | `batch` | `batch(fn: () => void): void` | Coalesces multiple state writes into one notification flush | [11 — Advanced Patterns](./11-advanced-patterns.md) |
@@ -50,6 +52,7 @@ Use this chapter as a fast lookup for NativeCoreJS framework APIs. Each entry in
 |---|---|---|---|
 | `Router` | `new Router()` | Creates SPA router instance | [05 — Views and Routing](./05-views-and-routing.md) |
 | `register` | `register(path: string, htmlFile: string, controller?: ControllerFunction \| null, options?: Partial<RouteConfig>): this` | Registers route + optional controller/layout/cache config | [05 — Views and Routing](./05-views-and-routing.md) |
+| `loader` *(RouteConfig)* | `(params: Record<string, string>, signal: AbortSignal) => Promise<unknown>` | Pre-fetches data before the controller runs; result passed as 3rd controller arg | [06 — Controllers](./07-controllers.md) |
 | `start` | `start(): void` | Boots routing from current URL | [05 — Views and Routing](./05-views-and-routing.md) |
 | `navigate` | `navigate(path: string, state?: any): void` | Push-navigation within SPA | [05 — Views and Routing](./05-views-and-routing.md) |
 | `replace` | `replace(path: string, state?: any): void` | Replaces current history entry | [16 — Middleware](./16-middleware.md) |
@@ -59,6 +62,14 @@ Use this chapter as a fast lookup for NativeCoreJS framework APIs. Each entry in
 | `bustCache` | `bustCache(path?: string): void` | Clears cached route HTML (path-specific or global) | [14 — Route Caching](./14-route-caching.md) |
 | `getCurrentRoute` | `getCurrentRoute(): RouteMatch \| null` | Reads current route + params | [13 — Dynamic Routes](./13-dynamic-routes.md) |
 | `reload` / `back` | `reload(): void` / `back(): void` | Reloads current route or navigates browser history back | [05 — Views and Routing](./05-views-and-routing.md) |
+
+**Router lifecycle events** (dispatched on `window`):
+
+| Event | When |
+|---|---|
+| `nc-route-loading` | Loader function starts; `detail: { path, params }` |
+| `nc-route-loaded` | Loader resolves; `detail: { path, params, data }` |
+| `pageloaded` | Full navigation complete; `detail: RouteMatch` |
 
 ---
 
@@ -94,6 +105,38 @@ Use this chapter as a fast lookup for NativeCoreJS framework APIs. Each entry in
 | `initLazyComponents` | `initLazyComponents(): Promise<void>` | Scans DOM and starts lazy-component observer | [05 — Views and Routing](./05-views-and-routing.md) |
 | `bustCache` (utils) | `bustCache(url: string): string` | Adds cache-busting query parameter to URL | [12 — Production](./12-production.md) |
 | `importWithBust` | `importWithBust(modulePath: string): Promise<any>` | Dynamically imports local module with cache busting + safety checks | [12 — Production](./12-production.md) |
+
+---
+
+## Accessibility Utilities (`nativecorejs/a11y`)
+
+| API | Signature | Purpose | Deep dive |
+|---|---|---|---|
+| `trapFocus` | `trapFocus(container: HTMLElement): () => void` | Constrains keyboard focus within container; returns disposer that releases trap and restores prior focus | [21 — Accessibility](./22-accessibility.md) |
+| `announce` | `announce(message: string, politeness?: 'polite' \| 'assertive'): void` | Posts message to an ARIA live region for screen-reader announcement | [21 — Accessibility](./22-accessibility.md) |
+| `roving` | `roving(container: HTMLElement, selector: string): () => void` | Implements roving-tabindex for widget groups (menus, toolbars); Arrow/Home/End navigation; returns disposer | [21 — Accessibility](./22-accessibility.md) |
+
+---
+
+## Test Utilities (`nativecorejs/testing`)
+
+| API | Signature | Purpose | Deep dive |
+|---|---|---|---|
+| `mountComponent` | `mountComponent<T>(tagName: string, attrs?: Record<string, string>): { element: T, cleanup: () => void }` | Appends a custom element to `document.body`; returns element and cleanup fn | [22 — Testing](./23-testing.md) |
+| `waitFor` | `waitFor(predicate: () => boolean \| unknown, timeout?: number): Promise<void>` | Polls predicate until truthy or timeout; flushes microtasks between checks | [22 — Testing](./23-testing.md) |
+| `fireEvent` | `fireEvent(element: EventTarget, eventName: string, detail?: unknown): void` | Dispatches a `CustomEvent` with `bubbles: true, composed: true` | [22 — Testing](./23-testing.md) |
+
+---
+
+## HTTP Client Options (`@core/http`)
+
+| Option | Type | Default | Description |
+|---|---|---|---|
+| `retries` | `number` | `0` | Max retry attempts after first failure |
+| `backoff` | `'exponential' \| 'linear'` | *(none)* | Delay growth strategy between retries |
+| `retryDelay` | `number` (ms) | `200` | Base delay for first retry |
+
+These options extend the standard `RequestInit` config and are available on all `http.get`, `http.post`, `http.put`, and `http.delete` calls. See [08 — APIs and Async](./09-apis-and-async.md) for full usage.
 
 ---
 
