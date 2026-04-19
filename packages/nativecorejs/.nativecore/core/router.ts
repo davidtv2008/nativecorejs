@@ -1,5 +1,6 @@
 import { bustCache } from '../utils/cacheBuster.js';
 import { escapeHTML } from '../utils/templates.js';
+import { flushPageCleanups } from './pageCleanupRegistry.js';
 
 export interface CachePolicy {
     ttl: number;
@@ -223,6 +224,7 @@ export class Router {
             if (previousRoute?.path && this.pageScripts[previousRoute.path]?.cleanup) {
                 this.pageScripts[previousRoute.path].cleanup?.();
             }
+            flushPageCleanups();
 
             if (!isPrerenderedInitialRoute) {
                 mainContent.classList.add('page-transition-exit');

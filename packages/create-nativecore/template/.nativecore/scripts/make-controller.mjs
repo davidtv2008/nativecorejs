@@ -97,6 +97,11 @@ export async function ${camelName}Controller(params: Record<string, string> = {}
     });
 
     // -- Cleanup -------------------------------------------------------------
+    // NOTE: effect(), computed(), and trackEvents() are auto-registered with the
+    // Page Cleanup Registry and will be torn down by the router on navigation even
+    // if this return function is omitted.  Keep it anyway as an explicit contract
+    // documenting everything this controller owns, and for any cleanup logic that
+    // goes beyond the reactive primitives (e.g. timers, custom observers).
     return () => {
         titleText.dispose();
         summaryText.dispose();

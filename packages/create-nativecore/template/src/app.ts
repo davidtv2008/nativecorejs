@@ -23,6 +23,7 @@ import { registerRoutes, protectedRoutes } from './routes/routes.js';
 import { initSidebar } from './utils/sidebar.js';
 import { initLazyComponents } from '@core/lazyComponents.js';
 import { dom } from '@core-utils/dom.js';
+import { pausePageCleanupCollection, resumePageCleanupCollection } from '../.nativecore/core/pageCleanupRegistry.js';
 import './components/registry.js'; // side-effect import: registers all lazy components
 
 function isLocalhost(): boolean {
@@ -103,8 +104,13 @@ async function init(){
     // Register all app routes (defined in routes/routes.ts)
     registerRoutes(router);
 
-    // Start the router: match the current URL and render the first view
+    // Start the router: match the current URL and render the first view.
+    // Pause collection so that any effects or trackers created during app-level
+    // bootstrap (before the first page controller runs) are never flushed by
+    // subsequent navigations.
+    pausePageCleanupCollection();
     router.start();
+    resumePageCleanupCollection();
     
     initSidebar();
     

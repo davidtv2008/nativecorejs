@@ -1,3 +1,5 @@
+import { registerPageCleanup } from '../core/pageCleanupRegistry.js';
+
 export function on<T = Event>(
     selector: string,
     eventName: string,
@@ -70,7 +72,7 @@ export function delegate<T = Event>(
 export function trackEvents() {
     const cleanupFunctions: Array<() => void> = [];
 
-    return {
+    const tracker = {
         on<T = Event>(selector: string, eventName: string, handler: (event: T) => void): void {
             cleanupFunctions.push(on(selector, eventName, handler));
         },
@@ -105,6 +107,9 @@ export function trackEvents() {
             cleanupFunctions.length = 0;
         }
     };
+
+    registerPageCleanup(() => tracker.cleanup());
+    return tracker;
 }
 
 export function trackSubscriptions() {

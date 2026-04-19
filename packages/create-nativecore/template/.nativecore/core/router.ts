@@ -4,6 +4,7 @@
  */
 
 import { bustCache } from '../utils/cacheBuster.js';
+import { flushPageCleanups } from '../core/pageCleanupRegistry.js';
 
 // Types
 export interface CachePolicy {
@@ -301,6 +302,7 @@ export class Router {
             if (previousRoute?.path && this.pageScripts[previousRoute.path]?.cleanup) {
                 this.pageScripts[previousRoute.path].cleanup!();
             }
+            flushPageCleanups();
 
             if (!isPrerenderedInitialRoute) {
                 mainContent.classList.add('page-transition-exit');
