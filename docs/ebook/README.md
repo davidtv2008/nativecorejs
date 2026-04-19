@@ -139,6 +139,25 @@ npm run make:store <name>        # global reactive store with actions
 31. **[32 — Capacitor: Packaging for Android and iOS](./32-capacitor-mobile-deployment.md)**
     What Capacitor is, the full Android + iOS workflow, what you can build without a Mac, what requires macOS, Capacitor plugins, and a complete development cycle guide.
 
+### Part 9 — SEO and Static Deployment
+
+32. **[33 — SSG and Static Deployment](./33-ssg-and-deployment.md)**
+    SSG vs SSR, the `build:ssg` and `build:full` commands, deploying to Cloudflare Pages and S3 + CloudFront, sitemap generation, and when true SSR is actually needed.
+
+### Part 10 — Extending the Framework
+
+33. **[34 — Building Plugins](./34-building-plugins.md)**
+    The `NCPlugin` interface, `registerPlugin()` / `unregisterPlugin()`, lifecycle hooks (`onInstall`, `onNavigate`, `onNavigated`), analytics/tracing/feature-flag examples, and how to publish a plugin to npm.
+
+34. **[35 — Enterprise Architecture](./35-enterprise-architecture.md)**
+    Feature-module layout, barrel exports, multi-level middleware, dependency injection via the global store, team-level theming, incremental React/Vue migration, component library packages, audit logging, and large-codebase testing patterns.
+
+35. **[36 — Framework Comparison](./36-framework-comparison.md)**
+    Side-by-side comparison with React, Vue 3, Svelte, and Lit across 10 patterns (reactive state, routing, data fetching, global state, forms, testing, accessibility, production build). Includes a summary scorecard and honest assessment of when to choose a mainstream framework instead.
+
+36. **[37 — Using NativeCoreJS Components in Other Frameworks](./37-web-components-in-other-frameworks.md)**
+    Build `<nc-greeting>` once, then use it unchanged in plain HTML, React 19+, React 18, Vue 3, Svelte, and Angular — with exact code for each. Covers attribute bindings, custom events, TypeScript declarations, CSS custom properties, and how to publish your components as a cross-framework npm package.
+
 ---
 
 ## How to Read This Book

@@ -17,6 +17,25 @@ function hasFlag(flag) {
     return cliArgs.includes(flag);
 }
 
+function getFlagValue(flag) {
+    const idx = cliArgs.indexOf(flag);
+    if (idx === -1) return null;
+    const val = cliArgs[idx + 1];
+    return val && !val.startsWith('--') ? val : null;
+}
+
+const VALID_TEMPLATES = ['default', 'dashboard', 'blog', 'ecommerce'];
+
+function resolveTemplate() {
+    const val = getFlagValue('--template');
+    if (!val) return 'default';
+    if (!VALID_TEMPLATES.includes(val)) {
+        console.error(`Unknown --template "${val}". Valid options: ${VALID_TEMPLATES.join(', ')}`);
+        process.exit(1);
+    }
+    return val;
+}
+
 function toKebabCase(value) {
     return value
         .trim()
@@ -95,6 +114,8 @@ function packageJsonTemplate(config) {
         prebuild: 'npm run clean && npm run lint && npm run typecheck',
         build: 'node .nativecore/scripts/inject-version.mjs && npm run compile:prod && node .nativecore/scripts/minify.mjs && node .nativecore/scripts/prepare-static-assets.mjs && node .nativecore/scripts/strip-dev-blocks.mjs && node .nativecore/scripts/remove-dev.mjs',
         'build:client': 'node .nativecore/scripts/inject-version.mjs && npm run compile:prod && node .nativecore/scripts/minify.mjs && node .nativecore/scripts/prepare-static-assets.mjs',
+        'build:ssg': 'node .nativecore/scripts/ssg.mjs --yes',
+        'build:full': 'npm run build && npm run build:ssg',
         compile: 'tsc && tsc-alias',
         'compile:prod': 'tsc -p tsconfig.build.json && tsc-alias -p tsconfig.build.json && node .nativecore/scripts/remove-dev.mjs',
         typecheck: 'tsc --noEmit',
@@ -642,6 +663,7 @@ async function main() {
     }
     const projectTitle = toTitleCase(projectName);
     const useDefaults = hasFlag('--defaults');
+    const template = resolveTemplate();
 
     if (!useDefaults && !hasFlag('--no-auth')) {
         console.log('Auth strategy note:');
@@ -680,7 +702,8 @@ async function main() {
         includeAuth,
         includeDashboard,
         includeCapacitor,
-        shouldInstall
+        shouldInstall,
+        template
     };
 
     const targetDir = await buildProject(config);
@@ -744,6 +767,34 @@ async function main() {
             console.log('After installing, see capacitor.config.ts and run:');
             console.log('  npm run cap:add:android   — add Android platform');
             console.log('  npm run cap:add:ios       — add iOS platform (macOS only)\n');
+        }
+    }
+
+    if (config.template !== 'default') {
+        const templateHints = {
+            dashboard: [
+                'Template: dashboard',
+                '  • Your app includes an auth-protected dashboard route.',
+                '  • Open src/features/dashboard/ to find the controller, store, and view.',
+                '  • Run `npm run make:component` to add data-display components.',
+            ],
+            blog: [
+                'Template: blog',
+                '  • Your app is configured for a content-first, SEO-ready blog.',
+                '  • Run `npm run build:ssg` after `npm run build` to pre-render post pages.',
+                '  • Add posts as HTML view partials in src/views/posts/.',
+            ],
+            ecommerce: [
+                'Template: ecommerce',
+                '  • Your app includes a product listing, cart store, and checkout route.',
+                '  • Open src/stores/cart.store.ts to connect your payment provider.',
+                '  • Run `npm run build:full` for a Cloudflare Pages-ready deployment.',
+            ],
+        };
+        const hints = templateHints[config.template];
+        if (hints) {
+            console.log('');
+            hints.forEach(h => console.log(h));
         }
     }
 

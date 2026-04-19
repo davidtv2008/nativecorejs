@@ -6,8 +6,9 @@ import { resolve } from 'path';
 
 const files = [
   'index.html',
-  'dist/bot/index.html',
-  // Add more output HTML files as needed
+  // SSG writes per-route index.html files; strip-dev-blocks is run before
+  // ssg.mjs, so we only need to handle the SPA shell here.
+  // Add other HTML entry points below as needed.
 ];
 
 const DEV_BLOCK_REGEX = /<!-- DEnc-ONLY-START -->(.|\n|\r)*?<!-- DEnc-ONLY-END -->/g;

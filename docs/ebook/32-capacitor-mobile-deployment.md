@@ -305,4 +305,4 @@ Write tests for business logic in Vitest (they run against `happy-dom`, no nativ
 ---
 
 **Back:** [Chapter 31 — Framework API Quick Reference](./31-framework-api-quick-reference.md)  
-**Next:** [Ebook Index](./README.md)
+**Next:** [Chapter 33 — SSG and Static Deployment](./33-ssg-and-deployment.md)
