@@ -244,6 +244,5 @@ Because the projects route uses `.cache()` on the router registration, the contr
 
 ---
 
-## What's Next
-
-Chapter 9 covers forms in depth: reading values from `nc-*` input components, client-side validation, surfacing per-field errors, and using `<nc-modal>` for confirmation dialogs — all demonstrated with the Taskflow "create task" form.
+**Back:** [Chapter 07 — Authentication](./07-authentication.md)  
+**Next:** [Chapter 09 — Forms and Validation](./09-forms-and-validation.md)

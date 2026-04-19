@@ -308,6 +308,5 @@ State is also available in controllers (as a second argument after `params`), an
 
 ---
 
-## What's Next
-
-Middleware gives you full control over what happens before and during navigation. The next architectural challenge is state that needs to survive navigation — data fetched in one controller that should still be available when you come back. Chapter 17 covers global stores: module-level `useState()` that lives for the entire app session, shared read/write access from multiple controllers, and the store patterns that keep Taskflow's state coherent.
+**Back:** [Chapter 15 — API Data Caching and Invalidation](./15-api-caching.md)  
+**Next:** [Chapter 17 — Global Stores and Cross-Route State](./17-global-stores.md)

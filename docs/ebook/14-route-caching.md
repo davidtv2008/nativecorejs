@@ -237,6 +237,5 @@ On repeated navigation patterns — which are extremely common in task managemen
 
 ---
 
-## What's Next
-
-Route caching keeps your HTML templates off the wire. But what about the *data* that fills those templates? Chapter 15 covers the API data cache — `api.getCached()`, query keys, tags, stale-while-revalidate for JSON responses, and how to orchestrate invalidation after every Taskflow mutation.
+**Back:** [Chapter 13 — Dynamic Routes, URL Parameters, and Wildcards](./13-dynamic-routes.md)  
+**Next:** [Chapter 15 — API Data Caching and Invalidation](./15-api-caching.md)

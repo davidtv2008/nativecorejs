@@ -340,6 +340,5 @@ The auth service calls the API to log in. The user store holds the current user 
 
 ---
 
-## What's Next
-
-You now have a complete reactive state architecture: local state for per-route data, global stores for cross-route data, computed values for derived state, and `effect()` to keep the DOM in sync with all of it. Chapter 18 takes a step back from state and looks at the view layer — component composition with slots, how to build reusable components that accept content from their parent, and how Taskflow's task card, modal, and dropdown components are built.
+**Back:** [Chapter 16 — Router Middleware and Navigation Guards](./16-middleware.md)  
+**Next:** [Chapter 18 — Component Composition and Slots](./18-slots-and-composition.md)

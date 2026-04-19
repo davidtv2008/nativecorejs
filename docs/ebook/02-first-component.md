@@ -412,4 +412,5 @@ Save and check the browser — you should see two styled task cards with correct
 
 ---
 
-**What's Next:** [Chapter 03 — Reactive State](./03-reactive-state.md) — introduce `useState()`, `computed()`, and `useSignal()` by building the `<task-stats>` component with live counters.
+**Back:** [Chapter 01 — Project Setup](./01-project-setup.md)  
+**Next:** [Chapter 03 — Reactive State](./03-reactive-state.md)

@@ -327,6 +327,5 @@ export async function tasksController(): Promise<() => void> {
 
 ---
 
-## What's Next
-
-Chapter 12 takes the Taskflow app to production: the build pipeline, environment variables, static deployment to Netlify or Vercel, PWA/service worker basics, and performance tips like lazy controllers and component preloading.
+**Back:** [Chapter 10 — Core Components](./10-core-components.md)  
+**Next:** [Chapter 12 — Going to Production](./12-production.md)

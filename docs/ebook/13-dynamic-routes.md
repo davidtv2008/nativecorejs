@@ -362,6 +362,5 @@ If no route matches and you haven't registered a `/*` wildcard, the router simpl
 
 ---
 
-## What's Next
-
-You now know how to match any URL shape and pass the relevant segments down to controllers. The natural follow-up question is: should the HTML for those routes be fetched fresh every time, or can you cache it? Chapter 14 digs into the router's built-in HTML cache — `ttl`, stale-while-revalidate, prefetching, and when to call `router.bustCache()`.
+**Back:** [Chapter 12 — Going to Production](./12-production.md)  
+**Next:** [Chapter 14 — Route Caching and Prefetching](./14-route-caching.md)

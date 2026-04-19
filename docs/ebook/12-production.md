@@ -239,4 +239,5 @@ But there is more to explore. The next chapters take you deeper into the framewo
 
 ---
 
-**What's Next:** [Chapter 13 — Dynamic Routes, URL Parameters, and Wildcards](./13-dynamic-routes.md) — add the task-detail page at `/tasks/:id` and learn how URL parameters flow all the way into your controller.
+**Back:** [Chapter 11 — Advanced Patterns](./11-advanced-patterns.md)  
+**Next:** [Chapter 13 — Dynamic Routes, URL Parameters, and Wildcards](./13-dynamic-routes.md)

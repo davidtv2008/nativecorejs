@@ -297,6 +297,5 @@ Each instance owns its own `--card-border-color` scoped to the host element. No 
 
 ---
 
-## What's Next
-
-Chapter 20 covers **TypeScript Patterns** in NativeCoreJS — typed API responses, generic `useState` and `computed`, the `ControllerFunction` type, custom events with typed detail payloads, and the path alias configuration that keeps imports clean.
+**Back:** [Chapter 18 — Component Composition and Slots](./18-slots-and-composition.md)  
+**Next:** [Chapter 20 — TypeScript Patterns in NativeCoreJS](./20-typescript-patterns.md)

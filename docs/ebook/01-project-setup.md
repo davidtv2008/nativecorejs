@@ -275,4 +275,5 @@ After running these, `src/routes/routes.ts` will have the new routes appended in
 
 ---
 
-**What's Next:** [Chapter 02 — First Component](./02-first-component.md) — build the `<task-card>` Web Component using the `Component` base class, Shadow DOM, and `attributeChangedCallback`.
+**Back:** [Chapter 00 — Introduction](./00-introduction.md)  
+**Next:** [Chapter 02 — First Component](./02-first-component.md)

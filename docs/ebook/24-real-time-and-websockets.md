@@ -243,6 +243,5 @@ return () => {
 
 ---
 
-## What's Next
-
-Chapter 25 tackles **Internationalization (i18n)** — how to structure locale state, a `t()` message lookup helper, and `Intl`-based formatters so Taskflow can support multiple languages without hiding the locale model inside a component black box.
+**Back:** [Chapter 23 — CLI Mastery and the Generator Workflow](./23-cli-and-generators.md)  
+**Next:** [Chapter 25 — Internationalization (i18n)](./25-internationalization.md)

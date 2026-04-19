@@ -60,4 +60,5 @@ You do not need prior experience with any other JavaScript framework. If you hav
 
 ---
 
-**What's Next:** [Chapter 01 — Project Setup](./01-project-setup.md) — scaffold your first NativeCoreJS app and take a tour of the generated project structure.
+**Back:** [Ebook Index](./README.md)  
+**Next:** [Chapter 01 — Project Setup](./01-project-setup.md)

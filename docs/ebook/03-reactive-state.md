@@ -330,4 +330,5 @@ batch(() => {
 
 ---
 
-**What's Next:** [Chapter 04 — The Bind API](./04-bind-api.md) — replace the manual `render()` method with fine-grained `bind()`, `bindAttr()`, and `bindAll()` calls that patch only the nodes that changed.
+**Back:** [Chapter 02 — First Component](./02-first-component.md)  
+**Next:** [Chapter 04 — The Bind API](./04-bind-api.md)

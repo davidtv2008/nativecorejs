@@ -227,6 +227,5 @@ if (switcherEl) switcherEl.value = locale.value;
 
 ---
 
-## What's Next
-
-Chapter 26 covers **Mobile Patterns** — `nc-drawer`, `nc-bottom-nav`, responsive layout discipline, and testing strategies for narrow screens and touch input.
+**Back:** [Chapter 24 — Real-Time Features and WebSockets](./24-real-time-and-websockets.md)  
+**Next:** [Chapter 26 — Mobile Patterns](./26-mobile-patterns.md)

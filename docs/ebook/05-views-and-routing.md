@@ -209,4 +209,5 @@ router.register(
 
 ---
 
-**What's Next:** [Chapter 06 — Controllers](./06-controllers.md) — learn the controller pattern, use `dom.data()` to scope queries, wire up reactive bindings with `effect()`, and build the full `tasksController`.
+**Back:** [Chapter 04 — The Bind API](./04-bind-api.md)  
+**Next:** [Chapter 06 — Controllers](./06-controllers.md)

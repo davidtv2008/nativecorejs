@@ -288,6 +288,5 @@ The `.nativecore/` inspector (accessible at `/__nativecore__` in dev mode) also 
 
 ---
 
-## What's Next
-
-Chapter 22 covers **Testing with Vitest** — unit testing state functions, testing controllers in happy-dom, testing components via shadow DOM queries, mocking services with `vi.mock`, and setting up a CI pipeline with GitHub Actions.
+**Back:** [Chapter 20 — TypeScript Patterns in NativeCoreJS](./20-typescript-patterns.md)  
+**Next:** [Chapter 22 — Testing with Vitest](./22-testing.md)

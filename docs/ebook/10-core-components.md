@@ -322,6 +322,5 @@ npm run remove:component task-card
 
 ---
 
-## What's Next
-
-Chapter 11 moves beyond individual components and controllers to explore advanced patterns: global stores, cross-component communication with custom events, `patchState`, debounced effects, and a real `<project-filter>` component that drives the tasks list.
+**Back:** [Chapter 09 — Forms and Validation](./09-forms-and-validation.md)  
+**Next:** [Chapter 11 — Advanced Patterns](./11-advanced-patterns.md)

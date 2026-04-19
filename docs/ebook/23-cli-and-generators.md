@@ -326,3 +326,8 @@ External resources:
 The best way to deepen your understanding is to extend Taskflow: add a `<calendar-view>` component, build a drag-and-drop task board, or integrate a WebSocket for real-time updates (Chapter 24 walks you through exactly that). Every feature is an opportunity to practice the patterns in this book.
 
 Happy building.
+
+---
+
+**Back:** [Chapter 22 — Testing with Vitest](./22-testing.md)  
+**Next:** [Chapter 24 — Real-Time Features and WebSockets](./24-real-time-and-websockets.md)

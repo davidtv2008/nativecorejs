@@ -111,3 +111,8 @@ For built-in `nc-*` components and their attributes/events, use:
 1. Find the API name in the tables.
 2. Copy the signature as your starting point.
 3. Jump to the linked deep-dive chapter for full usage, patterns, and caveats.
+
+---
+
+**Back:** [Chapter 29 — Error Boundaries](./29-error-boundaries.md)  
+**Next:** [Ebook Index](./README.md)

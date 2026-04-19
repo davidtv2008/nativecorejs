@@ -125,6 +125,5 @@ Run this whenever you are stuck:
 
 ---
 
-## What's Next
-
-Chapter 28 is the **Migration Guide** — mapping mental models from React, Vue, and vanilla JavaScript to NativeCoreJS so you can translate familiar patterns into the new architecture quickly.
+**Back:** [Chapter 26 — Mobile Patterns](./26-mobile-patterns.md)  
+**Next:** [Chapter 28 — Migration Guide](./28-migration-guide.md)
