@@ -38,6 +38,7 @@
 
 import { Component, defineComponent } from '../../.nativecore/core/component.js';
 import { dom } from '../../.nativecore/utils/dom.js';
+import { trapFocus } from '../a11y/index.js';
 
 export class NcModal extends Component {
     static useShadowDOM = true;
@@ -50,6 +51,7 @@ export class NcModal extends Component {
     static close(id: string) { dom.query<NcModal>(`#${id}`)?.removeAttribute('open'); }
 
     private _onKeydown: ((e: KeyboardEvent) => void) | null = null;
+    private _releaseFocus: (() => void) | null = null;
 
     template() {
         const open = this.hasAttribute('open');
@@ -207,6 +209,7 @@ export class NcModal extends Component {
 
     onUnmount() {
         if (this._onKeydown) document.removeEventListener('keydown', this._onKeydown);
+        if (this._releaseFocus) { this._releaseFocus(); this._releaseFocus = null; }
         document.body.style.overflow = '';
     }
 
@@ -225,7 +228,14 @@ export class NcModal extends Component {
                 dialog.style.transform = open
                     ? 'translateY(0) scale(1)'
                     : 'translateY(12px) scale(0.97)';
-                if (open) (dialog as HTMLElement).focus();
+                if (open) {
+                    // Trap focus inside the dialog while open; release when closed
+                    if (this._releaseFocus) this._releaseFocus();
+                    this._releaseFocus = trapFocus(dialog as HTMLElement);
+                } else if (this._releaseFocus) {
+                    this._releaseFocus();
+                    this._releaseFocus = null;
+                }
             }
             document.body.style.overflow = open ? 'hidden' : '';
             this.dispatchEvent(new CustomEvent(open ? 'open' : 'close', {

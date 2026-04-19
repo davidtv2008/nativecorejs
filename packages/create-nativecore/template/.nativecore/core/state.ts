@@ -331,3 +331,42 @@ function syncTrackedDependencies(
         }
     });
 }
+
+// ─── Global Store Registry ───────────────────────────────────────────────────
+
+if (!(globalThis as Record<string, unknown>).__NC_STORES__) {
+    (globalThis as Record<string, unknown>).__NC_STORES__ = new Map<string, State<unknown>>();
+}
+
+const storeRegistry: Map<string, State<unknown>> = (globalThis as Record<string, unknown>).__NC_STORES__ as Map<string, State<unknown>>;
+
+/**
+ * Create (or retrieve) a named app-level reactive store.
+ *
+ * Registers itself in `globalThis.__NC_STORES__` so dev-tools and
+ * MetricsPanel can enumerate live stores.  Calling `createStore` with the
+ * same name a second time returns the existing store unchanged.
+ *
+ * @example
+ * // Define once (e.g. in src/stores/cart.store.ts)
+ * export const cart = createStore('cart', { items: [] });
+ *
+ * // Read anywhere
+ * const cartStore = getStore<CartState>('cart');
+ */
+export function createStore<T>(name: string, initial: T): State<T> {
+    if (storeRegistry.has(name)) {
+        return storeRegistry.get(name) as State<T>;
+    }
+    const store = useState<T>(initial);
+    storeRegistry.set(name, store as State<unknown>);
+    return store;
+}
+
+/**
+ * Retrieve a previously created store by name.
+ * Returns `undefined` if the store has not been created yet.
+ */
+export function getStore<T>(name: string): State<T> | undefined {
+    return storeRegistry.get(name) as State<T> | undefined;
+}

@@ -59,3 +59,5 @@ export { NcTextarea } from './nc-textarea.js';
 export { NcTimePicker } from './nc-time-picker.js';
 export { NcTimeline, NcTimelineItem } from './nc-timeline.js';
 export { NcTooltip } from './nc-tooltip.js';
+export { NcTransition } from './nc-transition.js';
+export { NcViewTransition } from './nc-view-transition.js';

@@ -111,6 +111,7 @@ function packageJsonTemplate(config) {
             'remove:component': 'node .nativecore/scripts/remove-component.mjs',
             'remove:core-component': 'node .nativecore/scripts/remove-core-component.mjs',
             'make:view': 'node .nativecore/scripts/make-view.mjs',
+            'make:page': 'node .nativecore/scripts/make-view.mjs',
             'remove:view': 'node .nativecore/scripts/remove-view.mjs',
             test: 'vitest',
             'test:ui': 'vitest --ui',

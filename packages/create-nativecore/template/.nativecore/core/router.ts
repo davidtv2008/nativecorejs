@@ -20,6 +20,7 @@ export interface CachePolicy {
 export interface RouteConfig {
     htmlFile: string;
     controller?: ControllerFunction | null;
+    loader?: (params: Record<string, string>, signal: AbortSignal) => Promise<unknown>;
     cachePolicy?: CachePolicy;
     layout?: string;
 }
@@ -30,7 +31,7 @@ export interface RouteMatch {
     config: RouteConfig;
 }
 
-export type ControllerFunction = (params: Record<string, string>, state?: any) => Promise<(() => void) | void> | (() => void) | void;
+export type ControllerFunction = (params: Record<string, string>, state?: any, loaderData?: unknown) => Promise<(() => void) | void> | (() => void) | void;
 export type MiddlewareFunction = (route: RouteMatch, state?: any) => Promise<boolean> | boolean;
 
 interface CacheEntry {
@@ -317,7 +318,16 @@ export class Router {
             }
             
             if (route.config.controller) {
-                const cleanup = await route.config.controller(route.params, state);
+                let loaderData: unknown;
+
+                if (route.config.loader) {
+                    const signal = this.navigationController?.signal ?? new AbortController().signal;
+                    window.dispatchEvent(new CustomEvent('nc-route-loading', { detail: { path: route.path, params: route.params } }));
+                    loaderData = await route.config.loader(route.params, signal);
+                    window.dispatchEvent(new CustomEvent('nc-route-loaded', { detail: { path: route.path, params: route.params, data: loaderData } }));
+                }
+
+                const cleanup = await route.config.controller(route.params, state, loaderData);
                 this.pageScripts[route.path] = { 
                     cleanup: typeof cleanup === 'function' ? cleanup : undefined 
                 };

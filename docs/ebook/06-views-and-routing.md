@@ -209,5 +209,50 @@ router.register(
 
 ---
 
+## Keyed List Reconciliation (`key=`)
+
+When a controller re-renders a list — for example updating `innerHTML` of a `<ul>` — NativeCore's default reconciler matches DOM nodes **positionally** (first new item → first existing node, etc.). This is efficient for most cases, but can cause subtle bugs when items are reordered, inserted, or removed from the middle: a node might retain event handlers or state from a previous item.
+
+Add a `key=` attribute to every child element in a repeated list, and NativeCore will switch to **keyed reconciliation**: it identifies each node by its key, reuses existing nodes when the key matches, and only creates/removes the nodes that actually changed.
+
+```html
+<!-- Without keys: positional matching (fine for simple, append-only lists) -->
+<ul id="tasks">
+  <li>Task A</li>
+  <li>Task B</li>
+</ul>
+
+<!-- With keys: stable node identity across re-renders -->
+<ul id="tasks">
+  <li key="task-1">Task A</li>
+  <li key="task-2">Task B</li>
+</ul>
+```
+
+### Generating keyed markup in a controller
+
+```typescript
+function renderTasks(tasks: Task[]) {
+    const list = dom.$('#tasks')!;
+    list.innerHTML = tasks
+        .map(t => `<li key="${t.id}" class="task-item">${escapeHTML(t.title)}</li>`)
+        .join('');
+}
+```
+
+### When to use keys
+
+| Situation | Use keys? |
+|-----------|-----------|
+| Simple append-only list | Optional |
+| Items can be reordered | **Yes** |
+| Items have interactive state (checkbox, input) | **Yes** |
+| Items are added/removed from the middle | **Yes** |
+| Static, never-updated list | No |
+
+Keys must be **unique within their parent container** and **stable** across re-renders (a database ID is ideal; avoid array indices when the list can be reordered).
+
+---
+
 **Back:** [Chapter 04 — The Bind API](./04-bind-api.md)  
 **Next:** [Chapter 06 — Controllers](./06-controllers.md)

@@ -65,6 +65,8 @@ export {
 	,NcTimeline
 	,NcTimelineItem
 	,NcTooltip
+	,NcTransition
+	,NcViewTransition
 } from './components/index.js';
 export { builtinComponentManifest, registerBuiltinComponents } from './components/builtinRegistry.js';
 export {
@@ -85,8 +87,9 @@ export {
 } from '../.nativecore/core/gpu-animation.js';
 export { Router } from '../.nativecore/core/router.js';
 export { componentRegistry, initLazyComponents } from '../.nativecore/core/lazyComponents.js';
-export { useState, createStates, computed, effect, useSignal, batch } from '../.nativecore/core/state.js';
+export { useState, createStates, computed, effect, useSignal, batch, createStore, getStore } from '../.nativecore/core/state.js';
 export { bustCache, cacheVersion, importWithBust } from '../.nativecore/utils/cacheBuster.js';
+export { trapFocus, announce, roving } from './a11y/index.js';
 export { dom } from '../.nativecore/utils/dom.js';
 export { css, html, unsafeHTML, escapeHTML, sanitizeURL, raw } from '../.nativecore/utils/templates.js';
 export {
