@@ -3,6 +3,8 @@
  * Works with any component and any event type
  */
 
+import { registerPageCleanup } from '../core/pageCleanupRegistry.js';
+
 /**
  * Generic event listener with cleanup
  * 
@@ -161,7 +163,7 @@ export function delegate<T = Event>(
 export function trackEvents() {
     const cleanupFunctions: Array<() => void> = [];
     
-    return {
+    const tracker = {
         on<T = Event>(selectorOrElement: string | Element | null, eventName: string, handler: (event: T) => void): void {
             cleanupFunctions.push(on(selectorOrElement, eventName, handler));
         },
@@ -236,6 +238,9 @@ export function trackEvents() {
             cleanupFunctions.length = 0; // Clear array
         }
     };
+
+    registerPageCleanup(() => tracker.cleanup());
+    return tracker;
 }
 
 /**

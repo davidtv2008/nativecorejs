@@ -2,22 +2,24 @@
 
 ## What Is a Controller?
 
-A controller is an `async` function that is called when the router mounts a view. It receives route parameters, sets up reactive state and bindings, registers event listeners, and returns a **cleanup function** that the router calls when the user navigates away.
+A controller is an `async` function that is called when the router mounts a view. It receives route parameters, sets up reactive state and bindings, registers event listeners, and optionally returns a **cleanup function** that the router calls when the user navigates away.
 
 ```typescript
 // The full type signature
 async function myController(params: RouteParams): Promise<() => void> {
   // Setup ...
 
+  // Optional — the framework auto-cleans effect(), computed(), and trackEvents()
   return () => {
-    // Cleanup ...
+    // Explicit teardown for anything outside those primitives
+    // (e.g. timers, manual observers)
   };
 }
 
 export default myController;
 ```
 
-Controllers are plain TypeScript functions — no class, no decorator, no lifecycle hooks. The `async/await` pattern lets you fetch initial data before binding the UI. The returned cleanup function ensures no memory leaks when the view is unmounted.
+Controllers are plain TypeScript functions — no class, no decorator, no lifecycle hooks. The `async/await` pattern lets you fetch initial data before binding the UI. Returning a cleanup function is **optional** for standard reactive primitives: every call to `effect()`, `computed()`, and `trackEvents()` inside a controller is automatically tracked by the **Page Cleanup Registry** and torn down when the view unmounts, even if no cleanup function is returned.
 
 ---
 
@@ -68,6 +70,8 @@ export default tasksController;
 
 The `disposers` array collects every cleanup function the controller creates. The single returned cleanup function iterates it. You never forget to clean up a subscription because the pattern makes omission obvious.
 
+> **Auto-Cleanup:** Even if you omit the `return () => { ... }` block entirely, the framework is still safe. Every `effect()`, `computed()`, and `trackEvents()` call auto-registers its teardown with the **Page Cleanup Registry**. The router flushes the registry on every navigation after calling the controller's explicit cleanup function. The `disposers` pattern is recommended because it makes ownership explicit and lets you add custom teardown logic (e.g. clearing a timer) alongside the reactive primitives.
+
 ---
 
 ## `dom.data('view-name')` — Scoped DOM Access
@@ -110,19 +114,25 @@ const navBadge = dom.$('#nav-task-count');
 
 ## `trackEvents()` — Event Registration with Auto-Cleanup
 
-`trackEvents()` is a utility that wraps `document.addEventListener` (or an element's `addEventListener`) and returns a single cleanup function that removes all the listeners it registered:
+`trackEvents()` returns a tracker object whose methods wrap `addEventListener` and track every listener it registers. When the tracker's `cleanup()` method is called, it removes them all in one shot:
 
 ```typescript
-const { on, dispose } = trackEvents();
-disposers.push(dispose);
+const events = trackEvents();
 
-on(document, 'click', view.actionSelector('new-task'), handleNewTask);
-on(document, 'click', view.actionSelector('filter'),   handleFilter);
+events.onClick(view.actionSelector('new-task'), handleNewTask);
+events.onClick(view.actionSelector('filter'),   handleFilter);
 ```
 
-The first argument to `on()` is the element to attach the listener to. The third argument is an optional CSS selector for delegation — the handler only fires if `event.target` matches the selector or is a descendant of a matching element.
+You no longer need to manually push `events.cleanup` into `disposers` — `trackEvents()` auto-registers its own teardown with the Page Cleanup Registry the moment it is called. On navigation the router flushes the registry, which calls `cleanup()` on every tracker that the controller created.
 
-Pushing `dispose` into `disposers` means all these listeners are removed when the controller cleanup function runs.
+If you want to be explicit (recommended for documentation), you can still push it:
+
+```typescript
+const events = trackEvents();
+disposers.push(() => events.cleanup()); // optional but self-documenting
+```
+
+Because `cleanup()` zeroes out its internal array after the first call, calling it a second time (once by the explicit cleanup path, once by the registry) is always safe.
 
 ---
 
@@ -138,7 +148,11 @@ disposers.push(effect(() => {
 }));
 ```
 
-`effect()` returns a stop function. Push it into `disposers` — the `disposers.forEach(d => d())` call in the returned cleanup function is the **automatic cleanup** that runs all of them when the router unmounts the view. You never call the stop function manually; you just make sure every `effect()` result is in `disposers` and the rest is handled for you.
+`effect()` returns a stop function. Pushing it into `disposers` is optional but **recommended** — it makes ownership explicit. Either way, the framework auto-registers the stop function with the **Page Cleanup Registry** the moment `effect()` is called, so the effect is always torn down when the router leaves the page.
+
+### How stop functions are idempotent
+
+Whether the stop function runs via your explicit `disposers.forEach(d => d())` path or via the registry flush, the second call is a no-op: the internal dependency maps are already cleared after the first call, so nothing is double-freed.
 
 ---
 
@@ -304,11 +318,26 @@ export default tasksController;
 
 **Data Fetch** — `await apiService.get()` loads tasks. If it throws, we log the error and leave `tasks` as an empty array rather than crashing the view.
 
-**Reactive Bindings** — a single `effect()` re-renders the task list whenever `filteredTasks.value` or `completedCount.value` changes. Its stop function is pushed into `disposers` so the `disposers.forEach(d => d())` auto-cleanup handles it automatically. This is the "one effect for the list" pattern — efficient for moderate list sizes. For very large lists you would diff the previous and next arrays; Chapter 11 covers optimisation strategies.
+**Reactive Bindings** — a single `effect()` re-renders the task list whenever `filteredTasks.value` or `completedCount.value` changes. Its stop function is pushed into `disposers`, but even if you omitted that push the Page Cleanup Registry would still tear down the effect on navigation. This is the "one effect for the list" pattern — efficient for moderate list sizes. For very large lists you would diff the previous and next arrays; Chapter 11 covers optimisation strategies.
 
-**Events** — `trackEvents().on()` registers all delegated listeners. The filter click handler uses `dom.$$()` to query matching buttons and reads `btn.dataset.filter` and writes to `filter.value`, which triggers the computed, which triggers the effect — a clean reactive loop.
+**Events** — `trackEvents()` registers all delegated listeners. The filter click handler uses `dom.$$()` to query matching buttons and reads `btn.dataset.filter` and writes to `filter.value`, which triggers the computed, which triggers the effect — a clean reactive loop.
 
-**Cleanup** — the returned function calls `disposers.forEach(d => d())`, which is the automatic cleanup that stops every `effect()` and `computed()` whose disposer was pushed into the array. The router calls this function before mounting the next view.
+**Cleanup** — the returned function calls `disposers.forEach(d => d())`. For `effect()`, `computed()`, and `trackEvents()` the calls here overlap with what the Page Cleanup Registry will do — but all three primitives are idempotent, so the second invocation is always a no-op. The explicit cleanup block is most valuable for **custom teardown** that lives outside those primitives: timers, `MutationObserver`, manual `window.addEventListener` calls, etc.
+
+---
+
+## Auto-Cleanup Flow on Navigation
+
+Understanding exactly what happens when the user leaves a page:
+
+1. User navigates to `/settings`
+2. Router calls the previous controller's explicit cleanup fn (if it returned one) — explicit teardown
+3. Router calls `flushPageCleanups()` — tears down any `effect()`, `computed()`, and `trackEvents()` the previous controller created that were not already cleaned up
+4. New HTML is rendered
+5. `settingsController()` runs → all its `effect()`, `computed()`, `trackEvents()` calls auto-register with the now-empty registry
+6. On the next navigation, steps 2–5 repeat — nothing leaks
+
+This means the `return () => {}` block is your safety net for custom resources, not the sole line of defence against leaks. The framework holds the line regardless.
 
 ---
 

@@ -3,6 +3,8 @@
  * Provides intuitive reactive state management for components
  */
 
+import { registerPageCleanup } from './pageCleanupRegistry.js';
+
 // Types
 export interface State<T> {
     value: T;
@@ -202,7 +204,7 @@ export function computed<T>(computeFn: () => T): ComputedState<T> {
         trackedDeps.clear();
     }
     
-    return {
+    const computedState: ComputedState<T> = {
         get value(): T {
             // Track this access if we're inside another computed
             if (currentTracker) {
@@ -217,6 +219,9 @@ export function computed<T>(computeFn: () => T): ComputedState<T> {
             console.warn('Computed values are read-only. Cannot set value directly.');
         }
     };
+
+    registerPageCleanup(dispose);
+    return computedState;
 }
 
 /**
@@ -236,7 +241,7 @@ export function effect(effectFn: EffectCallback): () => void {
 
     runEffect();
 
-    return () => {
+    const disposer = () => {
         if (typeof cleanup === 'function') {
             cleanup();
         }
@@ -245,6 +250,9 @@ export function effect(effectFn: EffectCallback): () => void {
         depUnsubscribers.clear();
         trackedDeps.clear();
     };
+
+    registerPageCleanup(disposer);
+    return disposer;
 
     function runEffect(): void {
         if (isRunning) return;

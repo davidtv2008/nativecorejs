@@ -27,6 +27,7 @@
     "pack:runtime:dry": "npm pack --dry-run ./packages/nativecorejs",
     "verify:runtime:pack": "npm run build && npm run pack:runtime",
     "verify:sample:packed": "npm run install:sample:packed && npm run compile:sample",
-    "smoke:sample:packed": "npm run verify:runtime:pack && npm run create:sample:packed && npm run verify:sample:packed"
+    "smoke:sample:packed": "npm run verify:runtime:pack && npm run create:sample:packed && npm run verify:sample:packed",
+    "bench": "node --experimental-strip-types benchmarks/state.bench.ts"
   }
 }

@@ -54,8 +54,10 @@ NativeCoreJS bugs are usually localised to one of four places: route registratio
 
 - You have a watcher, timer, or observer that is not being cleaned up in `onUnmount()`. Review the cleanup rules in Chapter 2:
   - State `.watch()` returns an unsubscribe function — call it in `onUnmount()`.
-  - `computed()` values need `.dispose()`.
+  - `computed()` values inside a **component** need `.dispose()` in `onUnmount()` (controller computeds are auto-disposed by the Page Cleanup Registry).
   - Manual `addEventListener` calls on `window` or `document` need matching `removeEventListener` calls.
+
+> **Note:** Controllers do not suffer from leaked `effect()`, `computed()`, or `trackEvents()` subscriptions — the Page Cleanup Registry tears them all down on every navigation even if the controller returned no cleanup function. If you are seeing post-navigation callbacks, the leak is almost certainly inside a **component** (long-lived custom element) rather than a controller.
 
 ---
 

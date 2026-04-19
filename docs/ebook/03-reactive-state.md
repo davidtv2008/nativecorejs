@@ -64,7 +64,9 @@ console.log(percentage.value); // 80
 
 ### Disposing a Computed
 
-Unlike `useState()`, a `computed()` holds a subscription to its upstream state. If you create a computed inside a component, dispose it in `onUnmount()` to release that subscription:
+Unlike `useState()`, a `computed()` holds a subscription to its upstream state. When you create a `computed()` inside a **controller**, you do not need to do anything — the framework's Page Cleanup Registry automatically calls `.dispose()` on every computed when the router navigates away from the current page (see Chapter 06 for details).
+
+When you create a `computed()` inside a **component**, dispose it manually in `onUnmount()` because components can live across multiple page navigations:
 
 ```typescript
 private pct!: ComputedState<number>;
@@ -78,7 +80,7 @@ onUnmount(): void {
 }
 ```
 
-> **Important:** Forgetting to dispose a computed created inside a long-lived component is the most common source of memory leaks in NativeCoreJS apps. Get in the habit of always pairing `computed()` with a `dispose()` in `onUnmount()`.
+> **Tip:** In controllers, the Page Cleanup Registry makes forgetting to dispose impossible — every `computed()` call auto-registers its disposal. In components, always pair `computed()` with a `dispose()` in `onUnmount()`, because components live independently of page navigation.
 
 ---
 
