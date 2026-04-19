@@ -356,7 +356,8 @@ export class NcDatePicker extends Component {
             }
         });
 
-        // Close on outside click
+        // Remove old outside-click listener before adding a new one to prevent accumulation
+        if (this._outsideClick) document.removeEventListener('mousedown', this._outsideClick);
         this._outsideClick = (e: MouseEvent) => {
             if (!this.contains(e.target as Node) && !this.shadowRoot!.contains(e.target as Node)) {
                 this._open = false;

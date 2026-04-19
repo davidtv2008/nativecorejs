@@ -100,10 +100,10 @@ export class NcTooltip extends Component {
 
     onMount() {
         const tip = this.$<HTMLElement>('.tip')!;
-        const delay = Number(this.getAttribute('delay') ?? 200);
 
         const show = () => {
             if (this._showTimer) clearTimeout(this._showTimer);
+            const delay = Number(this.getAttribute('delay') ?? 200);
             this._showTimer = setTimeout(() => {
                 tip.classList.add('visible');
                 tip.setAttribute('aria-hidden', 'false');
@@ -118,25 +118,36 @@ export class NcTooltip extends Component {
             this._visible = false;
         };
 
+        const keydownHandler = (e: KeyboardEvent) => {
+            if (e.key === 'Escape' && this._visible) hide();
+        };
+
         this.addEventListener('mouseenter', show);
         this.addEventListener('mouseleave', hide);
         this.addEventListener('focusin', show);
         this.addEventListener('focusout', hide);
+        this.addEventListener('keydown', keydownHandler);
 
-        // Hide on Escape
-        this.addEventListener('keydown', (e: KeyboardEvent) => {
-            if (e.key === 'Escape' && this._visible) hide();
-        });
+        this._cleanupListeners = () => {
+            this.removeEventListener('mouseenter', show);
+            this.removeEventListener('mouseleave', hide);
+            this.removeEventListener('focusin', show);
+            this.removeEventListener('focusout', hide);
+            this.removeEventListener('keydown', keydownHandler);
+        };
     }
+
+    private _cleanupListeners: (() => void) | null = null;
 
     onUnmount() {
         if (this._showTimer) clearTimeout(this._showTimer);
+        this._cleanupListeners?.();
     }
 
     attributeChangedCallback(name: string, oldValue: string, newValue: string) {
         if (oldValue !== newValue && this._mounted) {
             this.render();
-            this.onMount();
+            // Do not re-call onMount() — event listeners on `this` survive re-renders
         }
     }
 }

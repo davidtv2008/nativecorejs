@@ -319,7 +319,8 @@ export class NcTimePicker extends Component {
             }
         });
 
-        // Outside click
+        // Remove old outside-click listener before adding a new one to prevent accumulation
+        if (this._outsideClick) document.removeEventListener('mousedown', this._outsideClick);
         this._outsideClick = (e: MouseEvent) => {
             if (!this.contains(e.target as Node) && !this.shadowRoot!.contains(e.target as Node)) {
                 this._open = false;
@@ -406,7 +407,6 @@ export class NcTimePicker extends Component {
         this._ampm = this._h < 12 ? 'AM' : 'PM';
         this._initialized = true;
         this.render();
-        this._bindEvents();
         this._scrollToSelected();
     }
 

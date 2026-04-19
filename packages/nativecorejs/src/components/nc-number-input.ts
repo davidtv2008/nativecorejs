@@ -203,6 +203,8 @@ export class NcNumberInput extends Component {
             }
         };
 
+        // Remove old mouseup listener before adding a new one to prevent accumulation
+        if (this._stopHold) document.removeEventListener('mouseup', this._stopHold);
         this._stopHold = stopHold;
         document.addEventListener('mouseup', stopHold);
 

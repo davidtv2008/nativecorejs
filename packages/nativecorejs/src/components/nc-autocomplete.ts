@@ -36,6 +36,7 @@ export class NcAutocomplete extends Component {
     private _activeIndex = -1;
     private _open = false;
     private _cleanupFns: Array<() => void> = [];
+    private _persistentCleanups: Array<() => void> = [];
 
     constructor() { super(); }
 
@@ -156,18 +157,27 @@ export class NcAutocomplete extends Component {
     onMount() {
         this._bindEvents();
 
-        // Dynamic options API
+        // Dynamic options API — stored in persistent cleanups (survives _rebind)
         const optionsHandler = (e: Event) => {
             this._dynamicOptions = (e as CustomEvent<string[]>).detail || [];
-            if (this._open) { this.render(); this._bindEvents(); }
+            if (this._open) { this.render(); this._rebind(); }
         };
         this.addEventListener('nc-autocomplete-options', optionsHandler);
-        this._cleanupFns.push(() => this.removeEventListener('nc-autocomplete-options', optionsHandler));
+        this._persistentCleanups.push(() => this.removeEventListener('nc-autocomplete-options', optionsHandler));
     }
 
     onUnmount() {
         this._cleanupFns.forEach(fn => fn());
         this._cleanupFns = [];
+        this._persistentCleanups.forEach(fn => fn());
+        this._persistentCleanups = [];
+    }
+
+    /** Flush existing inner-element listeners then re-bind to the current DOM. */
+    private _rebind() {
+        this._cleanupFns.forEach(fn => fn());
+        this._cleanupFns = [];
+        this._bindEvents();
     }
 
     private _bindEvents() {
@@ -291,7 +301,7 @@ export class NcAutocomplete extends Component {
             if (input) input.value = this._inputValue;
             return;
         }
-        if (this._mounted) { this.render(); this._bindEvents(); }
+        if (this._mounted) { this.render(); this._rebind(); }
     }
 }
 

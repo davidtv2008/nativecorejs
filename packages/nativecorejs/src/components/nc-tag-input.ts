@@ -217,7 +217,6 @@ export class NcTagInput extends Component {
     setTags(tags: string[]) {
         this._tags = [...tags];
         this.render();
-        this._bindEvents();
         this._emit('change');
     }
 
@@ -238,7 +237,6 @@ export class NcTagInput extends Component {
 
         this._tags.push(tag);
         this.render();
-        this._bindEvents();
         this.dispatchEvent(new CustomEvent('add', { detail: { tag }, bubbles: true, composed: true }));
         this._emit('change');
     }
@@ -248,7 +246,6 @@ export class NcTagInput extends Component {
         if (tag === undefined) return;
         this._tags.splice(index, 1);
         this.render();
-        this._bindEvents();
         this.dispatchEvent(new CustomEvent('remove', { detail: { tag, index }, bubbles: true, composed: true }));
         this._emit('change');
         this.$<HTMLInputElement>('#input')?.focus();
@@ -272,7 +269,6 @@ export class NcTagInput extends Component {
             this._tags = (newVal ?? '').split(',').map(t => t.trim()).filter(Boolean);
         }
         this.render();
-        this._bindEvents();
     }
 }
 

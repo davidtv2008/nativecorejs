@@ -261,7 +261,7 @@ export class NcColorPicker extends Component {
             if (hex) hex.value = newValue;
             return;
         }
-        if (this._mounted) { this.render(); this._bindEvents(); }
+        if (this._mounted) { this.render(); }
     }
 }
 
