@@ -131,6 +131,9 @@ npm run make:store <name>        # global reactive store with actions
 29. **[29 — Error Boundaries](./29-error-boundaries.md)**
     `<nc-error-boundary>`, fallback UI, `nc-error` event, `catchError()` for async errors, multiple boundaries, and monitoring integration.
 
+30. **[30 — Framework API Quick Reference](./30-framework-api-quick-reference.md)**
+    Fast lookup tables for framework APIs, signatures, one-line summaries, and links to full deep-dive chapters.
+
 ---
 
 ## How to Read This Book

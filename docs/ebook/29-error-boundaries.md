@@ -196,4 +196,4 @@ It does **not** automatically catch:
 
 ---
 
-**What's Next:** This is the final chapter of the core framework reference. For a complete feature comparison and performance analysis vs React, Vue, Svelte, and SolidJS see the project README.
+**What's Next:** For a fast API lookup index, continue to [Chapter 30 — Framework API Quick Reference](./30-framework-api-quick-reference.md). For a complete feature comparison and performance analysis vs React, Vue, Svelte, and SolidJS see the project README.
