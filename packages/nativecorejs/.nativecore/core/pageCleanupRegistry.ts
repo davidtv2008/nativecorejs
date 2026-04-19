@@ -40,7 +40,7 @@ export function registerPageCleanup(fn: CleanupFn): void {
  */
 export function flushPageCleanups(): void {
     for (const fn of cleanups) {
-        try { fn(); } catch (e) { console.error('[PageCleanupRegistry] cleanup error', e); }
+        try { fn(); } catch (e) { console.error('[PageCleanupRegistry] cleanup error:', e); }
     }
     cleanups.length = 0;
 }
