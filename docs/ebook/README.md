@@ -136,7 +136,7 @@ npm run make:store <name>        # global reactive store with actions
 
 ### Part 8 — Native Mobile Deployment
 
-31. **[31 — Capacitor: Packaging for Android and iOS](./32-capacitor-mobile-deployment.md)**
+31. **[32 — Capacitor: Packaging for Android and iOS](./32-capacitor-mobile-deployment.md)**
     What Capacitor is, the full Android + iOS workflow, what you can build without a Mac, what requires macOS, Capacitor plugins, and a complete development cycle guide.
 
 ---
