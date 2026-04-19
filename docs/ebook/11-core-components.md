@@ -1604,6 +1604,48 @@ btnRedo.addEventListener('click', async () => {
 
 ## Animation and Special Effects
 
+### `<nc-transition>`
+
+Applies a GPU-accelerated **enter animation** to its slotted content whenever that content changes. A `MutationObserver` watches the default slot, so swapping the slotted child re-triggers the animation automatically — useful for live-updating regions.
+
+| Attribute | Type | Description |
+|---|---|---|
+| `enter` | `fade` \| `slide-up` \| `slide-down` \| `scale` | Enter animation preset (default: `fade`) |
+| `duration` | number | Animation duration in ms (default: `300`) |
+
+```html
+<!-- Animate a list whenever its content is replaced by the controller -->
+<nc-transition enter="slide-up" duration="400">
+  <ul id="task-list"></ul>
+</nc-transition>
+```
+
+When the controller replaces the `<ul>` innerHTML, the new content slides up into view. No manual animation code needed.
+
+---
+
+### `<nc-view-transition>`
+
+Wraps the router outlet and plays a **leave animation** before navigation and an **enter animation** after the new page loads. Hooks into the router's navigation lifecycle events automatically.
+
+| Attribute | Type | Description |
+|---|---|---|
+| `enter` | `fade` \| `slide-up` \| `slide-down` \| `scale` | Enter animation for arriving page (default: `slide-up`) |
+| `leave` | `fade` \| `slide-up` \| `slide-down` \| `scale` | Leave animation for departing page (default: `fade`) |
+
+```html
+<!-- Wrap the router outlet in index.html -->
+<nc-view-transition enter="slide-up" leave="fade">
+  <main id="main-content"></main>
+</nc-view-transition>
+```
+
+The component listens for `nc-route-start` (or `page-transition-exit`) to play the leave animation, and `pageloaded` to play the enter animation. All animations use the same GPU-accelerated primitives as `<nc-animation>`.
+
+> **Tip:** For a snappy feel, keep `leave` fast (`fade` at ~200 ms) and `enter` slightly longer (`slide-up` at ~350 ms). Users perceive the enter transition as the main payload; the leave should get out of the way quickly.
+
+---
+
 ### `<nc-animation>`
 
 Wraps any element with declarative CSS/WAAPI animations triggered by mount, scroll intersection, or programmatic control.

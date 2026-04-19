@@ -288,5 +288,68 @@ The `.nativecore/` inspector (accessible at `/__nativecore__` in dev mode) also 
 
 ---
 
+## 21.11 Built-in Accessibility Utilities
+
+NativeCoreJS exports three composable helpers from `nativecorejs/a11y` (or `nativecorejs` directly) that eliminate the boilerplate behind the most common interactive-component accessibility patterns.
+
+### `trapFocus(container)`
+
+Constrains keyboard focus within `container` while it is open (e.g. a modal, drawer, or custom dialog). Tab and Shift+Tab cycle through focusable descendants only — focus cannot leave the container. The first focusable child receives focus immediately. Returns a **disposer** that removes the trap and restores the previously focused element.
+
+```typescript
+import { trapFocus } from 'nativecorejs/a11y';
+
+// When the modal opens:
+const releaseFocus = trapFocus(modalElement);
+
+// When the modal closes:
+releaseFocus();
+```
+
+The built-in `<nc-modal>` and `<nc-drawer>` components call `trapFocus` automatically — you only need this utility for custom overlay patterns.
+
+### `announce(message, politeness?)`
+
+Posts a message to an ARIA live region so screen-reader users hear it without any visual change. Reuses a single hidden live region per politeness level so there is no DOM accumulation.
+
+```typescript
+import { announce } from 'nativecorejs/a11y';
+
+// Polite — waits until the user is idle (default)
+announce('Task moved to "In Progress".');
+
+// Assertive — interrupts immediately, for critical errors
+announce('Session expired. Please log in again.', 'assertive');
+```
+
+This replaces the manual `aria-live` region pattern shown in §21.3 — use `announce()` for programmatic notifications and keep the manual region only when you need explicit HTML control over the announcement container.
+
+### `roving(container, selector)`
+
+Implements the **roving tabindex** pattern for widget groups: menus, toolbars, listboxes, radio groups. Only the currently focused item carries `tabindex="0"`; all others are `tabindex="-1"`. Arrow keys, Home, and End move focus within the group.
+
+```typescript
+import { roving } from 'nativecorejs/a11y';
+
+// In onMount() of a custom toolbar component
+const stopRoving = roving(this, '[role="button"]');
+
+// In onUnmount()
+stopRoving();
+```
+
+The returned disposer removes the `keydown` listener and restores native tabindex values.
+
+### When to use each utility
+
+| Pattern | Utility |
+|---|---|
+| Modal / drawer that should trap focus | `trapFocus` |
+| Toast, status update, form error announcement | `announce` |
+| Toolbar, menu, listbox, radio group | `roving` |
+| Standard form inputs | none — `<nc-input>` handles labels and ARIA natively |
+
+---
+
 **Back:** [Chapter 20 — TypeScript Patterns in NativeCoreJS](./20-typescript-patterns.md)  
 **Next:** [Chapter 22 — Testing with Vitest](./22-testing.md)

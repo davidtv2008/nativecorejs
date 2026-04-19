@@ -9,6 +9,12 @@ export interface HttpConfig extends RequestInit {
     headers?: Record<string, string>;
     params?: Record<string, string>;
     data?: any;
+    /** Number of times to retry a failed request (default: 0). */
+    retries?: number;
+    /** Backoff strategy between retries (default: none). */
+    backoff?: 'exponential' | 'linear';
+    /** Base delay in ms for the first retry (default: 200). */
+    retryDelay?: number;
 }
 
 export type RequestInterceptor = (config: HttpConfig) => HttpConfig | Promise<HttpConfig>;
@@ -60,6 +66,9 @@ class HttpClient {
      */
     async request<T = any>(endpoint: string, options: HttpConfig = {}): Promise<T> {
         const url = this.buildURL(endpoint);
+        const maxRetries = options.retries ?? 0;
+        const backoff = options.backoff;
+        const retryDelay = options.retryDelay ?? 200;
         
         let config: HttpConfig = {
             ...options,
@@ -73,28 +82,44 @@ class HttpClient {
         for (const interceptor of this.requestInterceptors) {
             config = await interceptor(config);
         }
-        
-        try {
-            const response = await this.fetchWithTimeout(url, config, this.timeout);
-            
-            // Apply response interceptors
-            let processedResponse = response;
-            for (const interceptor of this.responseInterceptors) {
-                processedResponse = await interceptor(processedResponse);
+
+        let lastError: unknown;
+        for (let attempt = 0; attempt <= maxRetries; attempt++) {
+            if (attempt > 0) {
+                const delay = backoff === 'exponential'
+                    ? retryDelay * Math.pow(2, attempt - 1)
+                    : backoff === 'linear'
+                        ? retryDelay * attempt
+                        : retryDelay;
+                await new Promise<void>(resolve => setTimeout(resolve, delay));
             }
+            try {
+                const response = await this.fetchWithTimeout(url, config, this.timeout);
             
-            const data = await processedResponse.json();
+                // Apply response interceptors
+                let processedResponse = response;
+                for (const interceptor of this.responseInterceptors) {
+                    processedResponse = await interceptor(processedResponse);
+                }
             
-            if (!processedResponse.ok) {
-                throw new Error(data.message || `HTTP ${processedResponse.status}`);
+                const data = await processedResponse.json();
+            
+                if (!processedResponse.ok) {
+                    throw new Error(data.message || `HTTP ${processedResponse.status}`);
+                }
+            
+                return data;
+            } catch (error) {
+                lastError = error;
+                // Do not retry on the last attempt
+                if (attempt === maxRetries) {
+                    errorHandler.handleError(error as Error, { endpoint, method: config.method });
+                    throw error;
+                }
             }
-            
-            return data;
-            
-        } catch (error) {
-            errorHandler.handleError(error as Error, { endpoint, method: config.method });
-            throw error;
         }
+        // Should never reach here, but TypeScript needs this
+        throw lastError;
     }
     
     /**

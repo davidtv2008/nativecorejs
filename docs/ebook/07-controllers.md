@@ -408,5 +408,81 @@ function renderTaskRow(task: Task): string {
 
 ---
 
+## Route Data Loaders
+
+A common pattern is to fetch API data inside a controller — but this means the DOM is initially empty while the request is in flight. **Route data loaders** let you co-locate the data-fetch with the route definition so data is ready *before* the controller runs.
+
+### Defining a loader
+
+Add a `loader` function to any `router.register()` call. It receives the same route `params` as the controller, plus an `AbortSignal` tied to the navigation's cancellation token — so in-flight requests are automatically cancelled if the user navigates away mid-load:
+
+```typescript
+// src/routes/routes.ts
+import router from '@core/router.js';
+import { tasksController } from '@controllers/index.js';
+import api from '@services/api.service.js';
+
+router.register('/tasks', 'src/views/protected/tasks.html', tasksController, {
+    loader: async (params, signal) => {
+        return api.get('/tasks', { signal });
+    },
+});
+```
+
+### Receiving loader data in the controller
+
+The resolved loader value is passed as the **third argument** to the controller function:
+
+```typescript
+// src/controllers/tasks.controller.ts
+import type { Task } from '../types/index.js';
+
+export async function tasksController(
+    params: Record<string, string>,
+    state: any = {},
+    loaderData?: unknown
+): Promise<() => void> {
+    const tasks = (loaderData as Task[]) ?? [];
+
+    // DOM is already populated; render immediately without a loading state
+    renderTasks(tasks);
+
+    return () => { /* cleanup */ };
+}
+```
+
+### Skeleton loading with events
+
+The router emits two window events around the loader lifecycle that you can hook into from the app shell to show a skeleton or progress indicator:
+
+| Event | When | `event.detail` |
+|---|---|---|
+| `nc-route-loading` | Loader starts | `{ path, params }` |
+| `nc-route-loaded` | Loader resolves | `{ path, params, data }` |
+
+```typescript
+// In app.ts — show/hide a skeleton strip
+window.addEventListener('nc-route-loading', () => {
+    document.getElementById('page-skeleton')?.removeAttribute('hidden');
+});
+
+window.addEventListener('nc-route-loaded', () => {
+    document.getElementById('page-skeleton')?.setAttribute('hidden', '');
+});
+```
+
+> **Note:** If a navigation is cancelled (rapid back/forward, concurrent navigation) the loader's `AbortSignal` fires and the `nc-route-loaded` event is never emitted. Design your skeleton dismissal defensively — also hide it on `pageloaded`.
+
+### Loader vs controller fetching — when to use which
+
+| Situation | Recommendation |
+|---|---|
+| Data is **required** to render the page | Use a loader — avoids empty-state flicker |
+| Data depends on user interaction (filters, search) | Fetch inside the controller |
+| Multiple parallel data needs | Use `Promise.all` inside the loader |
+| You need a loading skeleton per-component | Use controller fetching with `nc-skeleton` |
+
+---
+
 **Back:** [Chapter 05 — Views and Routing](./05-views-and-routing.md)  
 **Next:** [Chapter 07 — Authentication](./07-authentication.md)

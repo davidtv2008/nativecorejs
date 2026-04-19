@@ -28,6 +28,7 @@
  */
 
 import { Component, defineComponent } from '../../.nativecore/core/component.js';
+import { trapFocus } from '../a11y/index.js';
 
 export class NcDrawer extends Component {
     static useShadowDOM = true;
@@ -181,6 +182,7 @@ export class NcDrawer extends Component {
     }
 
     private _onKeydown: ((e: KeyboardEvent) => void) | null = null;
+    private _releaseFocus: (() => void) | null = null;
 
     private _close() {
         this.removeAttribute('open');
@@ -189,6 +191,7 @@ export class NcDrawer extends Component {
 
     onUnmount() {
         if (this._onKeydown) document.removeEventListener('keydown', this._onKeydown);
+        if (this._releaseFocus) { this._releaseFocus(); this._releaseFocus = null; }
     }
 
     attributeChangedCallback(name: string, oldValue: string, newValue: string) {
@@ -209,7 +212,13 @@ export class NcDrawer extends Component {
             if (panel) {
                 panel.style.transform = open ? 'none' : (translateClosed ?? 'translateX(100%)');
                 panel.setAttribute('aria-hidden', String(!open));
-                if (open) panel.focus();
+                if (open) {
+                    if (this._releaseFocus) this._releaseFocus();
+                    this._releaseFocus = trapFocus(panel as HTMLElement);
+                } else if (this._releaseFocus) {
+                    this._releaseFocus();
+                    this._releaseFocus = null;
+                }
             }
             if (overlay) {
                 overlay.style.opacity = open ? '1' : '0';

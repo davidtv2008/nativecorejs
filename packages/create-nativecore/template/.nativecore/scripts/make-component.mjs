@@ -19,6 +19,7 @@ const __dirname = path.dirname(__filename);
 
 // Get component name from command line
 const componentName = process.argv[2];
+const withTests = process.argv.includes('--with-tests');
 
 if (!componentName) {
   console.error('Error: Component name is required');
@@ -405,6 +406,48 @@ rl.question('Would you like to prefetch this component? (y/N): ', (answer) => {
   console.log('\nComponent class:', className);
   console.log('Custom element:', `<${componentName}>`);
   
+  // Generate test file if --with-tests flag is set
+  if (withTests) {
+    const testsDir = path.join(uiDir, '__tests__');
+    if (!fs.existsSync(testsDir)) {
+      fs.mkdirSync(testsDir, { recursive: true });
+    }
+    const testFile = path.join(testsDir, `${componentName}.test.ts`);
+    if (!fs.existsSync(testFile)) {
+      const testTemplate = `import { describe, it, expect, beforeEach } from 'vitest';
+import { mountComponent, waitFor } from 'nativecorejs/testing';
+
+describe('${componentName}', () => {
+    let cleanup: () => void;
+
+    beforeEach(() => {
+        cleanup = () => {};
+    });
+
+    afterEach(() => {
+        cleanup();
+    });
+
+    it('mounts without errors', async () => {
+        const result = mountComponent('${componentName}');
+        cleanup = result.cleanup;
+        expect(result.element).toBeDefined();
+        expect(result.element.tagName.toLowerCase()).toBe('${componentName}');
+    });
+
+    it('renders expected content', async () => {
+        const result = mountComponent('${componentName}');
+        cleanup = result.cleanup;
+        await waitFor(() => result.element.shadowRoot !== null, 2000);
+        expect(result.element.shadowRoot).not.toBeNull();
+    });
+});
+`;
+      fs.writeFileSync(testFile, testTemplate);
+      console.log(`✓ Created test: src/components/ui/__tests__/${componentName}.test.ts`);
+    }
+  }
+
   rl.close();
 });
 

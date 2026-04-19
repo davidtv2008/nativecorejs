@@ -66,7 +66,9 @@ export const builtinComponentManifest = [
     ['nc-time-picker', './components/nc-time-picker.js'],
     ['nc-timeline-item', './components/nc-timeline.js'],
     ['nc-timeline', './components/nc-timeline.js'],
-    ['nc-tooltip', './components/nc-tooltip.js']
+    ['nc-tooltip', './components/nc-tooltip.js'],
+    ['nc-transition', './components/nc-transition.js'],
+    ['nc-view-transition', './components/nc-view-transition.js']
 ] as const;
 
 export function registerBuiltinComponents(): void {

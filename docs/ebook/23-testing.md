@@ -429,5 +429,120 @@ jobs:
 
 ---
 
+## 22.11 Framework Test Utilities — `nativecorejs/testing`
+
+The NativeCoreJS runtime package ships a lightweight set of helpers in the `testing` sub-export that eliminate `document.createElement` boilerplate and make component tests easier to write and read.
+
+### `mountComponent(tagName, attrs?)`
+
+Appends a custom element to `document.body`, optionally pre-setting attributes, and returns `{ element, cleanup }`:
+
+```typescript
+import { describe, it, expect, afterEach } from 'vitest';
+import { mountComponent, waitFor } from 'nativecorejs/testing';
+
+let cleanup: () => void;
+afterEach(() => cleanup?.());
+
+it('renders a task-card with a title', async () => {
+    const { element, cleanup: done } = mountComponent('task-card', { title: 'Ship it' });
+    cleanup = done;
+
+    await waitFor(() => element.shadowRoot !== null);
+    expect(
+        element.shadowRoot!.querySelector('[data-hook="title"]')?.textContent
+    ).toBe('Ship it');
+});
+```
+
+### `waitFor(predicate, timeout?)`
+
+Polls `predicate()` every 10 ms until it returns truthy or `timeout` ms elapse (default 1000 ms). Flushes promise microtasks between checks, so reactive updates are visible before the next poll.
+
+```typescript
+// Wait for the shadow root to appear
+await waitFor(() => element.shadowRoot !== null);
+
+// Wait for content
+await waitFor(() =>
+    element.shadowRoot?.querySelector('.task-list')?.children.length ?? 0 > 0
+);
+```
+
+### `fireEvent(element, eventName, detail?)`
+
+Dispatches a `CustomEvent` with `bubbles: true, composed: true`:
+
+```typescript
+import { fireEvent } from 'nativecorejs/testing';
+
+let received: string | null = null;
+document.addEventListener('task-selected', (e) => {
+    received = (e as CustomEvent).detail.taskId;
+});
+
+fireEvent(card, 'task-selected', { taskId: 'abc-123' });
+expect(received).toBe('abc-123');
+```
+
+### Full component test with the utilities
+
+```typescript
+import { describe, it, expect, afterEach } from 'vitest';
+import { mountComponent, waitFor, fireEvent } from 'nativecorejs/testing';
+
+describe('task-card', () => {
+    let cleanup: () => void;
+    afterEach(() => cleanup?.());
+
+    it('reflects the status attribute', async () => {
+        const { element, cleanup: done } = mountComponent('task-card', {
+            title: 'Write tests',
+            status: 'in-progress',
+        });
+        cleanup = done;
+
+        await waitFor(() => element.shadowRoot !== null);
+        const badge = element.shadowRoot!.querySelector('[data-hook="status"]');
+        expect(badge?.textContent).toBe('in-progress');
+    });
+
+    it('dispatches task-selected on click', async () => {
+        const { element, cleanup: done } = mountComponent('task-card', {
+            title: 'Ship',
+            'task-id': 'task-99',
+        });
+        cleanup = done;
+
+        let selectedId = '';
+        document.addEventListener('task-selected', (e) => {
+            selectedId = (e as CustomEvent).detail.taskId;
+        });
+
+        await waitFor(() => element.shadowRoot !== null);
+        element.click();
+        expect(selectedId).toBe('task-99');
+    });
+});
+```
+
+### Generating a component with its test file
+
+Pass `--with-tests` to `npm run make:component` to co-generate a starter test file alongside the component:
+
+```bash
+npm run make:component status-badge -- --with-tests
+```
+
+Creates both:
+```
+src/components/ui/status-badge.ts
+src/components/ui/__tests__/status-badge.test.ts
+```
+
+The generated test file includes `mountComponent`, `waitFor`, `afterEach` cleanup, and two starter tests you can build from immediately.
+
+---
+
 **Back:** [Chapter 21 — Accessibility and ARIA](./21-accessibility.md)  
 **Next:** [Chapter 23 — CLI Mastery and the Generator Workflow](./23-cli-and-generators.md)
