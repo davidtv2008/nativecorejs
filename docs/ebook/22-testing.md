@@ -30,6 +30,18 @@ npm test
 
 Test files live in `tests/` and follow the naming convention `*.test.ts`. The recommended sub-directory structure is covered in §22.9.
 
+The template ships with ready-to-run starter tests in `tests/unit/`. These serve both as regression guards for the framework primitives and as living examples you can copy from:
+
+| File | What it tests |
+|---|---|
+| `tests/unit/state.test.ts` | `useState`, `computed`, `effect`, `batch` |
+| `tests/unit/store.test.ts` | Store actions, optimistic updates, rollbacks |
+| `tests/unit/form.test.ts` | `useForm`, field validation |
+| `tests/unit/validation.test.ts` | Validation rule helpers |
+| `tests/unit/formatters.test.ts` | Date / number formatters |
+
+Run all of them with `npm test`. Add your own files anywhere under `tests/`.
+
 ---
 
 ## 22.2 Unit Testing State Functions
@@ -69,6 +81,51 @@ describe('computed', () => {
 ```
 
 Always call `.dispose()` on computed states at the end of the test — this prevents subscription leaks that can cause later tests to behave unexpectedly.
+
+### Testing `batch()`
+
+`batch()` is straightforward to test: assert that notifications are deferred until after the callback returns, and that each subscriber fires at most once.
+
+```typescript
+import { describe, it, expect, vi } from 'vitest';
+import { useState, batch } from '@core/state.js';
+
+describe('batch', () => {
+    it('defers notifications until the batch completes', () => {
+        const a = useState(0);
+        const b = useState(0);
+        const notifications: string[] = [];
+
+        a.watch(() => notifications.push('a'));
+        b.watch(() => notifications.push('b'));
+
+        batch(() => {
+            a.value = 1;
+            b.value = 2;
+            expect(notifications).toHaveLength(0); // not yet
+        });
+
+        expect(notifications).toEqual(['a', 'b']); // both fired after batch
+    });
+
+    it('fires each subscriber once even after multiple writes', () => {
+        const count = useState(0);
+        const spy   = vi.fn();
+        count.watch(spy);
+
+        batch(() => {
+            count.value = 1;
+            count.value = 2;
+            count.value = 3;
+        });
+
+        expect(spy).toHaveBeenCalledOnce();
+        expect(count.value).toBe(3);
+    });
+});
+```
+
+The full reference test suite lives in `tests/unit/state.test.ts` in your project and covers all edge cases including nested batches and error handling.
 
 ---
 

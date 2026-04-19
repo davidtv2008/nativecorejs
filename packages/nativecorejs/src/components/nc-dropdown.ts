@@ -37,6 +37,7 @@ export class NcDropdown extends Component {
     }
 
     private _outsideClick: ((e: MouseEvent) => void) | null = null;
+    private _escKeydown: ((e: KeyboardEvent) => void) | null = null;
 
     template() {
         const open = this.hasAttribute('open');
@@ -104,9 +105,10 @@ export class NcDropdown extends Component {
         document.addEventListener('mousedown', this._outsideClick);
 
         // Close on Escape
-        document.addEventListener('keydown', (e: KeyboardEvent) => {
+        this._escKeydown = (e: KeyboardEvent) => {
             if (e.key === 'Escape' && this.hasAttribute('open')) this._setOpen(false);
-        });
+        };
+        document.addEventListener('keydown', this._escKeydown);
 
         // Select via [data-value] children in light DOM
         this.addEventListener('click', (e: Event) => {
@@ -145,6 +147,7 @@ export class NcDropdown extends Component {
 
     onUnmount() {
         if (this._outsideClick) document.removeEventListener('mousedown', this._outsideClick);
+        if (this._escKeydown) document.removeEventListener('keydown', this._escKeydown);
     }
 
     attributeChangedCallback(name: string, oldValue: string, newValue: string) {

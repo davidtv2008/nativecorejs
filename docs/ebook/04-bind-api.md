@@ -233,6 +233,48 @@ defineComponent('task-stats', TaskStats);
 
 ---
 
+## `key=` Attribute — Keyed List Reconciliation
+
+When a component renders a **list** whose items can be reordered, inserted, or removed by position, the default positional diffing algorithm replaces list items in place. This is fine for append-only lists but creates unnecessary DOM churn — and can lose scroll position or component state — when items are shuffled.
+
+Add a `key=` attribute to each repeated element and NativeCoreJS switches to a **key-map algorithm** (the same approach used by React, Vue, and Svelte): it finds the existing DOM node by key, patches it in place, and moves it to the correct position rather than replacing it.
+
+### Rules
+
+- `key=` must be **unique** within the parent element.
+- The keying algorithm is activated only when **every** element child of a container carries a `key=` attribute. A mixture of keyed and unkeyed children falls back to positional reconciliation.
+- Use a stable, unique identifier — typically a record `id` from the API. Do not use the array index as the key unless the list never reorders.
+
+### Example
+
+```typescript
+template(): string {
+    return `
+        <ul class="task-list">
+            ${this.tasks.value.map(task => `
+                <li key="${task.id}" class="task-item ${task.status}">
+                    <span class="task-title">${escapeHTML(task.title)}</span>
+                    <span class="task-status">${escapeHTML(task.status)}</span>
+                </li>
+            `).join('')}
+        </ul>
+    `;
+}
+```
+
+With `key="${task.id}"`, when `tasks.value` is updated:
+
+| Operation | Without `key=` | With `key=` |
+|---|---|---|
+| Append item | Patch last position, add new node | Add new node at tail |
+| Prepend item | Replace every node (positional shift) | Move existing nodes, insert new at head |
+| Remove middle item | Replace all nodes from that position | Remove exactly that node, rest unchanged |
+| Reorder (drag-and-drop) | Replace every node | Move DOM nodes to new positions |
+
+> **Tip:** `key=` also preserves focus and form state inside list items across re-renders. Without it, an `<input>` inside a repositioned list item would lose its current value.
+
+---
+
 ## Auto-Cleanup Summary
 
 | API                  | What it registers         | When it is cleaned up        |

@@ -152,7 +152,61 @@ export async function nameController(params: Record<string, string> = {}): Promi
 
 ---
 
-## 23.5 The Generator Workflow for Building Taskflow
+## 23.5 `npm run make:store` Deep Dive
+
+```bash
+npm run make:store <name>
+```
+
+Creates a **global reactive store** with typed state, a `computed` count, and three async actions (load, add, remove) pre-wired with `batch()` for atomic state updates and optimistic rollback on failure.
+
+```bash
+npm run make:store task
+```
+
+**What it generates and updates:**
+
+| File | Action |
+|------|--------|
+| `src/stores/<name>.store.ts` | Created — typed store with `useState`, `computed`, `batch`, and API actions |
+| `src/stores/index.ts` | Updated (or created) — adds the barrel export |
+
+The generated store follows the canonical pattern:
+
+```typescript
+// src/stores/task.store.ts
+import { useState, computed, batch } from '@core/state.js';
+import { pausePageCleanupCollection, resumePageCleanupCollection } from '@core/pageCleanupRegistry.js';
+
+export interface Task { id: string; /* ... */ }
+
+pausePageCleanupCollection();
+export const taskItems   = useState<Task[]>([]);
+export const taskLoading = useState(false);
+export const taskError   = useState<string | null>(null);
+resumePageCleanupCollection();
+
+export const taskCount = computed(() => taskItems.value.length);
+
+export async function loadTasks(force = false): Promise<void> {
+    batch(() => { taskLoading.value = true; taskError.value = null; });
+    try {
+        const data = await api.getCached('/tasks', { ttl: 60_000, revalidate: !force });
+        batch(() => { taskItems.value = data as Task[]; taskLoading.value = false; });
+    } catch (err) {
+        batch(() => {
+            taskError.value   = err instanceof Error ? err.message : 'Failed';
+            taskLoading.value = false;
+        });
+    }
+}
+```
+
+`pausePageCleanupCollection()` / `resumePageCleanupCollection()` prevent the router from tearing down module-level state on navigation. Without them, navigating away and back would reset all your store values.
+
+---
+
+## 23.6 The Generator Workflow for Building Taskflow
 
 Every component, view, and controller in Taskflow was created with a generator. Here is the complete table:
 
@@ -166,6 +220,8 @@ Every component, view, and controller in Taskflow was created with a generator. 
 | 08 | `npm run make:view projects` | Projects protected view + `projectsController` |
 | 09 | `npm run make:view tasks/new-task-form` | New task form view + `newTaskFormController` |
 | 13 | `npm run make:view task-detail` | Task detail view + `taskDetailController` with `:id` route |
+| 17 | `npm run make:store task` | `task.store.ts` — global task state and actions |
+| 17 | `npm run make:store project` | `project.store.ts` — global project state and actions |
 | 18 | `npm run make:component task-list` | `TaskList` composition component |
 | 18 | `npm run make:component project-panel` | `ProjectPanel` nested composition component |
 
@@ -173,7 +229,7 @@ Run these commands in this order and you get a correctly scaffolded Taskflow pro
 
 ---
 
-## 23.6 The Scripts Directory
+## 23.7 The Scripts Directory
 
 All generators live in `.nativecore/scripts/`. They are Node.js scripts that:
 
@@ -188,7 +244,7 @@ If a generator produces incorrect output — wrong import path, wrong naming con
 
 ---
 
-## 23.7 Removing Files
+## 23.8 Removing Files
 
 Generators have complementary remove commands that undo everything the `make:*` commands did:
 
@@ -206,7 +262,7 @@ Always use `remove:*` rather than manually deleting files. A manual delete leave
 
 ---
 
-## 23.8 Custom Naming Conventions
+## 23.9 Custom Naming Conventions
 
 The generators enforce these conventions throughout the project:
 
@@ -225,7 +281,7 @@ Follow these religiously. The generators validate them and will reject invalid n
 
 ---
 
-## 23.9 What `make:view` Does Under the Hood
+## 23.10 What `make:view` Does Under the Hood
 
 Understanding the internals helps when debugging unexpected results:
 
