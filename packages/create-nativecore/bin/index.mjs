@@ -85,59 +85,101 @@ async function installDependencies(targetDir) {
 }
 
 function packageJsonTemplate(config) {
-    return JSON.stringify({
+    const scripts = {
+        prestart: 'npm run compile && node .nativecore/scripts/inject-version.mjs',
+        start: 'node server.js',
+        validate: 'npm run typecheck && npm run build:client && npm run test -- --run',
+        dev: 'npm run compile && node .nativecore/scripts/inject-version.mjs && concurrently --kill-others --names "watch,server" -c "blue,green" "node .nativecore/scripts/watch-compile.mjs" "node server.js"',
+        'dev:watch': 'node .nativecore/scripts/watch-compile.mjs',
+        clean: 'node -e "const fs=require(\'fs\'); fs.rmSync(\'dist\',{recursive:true,force:true}); fs.rmSync(\'_deploy\',{recursive:true,force:true})"',
+        prebuild: 'npm run clean && npm run lint && npm run typecheck',
+        build: 'node .nativecore/scripts/inject-version.mjs && npm run compile:prod && node .nativecore/scripts/minify.mjs && node .nativecore/scripts/prepare-static-assets.mjs && node .nativecore/scripts/strip-dev-blocks.mjs && node .nativecore/scripts/remove-dev.mjs',
+        'build:client': 'node .nativecore/scripts/inject-version.mjs && npm run compile:prod && node .nativecore/scripts/minify.mjs && node .nativecore/scripts/prepare-static-assets.mjs',
+        compile: 'tsc && tsc-alias',
+        'compile:prod': 'tsc -p tsconfig.build.json && tsc-alias -p tsconfig.build.json && node .nativecore/scripts/remove-dev.mjs',
+        typecheck: 'tsc --noEmit',
+        'make:component': 'node .nativecore/scripts/make-component.mjs',
+        'make:core-component': 'node .nativecore/scripts/make-core-component.mjs',
+        'make:controller': 'node .nativecore/scripts/make-controller.mjs',
+        'make:store': 'node .nativecore/scripts/make-store.mjs',
+        'remove:component': 'node .nativecore/scripts/remove-component.mjs',
+        'remove:core-component': 'node .nativecore/scripts/remove-core-component.mjs',
+        'make:view': 'node .nativecore/scripts/make-view.mjs',
+        'make:page': 'node .nativecore/scripts/make-view.mjs',
+        'remove:view': 'node .nativecore/scripts/remove-view.mjs',
+        test: 'vitest',
+        'test:ui': 'vitest --ui',
+        'test:coverage': 'vitest --coverage',
+        lint: 'eslint src/**/*.ts && htmlhint "**/*.html" --config .htmlhintrc',
+        'lint:fix': 'eslint src/**/*.ts --fix'
+    };
+
+    if (config.includeCapacitor) {
+        scripts['cap:sync'] = 'npm run build:client && npx cap sync';
+        scripts['cap:android'] = 'npm run cap:sync && npx cap open android';
+        scripts['cap:ios'] = 'npm run cap:sync && npx cap open ios';
+        scripts['cap:add:android'] = 'npx cap add android';
+        scripts['cap:add:ios'] = 'npx cap add ios';
+        scripts['cap:run:android'] = 'npm run cap:sync && npx cap run android';
+        scripts['cap:run:ios'] = 'npm run cap:sync && npx cap run ios';
+    }
+
+    const devDependencies = {
+        '@eslint/js': '^9.39.2',
+        '@types/node': '^20.11.0',
+        'concurrently': '^9.2.1',
+        'eslint': '^9.39.2',
+        'globals': '^17.0.0',
+        'happy-dom': '^20.8.9',
+        'htmlhint': '^1.1.4',
+        'puppeteer': '^24.36.0',
+        'terser': '^5.46.0',
+        'tsc-alias': '^1.8.16',
+        'typescript': '^5.3.3',
+        'typescript-eslint': '^8.53.1',
+        'vitest': '^4.1.4',
+        'ws': '^8.19.0'
+    };
+
+    const result = {
         name: config.projectName,
         version: '0.1.0',
         description: `${config.projectTitle} built with NativeCore`,
         type: 'module',
         main: 'server.js',
-        scripts: {
-            prestart: 'npm run compile && node .nativecore/scripts/inject-version.mjs',
-            start: 'node server.js',
-            validate: 'npm run typecheck && npm run build:client && npm run test -- --run',
-            dev: 'npm run compile && node .nativecore/scripts/inject-version.mjs && concurrently --kill-others --names "watch,server" -c "blue,green" "node .nativecore/scripts/watch-compile.mjs" "node server.js"',
-            'dev:watch': 'node .nativecore/scripts/watch-compile.mjs',
-            clean: 'node -e "const fs=require(\'fs\'); fs.rmSync(\'dist\',{recursive:true,force:true}); fs.rmSync(\'_deploy\',{recursive:true,force:true})"',
-            prebuild: 'npm run clean && npm run lint && npm run typecheck',
-            build: 'node .nativecore/scripts/inject-version.mjs && npm run compile:prod && node .nativecore/scripts/minify.mjs && node .nativecore/scripts/prepare-static-assets.mjs && node .nativecore/scripts/strip-dev-blocks.mjs && node .nativecore/scripts/remove-dev.mjs',
-            'build:client': 'node .nativecore/scripts/inject-version.mjs && npm run compile:prod && node .nativecore/scripts/minify.mjs && node .nativecore/scripts/prepare-static-assets.mjs',
-            compile: 'tsc && tsc-alias',
-            'compile:prod': 'tsc -p tsconfig.build.json && tsc-alias -p tsconfig.build.json && node .nativecore/scripts/remove-dev.mjs',
-            typecheck: 'tsc --noEmit',
-            'make:component': 'node .nativecore/scripts/make-component.mjs',
-            'make:core-component': 'node .nativecore/scripts/make-core-component.mjs',
-            'make:controller': 'node .nativecore/scripts/make-controller.mjs',
-            'make:store': 'node .nativecore/scripts/make-store.mjs',
-            'remove:component': 'node .nativecore/scripts/remove-component.mjs',
-            'remove:core-component': 'node .nativecore/scripts/remove-core-component.mjs',
-            'make:view': 'node .nativecore/scripts/make-view.mjs',
-            'make:page': 'node .nativecore/scripts/make-view.mjs',
-            'remove:view': 'node .nativecore/scripts/remove-view.mjs',
-            test: 'vitest',
-            'test:ui': 'vitest --ui',
-            'test:coverage': 'vitest --coverage',
-            lint: 'eslint src/**/*.ts && htmlhint "**/*.html" --config .htmlhintrc',
-            'lint:fix': 'eslint src/**/*.ts --fix'
-        },
+        scripts,
         keywords: ['nativecore', 'spa', 'web-components', 'typescript'],
         license: 'MIT',
-        devDependencies: {
-            '@eslint/js': '^9.39.2',
-            '@types/node': '^20.11.0',
-            'concurrently': '^9.2.1',
-            'eslint': '^9.39.2',
-            'globals': '^17.0.0',
-            'happy-dom': '^20.8.9',
-            'htmlhint': '^1.1.4',
-            'puppeteer': '^24.36.0',
-            'terser': '^5.46.0',
-            'tsc-alias': '^1.8.16',
-            'typescript': '^5.3.3',
-            'typescript-eslint': '^8.53.1',
-            'vitest': '^4.1.4',
-            'ws': '^8.19.0'
-        }
-    }, null, 2) + '\n';
+        devDependencies
+    };
+
+    if (config.includeCapacitor) {
+        result.dependencies = {
+            '@capacitor/core': '^8.3.1'
+        };
+        devDependencies['@capacitor/cli'] = '^8.3.1';
+        devDependencies['@capacitor/android'] = '^8.3.1';
+        devDependencies['@capacitor/ios'] = '^8.3.1';
+    }
+
+    return JSON.stringify(result, null, 2) + '\n';
+}
+
+function capacitorConfigTemplate(config) {
+    const appId = `com.example.${config.projectName.replace(/-/g, '')}`;
+    return `import type { CapacitorConfig } from '@capacitor/cli';
+
+const config: CapacitorConfig = {
+    appId: '${appId}',
+    appName: '${config.projectTitle}',
+    webDir: 'dist',
+    server: {
+        androidScheme: 'https'
+    }
+};
+
+export default config;
+`;
 }
 
 function nativecoreConfigTemplate(config) {
@@ -150,7 +192,8 @@ function nativecoreConfigTemplate(config) {
             dashboard: config.includeDashboard,
             devTools: true,
             hmr: true,
-            mockApi: true
+            mockApi: true,
+            capacitor: config.includeCapacitor
         }
     }, null, 2) + '\n';
 }
@@ -563,6 +606,10 @@ async function customizeProject(targetDir, config) {
         .replace(/Access-Control-Allow-Origin: .*\n/g, ''));
 
     await replaceInFile(path.join(targetDir, '.env.example'), content => content.replace('APP_NAME=MyApp', `APP_NAME=${config.projectTitle}`));
+
+    if (config.includeCapacitor) {
+        await writeFile(path.join(targetDir, 'capacitor.config.ts'), capacitorConfigTemplate(config));
+    }
 }
 
 async function buildProject(config) {
@@ -616,6 +663,11 @@ async function main() {
         : useDefaults
             ? true
             : await askYesNo('Include dashboard route?', true);
+    const includeCapacitor = hasFlag('--capacitor')
+        ? true
+        : hasFlag('--no-capacitor') || useDefaults
+            ? false
+            : await askYesNo('Include Capacitor (Android/iOS packaging)?', false);
     const shouldInstall = hasFlag('--skip-install') || hasFlag('--no-install')
         ? false
         : useDefaults
@@ -627,6 +679,7 @@ async function main() {
         projectTitle,
         includeAuth,
         includeDashboard,
+        includeCapacitor,
         shouldInstall
     };
 
@@ -651,7 +704,14 @@ async function main() {
         console.log('  @eslint/js        — ESLint core rules');
         console.log('  globals           — browser/node global definitions for ESLint');
         console.log('  @types/node       — TypeScript types for Node.js (scripts and build tools only)');
-        console.log('  htmlhint          — HTML linter for view files\n');
+        console.log('  htmlhint          — HTML linter for view files');
+        if (config.includeCapacitor) {
+            console.log('  @capacitor/core   — Capacitor runtime (ships to native app)');
+            console.log('  @capacitor/cli    — Capacitor CLI for managing native projects');
+            console.log('  @capacitor/android — Android platform (requires Android Studio to build)');
+            console.log('  @capacitor/ios    — iOS platform (requires Xcode on macOS to build)');
+        }
+        console.log('');
 
         try {
             await installDependencies(targetDir);
@@ -666,10 +726,25 @@ async function main() {
 
     if (config.shouldInstall && installSucceeded) {
         console.log('  npm run dev\n');
-        console.log('Your project has no runtime dependencies — only the dev tools listed above.');
+        if (config.includeCapacitor) {
+            console.log('Capacitor next steps:');
+            console.log('  npm run cap:add:android   — add the Android platform (requires Android Studio)');
+            console.log('  npm run cap:add:ios       — add the iOS platform (requires Xcode on macOS)');
+            console.log('  npm run cap:sync          — build and sync web assets to native projects');
+            console.log('  npm run cap:android       — build, sync, and open in Android Studio');
+            console.log('  npm run cap:ios           — build, sync, and open in Xcode (macOS only)');
+            console.log('\nUpdate capacitor.config.ts with your real app ID before adding platforms.\n');
+        } else {
+            console.log('Your project has no runtime dependencies — only the dev tools listed above.');
+        }
     } else {
         console.log('  npm install');
         console.log('  npm run dev\n');
+        if (config.includeCapacitor) {
+            console.log('After installing, see capacitor.config.ts and run:');
+            console.log('  npm run cap:add:android   — add Android platform');
+            console.log('  npm run cap:add:ios       — add iOS platform (macOS only)\n');
+        }
     }
 
     if (installError) {

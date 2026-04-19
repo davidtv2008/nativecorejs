@@ -134,6 +134,11 @@ npm run make:store <name>        # global reactive store with actions
 30. **[30 — Framework API Quick Reference](./30-framework-api-quick-reference.md)**
     Fast lookup tables for framework APIs, signatures, one-line summaries, and links to full deep-dive chapters.
 
+### Part 8 — Native Mobile Deployment
+
+31. **[31 — Capacitor: Packaging for Android and iOS](./32-capacitor-mobile-deployment.md)**
+    What Capacitor is, the full Android + iOS workflow, what you can build without a Mac, what requires macOS, Capacitor plugins, and a complete development cycle guide.
+
 ---
 
 ## How to Read This Book
