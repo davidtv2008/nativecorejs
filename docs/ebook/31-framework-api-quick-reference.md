@@ -158,4 +158,4 @@ For built-in `nc-*` components and their attributes/events, use:
 ---
 
 **Back:** [Chapter 29 — Error Boundaries](./29-error-boundaries.md)  
-**Next:** [Ebook Index](./README.md)
+**Next:** [Chapter 32 — Capacitor: Packaging for Android and iOS](./32-capacitor-mobile-deployment.md)
