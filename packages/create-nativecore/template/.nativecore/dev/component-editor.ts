@@ -6,7 +6,7 @@
  */
 
 import type { ComponentMetadata } from './denc-tools.js';
-import dom from './utils/dom.js';
+import { dom } from '@core-utils/dom.js';
 
 interface ExtendedMetadata extends ComponentMetadata {
     hostStyles?: { property: string; value: string }[];

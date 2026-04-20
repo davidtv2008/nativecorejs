@@ -15,16 +15,16 @@
  * Routes belong in routes/routes.ts. Components belong in components/registry.ts.
  */
 import router from '@core/router.js';
-import auth from './services/auth.service.js';
-import type { User } from './services/auth.service.js';
-import api from './services/api.service.js';
-import { authMiddleware } from './middleware/auth.middleware.js';
-import { registerRoutes, protectedRoutes } from './routes/routes.js';
-import { initSidebar } from './utils/sidebar.js';
+import auth from '@services/auth.service.js';
+import type { User } from '@services/auth.service.js';
+import api from '@services/api.service.js';
+import { authMiddleware } from '@middleware/auth.middleware.js';
+import { registerRoutes, protectedRoutes } from '@routes/routes.js';
+import { initSidebar } from '@utils/sidebar.js';
 import { initLazyComponents } from '@core/lazyComponents.js';
 import { dom } from '@core-utils/dom.js';
-import { pausePageCleanupCollection, resumePageCleanupCollection } from '../.nativecore/core/pageCleanupRegistry.js';
-import './components/registry.js'; // side-effect import: registers all lazy components
+import { pausePageCleanupCollection, resumePageCleanupCollection } from '@core/pageCleanupRegistry.js';
+import '@components/registry.js'; // side-effect import: registers all lazy components
 
 function isLocalhost(): boolean {
     const hostname = window.location.hostname;
@@ -153,9 +153,9 @@ function initDevTools(): void {
     }
     
     Promise.all([
-        import('../.nativecore/hmr.js'),
-        import('../.nativecore/denc-tools.js'),
-        import('./utils/devOverlay.js'),
+        import('@dev/hmr.js'),
+        import('@dev/denc-tools.js'),
+        import('@dev/devOverlay.js'),
     ])
         .then(([, , { initDevOverlay }]) => {
             console.warn('[NativeCore] Dev tools loaded');

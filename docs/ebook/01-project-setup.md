@@ -94,9 +94,11 @@ The generated `index.html` is production-ready from day one. It includes SEO met
     <app-sidebar></app-sidebar>
 
     <main class="main-content">
-      <div id="main-content" class="page">
-        <loading-spinner message="Loading page..."></loading-spinner>
-      </div>
+      <nc-error-boundary class="page">
+        <div id="main-content" class="page">
+          <loading-spinner message="Loading page..."></loading-spinner>
+        </div>
+      </nc-error-boundary>
       <app-footer></app-footer>
     </main>
 
@@ -123,9 +125,31 @@ The router renders views into `#main-content` — not directly into `#app`. The 
 
 ```typescript
 import router from '@core/router.js';
-import { authMiddleware } from './middleware/auth.middleware.js';
-import { registerRoutes } from './routes/routes.js';
-import './components/registry.js';
+import auth from '@services/auth.service.js';
+import type { User } from '@services/auth.service.js';
+import api from '@services/api.service.js';
+import { authMiddleware } from '@middleware/auth.middleware.js';
+import { registerRoutes, protectedRoutes } from '@routes/routes.js';
+import { initSidebar } from '@utils/sidebar.js';
+import { initLazyComponents } from '@core/lazyComponents.js';
+import { dom } from '@core-utils/dom.js';
+import { pausePageCleanupCollection, resumePageCleanupCollection } from '@core/pageCleanupRegistry.js';
+import '@components/registry.js';
+
+function updateSidebarVisibility() {
+    const isAuthenticated = auth.isAuthenticated();
+    const currentPath = window.location.pathname;
+    const isProtectedRoute = protectedRoutes.some(route => currentPath.startsWith(route));
+    const app = dom.$('#app');
+
+    if (isAuthenticated && isProtectedRoute) {
+        document.body.classList.add('sidebar-enabled');
+        app?.classList.remove('no-sidebar');
+    } else {
+        document.body.classList.remove('sidebar-enabled');
+        app?.classList.add('no-sidebar');
+    }
+}
 
 async function init() {
     // verify any existing session token with the server
@@ -133,9 +157,70 @@ async function init() {
     // lazy-load components registered in registry.ts
     await initLazyComponents();
 
+    // Expose router globally for components (frozen to prevent XSS manipulation)
+    Object.defineProperty(window, 'router', {
+        value: Object.freeze({
+            navigate: router.navigate.bind(router),
+            replace: router.replace.bind(router),
+            back: router.back.bind(router),
+            getCurrentRoute: router.getCurrentRoute.bind(router),
+        }),
+        writable: false,
+        configurable: false,
+    });
+
     router.use(authMiddleware);
     registerRoutes(router);
+
+    // Wrap router.start() so that app-level effects created during boot
+    // are never flushed by subsequent navigations.
+    pausePageCleanupCollection();
     router.start();
+    resumePageCleanupCollection();
+
+    initSidebar();
+
+    window.addEventListener('auth-change', () => {
+        const isAuth = auth.isAuthenticated();
+        if (!isAuth) {
+            router.replace('/login');
+            document.body.classList.remove('sidebar-enabled');
+            const app = dom.$('#app');
+            app?.classList.remove('sidebar-collapsed');
+            app?.classList.add('no-sidebar');
+            localStorage.removeItem('sidebar-collapsed');
+            const sidebar = dom.$('#appSidebar');
+            sidebar?.removeAttribute('collapsed');
+            dom.$('.app-layout')?.classList.remove('sidebar-collapsed');
+        } else {
+            updateSidebarVisibility();
+        }
+    });
+
+    window.addEventListener('pageloaded', () => {
+        updateSidebarVisibility();
+    });
+
+    initDevTools();
+}
+
+function initDevTools(): void {
+    if (!isLocalhost()) {
+        return;
+    }
+
+    Promise.all([
+        import('@dev/hmr.js'),
+        import('@dev/denc-tools.js'),
+        import('@dev/devOverlay.js'),
+    ])
+        .then(([, , { initDevOverlay }]) => {
+            window.__NATIVECORE_DEV__ = true;
+            initDevOverlay();
+        })
+        .catch(() => {
+            // Dev tools not available.
+        });
 }
 
 init();

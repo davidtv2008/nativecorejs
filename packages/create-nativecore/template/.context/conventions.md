@@ -1,4 +1,4 @@
-# NativeCore Framework Conventions
+﻿# NativeCore Framework Conventions
 
 ## When NOT to Create a Component
 
@@ -16,24 +16,27 @@ Examples:
 - A submit button used once → plain `<button>`, not `<nc-button>`
 - A reusable data table used in 5 views → `<nc-table>` is appropriate
 
+---
+
 ## File Naming
 
-| Artifact         | Convention                      | Location                          |
-|------------------|---------------------------------|-----------------------------------|
-| UI Component     | kebab-case.ts (hyphen required) | `src/components/ui/`              |
-| Core Component   | kebab-case.ts                   | `src/components/core/`            |
-| Controller       | kebab-case.controller.ts        | `src/controllers/`                |
-| View             | kebab-case.html                 | `src/views/public/` or `protected/` |
-| Service          | kebab-case.service.ts           | `src/services/`                   |
-| Utility          | camelCase.ts                    | `src/utils/`                      |
-| Store            | camelCaseStore.ts               | `src/stores/`                     |
+| Artifact         | Convention                         | Location                              |
+|------------------|------------------------------------|---------------------------------------|
+| UI Component     | kebab-case.ts (hyphen required)    | `src/components/ui/`                  |
+| Core Component   | kebab-case.ts                      | `src/components/core/`                |
+| Controller       | kebab-case.controller.ts           | `src/controllers/`                    |
+| View             | kebab-case.html                    | `src/views/public/` or `protected/`  |
+| Service          | kebab-case.service.ts              | `src/services/`                       |
+| Utility          | camelCase.ts                       | `src/utils/`                          |
+| Store            | camelCaseStore.ts                  | `src/stores/`                         |
 
 Examples:
-- `user-card.ts` → compiled to `dist/components/ui/user-card.js`
-- `dashboard.controller.ts` → compiled to `dist/controllers/dashboard.controller.js`
-- Controller function: `export async function dashboardController() {}`
+- `user-card.ts` → compiled to `dist/src/components/ui/user-card.js`
+- `dashboard.controller.ts` → function named `dashboardController`
 
-## Component Template
+---
+
+## Component Convention
 
 ```typescript
 import { Component, defineComponent } from '@core/component.js';
@@ -73,35 +76,64 @@ export class MyComponent extends Component {
             }
         });
 
-        // Store the unsubscribe so onUnmount can clean it up
+        // Option A: declarative bind (auto-cleaned on disconnect)
+        this.bind(this.count, '#display', 'textContent');
+
+        // Option B: manual watch + cleanup
         this._unwatchCount = this.count.watch(val => {
-            this.shadowRoot.querySelector('#display')!.textContent = String(val);
+            this.$('#display')!.textContent = String(val);
         });
     }
 
     onUnmount() {
         this._unwatchCount?.();    // Unsubscribe state watcher
-        this.doubled.dispose();    // Release computed's dependency subscriptions
+        this.doubled.dispose();    // Release computed dependency subscriptions
     }
 }
 
 defineComponent('my-component', MyComponent);
 ```
 
-## Controller Template
+### Component API
+
+```typescript
+// Scoped queries (use these instead of document.querySelector in components)
+this.$<HTMLButtonElement>('.btn')         // shadowRoot.querySelector shorthand
+this.$$<HTMLLIElement>('.item')          // shadowRoot.querySelectorAll shorthand
+
+// Declarative reactive bindings (auto-cleanup on disconnect — no manual unsubscribe needed)
+this.bind(state, '#selector')                          // updates textContent by default
+this.bind(state, '#selector', 'innerHTML')             // update any property
+this.bindAttr(state, '#selector', 'disabled')          // update attribute
+this.bindAll({ '#name': nameState, '#age': ageState }) // batch multiple bindings
+
+// State helpers
+this.setState({ count: 1 })   // merge partial state + trigger re-render
+this.patchState({ count: 1 }) // merge partial state — no re-render
+this.getState()               // snapshot of current state object
+```
+
+---
+
+## Controller Convention
 
 ```typescript
 import { trackEvents, trackSubscriptions } from '@core-utils/events.js';
+import { html } from '@core-utils/templates.js';
 import api from '@services/api.service.js';
 import { store } from '@stores/appStore.js';
 
-export async function myPageController(params: Record<string, string> = {}): Promise<() => void> {
+export async function myPageController(
+    params: Record<string, string> = {},
+    _state?: any,
+    loaderData?: unknown
+): Promise<() => void> {
     const events = trackEvents();
     const subs = trackSubscriptions();
 
     const data = await api.get('/endpoint');
 
-    document.getElementById('container')!.innerHTML = `
+    document.getElementById('container')!.innerHTML = html`
         <h1>Title</h1>
         <ul id="list"></ul>
         <button id="action-btn">Action</button>
@@ -109,7 +141,9 @@ export async function myPageController(params: Record<string, string> = {}): Pro
 
     // All DOM events through trackEvents
     events.onClick('#action-btn', handleAction);
+    events.onInput('#search', handleSearch);
     events.delegate('#list', 'click', '.list-item', handleItemClick);
+    events.on('#form', 'submit', handleSubmit);
 
     // All state watchers through trackSubscriptions
     subs.watch(store.isLoading.watch(loading => {
@@ -123,9 +157,13 @@ export async function myPageController(params: Record<string, string> = {}): Pro
     };
 
     function handleAction() { /* logic */ }
+    function handleSearch(e: Event) { /* logic */ }
     function handleItemClick(e: Event, target: Element) { /* logic */ }
+    function handleSubmit(e: Event) { e.preventDefault(); }
 }
 ```
+
+---
 
 ## Import Conventions
 
@@ -140,25 +178,54 @@ import type { User } from '@stores/appStore.js';
 
 // Never import controllers at top level — use lazyController() in routes
 // Never import component files — register them in components/registry.ts
+// lazyController is always defined locally in routes.ts — never imported from @core/router.js
 ```
+
+---
 
 ## State Conventions
 
 ```typescript
-// Local state (in components)
-this.count = useState(0);
-this.count.value++;                            // direct set
-this.count.set(prev => prev + 1);              // functional update
-const unsub = this.count.watch(val => {...}); // subscribe
+// Local state (in components and controllers)
+const count = useState(0);
+count.value++;                               // direct set
+count.set(prev => prev + 1);                 // functional update
+const unsub = count.watch(val => { ... });   // subscribe; call unsub() to stop
 
-// Computed — MUST .dispose() in onUnmount
-this.total = computed(() => this.price.value * this.qty.value);
+// Computed — MUST call .dispose() in onUnmount
+const total = computed(() => price.value * qty.value);
+total.value;          // read-only
+total.dispose();      // call in onUnmount
+
+// effect — runs immediately, re-runs when dependencies change
+const stop = effect(() => {
+    document.title = `Items: ${count.value}`;
+});
+stop(); // dispose
+
+// batch — multiple writes fire each subscriber only once
+batch(() => {
+    store.user.value = fetchedUser;
+    store.isLoading.value = false;
+});
+
+// useSignal — SolidJS-style tuple
+const [getCount, setCount] = useSignal(0);
+getCount();       // read
+setCount(1);      // write
+
+// createStates — batch create
+const { name, email } = createStates({ name: '', email: '' });
 
 // Global state
 import { store } from '@stores/appStore.js';
 store.user.value = userData;
 store.setLoading(true);
+store.setError('Something went wrong');
+store.clearError();
 ```
+
+---
 
 ## Naming Patterns
 
@@ -179,12 +246,17 @@ function handleSubmit(e: SubmitEvent) {}
 
 // Controllers: camelCase + Controller
 export async function dashboardController() {}
+
+// Stores: camelCase + Store
+export const appStore = createStore('app', { user: null });
 ```
+
+---
 
 ## CSS Naming (inside Shadow DOM)
 
 ```css
-/* Match the component name */
+/* Match the component name as block */
 .user-card { }
 .user-card__title { }
 .user-card--highlighted { }
@@ -197,28 +269,62 @@ export async function dashboardController() {}
 }
 ```
 
+---
+
 ## Route Conventions
 
 ```typescript
-// Public route (no controller)
-.register('/about', 'views/pages/public/about.html')
+// src/routes/routes.ts
+import { bustCache } from '@core-utils/cacheBuster.js';
+import type { ControllerFunction } from '@core/router.js';
 
-// Public route with controller
-.register('/login', 'views/pages/public/login.html',
-    lazyController('loginController', '../controllers/login.controller.js'))
+// Always define locally in routes.ts — NOT imported from router
+function lazyController(name: string, path: string): ControllerFunction {
+    return async (...args: any[]) => {
+        const m = await import(bustCache(path));
+        return m[name](...args);
+    };
+}
 
-// Protected route with dynamic param
-.register('/user/:id', 'views/pages/protected/user-detail.html',
-    lazyController('userDetailController', '../controllers/user-detail.controller.js'))
+export function registerRoutes(router: any): void {
+    router
+        // Cache static pages
+        .register('/', 'src/views/public/home.html',
+            lazyController('homeController', '../controllers/home.controller.js'))
+        .cache({ ttl: 300, revalidate: true })
 
-// Protected routes array
+        // Never cache auth pages
+        .register('/login', 'src/views/public/login.html',
+            lazyController('loginController', '../controllers/login.controller.js'))
+
+        // Protected pages with short cache
+        .register('/dashboard', 'src/views/protected/dashboard.html',
+            lazyController('dashboardController', '../controllers/dashboard.controller.js'))
+        .cache({ ttl: 30, revalidate: true })
+
+        // Dynamic route param
+        .register('/user/:id', 'src/views/protected/user-detail.html',
+            lazyController('userDetailController', '../controllers/user-detail.controller.js'));
+}
+
 export const protectedRoutes = ['/dashboard', '/user'];
 ```
+
+---
+
+## HTML Templates (Views)
+
+- View HTML files contain **markup only** — NO `<style>` or `<script>` tags
+- CSS belongs in `src/styles/` (app-wide) or inside component `template()` (Shadow DOM)
+- JS/TS logic belongs in the corresponding controller
+- Shadow DOM component styles are the only exception — they are inside the `.ts` file
+
+---
 
 ## API Conventions
 
 ```typescript
-// api.service.ts wraps fetch with interceptors
+// api.service.ts wraps fetch with auth headers
 await api.get('/endpoint');
 await api.post('/endpoint', { body });
 await api.put('/endpoint', { body });
@@ -227,572 +333,31 @@ await api.delete('/endpoint');
 // Endpoint constants
 import { API_ENDPOINTS } from '@constants/apiEndpoints.js';
 await api.get(API_ENDPOINTS.USERS);
+
+// Use html`` tagged template to escape user-sourced data in rendered HTML
+import { html } from '@core-utils/templates.js';
+container.innerHTML = html`<p>${userData.name}</p>`;  // auto-escaped
+
+// Use sanitizeURL for user-provided URLs
+import { sanitizeURL } from '@core-utils/templates.js';
+link.href = sanitizeURL(userProvidedUrl); // blocks javascript:, vbscript:
 ```
+
+---
 
 ## Testing Conventions
 
 - Unit tests in `tests/unit/`
-- Files named `*.test.ts`
-- Use Vitest: `npm test`
+- File name: `*.test.ts`
+- Run: `npm test`
 - Test pure utilities, formatters, validators
-- Component tests use jsdom
+- Component tests use jsdom + `mountComponent` from `nativecorejs/testing`
 
-## File Naming
-
-### Components
-- **Format**: `kebab-case.ts`
-- **Must have hyphen** (Web Component requirement)
-- **Location**: `src/components/ui/` for reusable components, `src/components/core/` for layout
-- **Examples**: 
-  - ✅ `user-card.ts` → `src/components/ui/user-card.ts`
-  - ✅ `nc-button.ts` → `src/components/ui/nc-button.ts`
-  - ✅ `app-header.ts` → `src/components/core/app-header.ts`
-  - ❌ `usercard.ts` (no hyphen)
-  - ❌ `UserCard.ts` (not kebab-case)
-- **Compiled to**: `dist/components/ui/kebab-case.js`
-- **Registered in**: `src/components/registry.ts` with `./ui/` prefix
-
-### Controllers
-- **Format**: `kebab-case.controller.ts`
-- **Function name**: `camelCaseController`
-- **Examples**:
-  - File: `user-profile.controller.ts`
-  - Export: `export async function userProfileController() { ... }`
-- **Compiled to**: `dist/controllers/kebab-case.controller.js`
-
-### Views
-- **Format**: `kebab-case.html`
-- **Location**: `src/views/public/` or `src/views/protected/`
-- **Examples**: `user-profile.html`, `dashboard.html`
-- **Not compiled**: Served as-is
-
-### Services
-- **Format**: `kebab-case.service.ts`
-- **Export**: camelCase singleton
-- **Examples**: 
-  - File: `auth.service.ts`
-  - Export: `export default new AuthService()`
-
-### Utilities
-- **Format**: `camelCase.ts`
-- **Examples**: `formatters.ts`, `helpers.ts`, `validation.ts`
-
-## Code Structure
-
-### Component Template (TypeScript with Shadow DOM)
 ```typescript
-/**
- * ComponentName Component
- * Brief description
- */
-import { Component, defineComponent } from '@core/component.js';
-import { useState, computed } from '@core/state.js';
-import type { State } from '@core/state.js';
+import { mountComponent, waitFor, fireEvent } from 'nativecorejs/testing';
 
-export class ComponentName extends Component {
-    // REQUIRED: Enable Shadow DOM for style encapsulation
-    static useShadowDOM = true;
-    
-    // Declare typed properties
-    count: State<number>;
-    doubled: State<number>;
-    
-    constructor() {
-        super();
-        // Initialize state
-        this.count = useState(0);
-        // Computed values
-        this.doubled = computed(() => this.count.value * 2);
-    }
-    
-    template() {
-        return `
-            <style>
-                /* Scoped styles - won't leak out */
-                .container { padding: 1rem; }
-            </style>
-            <div class="container">
-                <div id="count">${this.count.value}</div>
-                <div>Doubled: ${this.doubled.value}</div>
-                <button class="increment-btn">+</button>
-            </div>
-        `;
-    }
-    
-    onMount() {
-        // Use event delegation on shadowRoot
-        this.shadowRoot.addEventListener('click', (e) => {
-            if (e.target.matches('.increment-btn')) {
-                this.count.value++;
-            }
-        });
-        
-        // Watch state changes
-        this.count.watch(val => {
-            const el = this.shadowRoot.querySelector('#count');
-            if (el) el.textContent = val;
-        });
-    }
-}
-
-defineComponent('component-name', ComponentName);
+const { element, cleanup } = mountComponent('nc-button', { label: 'Click' });
+await waitFor(() => element.shadowRoot !== null);
+fireEvent(element, 'click');
+cleanup();
 ```
-
-export class ComponentName extends Component {
-    // Declare properties with types
-    count: State<number>;
-    
-    constructor() {
-        super();
-        // Initialize state
-        this.count = useState(0);
-    }
-    
-    template() {
-        return `
-            <style>
-                /* Shadow DOM scoped styles */
-                .component-name {
-                    padding: var(--spacing-md);
-                }
-            </style>
-            <div class="component-name">
-                <div>${this.count.value}</div>
-            </div>
-        `;
-    }
-    
-    onMount() {
-        // Use event delegation on shadowRoot
-        this.shadowRoot.addEventListener('click', (e) => {
-            if ((e.target as HTMLElement).matches('.button')) {
-                this.count.value++;
-            }
-        });
-        
-        // Watch state changes
-        this.count.watch(val => {
-            this.$('#display').textContent = val.toString();
-        });
-    }
-}
-
-defineComponent('component-name', ComponentName);
-```
-
-### Controller Template (TypeScript)
-```typescript
-/**
- * Page Controller
- * Description
- */
-import auth from '../services/auth.service.js';
-import api from '../services/api.service.js';
-
-export async function pageController(params?: Record<string, string>): Promise<(() => void) | void> {
-    const element = document.getElementById('element-id') as HTMLElement;
-    
-    // Load data
-    try {
-        const data = await api.get('/endpoint');
-        
-        // Render
-        element.innerHTML = `...`;
-        
-        // Event listeners
-        const button = document.getElementById('button-id') as HTMLButtonElement;
-        const handleClick = () => {
-            console.log('Clicked');
-        };
-        button?.addEventListener('click', handleClick);
-        
-        // Cleanup function
-        return () => {
-            button?.removeEventListener('click', handleClick);
-        };
-    } catch (error) {
-        console.error('Error:', error);
-        element.innerHTML = '<div>Error loading data</div>';
-    }
-}
-```
-
-### Service Template (TypeScript)
-```typescript
-/**
- * Service Name
- * Description
- */
-class ServiceName {
-    private data: string[] = [];
-    
-    constructor() {
-        // Initialize
-    }
-    
-    method(param: string): void {
-        // Logic with type safety
-        this.data.push(param);
-    }
-}
-
-export default new ServiceName();
-```
-
-## Import Conventions
-
-### Always use .js extension in imports
-```typescript
-// ✅ Correct - import with .js extension
-import { Component } from '../core/component.js';
-import api from '../services/api.service.js';
-
-// ❌ Wrong - no extension
-import { Component } from '../core/component';
-import api from '../services/api.service';
-```
-
-**Why?** ES modules in browsers require extensions. TypeScript compiles `.ts` to `.js`, but imports stay as `.js`.
-
-### Type Imports
-```typescript
-// Import types separately
-import type { State, Computed } from '../core/state.js';
-import type { User } from '../stores/appStore.js';
-```
-
-### Never Import (Lazy Loaded)
-- ❌ Don't import controllers in routes.ts
-- ❌ Don't import components in views
-- ✅ Use `lazyController()` wrapper
-- ✅ Use `componentRegistry.register()`
-
-## TypeScript Conventions
-
-### Type Annotations
-```typescript
-// Always type function parameters and returns
-function calculate(a: number, b: number): number {
-    return a + b;
-}
-
-// Type component properties
-class MyComponent extends Component {
-    count: State<number>;
-    items: State<string[]>;
-}
-```
-
-### Type Assertions
-```typescript
-// Use 'as' for DOM elements
-const button = document.getElementById('btn') as HTMLButtonElement;
-const input = this.$('input') as HTMLInputElement;
-
-// Event targets
-this.shadowRoot.addEventListener('click', (e) => {
-    if ((e.target as HTMLElement).matches('.button')) {
-        // ...
-    }
-});
-```
-
-### Interfaces
-```typescript
-// Define interfaces for data structures
-interface User {
-    id: number;
-    name: string;
-    email: string;
-}
-
-// Use in state
-const user: State<User | null> = useState(null);
-```
-
-## Naming Patterns
-
-### Variables
-```typescript
-// camelCase for most
-const userName: string = 'John';
-const isLoading: boolean = true;
-const userCount: number = 10;
-
-// PascalCase for classes
-class UserService {}
-class Component {}
-
-// UPPER_CASE for constants
-const API_BASE_URL = 'http://...';
-const MAX_RETRIES = 3;
-```
-
-### Functions
-```javascript
-// camelCase
-function getUserData() {}
-async function fetchData() {}
-
-// Controllers: camelCase + "Controller"
-export async function dashboardController() {}
-
-// Event handlers: "handle" prefix
-function handleClick() {}
-function handleSubmit() {}
-```
-
-### CSS Classes
-```javascript
-// kebab-case matching component name
-.user-card { }
-.feature-card { }
-.loading-spinner { }
-
-// BEM for modifiers
-.user-card--highlighted { }
-.user-card__title { }
-```
-
-## Comment Conventions
-
-### File Headers
-```javascript
-/**
- * Component/Service/Controller Name
- * Brief description of purpose
- * 
- * Additional context if needed
- */
-```
-
-### Function Documentation
-```javascript
-/**
- * Brief description
- * @param {Type} paramName - Description
- * @returns {Type} Description
- */
-function myFunction(paramName) {}
-```
-
-### Section Comments
-```javascript
-// ========== Section Name ==========
-
-// Initialize variables
-const x = 10;
-
-// Process data
-data.map(x => x * 2);
-```
-
-## HTML Conventions
-
-### Attributes
-- Use `data-*` for custom attributes
-- Use `id` for unique elements accessed by JS
-- Use `class` for styling
-
-```html
-<div id="unique-element" class="my-component" data-user-id="123">
-```
-
-### Template Structure
-```html
-<div class="component-name">
-    <header class="component-name__header">
-        <!-- Header content -->
-    </header>
-    
-    <main class="component-name__content">
-        <!-- Main content -->
-    </main>
-    
-    <footer class="component-name__footer">
-        <!-- Footer content -->
-    </footer>
-</div>
-```
-
-## State Conventions
-
-### Local State
-```javascript
-// In components
-this.count = useState(0);
-this.name = useState('');
-
-// Access
-this.count.value = 10;
-
-// Watch
-this.count.watch(val => {
-    this.$('#display').textContent = val;
-});
-```
-
-### Global State
-```javascript
-// In stores
-import { useState } from '../core/state.js';
-
-export const store = {
-    user: useState(null),
-    isLoading: useState(false)
-};
-
-// Usage
-import { store } from '../stores/appStore.js';
-store.user.value = userData;
-```
-
-## API Conventions
-
-### Endpoints
-```javascript
-// In apiEndpoints.js
-export const API_ENDPOINTS = {
-    USERS: '/users',
-    USER_DETAIL: (id) => `/users/${id}`,
-    DASHBOARD: '/dashboard/stats'
-};
-
-// Usage
-const data = await api.get(API_ENDPOINTS.USER_DETAIL(123));
-```
-
-### HTTP Methods
-```javascript
-// GET
-await api.get('/endpoint');
-
-// POST
-await api.post('/endpoint', { data });
-
-// PUT
-await api.put('/endpoint', { data });
-
-// DELETE
-await api.delete('/endpoint');
-```
-
-## Error Handling
-
-### Try-Catch Pattern
-```javascript
-try {
-    const data = await api.get('/endpoint');
-    // Success handling
-} catch (error) {
-    // Error already handled by errorHandler
-    // Show user-friendly message
-    element.innerHTML = `
-        <div class="alert alert-error">
-            Failed to load data: ${error.message}
-        </div>
-    `;
-}
-```
-
-## Route Conventions
-
-### Public Routes
-```javascript
-router
-    .register('/', 'views/pages/public/home.html')
-    .register('/about', 'views/pages/public/about.html');
-```
-
-### Protected Routes
-```javascript
-router
-    .register('/dashboard', 'views/pages/protected/dashboard.html',
-        lazyController('dashboardController', '../controllers/dashboard.controller.js'));
-
-// Add to protected array
-export const protectedRoutes = ['/dashboard'];
-```
-
-### Dynamic Routes
-```javascript
-router.register('/user/:id', 'views/pages/protected/user-detail.html',
-    lazyController('userDetailController', '../controllers/user-detail.controller.js'));
-
-// In controller
-export async function userDetailController(params) {
-    const userId = params.id; // From :id
-}
-```
-
-## Testing Conventions
-
-### Test Files
-- **Location**: `tests/unit/`
-- **Naming**: `*.test.js`
-- **Example**: `formatters.test.js`
-
-### Test Structure
-```javascript
-import { describe, it, expect } from 'vitest';
-
-describe('Feature Name', () => {
-    it('should do something', () => {
-        expect(result).toBe(expected);
-    });
-});
-```
-
-## Commit Conventions
-
-Recommended format:
-```
-feat: Add user profile view
-fix: Correct lazy loading issue
-docs: Update architecture guide
-refactor: Simplify auth middleware
-style: Format code with prettier
-test: Add validation tests
-chore: Update dependencies
-```
-
-## Directory Conventions
-
-### Never Create Files In:
-- ❌ `src/` root (except app.js)
-- ❌ Random subdirectories
-
-### Always Use Proper Folders:
-- ✅ Components → `src/components/`
-- ✅ Controllers → `src/controllers/`
-- ✅ Services → `src/services/`
-- ✅ Views → `src/views/pages/public/` or `protected/`
-- ✅ Utils → `src/utils/`
-- ✅ Core → `.nativecore/core/` (framework only)
-
-## Generator Usage
-
-### Always Use Generators
-```bash
-# Don't manually create
-npm run make:component user-card
-npm run make:view profile
-
-# Don't manually delete
-npm run remove:component user-card
-npm run remove:view profile
-```
-
-### Manual Edits
-Only edit these files manually:
-- Styles (`src/styles/`)
-- Tests (`tests/`)
-- Documentation (`docs/`)
-- Configuration (`package.json`, etc.)
-
-Never manually edit:
-- `components/index.js` (use generator)
-- `controllers/index.js` (use generator)
-- Route registrations (use generator)
-
-

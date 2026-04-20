@@ -18,6 +18,7 @@
       "@core/*": [".nativecore/core/*"],
       "@core-utils/*": [".nativecore/utils/*"],
       "@core-types/*": [".nativecore/types/*"],
+      "@dev/*": [".nativecore/dev/*"],
       "@components/*": ["src/components/*"],
       "@config/*": ["src/config/*"],
       "@routes/*": ["src/routes/*"],

@@ -1,27 +1,350 @@
 # GitHub Copilot Instructions - NativeCore Framework
 
 ## CRITICAL: No Emojis
-**NEVER use emojis in code, console.logs, comments, or documentation.**
-- Use plain text only
-- Examples: "Success" not "Success!" or checkmarks
-- Console logs should be professional and emoji-free
+NEVER use emojis in code, console.logs, comments, or documentation. Plain text only.
 
-## CRITICAL: Separation of Concerns in Views
-**NEVER add `<style>` or `<script>` tags inside view HTML files** (`src/views/**/*.html`).
-- HTML files contain **markup only** — no inline styles, no inline scripts
-- CSS belongs in `src/styles/main.css` (app styles) or `src/styles/core.css` (layout)
-- JS/TS logic belongs in the corresponding controller (`src/controllers/`)
+## CRITICAL: Views Contain Markup Only
+NEVER add `<style>` or `<script>` tags inside view HTML files (`src/views/**/*.html`).
+- HTML views contain markup only
+- CSS belongs in `src/styles/` (app-wide) or inside component `template()` (Shadow DOM)
+- JS/TS logic belongs in the corresponding controller
 - Shadow DOM component styles are the only exception — they live inside the component `.ts` file
 
+## CRITICAL: lazyController is Local
+`lazyController` is ALWAYS defined locally in `src/routes/routes.ts`. It is NOT imported from the
+router or from any external module.
+
 ## Framework Context
-You're working with **NativeCore** (formerly nativeCore) - a modern reactive TypeScript SPA framework with:
+NativeCore is a zero-dependency TypeScript SPA framework with:
 - Web Components with Shadow DOM
-- Lazy loading (controllers + components)
-- Reactive signals (useState, computed)
-- Custom router with middleware
-- JWT auth with single-shell architecture
-- Bot-optimized SEO (pre-rendered HTML)
-- Zero runtime dependencies
+- Lazy loading (controllers + components + HTML views)
+- Reactive signals (useState, computed, effect, batch, useSignal)
+- Custom router with middleware, per-route caching, prefetch, and route loaders
+- JWT auth with single-shell architecture (one `index.html`)
+- Bot-optimized SEO via Puppeteer pre-rendering
+- GPU-accelerated animation utilities
+- Plugin API for router lifecycle hooks
+- A11y utilities (trapFocus, announce, roving)
+- Testing utilities (mountComponent, waitFor, fireEvent)
+- 60+ built-in nc-* components
+
+---
+
+## Quick Reference
+
+### Generator Commands
+```bash
+npm run make:component <name>    # Create component in src/components/ui/ + register in registry.ts
+npm run make:view <name>         # Create view HTML + optional controller + update routes.ts
+npm run remove:component <name>  # Remove component + clean registry
+npm run remove:view <name>       # Remove view + controller + clean routes
+npm run compile                  # TypeScript compile with tsc-alias path resolution
+npm run build                    # Production build
+npm run build:bots               # Generate bot pre-rendered HTML for SEO
+```
+
+### Naming
+- Components: `kebab-case` with hyphen (Web Component requirement)
+- Controllers: `camelCaseController` function
+- Views: `kebab-case.html`
+- TypeScript files: `.ts` extension
+
+### Critical File Locations
+| What                  | Where                                       |
+|-----------------------|---------------------------------------------|
+| Entry point           | `src/app.ts` — keep minimal                 |
+| Route definitions     | `src/routes/routes.ts`                      |
+| Custom component reg  | `src/components/registry.ts`                |
+| Framework nc-* reg    | `src/components/frameworkRegistry.ts` (auto)|
+| Controller exports    | `src/controllers/index.ts`                  |
+| App HTML shell        | `index.html`                                |
+| Framework core        | `.nativecore/core/` (do not modify)         |
+| Framework utilities   | `.nativecore/utils/` (import via @core-utils/)|
+
+### Path Aliases (always include `.js` extension)
+```typescript
+@core/         → .nativecore/core/
+@core-utils/   → .nativecore/utils/
+@core-types/   → .nativecore/types/
+@dev/          → .nativecore/dev/       (dev tools only — excluded from prod build)
+@components/   → src/components/
+@services/     → src/services/
+@utils/        → src/utils/
+@stores/       → src/stores/
+@middleware/   → src/middleware/
+@config/       → src/config/
+@routes/       → src/routes/
+@types/        → src/types/
+@constants/    → src/constants/
+```
+
+---
+
+## Code Generation Rules
+
+### New Component
+1. Use generator: `npm run make:component <name>`
+2. Hyphen required in tag name
+3. Extend `Component` from `@core/component.js`
+4. MUST set `static useShadowDOM = true`
+5. Use `defineComponent()` to register
+6. Auto-registered in `registry.ts` with `./ui/` prefix
+7. Use event delegation on `shadowRoot`
+8. Call `computed.dispose()` in `onUnmount`
+
+### New View + Controller + Route
+1. Use generator: `npm run make:view <name>`
+2. Prompts for protected/public and whether to create a controller
+3. Auto-updates `routes.ts`
+
+### Manual: New Protected Route
+1. Create view HTML in `src/views/protected/`
+2. Create controller in `src/controllers/`
+3. Export controller from `src/controllers/index.ts`
+4. Add local `lazyController()` call in `src/routes/routes.ts`
+5. Add path to `protectedRoutes` export in `routes.ts`
+
+---
+
+## Component Pattern (complete example)
+
+```typescript
+import { Component, defineComponent } from '@core/component.js';
+import { useState, computed } from '@core/state.js';
+import type { State, ComputedState } from '@core/state.js';
+
+export class MyWidget extends Component {
+    static useShadowDOM = true;
+
+    count: State<number>;
+    doubled: ComputedState<number>;
+    private _unwatchCount?: () => void;
+
+    constructor() {
+        super();
+        this.count = useState(0);
+        this.doubled = computed(() => this.count.value * 2);
+    }
+
+    template() {
+        return `
+            <style>.widget { padding: 1rem; }</style>
+            <div class="widget">
+                <span id="val">${this.count.value}</span>
+                <button class="inc-btn">+</button>
+            </div>
+        `;
+    }
+
+    onMount() {
+        // Event delegation on shadowRoot
+        this.shadowRoot.addEventListener('click', (e) => {
+            if ((e.target as HTMLElement).matches('.inc-btn')) {
+                this.count.value++;
+            }
+        });
+
+        // Option A: declarative bind (auto-cleanup on disconnect)
+        this.bind(this.count, '#val');
+
+        // Option B: manual watch
+        this._unwatchCount = this.count.watch(val => {
+            this.$('#val')!.textContent = String(val);
+        });
+    }
+
+    onUnmount() {
+        this._unwatchCount?.();
+        this.doubled.dispose();
+    }
+}
+
+defineComponent('my-widget', MyWidget);
+```
+
+---
+
+## Controller Pattern
+
+Every controller MUST return a cleanup function. Use `trackEvents` + `trackSubscriptions`.
+Use `html` tagged template for rendering user-sourced content (auto-escapes values).
+
+```typescript
+import { trackEvents, trackSubscriptions } from '@core-utils/events.js';
+import { html } from '@core-utils/templates.js';
+import api from '@services/api.service.js';
+import { store } from '@stores/appStore.js';
+
+export async function myPageController(
+    params: Record<string, string> = {},
+    _state?: any,
+    loaderData?: unknown
+): Promise<() => void> {
+    const events = trackEvents();
+    const subs = trackSubscriptions();
+
+    const data = await api.get('/endpoint');
+
+    document.getElementById('content')!.innerHTML = html`
+        <h1>Page</h1>
+        <ul id="list"></ul>
+        <button id="save-btn">Save</button>
+    `;
+
+    events.onClick('#save-btn', handleSave);
+    events.delegate('#list', 'click', '.item', handleItemClick);
+    subs.watch(store.isLoading.watch(v => toggleSpinner(v)));
+
+    return () => {
+        events.cleanup();
+        subs.cleanup();
+    };
+
+    function handleSave() {}
+    function handleItemClick(e: Event, target: Element) {}
+    function toggleSpinner(v: boolean) {}
+}
+```
+
+---
+
+## Routing Pattern
+
+```typescript
+// src/routes/routes.ts
+import { bustCache } from '@core-utils/cacheBuster.js';
+import type { ControllerFunction } from '@core/router.js';
+
+// Always define locally — NOT imported from router
+function lazyController(name: string, path: string): ControllerFunction {
+    return async (...args: any[]) => {
+        const m = await import(bustCache(path));
+        return m[name](...args);
+    };
+}
+
+export function registerRoutes(router: any): void {
+    router
+        .register('/', 'src/views/public/home.html',
+            lazyController('homeController', '../controllers/home.controller.js'))
+        .cache({ ttl: 300, revalidate: true })
+
+        .register('/login', 'src/views/public/login.html',
+            lazyController('loginController', '../controllers/login.controller.js'))
+
+        .register('/dashboard', 'src/views/protected/dashboard.html',
+            lazyController('dashboardController', '../controllers/dashboard.controller.js'))
+        .cache({ ttl: 30, revalidate: true });
+}
+
+export const protectedRoutes = ['/dashboard'];
+```
+
+---
+
+## State API Reference
+
+```typescript
+// useState
+const x = useState(0);
+x.value = 5;
+x.set(prev => prev + 1);
+const unsub = x.watch(val => {}); // call unsub() to stop
+
+// computed
+const y = computed(() => x.value * 2);
+y.value;          // read-only
+y.watch(cb);
+y.dispose();      // MUST call to prevent memory leak
+
+// effect — re-runs when dependencies change
+const stop = effect(() => {
+    document.title = `Count: ${x.value}`;
+});
+stop(); // dispose
+
+// batch — fire each subscriber once for multiple writes
+batch(() => {
+    store.user.value = fetchedUser;
+    store.isLoading.value = false;
+});
+
+// useSignal — SolidJS tuple style
+const [getCount, setCount] = useSignal(0);
+getCount(); setCount(1);
+
+// createStates — batch create
+const { name, age } = createStates({ name: '', age: 0 });
+
+// stores (appStore)
+store.user.value
+store.isLoading.value
+store.setUser(user)
+store.setLoading(true)
+store.setError('msg')
+store.clearError()
+
+// stores (uiStore)
+uiStore.sidebarOpen.value
+uiStore.toggleSidebar()
+uiStore.setTheme('dark')
+uiStore.addNotification({ id, message, type })
+uiStore.removeNotification(id)
+```
+
+---
+
+## Architecture Guidelines
+
+### File Placement
+- Controllers → `src/controllers/`
+- Custom UI Components → `src/components/ui/`
+- Core/Layout Components → `src/components/core/`
+- Views → `src/views/public/` or `src/views/protected/`
+- Middleware → `src/middleware/`
+- App utilities → `src/utils/` (formatters, validation, form helpers)
+- Framework utilities → `.nativecore/utils/` via `@core-utils/` (dom, events, templates)
+- Framework core → `.nativecore/core/` (do not modify)
+- Routes → `src/routes/routes.ts`
+
+### Project Structure Summary
+```
+src/
+├── app.ts                    # Entry point — boot sequence only
+├── routes/routes.ts          # All route definitions
+├── components/
+│   ├── core/                 # Layout components
+│   ├── ui/                   # Custom reusable components
+│   ├── registry.ts           # Custom lazy registry — add your components here
+│   ├── frameworkRegistry.ts  # nc-* framework registrations (auto-managed)
+│   ├── appRegistry.ts        # App layout registrations
+│   └── preloadRegistry.ts    # Critical components preloaded on startup
+├── controllers/              # Page controllers (lazy loaded per route)
+├── views/                    # HTML templates (public/ + protected/)
+├── services/                 # api, auth, logger
+├── stores/                   # appStore, uiStore
+├── middleware/               # authMiddleware
+├── utils/                    # App-specific helpers
+├── constants/                # apiEndpoints, routePaths, storageKeys
+├── types/global.d.ts
+└── styles/
+.nativecore/                  # Framework internals — DO NOT MODIFY
+├── core/                     # component, router, state, lazyComponents, gpu-animation, pageCleanupRegistry
+└── utils/                    # dom, events, templates, cacheBuster
+```
+
+---
+
+## Common Mistakes to Avoid
+- Missing `.js` in imports — `import { X } from '@core/component'` fails at runtime
+- Importing controllers directly — use `lazyController()` in routes.ts
+- Using `document.querySelector` in components — use `this.$()` or `this.shadowRoot.querySelector()`
+- Forgetting `computed.dispose()` in `onUnmount` — memory leak
+- Not returning cleanup from controller — listeners accumulate across navigations
+- Adding `<style>` or `<script>` tags to view HTML files
+- Adding logic to `app.ts` — routes go in `src/routes/routes.ts`
+- Using emojis anywhere in code, logs, comments, or docs
+
 
 ## Quick Reference
 

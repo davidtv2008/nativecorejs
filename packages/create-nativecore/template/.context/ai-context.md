@@ -1,8 +1,8 @@
 # AI Assistant Context - NativeCore Framework
 
 ## What is NativeCore
-NativeCore is a zero-dependency TypeScript SPA framework (~15KB). It uses native Web Components
-with Shadow DOM, a custom History API router with middleware, reactive signals (useState/computed),
+NativeCore is a zero-dependency TypeScript SPA framework. It uses native Web Components with
+Shadow DOM, a custom History API router with middleware, reactive signals (useState/computed/effect),
 lazy loading for both components and controllers, JWT auth with a single-shell architecture, and
 Puppeteer-based bot HTML pre-rendering for SEO. No JSX, no virtual DOM.
 
@@ -13,15 +13,17 @@ NEVER use emojis in code, console.logs, comments, or documentation.
 
 ## 1. TypeScript & Import Rules
 
-- Source in `src/**/*.ts`, compiled to `dist/**/*.js`
+- Source in `src/**/*.ts` and `.nativecore/**/*.ts`, compiled to `dist/**/*.js`
 - ALWAYS add `.js` to all imports (ES modules requirement — TypeScript compiles `.ts` to `.js`)
 - Use path aliases for cross-cutting imports; always add `.js` extension
 
 ```typescript
 // Correct
 import { Component, defineComponent } from '@core/component.js';
-import { useState, computed } from '@core/state.js';
+import { useState, computed, effect, batch } from '@core/state.js';
 import { trackEvents, trackSubscriptions } from '@core-utils/events.js';
+import { html, css, escapeHTML, raw, sanitizeURL } from '@core-utils/templates.js';
+import { dom } from '@core-utils/dom.js';
 import api from '@services/api.service.js';
 import { store } from '@stores/appStore.js';
 import type { State, ComputedState } from '@core/state.js';
@@ -30,7 +32,24 @@ import type { State, ComputedState } from '@core/state.js';
 import { Component } from '@core/component';
 ```
 
-Available aliases: `@core/`, `@core-utils/`, `@core-types/`, `@components/`, `@services/`, `@utils/`, `@stores/`, `@middleware/`, `@config/`, `@types/`
+Available aliases:
+- `@core/` → `.nativecore/core/`
+- `@core-utils/` → `.nativecore/utils/`
+- `@core-types/` → `.nativecore/types/`
+- `@dev/` → `.nativecore/dev/`
+- `@components/` → `src/components/`
+- `@services/` → `src/services/`
+- `@utils/` → `src/utils/`
+- `@stores/` → `src/stores/`
+- `@middleware/` → `src/middleware/`
+- `@config/` → `src/config/`
+- `@routes/` → `src/routes/`
+- `@types/` → `src/types/`
+- `@constants/` → `src/constants/`
+
+`@core-utils/` is for framework utilities (dom, events, templates, cacheBuster).
+`@dev/` is for dev-only tooling (hmr, denc-tools, component overlays) — loaded dynamically in `initDevTools()` and excluded from production builds.
+`@utils/` is for app-specific utilities only.
 
 ---
 
@@ -81,9 +100,11 @@ export class UserCard extends Component {
             }
         });
 
-        // Store unsubscribe reference for cleanup
+        // bind() — declarative reactive binding: auto-updates element property when state changes
+        this.bind(this.name, '#greeting', 'textContent');
+        // Or store the unsubscribe reference manually for cleanup
         this._unwatchName = this.name.watch(val => {
-            this.shadowRoot.querySelector('#greeting')!.textContent = `Hello, ${val}`;
+            this.$('#greeting')!.textContent = `Hello, ${val}`;
         });
     }
 
@@ -94,6 +115,24 @@ export class UserCard extends Component {
 }
 
 defineComponent('user-card', UserCard);
+```
+
+### Component API Quick Reference
+
+```typescript
+// Query helpers (scoped to shadowRoot when useShadowDOM = true)
+this.$<HTMLButtonElement>('.btn')       // querySelector shorthand
+this.$$<HTMLLIElement>('.item')        // querySelectorAll shorthand
+
+// Declarative reactive bindings (auto-cleanup on disconnect)
+this.bind(state, '#selector', 'textContent')   // update element property
+this.bindAttr(state, '#selector', 'disabled')  // update attribute
+this.bindAll({ '#name': nameState, '#age': ageState }) // batch bindings
+
+// State
+this.setState({ count: 1 })   // merge + re-render
+this.patchState({ count: 1 }) // merge without re-render
+this.getState()               // read current state object
 ```
 
 Component tag names MUST contain a hyphen (Web Component spec).
@@ -107,20 +146,27 @@ MUST return a cleanup function. Use `trackEvents()` + `trackSubscriptions()`.
 
 ```typescript
 import { trackEvents, trackSubscriptions } from '@core-utils/events.js';
+import { html } from '@core-utils/templates.js';
 import api from '@services/api.service.js';
 import { store } from '@stores/appStore.js';
 
-export async function dashboardController(params: Record<string, string> = {}): Promise<() => void> {
+export async function dashboardController(
+    params: Record<string, string> = {},
+    state?: any,
+    loaderData?: unknown
+): Promise<() => void> {
     const events = trackEvents();
     const subs = trackSubscriptions();
 
-    // Load data
+    // Load data (or use loaderData if a route loader was defined)
     const data = await api.get('/dashboard');
 
-    // Render
-    document.getElementById('content')!.innerHTML = `
+    // Render — use html`` tagged template to auto-escape user content
+    document.getElementById('content')!.innerHTML = html`
         <h1>Dashboard</h1>
-        <ul id="items">${data.items.map((i: any) => `<li class="item" data-id="${i.id}">${i.name}</li>`).join('')}</ul>
+        <ul id="items">
+            ${data.items.map((i: any) => html`<li class="item" data-id="${i.id}">${i.name}</li>`).join('')}
+        </ul>
         <button id="refresh-btn">Refresh</button>
     `;
 
@@ -150,6 +196,7 @@ Controllers:
 - Are named `camelCaseController`
 - Are exported from `src/controllers/index.ts`
 - Are lazy-loaded via `lazyController()` in `routes.ts` — never imported directly
+- Receive `(params, state, loaderData)` — `loaderData` is populated when route has a `loader`
 
 ---
 
@@ -160,6 +207,7 @@ Controllers:
 import { bustCache } from '@core-utils/cacheBuster.js';
 import type { ControllerFunction } from '@core/router.js';
 
+// lazyController is always defined locally — NOT imported from an external module
 function lazyController(name: string, path: string): ControllerFunction {
     return async (...args: any[]) => {
         const m = await import(bustCache(path));
@@ -169,16 +217,52 @@ function lazyController(name: string, path: string): ControllerFunction {
 
 export function registerRoutes(router: any): void {
     router
-        .register('/', 'src/views/public/home.html')
+        // Cache static pages for 5 min, revalidate in background when stale
+        .register('/', 'src/views/public/home.html',
+            lazyController('homeController', '../controllers/home.controller.js'))
+        .cache({ ttl: 300, revalidate: true })
+
+        // Never cache auth pages
         .register('/login', 'src/views/public/login.html',
             lazyController('loginController', '../controllers/login.controller.js'))
+
+        // Protected pages — short cache
         .register('/dashboard', 'src/views/protected/dashboard.html',
             lazyController('dashboardController', '../controllers/dashboard.controller.js'))
+        .cache({ ttl: 30, revalidate: true })
+
+        // Dynamic route params (accessed via params.id in controller)
         .register('/user/:id', 'src/views/protected/user-detail.html',
             lazyController('userDetailController', '../controllers/user-detail.controller.js'));
 }
 
 export const protectedRoutes = ['/dashboard', '/user'];
+```
+
+Router advanced options:
+```typescript
+// Route with a data loader (runs before controller, result passed as loaderData)
+.register('/posts', 'src/views/public/posts.html',
+    lazyController('postsController', '../controllers/posts.controller.js'),
+    {
+        loader: async (params, signal) => {
+            const res = await fetch('/api/posts', { signal });
+            return res.json();
+        }
+    }
+)
+
+// Programmatic navigation
+router.navigate('/dashboard');
+router.replace('/login');
+router.back();
+router.reload();
+router.prefetch('/dashboard'); // Warm the HTML cache
+
+// Router events
+window.addEventListener('pageloaded', (e) => { /* route rendered */ });
+window.addEventListener('nc-route-loading', (e) => { /* loader started */ });
+window.addEventListener('nc-route-loaded', (e) => { /* loader finished */ });
 ```
 
 ---
@@ -188,8 +272,8 @@ export const protectedRoutes = ['/dashboard', '/user'];
 ```typescript
 // src/components/registry.ts
 componentRegistry.register('user-card', './ui/user-card.js');
-componentRegistry.register('nc-button', './ui/nc-button.js');
-// All UI components use the './ui/' prefix
+// All custom UI components use the './ui/' prefix
+// Framework nc-* components are registered in frameworkRegistry.ts — do not touch
 // Components are loaded lazily when their tag appears in the DOM
 // Do NOT import component files directly
 ```
@@ -197,6 +281,236 @@ componentRegistry.register('nc-button', './ui/nc-button.js');
 ---
 
 ## 6. State Management
+
+```typescript
+// useState — mutable reactive value
+const count = useState(0);
+count.value = 5;               // direct set
+count.set(n => n + 1);         // functional update
+const unsub = count.watch(v => console.log(v)); // subscribe; call unsub() to stop
+
+// computed — derived read-only value; auto-tracks dependencies
+const doubled = computed(() => count.value * 2);
+doubled.value;                 // read-only
+doubled.watch(v => ...);       // subscribe to changes
+doubled.dispose();             // MUST call in onUnmount to release subscriptions
+
+// effect — side-effect that re-runs when dependencies change
+const stop = effect(() => {
+    document.title = `Count: ${count.value}`;
+    return () => { /* optional cleanup per-run */ };
+});
+stop(); // dispose the effect
+
+// useSignal — tuple-style (SolidJS pattern)
+const [getCount, setCount] = useSignal(0);
+getCount();           // read
+setCount(5);          // write
+setCount(n => n + 1); // functional update
+
+// batch — defer notifications; each subscriber fires at most once
+batch(() => {
+    store.user.value = fetchedUser;
+    store.isLoading.value = false;
+    store.error.value = null;
+});
+
+// createStates — create multiple states from an object
+const { name, age, role } = createStates({ name: '', age: 0, role: 'user' });
+
+// createStore / getStore — named global store registry (accessible by MetricsPanel)
+export const cartStore = createStore('cart', { items: [] });
+const cart = getStore<CartState>('cart'); // retrieve by name from anywhere
+```
+
+---
+
+## 7. Template Utilities (@core-utils/templates.js)
+
+```typescript
+import { html, css, raw, unsafeHTML, escapeHTML, sanitizeURL } from '@core-utils/templates.js';
+
+// html`` — tagged template; auto-escapes all interpolated values (XSS safe)
+const markup = html`<p>${userInput}</p>`;
+
+// raw() — opt out of escaping for trusted content inside html``
+const trusted = html`<div>${raw(trustedMarkup)}</div>`;
+
+// unsafeHTML`` — no escaping at all; only for fully trusted sources
+const tmpl = unsafeHTML`<b>${apiMarkdown}</b>`;
+
+// css`` — tagged template for CSS strings (no escaping, just for readability)
+const styles = css`.card { color: ${brandColor}; }`;
+
+// escapeHTML(value) — standalone escape function
+const safe = escapeHTML('<script>alert(1)</script>');
+
+// sanitizeURL(url) — blocks javascript:, vbscript:, dangerous data: URIs
+const href = sanitizeURL(userProvidedUrl);
+```
+
+---
+
+## 8. DOM Utilities (@core-utils/dom.js)
+
+```typescript
+import { dom } from '@core-utils/dom.js';
+// Also available globally as window.dom
+
+dom.query('#btn')                          // null-safe querySelector
+dom.queryAll('.items')                     // querySelectorAll
+dom.$('#el')                              // alias for query
+dom.$$('.items')                          // alias for queryAll
+dom.within(shadowRoot, '.child')          // scoped query in parent or ShadowRoot
+dom.withinAll(parent, '.children')        // scoped querySelectorAll
+dom.create('div', { class: 'card' }, 'Hello') // create element with attrs + children
+dom.addClass('#el', 'active')
+dom.removeClass('#el', 'active')
+dom.toggleClass('#el', 'open', force?)
+dom.show('#el')                           // removes display:none
+dom.hide('#el')                           // sets display:none
+const off = dom.listen('#btn', 'click', handler, options?); // returns unsubscribe
+off();
+```
+
+---
+
+## 9. Generator Commands
+
+```bash
+npm run make:component <name>    # Creates src/components/ui/<name>.ts + registers in registry.ts
+npm run make:view <name>         # Creates view HTML + optional controller + updates routes.ts
+npm run remove:component <name>  # Removes component + cleans registry
+npm run remove:view <name>       # Removes view + controller + cleans routes
+npm run compile                  # TypeScript compile with path alias resolution
+npm run build                    # Production build
+npm run build:bots               # Generate bot-optimized pre-rendered HTML for SEO
+```
+
+---
+
+## 10. Accessibility Utilities (nativecorejs/a11y)
+
+```typescript
+import { trapFocus, announce, roving } from 'nativecorejs/a11y';
+// Or inside the framework package:
+import { trapFocus, announce, roving } from '@core/../src/a11y/index.js';
+
+// trapFocus — trap keyboard Tab/Shift+Tab inside a container (e.g. modal)
+const release = trapFocus(modalElement);
+release(); // restore focus to previously focused element
+
+// announce — ARIA live region announcement for screen readers
+announce('Item saved successfully', 'polite');   // or 'assertive'
+
+// roving — roving tabindex for keyboard navigation in a list/toolbar
+const stop = roving(containerElement, '[role="option"]');
+stop(); // remove roving behaviour
+```
+
+---
+
+## 11. Testing Utilities (nativecorejs/testing)
+
+```typescript
+import { mountComponent, waitFor, fireEvent } from 'nativecorejs/testing';
+
+const { element, cleanup } = mountComponent('nc-button', { label: 'Click me' });
+await waitFor(() => element.shadowRoot !== null);
+fireEvent(element, 'click');
+cleanup();
+```
+
+---
+
+## 12. Plugin API
+
+```typescript
+import { registerPlugin, unregisterPlugin, listPlugins } from 'nativecorejs';
+
+registerPlugin({
+    name: 'my-analytics',
+    onInstall() {
+        // called once on registration
+        return () => { /* cleanup when unregistered */ };
+    },
+    onNavigate({ path, params, match }) {
+        analytics.page(path, params);
+    },
+    onNavigated({ path, params, match }) {
+        // called after controller runs + pageloaded fires
+    },
+});
+
+unregisterPlugin('my-analytics');
+listPlugins(); // ['my-analytics', ...]
+```
+
+---
+
+## 13. PageCleanupRegistry (auto safety net)
+
+`effect()`, `computed()`, and `trackEvents()` all auto-register with the PageCleanupRegistry.
+The router flushes all registered cleanups before mounting the next route — even if a controller
+forgets to return a cleanup function. For app-level primitives that must survive navigations:
+
+```typescript
+import { pausePageCleanupCollection, resumePageCleanupCollection } from '@core/pageCleanupRegistry.js';
+
+pausePageCleanupCollection();
+// create long-lived effects/trackers here (e.g. in app.ts)
+resumePageCleanupCollection();
+```
+
+---
+
+## 14. GPU Animation Utilities
+
+```typescript
+import {
+    animate, fadeIn, fadeOut, scaleIn, slideIn,
+    setGPUTransform, prepareForAnimation, cleanupAnimation,
+    createAnimationLoop, rafThrottle, addPassiveListener, GPUAnimation
+} from 'nativecorejs';
+
+// Animate via Web Animations API (GPU accelerated)
+await animate(el, [{ opacity: 0 }, { opacity: 1 }], { duration: 300, easing: 'ease-out' });
+
+// Convenience wrappers
+await fadeIn(el, 200);
+await fadeOut(el, 200);
+await scaleIn(el, 300);
+await slideIn(el, 'left', 300);
+
+// GPU transform via translate3d (forces GPU layer)
+setGPUTransform(el, x, y, z, scale, rotate);
+
+// Prepare element with will-change + contain hints
+prepareForAnimation(el, ['transform', 'opacity']);
+cleanupAnimation(el); // remove hints after animation
+
+// RAF loop with delta time
+const stop = createAnimationLoop((deltaMs) => { /* update */ });
+stop();
+
+// Throttle handler to once per animation frame
+const throttled = rafThrottle((e) => handleScroll(e));
+```
+
+---
+
+## Common Mistakes to Avoid
+
+- Writing `import M from './my.controller.js'` — use `lazyController()` in routes.ts
+- Using `document.querySelector` inside a component — use `this.$()` or `this.shadowRoot.querySelector()`
+- Forgetting `computed.dispose()` in `onUnmount` — memory leak
+- Not returning cleanup from a controller — listeners accumulate across navigations
+- Writing `import { X } from '@core/component'` without `.js` — module not found at runtime
+- Adding UI component to `registry.ts` with wrong prefix — all UI components use `'./ui/'`
+- Importing `lazyController` from router — it is always defined locally in `routes.ts`
+- Adding logic to `app.ts` — routes go in `src/routes/routes.ts`
+- Putting `<style>` or `<script>` tags inside view HTML files — markup only in views
+
 
 ### Local (in components)
 ```typescript
