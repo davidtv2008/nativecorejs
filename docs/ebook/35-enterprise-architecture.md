@@ -390,5 +390,21 @@ afterAll(() => resumePageCleanupCollection());
 
 ---
 
+## Apply This Chapter to Project 4 — EnterpriseKit
+
+> **Project:** EnterpriseKit — Internal Tools Platform  
+> **Feature:** Reorganize EnterpriseKit into feature modules.
+
+Migrate the EnterpriseKit source from a type-based layout (`controllers/`, `components/`, `stores/`) to a feature-module layout (`features/auth/`, `features/users/`, `features/reports/`). Confirm each feature exports only its own routes and that no feature module imports directly from another. Move shared components to `src/shared/components/` with barrel exports.
+
+### Done Criteria
+
+- [ ] `src/features/auth/`, `src/features/users/`, and `src/features/reports/` directories exist with their own controllers, stores, views, and components.
+- [ ] Each feature has a local `routes.ts` imported by the root `src/routes/routes.ts`.
+- [ ] Shared components live in `src/shared/components/` and are re-exported from an `index.ts` barrel.
+- [ ] No feature module file imports from another feature module (`features/auth` ↛ `features/users`).
+
+---
+
 **Back:** [Chapter 34 — Building Plugins](./34-building-plugins.md)  
 **Next:** [Chapter 36 — Framework Comparison](./36-framework-comparison.md)

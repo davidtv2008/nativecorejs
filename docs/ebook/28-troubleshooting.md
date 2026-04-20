@@ -125,5 +125,21 @@ Run this whenever you are stuck:
 
 ---
 
-**Back:** [Chapter 26 — Mobile Patterns](./26-mobile-patterns.md)  
-**Next:** [Chapter 28 — Migration Guide](./28-migration-guide.md)
+## Apply This Chapter to Project 4 — EnterpriseKit
+
+> **Project:** EnterpriseKit — Internal Tools Platform  
+> **Feature:** Scaffold EnterpriseKit and deliberately introduce and fix three bugs using the diagnostic checklists.
+
+Run `npx create-nativecore enterprise-kit` to scaffold the project. Introduce three bugs — one routing failure (wrong HTML path), one component registration failure (missing hyphen in tag name), and one auth redirect loop — then use the diagnostic checklists from this chapter to find and fix each one. Document each root cause and fix with a code comment.
+
+### Done Criteria
+
+- [ ] `npx create-nativecore enterprise-kit` scaffolds the EnterpriseKit project.
+- [ ] Three intentional bugs are introduced, diagnosed, and fixed using this chapter's checklists.
+- [ ] Each fixed bug has a brief code comment with `// BUG FIX:` explaining root cause and resolution.
+- [ ] The auth redirect loop scenario is specifically reproduced and resolved using `router.replace()`.
+
+---
+
+**Back:** [Chapter 27 — Mobile Patterns](./27-mobile-patterns.md)  
+**Next:** [Chapter 29 — Dev Tools and the Performance Overlay](./29-dev-tools-and-performance-overlay.md)

@@ -243,5 +243,21 @@ return () => {
 
 ---
 
-**Back:** [Chapter 23 — CLI Mastery and the Generator Workflow](./23-cli-and-generators.md)  
-**Next:** [Chapter 25 — Internationalization (i18n)](./25-internationalization.md)
+## Apply This Chapter to Project 3 — DevHub
+
+> **Project:** DevHub — Developer Portfolio & Live Feed  
+> **Feature:** Build a live notifications feed with WebSocket and automatic reconnect.
+
+Use `npm run make:view notifications` to create the `/notifications` protected route. Implement its controller to open a WebSocket on mount and close it in the cleanup function. Render incoming messages reactively using `effect()`. Implement the backoff reconnect pattern. Open DevTools → Network → WS and verify no orphaned connections remain after navigating away.
+
+### Done Criteria
+
+- [ ] Navigating to `/notifications` opens a WebSocket connection.
+- [ ] Incoming messages are appended to the notifications list reactively without a full re-render.
+- [ ] Navigating away from `/notifications` closes the WebSocket (verify in DevTools Network → WS).
+- [ ] The reconnect strategy retries with exponential backoff after a disconnect.
+
+---
+
+**Back:** [Chapter 24 — CLI Mastery and the Generator Workflow](./24-cli-and-generators.md)  
+**Next:** [Chapter 26 — Internationalization (i18n)](./26-internationalization.md)

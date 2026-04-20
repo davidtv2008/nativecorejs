@@ -351,5 +351,21 @@ The returned disposer removes the `keydown` listener and restores native tabinde
 
 ---
 
-**Back:** [Chapter 20 — TypeScript Patterns in NativeCoreJS](./20-typescript-patterns.md)  
-**Next:** [Chapter 22 — Testing with Vitest](./22-testing.md)
+## Apply This Chapter to Project 3 — DevHub
+
+> **Project:** DevHub — Developer Portfolio & Live Feed  
+> **Feature:** ARIA-annotate DevHub components and verify keyboard accessibility.
+
+Update `<post-card>` to include `role="article"` and a dynamic `aria-label` that includes the post title. Add `aria-live="polite"` to the live notifications area. Verify all interactive elements are reachable by tab key and operable with Enter/Space. Run the Axe DevTools browser extension and resolve all critical violations on the home page.
+
+### Done Criteria
+
+- [ ] `<post-card>` has `role="article"` and `aria-label="Post: {title}"`.
+- [ ] The notifications list has `aria-live="polite"` so new entries are announced to screen readers.
+- [ ] Every interactive element is reachable by keyboard and has a visible focus ring.
+- [ ] Axe DevTools reports zero critical accessibility violations on the DevHub home page.
+
+---
+
+**Back:** [Chapter 21 — TypeScript Patterns in NativeCoreJS](./21-typescript-patterns.md)  
+**Next:** [Chapter 23 — Testing with Vitest](./23-testing.md)

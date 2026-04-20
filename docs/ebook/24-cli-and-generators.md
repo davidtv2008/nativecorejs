@@ -336,11 +336,25 @@ External resources:
 - **[Component Gallery](https://nativecorejs.dev/gallery)** — community-contributed components
 - **[GitHub — davidtv2008/nativecorejs](https://github.com/davidtv2008/nativecorejs)** — open issues, review the roadmap, and consider contributing
 
-The best way to deepen your understanding is to extend Taskflow: add a `<calendar-view>` component, build a drag-and-drop task board, or integrate a WebSocket for real-time updates (Chapter 24 walks you through exactly that). Every feature is an opportunity to practice the patterns in this book.
-
-Happy building.
+The best way to deepen your understanding is to extend the projects in this book: add a `<calendar-view>` component to Taskflow, build a drag-and-drop product board for ShopBoard, or wire up additional WebSocket channels in DevHub. Every extension is an opportunity to practice the patterns you have learned.
 
 ---
 
-**Back:** [Chapter 22 — Testing with Vitest](./22-testing.md)  
-**Next:** [Chapter 24 — Real-Time Features and WebSockets](./24-real-time-and-websockets.md)
+## Apply This Chapter to Project 3 — DevHub
+
+> **Project:** DevHub — Developer Portfolio & Live Feed  
+> **Feature:** Generate all remaining DevHub views and components using `make:*` commands.
+
+Audit your DevHub project. For every view, component, or controller that exists as a manually created file, delete it and regenerate it with the appropriate `make:*` command. Document the complete generator command history in a comment at the top of `src/routes/routes.ts`.
+
+### Done Criteria
+
+- [ ] Every view in DevHub was created with `npm run make:view`.
+- [ ] Every component in DevHub was created with `npm run make:component` (use `--with-tests` for all feature components).
+- [ ] No manually created `.ts` component or controller files exist in `src/`.
+- [ ] The complete `make:*` command history is documented in a comment block in `src/routes/routes.ts`.
+
+---
+
+**Back:** [Chapter 23 — Testing with Vitest](./23-testing.md)  
+**Next:** [Chapter 25 — Real-Time Features and WebSockets](./25-real-time-and-websockets.md)

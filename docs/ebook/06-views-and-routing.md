@@ -254,5 +254,21 @@ Keys must be **unique within their parent container** and **stable** across re-r
 
 ---
 
-**Back:** [Chapter 04 — The Bind API](./04-bind-api.md)  
-**Next:** [Chapter 06 — Controllers](./06-controllers.md)
+## Apply This Chapter to Project 1 — Taskflow
+
+> **Project:** Taskflow — Personal Task Manager  
+> **Feature:** Verify Taskflow's routing structure and confirm views load correctly.
+
+Review `src/routes/routes.ts` and confirm all three Taskflow routes (`/login`, `/tasks`, `/dashboard`) are registered with the correct HTML files and controller references. Add a `/404` wildcard route pointing to a `not-found.html` view. Navigate to each route in the browser and confirm the correct content loads.
+
+### Done Criteria
+
+- [ ] Navigating to `/tasks` loads `src/views/protected/tasks.html`.
+- [ ] Navigating to `/dashboard` loads `src/views/protected/dashboard.html`.
+- [ ] Navigating to `/nonexistent` shows the 404 view (wildcard route is registered).
+- [ ] `router.start()` is called exactly once, in `src/app.ts`.
+
+---
+
+**Back:** [Chapter 05 — The Bind API](./05-bind-api.md)  
+**Next:** [Chapter 07 — Controllers](./07-controllers.md)

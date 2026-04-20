@@ -187,5 +187,21 @@ A safe migration from an existing codebase:
 
 ---
 
-**Back:** [Chapter 27 — Troubleshooting Guide](./27-troubleshooting.md)  
-**Next:** [Chapter 30 — Framework API Quick Reference](./30-framework-api-quick-reference.md)
+## Apply This Chapter to Project 4 — EnterpriseKit
+
+> **Project:** EnterpriseKit — Internal Tools Platform  
+> **Feature:** Migrate a legacy React component into EnterpriseKit.
+
+Pick any small React component (a counter, a card, or a user avatar with a dropdown). Follow the mental-model mapping table in this chapter to rewrite it as a NativeCoreJS component. Write two tests for the migrated component using `mountComponent`. Confirm no React runtime imports remain in the component file.
+
+### Done Criteria
+
+- [ ] A legacy React component is rewritten as a NativeCoreJS `Component` subclass.
+- [ ] The mental-model mapping table is annotated with personal migration notes in a code comment.
+- [ ] Two or more tests for the migrated component pass with `npm test`.
+- [ ] No React imports (`react`, `react-dom`, JSX) remain in the migrated component file.
+
+---
+
+**Back:** [Chapter 29 — Dev Tools and the Performance Overlay](./29-dev-tools-and-performance-overlay.md)  
+**Next:** [Chapter 31 — Framework API Quick Reference](./31-framework-api-quick-reference.md)

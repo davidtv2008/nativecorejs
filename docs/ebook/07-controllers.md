@@ -484,5 +484,21 @@ window.addEventListener('nc-route-loaded', () => {
 
 ---
 
-**Back:** [Chapter 05 — Views and Routing](./05-views-and-routing.md)  
-**Next:** [Chapter 07 — Authentication](./07-authentication.md)
+## Apply This Chapter to Project 1 — Taskflow
+
+> **Project:** Taskflow — Personal Task Manager  
+> **Feature:** Wire up the tasks controller with reactive state, `effect()`, and `trackEvents()`.
+
+Open `tasks.controller.ts` and implement the full controller structure: DOM refs, state variables, an `effect()` that renders the task list whenever state changes, and `trackEvents()` bindings for the "New Task" button. Return a cleanup function. Verify that navigating away and back to `/tasks` does not produce duplicate event listeners.
+
+### Done Criteria
+
+- [ ] `tasks.controller.ts` follows the standard section structure (Setup, DOM Refs, State, Data Fetch, Reactive Bindings, Events).
+- [ ] An `effect()` renders the task list DOM whenever `tasks.value` changes.
+- [ ] All `trackEvents()` bindings use the `disposers[]` array for cleanup.
+- [ ] Navigating away from `/tasks` and back does not produce duplicate event listeners (verify in DevTools).
+
+---
+
+**Back:** [Chapter 06 — Views and Routing](./06-views-and-routing.md)  
+**Next:** [Chapter 08 — Authentication](./08-authentication.md)

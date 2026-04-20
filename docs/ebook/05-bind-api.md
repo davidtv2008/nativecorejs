@@ -291,5 +291,21 @@ The rule is simple: if you call it on `this` (bind/on), the framework disposes i
 
 ---
 
-**Back:** [Chapter 03 — Reactive State](./03-reactive-state.md)  
-**Next:** [Chapter 05 — Views and Routing](./05-views-and-routing.md)
+## Apply This Chapter to Project 1 — Taskflow
+
+> **Project:** Taskflow — Personal Task Manager  
+> **Feature:** Replace the manual `render()` helper in `<task-stats>` with `bind()` and upgrade `<task-card>` with `bindAttr()`.
+
+Open `task-stats.ts` and replace the `private render()` method with three `this.bind()` calls in `onMount()`. Open `task-card.ts` and add `this.bindAttr(this.status, '.task-card__status', 'data-status')` so the CSS attribute selector drives the badge color without any manual DOM updates.
+
+### Done Criteria
+
+- [ ] `this.bind()` drives `.stats__total`, `.stats__completed`, and `.stats__percentage` in `task-stats.ts`.
+- [ ] The `private render()` helper is removed from `task-stats.ts`.
+- [ ] `this.bindAttr()` drives `data-status` on the status badge in `task-card.ts`.
+- [ ] Opening DevTools Elements panel shows only the changed node updating when a single attribute changes.
+
+---
+
+**Back:** [Chapter 04 — Reactive State](./04-reactive-state.md)  
+**Next:** [Chapter 06 — Views and Routing](./06-views-and-routing.md)

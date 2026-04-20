@@ -30,17 +30,33 @@ This book is not a polemic against React, Vue, or Svelte — all are excellent f
 
 None of these frameworks is wrong. NativeCoreJS occupies a specific point in the design space: small runtime, no virtual DOM, maximum alignment with browser standards, and a strict cleanup discipline that makes long-lived SPAs reliable.
 
-## What You Will Build: Taskflow
+## What You Will Build: Five Projects
 
-Throughout this book you will build **Taskflow**, a personal task management SPA. Here is what the finished app includes:
+This book is structured around **five real projects** that you build from scratch and deploy. Every chapter introduces a framework concept and immediately applies it to the active project — no isolated exercises, no toy demos.
 
-- **Authentication** — sign-in and sign-out with session persistence.
-- **Projects** — create and switch between named projects.
-- **Tasks** — add tasks with a title, description, priority, and due date. Mark them complete. Delete them.
-- **Dashboard** — a live overview showing total tasks, completed tasks, overdue tasks, and a per-project summary.
-- **Protected routing** — unauthenticated users are redirected to the login page; the router restores the intended destination after sign-in.
+### Project 1 — Taskflow (Chapters 00 – 13)
 
-Each chapter introduces a new NativeCoreJS concept and immediately applies it to a real piece of Taskflow. By Chapter 12 the app is complete, tested, and ready to deploy.
+A personal task management SPA with authentication, a live dashboard, and a full task CRUD interface. Taskflow is where you learn the fundamentals: components, reactive state, routing, controllers, auth, API data, forms, and the production build pipeline. By the end of Chapter 13 you will have a deployed app at a real public URL.
+
+### Project 2 — ShopBoard (Chapters 14 – 20)
+
+An e-commerce analytics dashboard with a product catalog, a cart, and a wishlist. ShopBoard is where you apply the advanced routing and architecture layer: dynamic routes, multi-level caching, navigation guards, cross-route global stores, component composition with slots, and a full CSS design-token system with dark mode.
+
+### Project 3 — DevHub (Chapters 21 – 27)
+
+A developer portfolio app with a live project feed, multilingual content, and a mobile-responsive shell. DevHub is where you apply quality and operability: TypeScript types, ARIA accessibility, a Vitest test suite, WebSocket notifications, i18n, and a mobile-first layout with a bottom nav and safe area insets.
+
+### Project 4 — EnterpriseKit (Chapters 28 – 37)
+
+A modular internal tools platform. EnterpriseKit is where you apply enterprise-grade patterns: plugin-based analytics, SSG pre-rendering for marketing pages, feature-module architecture, and a shared component library published to npm. This project also covers the troubleshooting discipline, dev-tools profiling, and migration from legacy frameworks.
+
+### ★ Bonus — Taskflow Mobile (Chapter 32)
+
+The Taskflow app from Project 1 packaged as a native app using Capacitor. You add the Android and iOS native projects, run in the Android Emulator, and produce a signed APK. On macOS you also complete the iOS build workflow and produce an App Store archive.
+
+---
+
+> **How the projects relate:** Each project starts with a fresh `npx create-nativecore` scaffold. Prior concepts carry forward — you are never starting from zero, you are building on patterns you have already shipped. The five projects together cover every framework API, every production concern, and the full spectrum of app complexity.
 
 ## Prerequisites
 
@@ -56,7 +72,22 @@ You do not need prior experience with any other JavaScript framework. If you hav
 
 ---
 
-> **Tip:** All code samples in this book are available in the companion repository. Each chapter has a corresponding branch so you can check out the exact state of Taskflow at any point.
+> **Tip:** All code samples in this book are available in the companion repository. Each chapter has a corresponding branch so you can check out the exact state of any project at any point.
+
+---
+
+## Apply This Chapter to All Five Projects
+
+> **This is the overview chapter.** There is no code to write yet — but there is something specific to do before moving on.
+
+Review the [Project Roadmap in the README](./README.md#the-five-project-path) and write down one sentence for each project describing what *you* personally want to build in it. The projects in this book are templates — you will follow the guided features, but you should already be thinking about how you might extend them.
+
+### Done Criteria
+
+- [ ] You have read the five project summaries and understand which chapters belong to each project.
+- [ ] You have Node.js 20+ installed and `node --version` prints `v20.x.x` or higher.
+- [ ] You have a code editor open and a terminal ready.
+- [ ] You know which deployment target you will use for Project 1 (Netlify, Vercel, or Cloudflare Pages are all free).
 
 ---
 

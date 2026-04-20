@@ -441,5 +441,30 @@ Because NativeCoreJS components are real Web Components, you can:
 
 ---
 
+## Apply This Chapter to Project 4 — EnterpriseKit ✅ Checkpoint
+
+> **Project:** EnterpriseKit — Internal Tools Platform  
+> **Feature:** Publish the EnterpriseKit shared component library to npm.
+
+Create a `packages/ui/` directory in the EnterpriseKit repo. Move at least three shared components into it. Add a `package.json` with `"name": "@enterprise-kit/ui"`, `"main"`, and `"exports"` fields. Build with `tsc`. Test the package in a minimal React sandbox (create-react-app or Vite) by importing and rendering one component. Publish to npm (or an `npm pack` dry-run if you prefer not to publish publicly).
+
+### Done Criteria
+
+- [ ] `packages/ui/` contains at least three NativeCoreJS components with correct `defineComponent` registrations.
+- [ ] The `packages/ui/package.json` has valid `main` and `exports` fields pointing to compiled JS.
+- [ ] The component renders correctly when imported into a minimal React sandbox (no wrappers needed).
+- [ ] `npm pack` produces a `.tgz` archive or `npm publish --access public` succeeds.
+- [ ] EnterpriseKit is live at a public URL with SSG pre-rendering on marketing pages.
+
+### Checkpoint Commit
+
+```bash
+git add .
+git commit -m "✅ Project 4 complete: EnterpriseKit — internal platform deployed + component library published"
+git tag project-4-complete
+```
+
+---
+
 **Back:** [Chapter 36 — Framework Comparison](./36-framework-comparison.md)  
-**Next:** [Ebook Index](./README.md)
+**Next:** [Chapter 32 — Capacitor: Packaging for Android and iOS (Bonus)](./32-capacitor-mobile-deployment.md)

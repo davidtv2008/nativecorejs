@@ -395,5 +395,21 @@ The auth service calls the API to log in. The user store holds the current user 
 
 ---
 
-**Back:** [Chapter 16 — Router Middleware and Navigation Guards](./16-middleware.md)  
-**Next:** [Chapter 18 — Component Composition and Slots](./18-slots-and-composition.md)
+## Apply This Chapter to Project 2 — ShopBoard
+
+> **Project:** ShopBoard — E-commerce Analytics Dashboard  
+> **Feature:** Build `cartStore` and `wishlistStore` with cross-route reactivity.
+
+Create `src/stores/cart.store.ts` exporting `items: State<CartItem[]>` and the actions `addItem`, `removeItem`, and `clearCart`. Create `src/stores/wishlist.store.ts` that persists to `localStorage` on every write using `state.watch()`. Wire the cart item count badge in `app-header` to `cartStore.items.value.length`. Navigate between the catalog and cart several times and confirm cart state is never lost.
+
+### Done Criteria
+
+- [ ] `cartStore` holds `items: CartItem[]` and exposes `addItem`, `removeItem`, and `clearCart` actions.
+- [ ] The cart badge in the header reactively reflects `cartStore.items.value.length`.
+- [ ] `wishlistStore` reads its initial state from `localStorage` and persists changes automatically.
+- [ ] Cart contents survive navigating from `/products` to `/cart` and back.
+
+---
+
+**Back:** [Chapter 17 — Router Middleware and Navigation Guards](./17-middleware.md)  
+**Next:** [Chapter 19 — Component Composition and Slots](./19-slots-and-composition.md)

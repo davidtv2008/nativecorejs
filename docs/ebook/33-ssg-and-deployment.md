@@ -282,5 +282,21 @@ To exclude a route from the sitemap while still pre-rendering it (for example, a
 
 ---
 
-**Back:** [Chapter 32 — Capacitor: Packaging for Android and iOS](./32-capacitor-mobile-deployment.md)  
+## Apply This Chapter to Project 4 — EnterpriseKit
+
+> **Project:** EnterpriseKit — Internal Tools Platform  
+> **Feature:** Pre-render the EnterpriseKit marketing pages and deploy to Cloudflare Pages.
+
+Add a `/`, `/about`, `/pricing`, and `/docs` public route to EnterpriseKit. Run `npm run build:ssg` and confirm `_deploy/` contains pre-rendered HTML for each. Verify the routes in `_deploy/sitemap.xml`. Deploy the `_deploy/` output to Cloudflare Pages and confirm the protected dashboard routes still work after hydration.
+
+### Done Criteria
+
+- [ ] `/`, `/about`, `/pricing`, and `/docs` are pre-rendered to `_deploy/<route>/index.html`.
+- [ ] `_deploy/sitemap.xml` is generated and lists all four public routes with correct canonical URLs.
+- [ ] EnterpriseKit is deployed to Cloudflare Pages using `_deploy/` as the publish directory.
+- [ ] Protected routes (e.g. `/dashboard`) are absent from `_deploy/` but load correctly after hydration.
+
+---
+
+**Back:** [Chapter 31 — Framework API Quick Reference](./31-framework-api-quick-reference.md)  
 **Next:** [Chapter 34 — Building Plugins](./34-building-plugins.md)

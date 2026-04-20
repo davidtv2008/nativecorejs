@@ -258,5 +258,21 @@ Plugin hooks cannot modify route behaviour. If you need to *block* navigation (e
 
 ---
 
+## Apply This Chapter to Project 4 — EnterpriseKit
+
+> **Project:** EnterpriseKit — Internal Tools Platform  
+> **Feature:** Build an analytics plugin and a feature-flag plugin for EnterpriseKit.
+
+Create `src/plugins/analytics.plugin.ts` that sends a page-view event in `onNavigated`. Create `src/plugins/feature-flags.plugin.ts` that fetches a flags config in `onInstall` and exposes `window.__flags.isEnabled(flagName)`. Register both plugins in `src/app.ts` before `router.start()`. Verify that calling `unregisterPlugin('analytics')` stops event sending.
+
+### Done Criteria
+
+- [ ] `analyticsPlugin` calls `console.log('pageview:', ctx.path)` (or a real analytics endpoint) on every `onNavigated`.
+- [ ] `featureFlagPlugin` fetches flags in `onInstall` and exposes `isEnabled(flag)` globally.
+- [ ] Both plugins are registered in `src/app.ts` before `router.start()`.
+- [ ] `unregisterPlugin('analytics')` removes the plugin and no further pageview events are logged.
+
+---
+
 **Back:** [Chapter 33 — SSG and Static Deployment](./33-ssg-and-deployment.md)  
 **Next:** [Chapter 35 — Enterprise Architecture](./35-enterprise-architecture.md)

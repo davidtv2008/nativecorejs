@@ -371,5 +371,21 @@ export async function tasksController(): Promise<() => void> {
 
 ---
 
-**Back:** [Chapter 08 — APIs and Async Data](./08-apis-and-async.md)  
-**Next:** [Chapter 10 — Core Components](./10-core-components.md)
+## Apply This Chapter to Project 1 — Taskflow
+
+> **Project:** Taskflow — Personal Task Manager  
+> **Feature:** Build the "Create Task" form inside an `<nc-modal>`.
+
+Add a "New Task" button to `tasks.html` that opens an `<nc-modal>` containing an `<nc-input>` for the title, an `<nc-select>` for priority, and an `<nc-date-picker>` for the due date. Validate that the title is not empty before submitting. On success, call `api.post('/tasks', body)`, close the modal, and show an `<nc-toast>` confirmation.
+
+### Done Criteria
+
+- [ ] Clicking "New Task" opens an `<nc-modal>` with the create-task form.
+- [ ] Submitting with an empty title shows an error state on the `<nc-input>` field.
+- [ ] `<nc-select>` defaults to `"medium"` priority.
+- [ ] Successful submission calls `api.post('/tasks')`, closes the modal, and shows a success toast.
+
+---
+
+**Back:** [Chapter 09 — APIs and Async](./09-apis-and-async.md)  
+**Next:** [Chapter 11 — Core Components](./11-core-components.md)

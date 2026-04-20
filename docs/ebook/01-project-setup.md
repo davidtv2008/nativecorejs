@@ -275,5 +275,21 @@ After running these, `src/routes/routes.ts` will have the new routes appended in
 
 ---
 
+## Apply This Chapter to Project 1 — Taskflow
+
+> **Project:** Taskflow — Personal Task Manager  
+> **Feature:** Scaffold the project, start the dev server, and create the three core views.
+
+Run the CLI scaffolder for Taskflow, start the dev server, and use `make:view` to create the `/login`, `/tasks`, and `/dashboard` routes. Confirm all three routes load in the browser before moving to Chapter 02.
+
+### Done Criteria
+
+- [ ] `npm create nativecore@latest taskflow` completes without errors.
+- [ ] `npm run dev` opens the app at `http://localhost:8000`.
+- [ ] `/login`, `/tasks`, and `/dashboard` routes are registered in `src/routes/routes.ts`.
+- [ ] The NativeCoreJS dev tools panel is visible in the browser on `localhost`.
+
+---
+
 **Back:** [Chapter 00 — Introduction](./00-introduction.md)  
 **Next:** [Chapter 02 — First Component](./02-first-component.md)

@@ -292,5 +292,21 @@ const projects = await http.post('/api/projects', payload, {
 
 ---
 
-**Back:** [Chapter 07 — Authentication](./07-authentication.md)  
-**Next:** [Chapter 09 — Forms and Validation](./09-forms-and-validation.md)
+## Apply This Chapter to Project 1 — Taskflow
+
+> **Project:** Taskflow — Personal Task Manager  
+> **Feature:** Load tasks from the mock API with loading and error states.
+
+Update `tasks.controller.ts` to call `api.getCached('/tasks', { ttl: 60_000, tags: ['tasks'] })` on mount. Show a loading skeleton while the request is in flight and an error message if it fails. Add a call to `api.post('/tasks', body)` in the create-task handler and confirm the task list updates without a page refresh.
+
+### Done Criteria
+
+- [ ] `api.getCached('/tasks')` populates the `tasks` state on controller mount.
+- [ ] A loading indicator is visible while the API request is in flight.
+- [ ] An inline error message renders if the fetch fails (simulate with a network error in DevTools).
+- [ ] `api.post('/tasks', body)` creates a new task and the task list updates reactively.
+
+---
+
+**Back:** [Chapter 08 — Authentication](./08-authentication.md)  
+**Next:** [Chapter 10 — Forms and Validation](./10-forms-and-validation.md)

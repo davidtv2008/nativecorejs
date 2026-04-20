@@ -235,9 +235,33 @@ Over the course of the first twelve chapters you learned how the **Component bas
 
 The production chapter showed you that the output of `npm run build` is a plain static site that deploys to any CDN in seconds, can be enhanced with a service worker for offline support, and scales gracefully through lazy controllers and route caching.
 
-But there is more to explore. The next chapters take you deeper into the framework's routing system, caching strategies, global state, component composition, TypeScript patterns, accessibility, testing, and the generator workflow.
+Project 1 is complete. In the next chapters you will start Project 2 — ShopBoard — applying the advanced routing, caching, and architecture patterns to a fresh app.
 
 ---
 
-**Back:** [Chapter 11 — Advanced Patterns](./11-advanced-patterns.md)  
-**Next:** [Chapter 13 — Dynamic Routes, URL Parameters, and Wildcards](./13-dynamic-routes.md)
+## Apply This Chapter to Project 1 — Taskflow ✅ Checkpoint
+
+> **Project:** Taskflow — Personal Task Manager  
+> **Feature:** Build and deploy Taskflow to a public URL.
+
+Run `npm run build`, serve `dist/` locally with `node server.js`, and confirm the app works from the compiled output. Then deploy to Netlify, Vercel, or Cloudflare Pages using the `dist/` folder as the publish directory.
+
+### Done Criteria
+
+- [ ] `npm run build` completes without TypeScript errors.
+- [ ] The compiled `dist/` folder contains `app.js` and all view HTML files.
+- [ ] The app loads correctly when served from `dist/` (`node server.js`).
+- [ ] Taskflow is live at a public URL and the login, tasks, and dashboard flows work end-to-end.
+
+### Checkpoint Commit
+
+```bash
+git add .
+git commit -m "✅ Project 1 complete: Taskflow — task manager deployed"
+git tag project-1-complete
+```
+
+---
+
+**Back:** [Chapter 12 — Advanced Patterns](./12-advanced-patterns.md)  
+**Next:** [Chapter 14 — Dynamic Routes, URL Parameters, and Wildcards](./14-dynamic-routes.md)

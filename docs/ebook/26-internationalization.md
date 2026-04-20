@@ -227,5 +227,21 @@ if (switcherEl) switcherEl.value = locale.value;
 
 ---
 
-**Back:** [Chapter 24 — Real-Time Features and WebSockets](./24-real-time-and-websockets.md)  
-**Next:** [Chapter 26 — Mobile Patterns](./26-mobile-patterns.md)
+## Apply This Chapter to Project 3 — DevHub
+
+> **Project:** DevHub — Developer Portfolio & Live Feed  
+> **Feature:** Add `en-US`, `es-MX`, and `fr-FR` locale support with a locale switcher.
+
+Create `src/stores/locale.store.ts` and `src/utils/i18n.ts` with translation keys for all DevHub UI strings. Add a locale switcher `<nc-select>` to the DevHub header. Format post timestamps with `Intl.DateTimeFormat` and view counts with `Intl.NumberFormat`. Verify that switching locale updates all displayed strings without a page reload.
+
+### Done Criteria
+
+- [ ] `src/stores/locale.store.ts` persists the active locale to `localStorage`.
+- [ ] `t('home.hero.title')` returns the correct string in all three locales.
+- [ ] Dates and numbers use `Intl.DateTimeFormat` and `Intl.NumberFormat` with the active locale.
+- [ ] Switching locale in the header updates all translated strings reactively without a page reload.
+
+---
+
+**Back:** [Chapter 25 — Real-Time Features and WebSockets](./25-real-time-and-websockets.md)  
+**Next:** [Chapter 27 — Mobile Patterns](./27-mobile-patterns.md)

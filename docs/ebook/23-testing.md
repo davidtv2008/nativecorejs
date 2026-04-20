@@ -544,5 +544,21 @@ The generated test file includes `mountComponent`, `waitFor`, `afterEach` cleanu
 
 ---
 
-**Back:** [Chapter 21 — Accessibility and ARIA](./21-accessibility.md)  
-**Next:** [Chapter 23 — CLI Mastery and the Generator Workflow](./23-cli-and-generators.md)
+## Apply This Chapter to Project 3 — DevHub
+
+> **Project:** DevHub — Developer Portfolio & Live Feed  
+> **Feature:** Write a full test suite for DevHub's stores, controllers, and components.
+
+Create tests for the posts store (state changes, computed values), the home controller (verify it populates the post list), and the `<post-card>` component (attribute rendering). Target 100% coverage of all store actions. Run `npm test` and confirm all tests pass.
+
+### Done Criteria
+
+- [ ] `tests/unit/post.store.test.ts` covers `useState`, `computed`, and store actions for the posts store.
+- [ ] `tests/unit/home.controller.test.ts` verifies the home controller populates the post list state.
+- [ ] `tests/unit/post-card.test.ts` verifies `<post-card>` renders correctly with all attribute combinations.
+- [ ] `npm test` reports all suites passing with zero skipped tests.
+
+---
+
+**Back:** [Chapter 22 — Accessibility and ARIA](./22-accessibility.md)  
+**Next:** [Chapter 24 — CLI Mastery and the Generator Workflow](./24-cli-and-generators.md)

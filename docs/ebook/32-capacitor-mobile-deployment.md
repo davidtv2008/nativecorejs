@@ -304,5 +304,30 @@ Write tests for business logic in Vitest (they run against `happy-dom`, no nativ
 
 ---
 
+## Apply This Chapter to Bonus Project — Taskflow Mobile ★ Checkpoint
+
+> **Project:** Taskflow Mobile — Native Android & iOS  
+> **Feature:** Package the Taskflow app from Project 1 as a native Android and iOS app using Capacitor.
+
+Run `npx create-nativecore taskflow-mobile --capacitor` (or add Capacitor to your existing Taskflow project). Add the Android platform, sync, and run in the Android Emulator. Produce a signed APK from Android Studio. If on macOS, add the iOS platform, sync, and run in the iOS Simulator.
+
+### Done Criteria
+
+- [ ] `npx create-nativecore taskflow-mobile --capacitor` scaffolds the project with `capacitor.config.ts` and `cap:*` scripts.
+- [ ] `npm run cap:add:android` generates the `android/` native project without errors.
+- [ ] The app opens and is functional in the Android Emulator (login, tasks, and dashboard routes work).
+- [ ] A signed debug APK is produced via Android Studio's "Build → Build Bundle(s)/APK(s)".
+- [ ] *(macOS only)* `npm run cap:add:ios` generates the `ios/` project and the app opens in the iOS Simulator.
+
+### Checkpoint Commit
+
+```bash
+git add .
+git commit -m "🚀 Bonus project complete: Taskflow Mobile — Android APK built, iOS workflow ready"
+git tag bonus-mobile-complete
+```
+
+---
+
 **Back:** [Chapter 31 — Framework API Quick Reference](./31-framework-api-quick-reference.md)  
 **Next:** [Chapter 33 — SSG and Static Deployment](./33-ssg-and-deployment.md)

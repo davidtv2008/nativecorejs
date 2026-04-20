@@ -201,5 +201,30 @@ nc-bottom-nav {
 
 ---
 
-**Back:** [Chapter 25 — Internationalization (i18n)](./25-internationalization.md)  
-**Next:** [Chapter 27 — Troubleshooting Guide](./27-troubleshooting.md)
+## Apply This Chapter to Project 3 — DevHub ✅ Checkpoint
+
+> **Project:** DevHub — Developer Portfolio & Live Feed  
+> **Feature:** Add a mobile shell with `<nc-drawer>` navigation and `<nc-bottom-nav>`, then deploy.
+
+Add a hamburger button to the DevHub header that opens an `<nc-drawer>` with the full site navigation. Add `<nc-bottom-nav>` with four primary destination tabs fixed at the viewport bottom. Apply `env(safe-area-inset-*)` insets to the bottom nav and the header. Verify tap targets, deploy DevHub to a public URL, and open it on a real mobile device or the Chrome DevTools device emulator.
+
+### Done Criteria
+
+- [ ] `<nc-drawer>` opens from the hamburger button and closes on backdrop click or Escape.
+- [ ] `<nc-bottom-nav>` shows the four primary DevHub destinations fixed at the viewport bottom.
+- [ ] Safe area insets are applied via `env(safe-area-inset-*)` to the header and bottom nav.
+- [ ] All tap targets are ≥ 44×44px (verify with DevTools ruler tool).
+- [ ] DevHub is live at a public URL and `npm test` still passes.
+
+### Checkpoint Commit
+
+```bash
+git add .
+git commit -m "✅ Project 3 complete: DevHub — portfolio app deployed with a11y, tests, and i18n"
+git tag project-3-complete
+```
+
+---
+
+**Back:** [Chapter 26 — Internationalization (i18n)](./26-internationalization.md)  
+**Next:** [Chapter 28 — Troubleshooting Guide](./28-troubleshooting.md)

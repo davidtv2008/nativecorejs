@@ -217,6 +217,22 @@ You never need to manually change the attribute — just leave `mode="dev"` in y
 
 ---
 
+## Apply This Chapter to Project 1 — Taskflow
+
+> **Project:** Taskflow — Personal Task Manager  
+> **Feature:** Add a root error boundary and a nested boundary around the dashboard widget area.
+
+Wrap `#main-content` in `<nc-error-boundary mode="dev">` in `index.html`. Then add a second nested boundary around the section of the dashboard view that holds the task stats widget. Trigger a deliberate throw in `<task-card>` to confirm the dev panel appears.
+
+### Done Criteria
+
+- [ ] `<nc-error-boundary mode="dev">` wraps `#main-content` in `index.html`.
+- [ ] A nested boundary wraps the `<task-stats>` area in `dashboard.html`.
+- [ ] Adding `throw new Error('test')` in `<task-card>.onMount()` shows the debug panel.
+- [ ] `npm run build` swaps `mode="dev"` to `mode="production"` in the compiled HTML output.
+
+---
+
 **Back:** [Chapter 02 — First Component](./02-first-component.md)
 **Next:** [Chapter 04 — Reactive State](./04-reactive-state.md)
 

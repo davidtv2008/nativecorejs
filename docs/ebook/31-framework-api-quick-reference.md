@@ -157,5 +157,21 @@ For built-in `nc-*` components and their attributes/events, use:
 
 ---
 
-**Back:** [Chapter 29 — Error Boundaries](./29-error-boundaries.md)  
-**Next:** [Chapter 32 — Capacitor: Packaging for Android and iOS](./32-capacitor-mobile-deployment.md)
+## Apply This Chapter to Project 4 — EnterpriseKit
+
+> **Project:** EnterpriseKit — Internal Tools Platform  
+> **Feature:** Validate that every API used in Projects 1–4 is covered by this reference.
+
+Scan every controller, component, and store file you have written across all four projects. For each framework API call, locate its entry in this reference and verify the signature you used matches. Note any APIs you used but cannot find here — these are candidates for documentation contributions.
+
+### Done Criteria
+
+- [ ] All NativeCoreJS APIs used in Projects 1–4 are found in this reference chapter.
+- [ ] Any undocumented helpers are listed in a `// TODO: document` comment in your project's README.
+- [ ] Path aliases in `tsconfig.json` match every `@core/*` import listed in the Router APIs table.
+- [ ] `tsc --noEmit` in all four projects still passes after your review.
+
+---
+
+**Back:** [Chapter 30 — Migration Guide](./30-migration-guide.md)  
+**Next:** [Chapter 33 — SSG and Static Deployment](./33-ssg-and-deployment.md)
