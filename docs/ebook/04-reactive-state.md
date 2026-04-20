@@ -330,5 +330,21 @@ batch(() => {
 
 ---
 
-**Back:** [Chapter 02 — First Component](./02-first-component.md)  
-**Next:** [Chapter 04 — The Bind API](./04-bind-api.md)
+## Apply This Chapter to Project 1 — Taskflow
+
+> **Project:** Taskflow — Personal Task Manager  
+> **Feature:** Build the `<task-stats>` component with live counters and a `batch()` update.
+
+Generate `task-stats` with `npm run make:component task-stats`. Implement `total`, `completed`, and `percentage` as `useState`/`computed` values. Wire `attributeChangedCallback` to update the state. Use `batch()` in the mock data-loader function that sets both `total` and `completed` at once. Add the component to `dashboard.html` and verify it updates from the browser console.
+
+### Done Criteria
+
+- [ ] `src/components/ui/task-stats.ts` exists and shows total, completed, and percentage.
+- [ ] Setting the `total` and `completed` attributes from the browser console updates all three stats.
+- [ ] `batch()` is used whenever two or more state values are set together (e.g. in the data loader).
+- [ ] `this.percentage.dispose()` is called in `onUnmount()` to release the computed subscription.
+
+---
+
+**Back:** [Chapter 03 — Error Boundaries](./03-error-boundaries.md)  
+**Next:** [Chapter 05 — The Bind API](./05-bind-api.md)

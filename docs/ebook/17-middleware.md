@@ -308,5 +308,21 @@ State is also available in controllers (as a second argument after `params`), an
 
 ---
 
-**Back:** [Chapter 15 — API Data Caching and Invalidation](./15-api-caching.md)  
-**Next:** [Chapter 17 — Global Stores and Cross-Route State](./17-global-stores.md)
+## Apply This Chapter to Project 2 — ShopBoard
+
+> **Project:** ShopBoard — E-commerce Analytics Dashboard  
+> **Feature:** Add a cart auth guard and a checkout "save-on-navigate" guard.
+
+Register a middleware that redirects unauthenticated users away from `/cart` and `/checkout`. Add a second middleware that checks `cartStore.items.value.length > 0` and returns `false` (cancelling navigation) with a confirmation message when the user tries to leave `/checkout` with items in their cart.
+
+### Done Criteria
+
+- [ ] Navigating to `/cart` or `/checkout` without a token redirects to `/login` using `router.replace()`.
+- [ ] The "save-on-navigate" guard prevents leaving `/checkout` when the cart is non-empty (verify by clicking the back button mid-checkout).
+- [ ] Logging in from the auth redirect restores the user to `/cart`.
+- [ ] The middleware analytics logger calls `console.log(route.path)` on every navigation (confirm in the console).
+
+---
+
+**Back:** [Chapter 16 — API Data Caching and Invalidation](./16-api-caching.md)  
+**Next:** [Chapter 18 — Global Stores and Cross-Route State](./18-global-stores.md)

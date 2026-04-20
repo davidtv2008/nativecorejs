@@ -280,5 +280,21 @@ Keep this map updated as Taskflow grows. A missing entry means stale data will l
 
 ---
 
-**Back:** [Chapter 14 — Route Caching and Prefetching](./14-route-caching.md)  
-**Next:** [Chapter 16 — Router Middleware and Navigation Guards](./16-middleware.md)
+## Apply This Chapter to Project 2 — ShopBoard
+
+> **Project:** ShopBoard — E-commerce Analytics Dashboard  
+> **Feature:** Cache product API data with tag-based invalidation.
+
+Update the products controller to call `api.getCached('/products', { ttl: 60_000, tags: ['products'] })`. Use `['product', params.id]` as the `queryKey` for product detail pages. After a simulated "purchase" action, call `api.invalidateTags(['products'])` and verify in the console that the next catalog visit re-fetches data from the network.
+
+### Done Criteria
+
+- [ ] The product list controller uses `getCached('/products', { ttl: 60_000, tags: ['products'] })`.
+- [ ] Each product detail controller uses `queryKey: ['product', params.id]`.
+- [ ] After `api.invalidateTags(['products'])`, the next catalog visit triggers a network request.
+- [ ] The Network tab confirms no duplicate requests on repeated catalog navigation within the TTL window.
+
+---
+
+**Back:** [Chapter 15 — Route Caching and Prefetching](./15-route-caching.md)  
+**Next:** [Chapter 17 — Router Middleware and Navigation Guards](./17-middleware.md)

@@ -2100,5 +2100,21 @@ npm run remove:component task-card
 
 ---
 
-**Back:** [Chapter 09 — Forms and Validation](./09-forms-and-validation.md)  
-**Next:** [Chapter 11 — Advanced Patterns](./11-advanced-patterns.md)
+## Apply This Chapter to Project 1 — Taskflow
+
+> **Project:** Taskflow — Personal Task Manager  
+> **Feature:** Use `<nc-table>`, `<nc-badge>`, `<nc-tabs>`, and `<nc-toast>` in the Taskflow dashboard.
+
+Replace the raw `<ul>` task list in `dashboard.html` with an `<nc-table>`. Wrap priority values with `<nc-badge variant="warning|danger|success">`. Organise the dashboard into tabs (All Tasks / In Progress / Done) using `<nc-tabs>`. Show an `<nc-toast>` after completing a task.
+
+### Done Criteria
+
+- [ ] The dashboard task list uses `<nc-table>` with column definitions for title, priority, and due date.
+- [ ] Task priority values are displayed with `<nc-badge>` using the correct variant per priority level.
+- [ ] Dashboard sections are organized in `<nc-tabs>` with full keyboard navigation (arrow keys + Enter).
+- [ ] An `<nc-toast variant="success">` appears after a task is marked complete.
+
+---
+
+**Back:** [Chapter 10 — Forms and Validation](./10-forms-and-validation.md)  
+**Next:** [Chapter 12 — Advanced Patterns](./12-advanced-patterns.md)

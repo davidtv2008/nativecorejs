@@ -458,5 +458,21 @@ The cases where a mainstream framework is clearly preferable:
 
 ---
 
+## Apply This Chapter to Project 4 — EnterpriseKit
+
+> **Project:** EnterpriseKit — Internal Tools Platform  
+> **Feature:** Write an Architecture Decision Record (ADR) documenting the framework choice for EnterpriseKit.
+
+Create `docs/adr/001-framework-choice.md` in the EnterpriseKit project. Write a brief ADR that references at least three patterns from this chapter's comparison table, acknowledges one area where a mainstream framework would have been preferable, and records the decision with a rationale and trade-off analysis.
+
+### Done Criteria
+
+- [ ] `docs/adr/001-framework-choice.md` exists in the EnterpriseKit project.
+- [ ] The ADR references at least three comparison patterns (e.g. reactive state, routing, global state).
+- [ ] The ADR includes a "Considered alternatives" section noting at least one mainstream framework.
+- [ ] The ADR is committed to the repository and readable without further context.
+
+---
+
 **Back:** [Chapter 35 — Enterprise Architecture](./35-enterprise-architecture.md)  
 **Next:** [Chapter 37 — Using NativeCoreJS Components in Other Frameworks](./37-web-components-in-other-frameworks.md)

@@ -415,5 +415,21 @@ const token = localStorage.getItem(STORAGE_KEYS.ACCESS_TOKEN);
 
 ---
 
-**Back:** [Chapter 19 — Styling, Theming, and CSS Custom Properties](./19-styling-and-theming.md)  
-**Next:** [Chapter 21 — Accessibility and ARIA](./21-accessibility.md)
+## Apply This Chapter to Project 3 — DevHub
+
+> **Project:** DevHub — Developer Portfolio & Live Feed  
+> **Feature:** Type all API response shapes and custom events for DevHub.
+
+Create `src/types/index.ts` with interfaces for `Post`, `Project`, `Comment`, and `User`. Update every `api.get()` and `api.post()` call in DevHub's controllers to cast the result to the correct type. Type the custom events emitted by `<post-card>` and `<project-badge>` using `CustomEvent<T>`. Run `tsc --noEmit` and confirm zero errors.
+
+### Done Criteria
+
+- [ ] `src/types/index.ts` exports `Post`, `Project`, `Comment`, and `User` interfaces.
+- [ ] Every `api.get()` / `api.post()` call in DevHub is typed at the call site.
+- [ ] Custom events from `<post-card>` use typed `CustomEvent<{ postId: string }>` in both emit and listener.
+- [ ] `tsc --noEmit` passes with zero TypeScript errors.
+
+---
+
+**Back:** [Chapter 20 — Styling, Theming, and CSS Custom Properties](./20-styling-and-theming.md)  
+**Next:** [Chapter 22 — Accessibility and ARIA](./22-accessibility.md)

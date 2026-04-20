@@ -237,5 +237,21 @@ On repeated navigation patterns — which are extremely common in task managemen
 
 ---
 
-**Back:** [Chapter 13 — Dynamic Routes, URL Parameters, and Wildcards](./13-dynamic-routes.md)  
-**Next:** [Chapter 15 — API Data Caching and Invalidation](./15-api-caching.md)
+## Apply This Chapter to Project 2 — ShopBoard
+
+> **Project:** ShopBoard — E-commerce Analytics Dashboard  
+> **Feature:** Apply a caching strategy to the product catalog and product detail routes.
+
+Add `.cache({ ttl: 300, revalidate: true })` to the `/products` route and `.cache({ ttl: 60, revalidate: true })` to `/products/:id`. Verify in DevTools that the products HTML file is not re-fetched on back navigation. Test `router.bustCache('/products')` from the browser console and confirm the cache is cleared.
+
+### Done Criteria
+
+- [ ] `/products` uses `.cache({ ttl: 300, revalidate: true })`.
+- [ ] `/products/:id` uses `.cache({ ttl: 60, revalidate: true })`.
+- [ ] The Network tab confirms no HTML re-fetch on back navigation after the first visit.
+- [ ] `router.bustCache('/products')` in the console clears the cache and the next navigation re-fetches.
+
+---
+
+**Back:** [Chapter 14 — Dynamic Routes, URL Parameters, and Wildcards](./14-dynamic-routes.md)  
+**Next:** [Chapter 16 — API Data Caching and Invalidation](./16-api-caching.md)

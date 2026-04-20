@@ -327,5 +327,21 @@ export async function tasksController(): Promise<() => void> {
 
 ---
 
-**Back:** [Chapter 10 — Core Components](./10-core-components.md)  
-**Next:** [Chapter 12 — Going to Production](./12-production.md)
+## Apply This Chapter to Project 1 — Taskflow
+
+> **Project:** Taskflow — Personal Task Manager  
+> **Feature:** Add a `<project-filter>` component and a global `taskStore`.
+
+Create `src/stores/task.store.ts` exporting `tasks`, `loadingTasks`, `taskCount`, and `doneTasks` as module-level state. Migrate the tasks controller to read from and write to `taskStore` instead of local state. Build a `<project-filter>` component that emits `project-filter-change` and wire the tasks controller to filter `taskStore.tasks` by the selected project ID. Confirm cross-view reactivity: the dashboard badge updates when the task list changes.
+
+### Done Criteria
+
+- [ ] `src/stores/task.store.ts` exports `tasks`, `loadingTasks`, and derived computeds (`taskCount`, `doneTasks`).
+- [ ] The dashboard badge reacts to `taskStore.tasks.value` changes made by the tasks controller.
+- [ ] `<project-filter>` emits `project-filter-change` with `{ projectId }` in the event detail.
+- [ ] `batch()` wraps the store's API response handler to coalesce `tasks` and `loading` updates.
+
+---
+
+**Back:** [Chapter 11 — Core Components](./11-core-components.md)  
+**Next:** [Chapter 13 — Production](./13-production.md)

@@ -358,9 +358,25 @@ if (navState.fromView === 'kanban') {
 
 ## Built-in 404 Behaviour
 
-If no route matches and you haven't registered a `/*` wildcard, the router simply does nothing — the current view stays visible and the URL does not change. Registering a `/*` wildcard is the idiomatic way to show a proper 404 experience. The router itself does not render a built-in error page; the wildcard route *is* your 404 page.
+If no route matches and you haven't registered a `/*` wildcard, the router simply does nothing — the current view stays visible and the URL does not change. Registering a `/*` wildcard route is the idiomatic way to show a proper 404 experience. The router itself does not render a built-in error page; the wildcard route *is* your 404 page.
 
 ---
 
-**Back:** [Chapter 12 — Going to Production](./12-production.md)  
-**Next:** [Chapter 14 — Route Caching and Prefetching](./14-route-caching.md)
+## Apply This Chapter to Project 2 — ShopBoard
+
+> **Project:** ShopBoard — E-commerce Analytics Dashboard  
+> **Feature:** Scaffold ShopBoard and add a `/products/:id` product detail page.
+
+Run `npx create-nativecore shopboard` to scaffold the new project. Use `npm run make:view` to create `/products` (the catalog) and `/products/:id` (the product detail page with a controller that reads `params.id`). Add a `/products/*` wildcard as a 404 fallback for unknown product URLs.
+
+### Done Criteria
+
+- [ ] `npx create-nativecore shopboard` scaffolds the ShopBoard project.
+- [ ] `/products` and `/products/:id` are registered in `src/routes/routes.ts`.
+- [ ] The product detail controller reads `params.id` and logs it to the console.
+- [ ] Navigating to `/products/999` shows the wildcard 404 fallback page.
+
+---
+
+**Back:** [Chapter 13 — Production](./13-production.md)  
+**Next:** [Chapter 15 — Route Caching and Prefetching](./15-route-caching.md)

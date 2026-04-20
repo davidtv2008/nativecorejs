@@ -408,7 +408,23 @@ Save and check the browser — you should see two styled task cards with correct
 
 ---
 
-> **Tip:** The `data-view`, `data-hook`, and `data-action` attributes are NativeCoreJS conventions used by the `dom` utility to scope DOM queries. You will see them explained in detail in Chapter 06.
+> **Tip:** The `data-view`, `data-hook`, and `data-action` attributes are NativeCoreJS conventions used by the `dom` utility to scope DOM queries. You will see them explained in detail in Chapter 07.
+
+---
+
+## Apply This Chapter to Project 1 — Taskflow
+
+> **Project:** Taskflow — Personal Task Manager  
+> **Feature:** Build the `<task-card>` component and render two static cards in the tasks view.
+
+Generate `task-card` with `npm run make:component task-card`, implement `template()`, `static observedAttributes`, and `attributeChangedCallback()`, then drop two hardcoded `<task-card>` elements into `src/views/protected/tasks.html` and verify they render in the browser.
+
+### Done Criteria
+
+- [ ] `src/components/ui/task-card.ts` exists and is registered in `src/components/registry.ts`.
+- [ ] The component renders with `title`, `description`, and `status` attributes set from HTML.
+- [ ] Two static task cards appear in `src/views/protected/tasks.html`.
+- [ ] Each status badge shows the correct color (`done` = green, `in-progress` = blue, `pending` = amber).
 
 ---
 

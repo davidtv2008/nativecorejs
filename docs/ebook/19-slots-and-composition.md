@@ -283,5 +283,21 @@ onUnmount(): void {
 
 ---
 
-**Back:** [Chapter 17 — Global Stores and Cross-Route State](./17-global-stores.md)  
-**Next:** [Chapter 19 — Styling, Theming, and CSS Custom Properties](./19-styling-and-theming.md)
+## Apply This Chapter to Project 2 — ShopBoard
+
+> **Project:** ShopBoard — E-commerce Analytics Dashboard  
+> **Feature:** Build `<product-card>` with named slots and `<product-grid>` using `::slotted()`.
+
+Generate `product-card` with `npm run make:component product-card`. Add a default slot for the card body (image, title, price) and a named `actions` slot for the "Add to Cart" and "Wishlist" buttons. Generate `product-grid` with `npm run make:component product-grid` and use `::slotted(product-card)` to apply grid layout to the projected children. Confirm that removing `slot="actions"` content from the parent does not break the component.
+
+### Done Criteria
+
+- [ ] `<product-card>` has a default slot and an `actions` named slot.
+- [ ] `<product-grid>` styles its slotted children with CSS Grid via `::slotted(product-card)`.
+- [ ] `<nc-button slot="actions">Add to Cart</nc-button>` renders in the card footer without coupling.
+- [ ] A `<product-card>` with no `slot="actions"` content renders cleanly without a broken layout.
+
+---
+
+**Back:** [Chapter 18 — Global Stores and Cross-Route State](./18-global-stores.md)  
+**Next:** [Chapter 20 — Styling, Theming, and CSS Custom Properties](./20-styling-and-theming.md)

@@ -259,5 +259,21 @@ NativeCoreJS provides a clean structure for auth. It does not solve:
 
 ---
 
-**Back:** [Chapter 06 — Controllers](./06-controllers.md)  
-**Next:** [Chapter 08 — APIs and Async Data](./08-apis-and-async.md)
+## Apply This Chapter to Project 1 — Taskflow
+
+> **Project:** Taskflow — Personal Task Manager  
+> **Feature:** Add the login form, JWT session persistence, and protected route redirects.
+
+Implement `loginController` to call `auth.setTokens()` and `auth.setUser()` on success and then navigate to `/dashboard`. Add `/dashboard` and `/tasks` to `protectedRoutes`. Confirm that visiting `/dashboard` without a token redirects to `/login` and that the destination URL is restored after signing in.
+
+### Done Criteria
+
+- [ ] Visiting `/dashboard` or `/tasks` without a token redirects to `/login`.
+- [ ] Successful login stores the JWT and navigates to the originally requested URL.
+- [ ] `auth.logout()` clears the token and redirects to `/login`.
+- [ ] `auth.getUser()` returns the signed-in user profile after login (verify in the browser console).
+
+---
+
+**Back:** [Chapter 07 — Controllers](./07-controllers.md)  
+**Next:** [Chapter 09 — APIs and Async](./09-apis-and-async.md)

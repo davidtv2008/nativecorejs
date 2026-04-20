@@ -323,3 +323,24 @@ The localStorage key `nativecore-devtools-visible` is the shared source of truth
 - The DOM node delta is the fastest way to detect controller and component cleanup failures
 - The ERRORS counter catches silent failures that produce no visible UI change
 - The NET log captures every `fetch` call transparently — no changes to your service code required
+
+---
+
+## Apply This Chapter to Project 4 — EnterpriseKit
+
+> **Project:** EnterpriseKit — Internal Tools Platform  
+> **Feature:** Profile EnterpriseKit routes with the performance overlay and optimize a slow route.
+
+Enable DEV MODE in the performance overlay on the EnterpriseKit dashboard. Identify the route with the highest ROUTE time. Open its controller and reduce the initialization time by either using a `loader` for mandatory data or deferring a non-critical fetch to after first paint. Confirm the overlay is absent in `npm run build` output.
+
+### Done Criteria
+
+- [ ] DEV MODE is toggled on and the overlay is visible on the EnterpriseKit dashboard route.
+- [ ] At least one route's ROUTE time is visible in the overlay and logged to the console.
+- [ ] The slowest route's controller is optimized and the ROUTE time measurably decreases.
+- [ ] `npm run build` output has no reference to dev tools (confirm by inspecting `dist/app.js`).
+
+---
+
+**Back:** [Chapter 28 — Troubleshooting Guide](./28-troubleshooting.md)  
+**Next:** [Chapter 30 — Migration Guide](./30-migration-guide.md)
