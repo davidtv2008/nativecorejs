@@ -587,6 +587,48 @@ export class Router {
         return this.currentRoute;
     }
 
+    /**
+     * Parsed query-string of the current URL as a plain object. Keys that
+     * appear more than once become arrays.
+     */
+    getQuery(): Record<string, string | string[]> {
+        const params = new URLSearchParams(window.location.search);
+        const result: Record<string, string | string[]> = {};
+        for (const [key, value] of params.entries()) {
+            if (key in result) {
+                const existing = result[key];
+                result[key] = Array.isArray(existing) ? [...existing, value] : [existing as string, value];
+            } else {
+                result[key] = value;
+            }
+        }
+        return result;
+    }
+
+    /** Returns a single query-string value (or a default when missing). */
+    getQueryParam(name: string, fallback = ''): string {
+        return new URLSearchParams(window.location.search).get(name) ?? fallback;
+    }
+
+    /**
+     * Updates the query-string on the current URL without triggering a
+     * navigation. `null`/`undefined` values remove the key.
+     */
+    setQuery(
+        patch: Record<string, string | number | boolean | null | undefined>,
+        options: { replace?: boolean } = {}
+    ): void {
+        const params = new URLSearchParams(window.location.search);
+        for (const [key, value] of Object.entries(patch)) {
+            if (value === null || value === undefined) params.delete(key);
+            else params.set(key, String(value));
+        }
+        const search = params.toString();
+        const url = `${window.location.pathname}${search ? `?${search}` : ''}${window.location.hash}`;
+        const method = (options.replace ?? true) ? 'replaceState' : 'pushState';
+        window.history[method](window.history.state, '', url);
+    }
+
     private async resolveContentTarget(mainContent: HTMLElement, route: RouteMatch): Promise<HTMLElement> {
         const layoutRoute = this.getLayoutRoute(route);
 
@@ -606,7 +648,15 @@ export class Router {
 
         const outlet = mainContent.querySelector<HTMLElement>('#route-outlet');
         if (!outlet) {
-            throw new Error(`Layout route "${layoutRoute.path}" is missing a #route-outlet element`);
+            // Graceful fallback: warn loudly in dev tools but keep the app
+            // navigable by rendering directly into the layout root. Throwing
+            // here used to nuke the whole page on a single missing element.
+            console.error(
+                `[router] Layout route "${layoutRoute.path}" is missing a #route-outlet element. ` +
+                `Falling back to rendering into the layout root. Add <div id="route-outlet"></div> to ${layoutRoute.config.htmlFile} to silence this warning.`
+            );
+            this.renderedLayoutPath = null;
+            return mainContent;
         }
 
         return outlet;

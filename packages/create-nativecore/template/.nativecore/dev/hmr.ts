@@ -35,9 +35,40 @@ if (window.location.hostname === 'localhost' || window.location.hostname === '12
     if (window.__hmrWebSocket) {
         console.warn('[HMR] Connection already exists, skipping...');
     } else {
-        const ws = new WebSocket('ws://localhost:8001');
-        window.__hmrWebSocket = ws;
+        // Bounded reconnection state.  If the dev server is briefly
+        // unreachable (e.g. you saved a file in server.js and nodemon is
+        // restarting), we back off instead of slamming reload() in a tight
+        // loop, which used to brick the page when paired with `npm run make`.
+        let ws: WebSocket | null = null;
         let isConnected = false;
+        let reconnectAttempt = 0;
+        let reconnectTimer: ReturnType<typeof setTimeout> | null = null;
+        const MAX_RECONNECT_ATTEMPTS = 10;
+
+        function connect(): void {
+            try {
+                ws = new WebSocket('ws://localhost:8001');
+            } catch (err) {
+                console.error('[HMR] could not open WebSocket:', err);
+                scheduleReconnect();
+                return;
+            }
+            window.__hmrWebSocket = ws;
+            attachHandlers(ws);
+        }
+
+        function scheduleReconnect(): void {
+            if (reconnectAttempt >= MAX_RECONNECT_ATTEMPTS) {
+                console.warn('[HMR] giving up after', MAX_RECONNECT_ATTEMPTS, 'attempts. Refresh manually.');
+                showHMRIndicator('disconnected', 'HMR offline');
+                return;
+            }
+            reconnectAttempt++;
+            const delay = Math.min(1000 * Math.pow(1.5, reconnectAttempt), 15_000);
+            showHMRIndicator('disconnected', `Reconnecting (${reconnectAttempt})…`);
+            clearTimeout(reconnectTimer!);
+            reconnectTimer = setTimeout(connect, delay);
+        }
     
         // Show HMR status indicator
         function showHMRIndicator(status: 'connected' | 'disconnected' | 'updating', message?: string): void {
@@ -125,64 +156,71 @@ if (window.location.hostname === 'localhost' || window.location.hostname === '12
                 location.reload();
             }, 100);
         }
-        
-        // Connection established
-        ws.onopen = () => {
-            isConnected = true;
-            console.warn('[HMR] enabled - Live reload active');
-            showHMRIndicator('connected', 'HMR Ready');
-        };
-        
-        // Receive updates from server
-        ws.onmessage = async (event) => {
-            try {
-                const { type, file } = JSON.parse(event.data);
-                
-                if (type === 'file-changed') {
-                    
-                    // Handle different file types
-                    if (file.endsWith('.css')) {
-                        await hotReloadCSS(file);
-                    } else if (file.endsWith('.js')) {
-                        await hotReloadJS(file);
-                    } else if (file.endsWith('.ts')) {
-                        // TypeScript changed - just reload the page (compilation already done by server)
-                        console.warn(`♻️  TS changed: ${file}`);
-                        showHMRIndicator('updating', 'Reloading...');
-                        sessionStorage.setItem('hmr_scroll_pos', window.scrollY.toString());
-                        setTimeout(() => location.reload(), 100);
-                    } else if (file.endsWith('.html')) {
-                        // For HTML changes - just reload the page (simple and reliable)
-                        console.warn(`♻️  HTML changed: ${file}`);
-                        showHMRIndicator('updating', 'Reloading...');
-                        
-                        // Save scroll position before reload
-                        sessionStorage.setItem('hmr_scroll_pos', window.scrollY.toString());
-                        
-                        setTimeout(() => location.reload(), 100);
+
+        function attachHandlers(socket: WebSocket): void {
+            // Connection established
+            socket.onopen = () => {
+                isConnected = true;
+                reconnectAttempt = 0;
+                console.warn('[HMR] enabled - Live reload active');
+                showHMRIndicator('connected', 'HMR Ready');
+            };
+
+            // Receive updates from server
+            socket.onmessage = async (event) => {
+                try {
+                    const { type, file } = JSON.parse(event.data);
+
+                    if (type === 'file-changed') {
+
+                        // Handle different file types
+                        if (file.endsWith('.css')) {
+                            await hotReloadCSS(file);
+                        } else if (file.endsWith('.js')) {
+                            await hotReloadJS(file);
+                        } else if (file.endsWith('.ts')) {
+                            // TypeScript changed - just reload the page (compilation already done by server)
+                            console.warn(`♻️  TS changed: ${file}`);
+                            showHMRIndicator('updating', 'Reloading...');
+                            sessionStorage.setItem('hmr_scroll_pos', window.scrollY.toString());
+                            setTimeout(() => location.reload(), 100);
+                        } else if (file.endsWith('.html')) {
+                            // For HTML changes - just reload the page (simple and reliable)
+                            console.warn(`♻️  HTML changed: ${file}`);
+                            showHMRIndicator('updating', 'Reloading...');
+
+                            // Save scroll position before reload
+                            sessionStorage.setItem('hmr_scroll_pos', window.scrollY.toString());
+
+                            setTimeout(() => location.reload(), 100);
+                        }
                     }
+                } catch (error) {
+                    console.error('🔥 HMR error:', error);
                 }
-            } catch (error) {
-                console.error('🔥 HMR error:', error);
-            }
-        };
-        
-        // Connection lost
-        ws.onclose = () => {
-            if (isConnected) {
-                console.warn('🔥 HMR disconnected - Server may have restarted');
-                showHMRIndicator('disconnected', 'Reconnecting...');
-                
-                // Try to reconnect after 1 second
-                setTimeout(() => {
-                    location.reload();
-                }, 1000);
-            }
-        };
-        
-        ws.onerror = (error) => {
-            console.error('[HMR] connection error:', error);
-        };
+            };
+
+            // Connection lost — schedule a bounded reconnect with backoff
+            // instead of immediately reloading.  Reloading mid-`npm run make`
+            // hits the server while it is still creating files and races with
+            // the next dist/ change event, which used to land the page in a
+            // broken state.
+            socket.onclose = () => {
+                if (isConnected) {
+                    console.warn('[HMR] disconnected — attempting reconnect');
+                }
+                isConnected = false;
+                window.__hmrWebSocket = undefined;
+                scheduleReconnect();
+            };
+
+            socket.onerror = (err) => {
+                console.error('[HMR] connection error:', err);
+                // Let onclose drive the reconnect path so we don't double up.
+            };
+        }
+
+        connect();
     } // end of else block for single HMR connection
 }
 

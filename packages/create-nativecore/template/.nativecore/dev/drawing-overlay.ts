@@ -656,50 +656,78 @@ function renderToolbar(bar: HTMLElement): void {
     saveBtn.type  = 'button';
     saveBtn.textContent = '💾';
     saveBtn.addEventListener('click', async () => {
+        let stream: MediaStream | null = null;
+        let video: HTMLVideoElement | null = null;
         try {
-            const stream = await (navigator.mediaDevices as any).getDisplayMedia({
+            stream = await (navigator.mediaDevices as any).getDisplayMedia({
                 video: { displaySurface: 'browser' },
                 preferCurrentTab: true,
             } as any);
 
             // Play the stream into a video element to get a stable frame
-            const video = document.createElement('video');
+            video = document.createElement('video');
             video.srcObject = stream;
             video.muted = true;
+            video.playsInline = true;
             // Wait for actual frame data — 'playing' fires when the first real frame is ready
-            await new Promise<void>((resolve) => {
-                video.onplaying = () => resolve();
-                video.play();
+            await new Promise<void>((resolve, reject) => {
+                video!.onplaying = () => resolve();
+                video!.onerror = () => reject(new Error('video element failed to play capture stream'));
+                video!.play().catch(reject);
             });
             // Ensure video has real dimensions (guards against black-frame race)
             let attempts = 0;
-            while (video.videoWidth === 0 && attempts++ < 20) {
+            while (video.videoWidth === 0 && attempts++ < 30) {
                 await new Promise<void>(r => requestAnimationFrame(() => r()));
+            }
+            if (video.videoWidth === 0 || video.videoHeight === 0) {
+                throw new Error('capture stream produced no frame data');
             }
             // Extra frames to let the compositor settle
             for (let i = 0; i < 4; i++) {
                 await new Promise<void>(r => requestAnimationFrame(() => r()));
             }
 
-            stream.getTracks().forEach((t: MediaStreamTrack) => t.stop());
+            // *** CRITICAL ORDERING ***
+            //
+            // We must drawImage(video, ...) BEFORE stopping the MediaStream
+            // tracks.  Calling track.stop() detaches the source from the
+            // <video> element, after which `drawImage(video)` paints a
+            // transparent / black frame — the exact symptom of "screenshot
+            // saved as blank page with only the annotations on top".  The
+            // earlier version stopped the tracks first, then drew, which is
+            // why the saved PNG was always blank underneath the strokes.
+            const vw = video.videoWidth;
+            const vh = video.videoHeight;
 
-            // Composite video frame + current drawing canvas into one image
-            const vw = window.innerWidth;
-            const vh = window.innerHeight;
             const offscreen = document.createElement('canvas');
             offscreen.width  = vw;
             offscreen.height = vh;
             const octx = offscreen.getContext('2d')!;
 
-            // Scale video frame to viewport size
+            // Draw the live captured frame at its native resolution.
             octx.drawImage(video, 0, 0, vw, vh);
 
-            // Draw our annotation canvas on top (already viewport-sized)
+            // Draw our annotation canvas on top, scaled to match the
+            // captured surface in case devicePixelRatio differs from the
+            // captured pixel ratio.
             const drawCanvas = getCanvas();
-            if (drawCanvas) octx.drawImage(drawCanvas, 0, 0);
+            if (drawCanvas) {
+                octx.drawImage(drawCanvas, 0, 0, drawCanvas.width, drawCanvas.height, 0, 0, vw, vh);
+            }
+
+            // Now it is safe to release the capture.
+            stream.getTracks().forEach((t: MediaStreamTrack) => t.stop());
+            stream = null;
+            video.pause();
+            video.srcObject = null;
+            video = null;
 
             offscreen.toBlob(async (blob) => {
-                if (!blob) return;
+                if (!blob) {
+                    console.error('[devtools] screenshot: toBlob returned null');
+                    return;
+                }
                 try {
                     await navigator.clipboard.write([
                         new ClipboardItem({ 'image/png': blob }),
@@ -712,10 +740,21 @@ function renderToolbar(bar: HTMLElement): void {
                     link.download = `screenshot-${Date.now()}.png`;
                     link.href = URL.createObjectURL(blob);
                     link.click();
+                    setTimeout(() => URL.revokeObjectURL(link.href), 5_000);
                 }
             }, 'image/png');
-        } catch {
-            // User cancelled or API not supported
+        } catch (err) {
+            // Make failures visible — silently swallowing the error was the
+            // reason "blank screenshot" bugs went unnoticed for so long.
+            console.error('[devtools] screenshot capture failed:', err);
+        } finally {
+            // Belt-and-braces cleanup if we threw partway through.
+            if (stream) {
+                try { stream.getTracks().forEach(t => t.stop()); } catch { /* ignore */ }
+            }
+            if (video) {
+                try { video.pause(); video.srcObject = null; } catch { /* ignore */ }
+            }
         }
     });
     bar.appendChild(saveBtn);

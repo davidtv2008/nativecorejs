@@ -323,6 +323,30 @@ The router pushes the full path to browser history, and `taskDetailController` r
 
 ---
 
+## Query Strings with `router.getQuery()` / `router.setQuery()`
+
+Params are baked into the route definition (`/tasks/:id`); query strings are not. For filters, pagination, sort order, or any state that's optional and can change within the same route, use the router's query helpers instead of reading `window.location.search` directly.
+
+```typescript
+import router from '@core/router.js';
+
+// Read — keys that appear multiple times become arrays
+const { page = '1', tag } = router.getQuery();          // { page: '1', tag: 'urgent' | ['a','b'] | undefined }
+
+// Shortcut for a single value with a default
+const sort = router.getQueryParam('sort', 'updated');
+
+// Write — merges with the current search, replaces the history entry by default
+router.setQuery({ page: 2, tag: null });                // removes `tag`
+router.setQuery({ filter: 'mine' }, { replace: false }); // pushes a new entry instead
+
+// The pathname and hash are preserved, so this plays nicely with anchor links.
+```
+
+Setting the query via `setQuery()` does **not** re-run the current controller or dispatch a route event — it's purely a URL update. When you want the change to trigger data reloads, pair it with a reactive state change the controller is already subscribed to (e.g. assigning `filters.value = { ... }`).
+
+---
+
 ## History State
 
 Beyond URL params and query strings, the router lets you attach an arbitrary state object to a navigation entry. This state survives back/forward clicks and is available instantly on arrival — without encoding anything in the URL.

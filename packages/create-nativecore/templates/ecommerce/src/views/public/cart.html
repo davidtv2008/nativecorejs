@@ -1,0 +1,26 @@
+<div data-view="cart">
+    <h1 class="page-title">Your Cart</h1>
+
+    <nc-empty-state data-hook="empty" hidden icon="🛒" message="Your cart is empty.">
+        <nc-button slot="action" variant="primary" data-hook="btn-continue">Continue Shopping</nc-button>
+    </nc-empty-state>
+
+    <div data-hook="cart-content" hidden>
+        <ul class="cart-list" data-hook="cart-list"></ul>
+
+        <aside class="cart-summary">
+            <nc-card>
+                <span slot="header">Order Summary</span>
+                <dl class="summary-rows">
+                    <dt>Subtotal</dt><dd data-hook="subtotal">$0.00</dd>
+                    <dt>Shipping</dt><dd data-hook="shipping">Free</dd>
+                    <dt class="summary-total">Total</dt><dd class="summary-total" data-hook="total">$0.00</dd>
+                </dl>
+                <nc-button variant="primary" full-width data-hook="btn-checkout">Checkout</nc-button>
+                <nc-button variant="outline" full-width data-hook="btn-shop">Continue Shopping</nc-button>
+            </nc-card>
+        </aside>
+    </div>
+
+    <nc-snackbar data-hook="snackbar"></nc-snackbar>
+</div>

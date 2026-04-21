@@ -4,6 +4,13 @@ Real-time features are where reactive architecture and lifecycle discipline conv
 
 NativeCoreJS is well-suited for real-time work because controllers own a clear lifecycle: they run when a route opens and return a cleanup function that runs when the route closes. This is the exact contract a WebSocket connection needs.
 
+The framework ships two primitives for this chapter:
+
+- **`connectSSE`** — for one-way server→client streams (notifications, metrics, progress events). Bounded reconnect, JSON parsing, and page cleanup built in.
+- **`connectWebSocket`** — for two-way channels (chat, collaboration, live cursors). Adds heartbeat support, an outbound message queue that survives reconnects, and an `AbortSignal`-friendly controller.
+
+Both helpers register themselves with the page-cleanup registry, so they close automatically on route change even if you forget to call `close()` yourself.
+
 ---
 
 ## The Controller as Connection Owner
@@ -63,6 +70,7 @@ The following example wires a WebSocket to a chat thread view with message rende
 import { dom }         from '@core-utils/dom.js';
 import { trackEvents } from '@core-utils/events.js';
 import { useState, effect } from '@core/state.js';
+import { connectWebSocket } from 'nativecorejs';
 import router           from '@core/router.js';
 
 interface ChatMessage {
@@ -88,29 +96,29 @@ export async function chatThreadController(params: { threadId: string }): Promis
     const connected  = useState(false);
 
     // -- WebSocket -----------------------------------------------------------
+    // `connectWebSocket` ships from `nativecorejs`.  It gives you bounded
+    // auto-reconnect, an outbound message queue that survives reconnects,
+    // optional JSON parsing, and route-aware cleanup out of the box.
     const protocol  = location.protocol === 'https:' ? 'wss:' : 'ws:';
     const socketUrl = `${protocol}//${location.host}/chat/${params.threadId}`;
-    const socket    = new WebSocket(socketUrl);
 
-    socket.addEventListener('open', () => {
-        connected.value = true;
-    });
-
-    socket.addEventListener('close', () => {
-        connected.value = false;
-    });
-
-    socket.addEventListener('message', (event: MessageEvent) => {
-        try {
-            const msg = JSON.parse(event.data) as ChatMessage;
-            messages.value = [...messages.value, msg];
-        } catch {
-            console.error('Invalid chat payload:', event.data);
-        }
-    });
-
-    socket.addEventListener('error', () => {
-        if (statusEl) statusEl.textContent = 'Connection error — please refresh.';
+    const socket = connectWebSocket(socketUrl, {
+        onOpen:    () => { connected.value = true; },
+        onClose:   () => { connected.value = false; },
+        onJsonMessage: (msg: unknown) => {
+            const chatMsg = msg as ChatMessage;
+            messages.value = [...messages.value, chatMsg];
+        },
+        onError:   () => {
+            if (statusEl) statusEl.textContent = 'Connection error — please refresh.';
+        },
+        onReconnectFailed: () => {
+            if (statusEl) statusEl.textContent = 'Disconnected — please refresh.';
+        },
+    }, {
+        parseJson: true,
+        reconnect: { maxRetries: 5, baseDelay: 1_000, maxDelay: 15_000 },
+        heartbeat: { interval: 30_000, message: { type: 'ping' } },
     });
 
     // -- Reactive bindings ---------------------------------------------------
@@ -151,7 +159,7 @@ export async function chatThreadController(params: { threadId: string }): Promis
         if (!input || !input.value.trim()) return;
 
         if (socket.readyState === WebSocket.OPEN) {
-            socket.send(JSON.stringify({ body: input.value.trim() }));
+            socket.send({ body: input.value.trim() });
         }
         input.value = '';
     });

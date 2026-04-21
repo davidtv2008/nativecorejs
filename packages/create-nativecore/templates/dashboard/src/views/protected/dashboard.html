@@ -1,0 +1,52 @@
+<div data-view="dashboard">
+    <section class="dashboard-grid">
+        <div class="stat-card">
+            <nc-card>
+                <span slot="header">Total Users</span>
+                <div class="stat-value" data-hook="stat-users">—</div>
+                <nc-skeleton data-hook="skeleton-users" active></nc-skeleton>
+            </nc-card>
+        </div>
+        <div class="stat-card">
+            <nc-card>
+                <span slot="header">Revenue</span>
+                <div class="stat-value" data-hook="stat-revenue">—</div>
+                <nc-skeleton data-hook="skeleton-revenue" active></nc-skeleton>
+            </nc-card>
+        </div>
+        <div class="stat-card">
+            <nc-card>
+                <span slot="header">Active Sessions</span>
+                <div class="stat-value" data-hook="stat-sessions">—</div>
+                <nc-skeleton data-hook="skeleton-sessions" active></nc-skeleton>
+            </nc-card>
+        </div>
+        <div class="stat-card">
+            <nc-card>
+                <span slot="header">Error Rate</span>
+                <div class="stat-value" data-hook="stat-errors">—</div>
+                <nc-skeleton data-hook="skeleton-errors" active></nc-skeleton>
+            </nc-card>
+        </div>
+    </section>
+
+    <section class="dashboard-row">
+        <nc-card class="activity-card">
+            <span slot="header">Recent Activity</span>
+            <ul class="activity-list" data-hook="activity-list">
+                <li><nc-skeleton active></nc-skeleton></li>
+                <li><nc-skeleton active></nc-skeleton></li>
+                <li><nc-skeleton active></nc-skeleton></li>
+            </ul>
+        </nc-card>
+
+        <nc-card class="chart-card">
+            <span slot="header">Weekly Overview</span>
+            <div class="chart-placeholder" data-hook="chart">
+                <nc-skeleton active height="180px"></nc-skeleton>
+            </div>
+        </nc-card>
+    </section>
+
+    <nc-snackbar data-hook="snackbar"></nc-snackbar>
+</div>

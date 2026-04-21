@@ -29,6 +29,18 @@ class ComponentRegistry {
     private components = new Map<string, string>();
     private loaded = new Set<string>();
     private observer: MutationObserver | null = null;
+    /** Prefix prepended to relative `./` module paths. Configurable via {@link setBasePath}. */
+    private basePath = '/dist/src/components/';
+
+    /**
+     * Override the base path used to resolve relative `./component.js` module
+     * specifiers. Defaults to `/dist/src/components/` for backwards
+     * compatibility with the legacy build layout. Set to `''` to disable
+     * rewriting and pass module paths through unchanged.
+     */
+    setBasePath(path: string): void {
+        this.basePath = path.endsWith('/') || path === '' ? path : `${path}/`;
+    }
 
     register(tagName: string, modulePath: string): void {
         if (!isValidModulePath(modulePath)) {
@@ -52,7 +64,7 @@ class ComponentRegistry {
 
         try {
             const absolutePath = modulePath.startsWith('./')
-                ? `/dist/src/components/${modulePath.slice(2)}`
+                ? `${this.basePath}${modulePath.slice(2)}`
                 : modulePath;
 
             const finalPath = bustCache(absolutePath);

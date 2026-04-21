@@ -1,6 +1,6 @@
 {
   "name": "nativecorejs",
-  "version": "0.1.0",
+  "version": "1.0.0-rc.1",
   "description": "NativeCore framework runtime primitives and utilities",
   "keywords": [
     "nativecore",
@@ -29,6 +29,15 @@
       "types": "./dist/src/components/index.d.ts",
       "import": "./dist/src/components/index.js"
     },
+    "./testing": {
+      "types": "./dist/src/testing/index.d.ts",
+      "import": "./dist/src/testing/index.js"
+    },
+    "./a11y": {
+      "types": "./dist/src/a11y/index.d.ts",
+      "import": "./dist/src/a11y/index.js"
+    },
+    "./custom-elements.json": "./dist/custom-elements.json",
     "./styles/base.css": "./src/styles/base.css"
   },
   "files": [
@@ -37,12 +46,15 @@
   ],
   "scripts": {
     "build": "tsc -p tsconfig.json",
+    "cem": "cem analyze --config custom-elements-manifest.config.mjs",
+    "build:full": "npm run build && npm run cem",
     "dev": "tsc -p tsconfig.json --watch",
     "test": "vitest run",
     "test:watch": "vitest",
     "test:coverage": "vitest run --coverage",
-    "prepublishOnly": "npm run build"
+    "prepublishOnly": "npm run build:full"
   },
+  "customElements": "dist/custom-elements.json",
   "publishConfig": {
     "access": "public"
   },
@@ -51,6 +63,7 @@
   },
   "license": "MIT",
   "devDependencies": {
+    "@custom-elements-manifest/analyzer": "^0.11.0",
     "@vitest/coverage-v8": "^2.1.8",
     "jsdom": "^25.0.1",
     "typescript": "^5.6.3",

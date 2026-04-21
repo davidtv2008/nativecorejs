@@ -29,6 +29,21 @@
       "@types/*": ["src/types/*"],
       "@constants/*": ["src/constants/*"]
     },
+    "plugins": [
+      {
+        "name": "ts-lit-plugin",
+        "htmlTemplateTags": ["html", "unsafeHTML"],
+        "globalTags": ["./custom-elements.json"],
+        "rules": {
+          "no-unknown-tag-name": "warn",
+          "no-missing-import": "off",
+          "no-unchecked-binding-expression": "warn",
+          "no-unknown-attribute": "warn",
+          "no-unknown-event": "warn",
+          "no-invalid-boolean-binding": "error"
+        }
+      }
+    ],
     "strict": true,
     "ignoreDeprecations": "5.0",
     "noImplicitAny": false,

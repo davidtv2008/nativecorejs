@@ -1,0 +1,15 @@
+<div data-view="posts">
+    <header class="page-header">
+        <h1>All Posts</h1>
+        <nc-input data-hook="search" placeholder="Search posts…" clearable></nc-input>
+    </header>
+
+    <ul class="post-list" data-hook="post-list">
+        <li><nc-skeleton active height="80px"></nc-skeleton></li>
+        <li><nc-skeleton active height="80px"></nc-skeleton></li>
+        <li><nc-skeleton active height="80px"></nc-skeleton></li>
+    </ul>
+
+    <nc-pagination data-hook="pagination" total="0" page-size="10" current="1"></nc-pagination>
+    <nc-empty-state data-hook="empty" hidden icon="📄" message="No posts found."></nc-empty-state>
+</div>

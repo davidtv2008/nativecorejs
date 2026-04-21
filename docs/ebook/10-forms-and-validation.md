@@ -79,11 +79,15 @@ For numeric fields like estimated hours:
 
 ### Option A — `useForm()` Helper (Recommended)
 
-The template ships with a `useForm()` utility in `src/utils/form.ts` that manages field state, dirty/touched tracking, computed validation, and form submission in one clean API:
+`useForm()` is now exported directly from the `nativecorejs` package, alongside a set of composable validators (`required`, `minLength`, `maxLength`, `email`, `url`, `pattern`, `min`, `max`, `oneOf`, `compose`). It manages field state, dirty/touched tracking, computed validation, submit blocking, and a one-line `bindField()` helper for native and `<nc-*>` controls — all backed by the same reactive `useState`/`computed` primitives covered in earlier chapters.
+
+The `create-nativecore` template re-exports the same helper from `src/utils/form.ts` so your existing imports continue to work:
 
 ```typescript
+// Either of these works:
+import { useForm, required, maxLength } from 'nativecorejs';
 import { useForm } from '@utils/form.js';
-import { isRequired, minLength, maxLength } from '@utils/validation.js';
+import { required, maxLength } from '@utils/validation.js';
 
 const form = useForm({
     initialValues: {
@@ -93,11 +97,13 @@ const form = useForm({
         hours:     0,
     },
     rules: {
-        title:     [isRequired, maxLength(80)],
-        projectId: [isRequired],
+        title:     [required(), maxLength(80)],
+        projectId: [required()],
     },
 });
 ```
+
+> Validators are factory functions — call them (`required()`, `maxLength(80)`) so you can pass custom messages: `required('Title is required')`.
 
 `useForm()` returns:
 

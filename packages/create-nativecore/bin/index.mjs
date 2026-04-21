@@ -26,14 +26,45 @@ function getFlagValue(flag) {
 
 const VALID_TEMPLATES = ['default', 'dashboard', 'blog', 'ecommerce'];
 
+const TEMPLATE_DESCRIPTIONS = {
+    default:    'Minimal starter — home page, optional auth + dashboard route',
+    dashboard:  'Admin dashboard — stats cards, activity feed, and chart placeholder',
+    blog:       'Blog — post list with search/pagination and post detail view',
+    ecommerce:  'E-commerce — product grid with filters, product detail, and cart',
+};
+
 function resolveTemplate() {
     const val = getFlagValue('--template');
-    if (!val) return 'default';
+    if (!val) return null; // null = ask interactively
     if (!VALID_TEMPLATES.includes(val)) {
         console.error(`Unknown --template "${val}". Valid options: ${VALID_TEMPLATES.join(', ')}`);
         process.exit(1);
     }
     return val;
+}
+
+async function askTemplate(useDefaults) {
+    // --template flag already resolved
+    const fromFlag = getFlagValue('--template');
+    if (fromFlag) return fromFlag;
+    if (useDefaults) return 'default';
+
+    console.log('\nStarter template:');
+    VALID_TEMPLATES.forEach((t, i) => {
+        console.log(`  [${i + 1}] ${t.padEnd(12)} ${TEMPLATE_DESCRIPTIONS[t]}`);
+    });
+    console.log('');
+
+    let chosen = 'default';
+    while (true) {
+        const answer = await ask('Choose a template (1-4 or name)', 'default');
+        const byIndex = VALID_TEMPLATES[parseInt(answer, 10) - 1];
+        const byName  = VALID_TEMPLATES.find(t => t === answer.toLowerCase());
+        if (byIndex) { chosen = byIndex; break; }
+        if (byName)  { chosen = byName;  break; }
+        console.error(`  Invalid choice. Enter a number 1-${VALID_TEMPLATES.length} or one of: ${VALID_TEMPLATES.join(', ')}`);
+    }
+    return chosen;
 }
 
 function toKebabCase(value) {
@@ -155,6 +186,7 @@ function packageJsonTemplate(config) {
         'htmlhint': '^1.1.4',
         'puppeteer': '^24.36.0',
         'terser': '^5.46.0',
+        'ts-lit-plugin': '^2.0.2',
         'tsc-alias': '^1.8.16',
         'typescript': '^5.3.3',
         'typescript-eslint': '^8.53.1',
@@ -228,6 +260,23 @@ function routesTemplate(config) {
         : ';\n';
     const protectedRoutes = config.includeAuth && config.includeDashboard ? "export const protectedRoutes = ['/dashboard'];\n" : "export const protectedRoutes = [];\n";
 
+    // Extra routes injected by starter templates
+    const templateRoutes = {
+        dashboard: `        .register('/dashboard', 'src/views/protected/dashboard.html', lazyController('dashboardController', '../controllers/dashboard.controller.js'));\n`,
+        blog: `        .register('/posts', 'src/views/public/posts.html', lazyController('postsController', '../controllers/posts.controller.js'))\n` +
+              `        .register('/posts/:slug', 'src/views/public/post-detail.html', lazyController('postDetailController', '../controllers/post-detail.controller.js'));\n`,
+        ecommerce: `        .register('/shop', 'src/views/public/shop.html', lazyController('shopController', '../controllers/shop.controller.js'))\n` +
+                   `        .register('/products/:id', 'src/views/public/product-detail.html', lazyController('productDetailController', '../controllers/product-detail.controller.js'))\n` +
+                   `        .register('/cart', 'src/views/public/cart.html', lazyController('cartController', '../controllers/cart.controller.js'));\n`,
+    };
+
+    // For non-default templates, ignore the old includeDashboard path — the template owns its routes.
+    const extraRoutes = config.template !== 'default'
+        ? (templateRoutes[config.template] ?? ';\n')
+        : dashboardRoute;
+
+    const closing = config.template !== 'default' ? '' : '';
+
     return `/**
  * Route Configuration
  */
@@ -245,7 +294,7 @@ export function registerRoutes(router: Router): void {
     router
         .register('/', 'src/views/public/home.html', lazyController('homeController', '../controllers/home.controller.js'))
         .cache({ ttl: 300, revalidate: true })
-${loginRoute}${dashboardRoute}}
+${loginRoute}${extraRoutes}}
 
 ${protectedRoutes}`;
 }
@@ -593,8 +642,23 @@ function controllersIndexTemplate(config) {
         lines.push("export { loginController } from './login.controller.js';");
     }
 
-    if (config.includeDashboard) {
+    // Default template: honour includeDashboard flag
+    if (config.template === 'default' && config.includeDashboard) {
         lines.push("export { dashboardController } from './dashboard.controller.js';");
+    }
+
+    // Starter templates: export their own controllers
+    if (config.template === 'dashboard') {
+        lines.push("export { dashboardController } from './dashboard.controller.js';");
+    }
+    if (config.template === 'blog') {
+        lines.push("export { postsController } from './posts.controller.js';");
+        lines.push("export { postDetailController } from './post-detail.controller.js';");
+    }
+    if (config.template === 'ecommerce') {
+        lines.push("export { shopController } from './shop.controller.js';");
+        lines.push("export { productDetailController } from './product-detail.controller.js';");
+        lines.push("export { cartController } from './cart.controller.js';");
     }
 
     return `${lines.join('\n')}\n`;
@@ -604,14 +668,39 @@ async function copyTemplate(targetDir) {
     await fs.cp(templateDir, targetDir, { recursive: true, force: true });
 }
 
+/**
+ * Overlay a starter-template directory on top of the base copy.
+ * Only files that exist in the overlay are written — everything else keeps
+ * the base template version.
+ */
+async function overlayTemplate(targetDir, templateName) {
+    if (templateName === 'default') return;
+    const overlayDir = path.resolve(__dirname, `../templates/${templateName}`);
+    try {
+        await fs.access(overlayDir);
+    } catch {
+        // Overlay doesn't exist — silently skip (safe for future additions)
+        return;
+    }
+    await fs.cp(overlayDir, targetDir, { recursive: true, force: true });
+}
+
 async function customizeProject(targetDir, config) {
     await writeFile(path.join(targetDir, 'package.json'), packageJsonTemplate(config));
     await writeFile(path.join(targetDir, 'nativecore.config.json'), nativecoreConfigTemplate(config));
     await writeFile(path.join(targetDir, 'src/app.ts'), appTsTemplate(config));
     await writeFile(path.join(targetDir, 'src/routes/routes.ts'), routesTemplate(config));
     await writeFile(path.join(targetDir, 'src/controllers/index.ts'), controllersIndexTemplate(config));
-    await writeFile(path.join(targetDir, 'src/controllers/home.controller.ts'), homeControllerTemplate(config));
-    await writeFile(path.join(targetDir, 'src/views/public/home.html'), homeViewTemplate(config));
+
+    // For non-default templates the overlay already provides home + template
+    // specific views/controllers, so only generate them for the default template.
+    if (config.template === 'default') {
+        await writeFile(path.join(targetDir, 'src/controllers/home.controller.ts'), homeControllerTemplate(config));
+        await writeFile(path.join(targetDir, 'src/views/public/home.html'), homeViewTemplate(config));
+    }
+
+    // Apply the template overlay (no-op for 'default')
+    await overlayTemplate(targetDir, config.template);
 
     if (config.includeAuth) {
         await writeFile(path.join(targetDir, 'src/views/public/login.html'), loginViewTemplate());
@@ -685,7 +774,7 @@ async function main() {
     }
     const projectTitle = toTitleCase(projectName);
     const useDefaults = hasFlag('--defaults');
-    const template = resolveTemplate();
+    const template = await askTemplate(useDefaults);
 
     if (!useDefaults && !hasFlag('--no-auth')) {
         console.log('Auth strategy note:');
@@ -702,11 +791,13 @@ async function main() {
         : useDefaults
             ? true
             : await askYesNo('Include auth flow?', true);
-    const includeDashboard = hasFlag('--no-dashboard')
-        ? false
-        : useDefaults
-            ? true
-            : await askYesNo('Include dashboard route?', true);
+    const includeDashboard = config.template !== 'default'
+        ? false  // non-default templates own their own routes
+        : hasFlag('--no-dashboard')
+            ? false
+            : useDefaults
+                ? true
+                : await askYesNo('Include dashboard route?', true);
     const includeCapacitor = hasFlag('--capacitor')
         ? true
         : hasFlag('--no-capacitor') || useDefaults

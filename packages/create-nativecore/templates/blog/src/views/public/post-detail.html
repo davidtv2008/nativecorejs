@@ -1,0 +1,22 @@
+<div data-view="post-detail">
+    <nc-skeleton data-hook="skeleton" active></nc-skeleton>
+
+    <article class="post" data-hook="post" hidden>
+        <header class="post__header">
+            <div class="post__meta">
+                <nc-badge data-hook="category" variant="secondary"></nc-badge>
+                <time data-hook="date" class="post__date"></time>
+            </div>
+            <h1 class="post__title" data-hook="title"></h1>
+            <div class="post__author">
+                <nc-avatar data-hook="author-avatar" size="sm"></nc-avatar>
+                <span data-hook="author-name" class="post__author-name"></span>
+            </div>
+        </header>
+        <div class="post__body" data-hook="body"></div>
+    </article>
+
+    <nav class="post__nav">
+        <nc-button variant="outline" data-hook="btn-back">← All Posts</nc-button>
+    </nav>
+</div>

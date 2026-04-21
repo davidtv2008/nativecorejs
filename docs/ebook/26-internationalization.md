@@ -1,8 +1,73 @@
 # Chapter 25 — Internationalization (i18n)
 
-Internationalization is one of those topics that punishes wishful thinking. If you postpone it, layout, routing, formatting, and content design all become harder to untangle. NativeCoreJS does not force a heavy i18n abstraction on you — that is an advantage — but it means you must design your i18n approach deliberately so translation, formatting, and locale-aware behaviour are part of the architecture from the start.
+Internationalization is one of those topics that punishes wishful thinking. If you postpone it, layout, routing, formatting, and content design all become harder to untangle. NativeCoreJS gives you two paths:
+
+- **The built-in `i18n` module** (recommended) — a small reactive instance shipped from the `nativecorejs` package with a `t()` lookup, `{name}` interpolation, fallback locales, and `Intl`-backed formatters. Locale changes propagate through the same reactive system as everything else, so your `effect()` callbacks just re-run.
+- **A hand-rolled approach** — useful when you need exotic message formats or want full control over the dictionary loading strategy.
+
+This chapter walks through the built-in module first, then shows the hand-rolled pattern so you can choose.
 
 ---
+
+## Option A — The Built-in `i18n` Module
+
+```typescript
+import { i18n, t, configureI18n } from 'nativecorejs';
+
+configureI18n({
+    defaultLocale: 'en',
+    fallbackLocale: 'en',
+    messages: {
+        en: {
+            'projects.title': 'Projects',
+            'projects.empty': 'You have no projects yet, {name}.',
+        },
+        es: {
+            'projects.title': 'Proyectos',
+            'projects.empty': 'Aún no tienes proyectos, {name}.',
+        },
+    },
+});
+
+// In a controller / component
+const label = t('projects.title');
+const empty = t('projects.empty', { name: 'David' });
+
+// Switch locales reactively
+i18n.setLocale('es');
+
+// Format helpers (auto-aware of the active locale)
+i18n.formatNumber(1234.5);          // "1.234,5" / "1,234.5"
+i18n.formatCurrency(99, 'USD');     // "$99.00" / "99,00 US$"
+i18n.formatDate(new Date());
+i18n.formatRelative(date);          // "3 hours ago"
+```
+
+Because `i18n.locale` is a reactive `State`, you can subscribe to it in a controller (`i18n.locale.watch(rerender)`) or use it inside a `computed()` to derive locale-dependent UI strings without manual rebinds.
+
+### Lazy-loaded namespaces
+
+For apps with many feature areas you typically do not want to ship every translation on page load. Register a **namespace loader** and the dictionaries are fetched on demand, keyed by both namespace and locale:
+
+```typescript
+i18n.registerNamespace('cart', async (locale) => {
+    // Loaders return a flat { key: message } dictionary WITHOUT the namespace prefix.
+    const res = await fetch(`/locales/${locale}/cart.json`);
+    return await res.json();
+});
+
+// In the cart route's controller:
+await i18n.loadNamespace('cart');
+// Now `i18n.t('cart.title')`, `i18n.t('cart.empty')`, etc. are available.
+```
+
+`loadNamespace()` deduplicates concurrent calls for the same `(namespace, locale)` pair, so you can safely invoke it from every cart controller without worrying about double fetches. Use `isNamespaceLoaded('cart')` to branch when you need it synchronously.
+
+---
+
+## Option B — Hand-Rolled
+
+When you want full control, the rest of this chapter walks through building your own locale store and `t()` helper from scratch.
 
 ## What a Practical i18n Architecture Needs
 

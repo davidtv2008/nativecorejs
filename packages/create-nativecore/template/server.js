@@ -834,13 +834,54 @@ async function proxyRemoteLogin(body) {
             res.end(JSON.stringify(result.data));
             return;
         }
-        
-        // ============================================
-        // DEV TOOLS API (only works on localhost)
-        // These endpoints allow live editing of components
-        // ============================================
-        
-        // GET /api/dev/component/:tagName - Get component metadata
+
+        // ── Template starter mocks ────────────────────────────────────────────
+        // These routes power the dashboard, blog, and ecommerce starter templates.
+        // They are always present in the dev server — safe to leave in for any project.
+
+        // GET /api/dashboard/activity
+        if (pathname === '/api/dashboard/activity' && method === 'GET') {
+            const result = mockApi.handleDashboardActivity();
+            res.writeHead(result.status, { 'Content-Type': 'application/json' });
+            res.end(JSON.stringify(result.data));
+            return;
+        }
+
+        // GET /api/blog/posts
+        if (pathname === '/api/blog/posts' && method === 'GET') {
+            const result = mockApi.handleBlogPosts();
+            res.writeHead(result.status, { 'Content-Type': 'application/json' });
+            res.end(JSON.stringify(result.data));
+            return;
+        }
+
+        // GET /api/blog/posts/:slug
+        if (pathname.startsWith('/api/blog/posts/') && method === 'GET') {
+            const slug = pathname.replace('/api/blog/posts/', '');
+            const result = mockApi.handleBlogPostBySlug(slug);
+            res.writeHead(result.status, { 'Content-Type': 'application/json' });
+            res.end(JSON.stringify(result.data));
+            return;
+        }
+
+        // GET /api/shop/products
+        if (pathname === '/api/shop/products' && method === 'GET') {
+            const result = mockApi.handleShopProducts();
+            res.writeHead(result.status, { 'Content-Type': 'application/json' });
+            res.end(JSON.stringify(result.data));
+            return;
+        }
+
+        // GET /api/shop/products/:id
+        if (pathname.startsWith('/api/shop/products/') && method === 'GET') {
+            const id = pathname.replace('/api/shop/products/', '');
+            const result = mockApi.handleShopProductById(id);
+            res.writeHead(result.status, { 'Content-Type': 'application/json' });
+            res.end(JSON.stringify(result.data));
+            return;
+        }
+
+        // ── Dev Tools API ─────────────────────────────────────────────────────
         if (pathname.startsWith('/api/dev/component/') && method === 'GET' && !pathname.includes('/edit')) {
             const tagName = pathname.replace('/api/dev/component/', '');
             const metadata = await getComponentMetadata(tagName);
@@ -1072,24 +1113,44 @@ server.listen(PORT, () => {
 const wss = new WebSocketServer({ port: HMR_PORT });
 const hmrClients = new Set();
 
+// Server-level error handler so a flaky socket never takes the dev server down.
+wss.on('error', (err) => {
+    console.error('🔥 HMR server error (non-fatal):', err.message);
+});
+
+function safeSend(client, message) {
+    // readyState 1 = OPEN. We still wrap send() because the socket can move to
+    // CLOSING between the check and the call, which would otherwise throw.
+    if (client.readyState !== 1) return;
+    try {
+        client.send(message);
+    } catch (err) {
+        // Drop the client; ws emits 'close' separately, but cleaning up here
+        // avoids repeated send attempts in tight notification bursts.
+        hmrClients.delete(client);
+        console.warn('🔥 HMR: dropped a client mid-send:', err.message);
+    }
+}
+
 function notifyHMRClients(file = 'unknown') {
     const message = JSON.stringify({ type: 'file-changed', file, timestamp: Date.now() });
-    hmrClients.forEach(client => {
-        if (client.readyState === 1) client.send(message);
-    });
+    hmrClients.forEach(client => safeSend(client, message));
 }
 
 // Track connected HMR clients
 wss.on('connection', (ws) => {
     hmrClients.add(ws);
     console.log('🔥 HMR client connected');
-    
+
     ws.on('close', () => {
         hmrClients.delete(ws);
         console.log('🔥 HMR client disconnected');
     });
-    
+
     ws.on('error', (error) => {
+        // Always remove the client when its socket errors so we don't keep
+        // notifying a half-closed peer.
+        hmrClients.delete(ws);
         console.error('🔥 HMR WebSocket error:', error.message);
     });
 });
@@ -1119,9 +1180,7 @@ const srcDir   = path.join(ROOT_DIR, 'src');
 
 function notifyFile(file) {
     const message = JSON.stringify({ type: 'file-changed', file, timestamp: Date.now() });
-    hmrClients.forEach(client => {
-        if (client.readyState === 1) client.send(message);
-    });
+    hmrClients.forEach(client => safeSend(client, message));
 }
 
 function debounce(fn, delay) {
@@ -1132,62 +1191,103 @@ function debounce(fn, delay) {
     };
 }
 
-try {
-    // Watch dist/ — fires after tsc --watch writes compiled .js output.
-    // tsc writes several files per compile (foo.js, foo.js.map, foo.d.ts).
-    // We track the last .js file seen in the debounce window so the callback
-    // always fires with a real JS filename even if the final fs event was a
-    // .map or .d.ts file.
-    let pendingJsFile = null;
-    let distDebounceTimer = null;
-
-    fs.watch(distDir, { recursive: true }, (eventType, filename) => {
-        if (!filename) return;
-        const norm = filename.replace(/\\/g, '/');
-        if (norm.endsWith('.js') && !norm.endsWith('.d.ts')) {
-            pendingJsFile = norm;
+/**
+ * Wraps `fs.watch` so a single watcher hiccup (EPERM when a generator deletes
+ * + recreates a directory, ENOENT when a folder vanishes mid-event, etc.)
+ * never crashes the dev server. Returns the watcher (or null if creation
+ * failed) and silently re-arms after recoverable errors.
+ */
+function safeWatch(target, options, listener, label = target) {
+    let watcher = null;
+    let restartTimer = null;
+    const create = () => {
+        try {
+            watcher = fs.watch(target, options, listener);
+            watcher.on('error', (err) => {
+                // EPERM happens on Windows when the target dir is briefly
+                // locked (antivirus, editor saves, scaffolding). ENOENT
+                // happens when a watched subdirectory is removed.  Both
+                // are recoverable — close the watcher and re-arm.
+                console.warn(`[HMR] watcher "${label}" error (${err.code || 'unknown'}): ${err.message} — restarting in 500ms`);
+                try { watcher?.close(); } catch { /* already closed */ }
+                watcher = null;
+                clearTimeout(restartTimer);
+                restartTimer = setTimeout(create, 500);
+            });
+        } catch (err) {
+            console.error(`[HMR] could not start watcher "${label}":`, err.message);
+            watcher = null;
         }
-        clearTimeout(distDebounceTimer);
-        distDebounceTimer = setTimeout(() => {
-            if (pendingJsFile) {
-                console.log(`[HMR] dist changed: ${pendingJsFile}`);
-                notifyFile(pendingJsFile);
-                pendingJsFile = null;
-            }
-        }, 800);
-    });
-
-    // Watch src/ — CSS and HTML only (TS is handled via dist/ above)
-    let pendingSrcFile = null;
-    let srcDebounceTimer = null;
-
-    fs.watch(srcDir, { recursive: true }, (eventType, filename) => {
-        if (!filename) return;
-        const norm = filename.replace(/\\/g, '/');
-        if (norm.endsWith('.css') || norm.endsWith('.html')) {
-            pendingSrcFile = norm;
-        }
-        clearTimeout(srcDebounceTimer);
-        srcDebounceTimer = setTimeout(() => {
-            if (pendingSrcFile) {
-                console.log(`[HMR] src changed: ${pendingSrcFile}`);
-                notifyFile(pendingSrcFile);
-                pendingSrcFile = null;
-            }
-        }, 50);
-    });
-
-    // Watch the root shell HTML file
-    for (const shellFile of ['index.html']) {
-        fs.watch(path.join(ROOT_DIR, shellFile), debounce(() => {
-            console.log(`[HMR] shell changed: ${shellFile}`);
-            notifyFile(shellFile);
-        }, 50));
-    }
-
-    console.log('[HMR] Watching dist/ for compiled JS output');
-    console.log('[HMR] Watching src/ for CSS and HTML changes');
-    console.log('[HMR] NOTE: Run "npx tsc --watch" in a separate terminal for instant TS recompilation');
-} catch (error) {
-    console.error('Could not start file watcher:', error.message);
+    };
+    create();
+    return () => { try { watcher?.close(); } catch { /* ignore */ } };
 }
+
+// Watch dist/ — fires after tsc --watch writes compiled .js output.
+// tsc writes several files per compile (foo.js, foo.js.map, foo.d.ts).
+// We track the last .js file seen in the debounce window so the callback
+// always fires with a real JS filename even if the final fs event was a
+// .map or .d.ts file.
+let pendingJsFile = null;
+let distDebounceTimer = null;
+
+safeWatch(distDir, { recursive: true }, (eventType, filename) => {
+    if (!filename) return;
+    const norm = filename.replace(/\\/g, '/');
+    if (norm.endsWith('.js') && !norm.endsWith('.d.ts')) {
+        pendingJsFile = norm;
+    }
+    clearTimeout(distDebounceTimer);
+    distDebounceTimer = setTimeout(() => {
+        if (pendingJsFile) {
+            console.log(`[HMR] dist changed: ${pendingJsFile}`);
+            notifyFile(pendingJsFile);
+            pendingJsFile = null;
+        }
+    }, 800);
+}, 'dist/');
+
+// Watch src/ — CSS and HTML only (TS is handled via dist/ above).
+// `npm run make:*` commands often create new subdirectories under src/,
+// which on Windows can briefly trigger EPERM/ENOENT in fs.watch — handled
+// transparently by safeWatch().
+let pendingSrcFile = null;
+let srcDebounceTimer = null;
+
+safeWatch(srcDir, { recursive: true }, (eventType, filename) => {
+    if (!filename) return;
+    const norm = filename.replace(/\\/g, '/');
+    if (norm.endsWith('.css') || norm.endsWith('.html')) {
+        pendingSrcFile = norm;
+    }
+    clearTimeout(srcDebounceTimer);
+    srcDebounceTimer = setTimeout(() => {
+        if (pendingSrcFile) {
+            console.log(`[HMR] src changed: ${pendingSrcFile}`);
+            notifyFile(pendingSrcFile);
+            pendingSrcFile = null;
+        }
+    }, 50);
+}, 'src/');
+
+// Watch the root shell HTML file
+for (const shellFile of ['index.html']) {
+    safeWatch(path.join(ROOT_DIR, shellFile), {}, debounce(() => {
+        console.log(`[HMR] shell changed: ${shellFile}`);
+        notifyFile(shellFile);
+    }, 50), shellFile);
+}
+
+console.log('[HMR] Watching dist/ for compiled JS output');
+console.log('[HMR] Watching src/ for CSS and HTML changes');
+console.log('[HMR] NOTE: Run "npx tsc --watch" in a separate terminal for instant TS recompilation');
+
+// Last line of defence: if anything in the dev server throws asynchronously
+// (e.g. a stray watcher event after teardown), log it instead of letting the
+// process exit. Production builds never load this file.
+process.on('uncaughtException', (err) => {
+    console.error('[dev-server] uncaughtException (non-fatal):', err.stack || err.message);
+});
+process.on('unhandledRejection', (reason) => {
+    console.error('[dev-server] unhandledRejection (non-fatal):', reason);
+});

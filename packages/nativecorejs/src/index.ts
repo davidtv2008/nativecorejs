@@ -106,6 +106,53 @@ export {
 } from '../.nativecore/utils/events.js';
 export { connectSSE } from '../.nativecore/core/sse.js';
 
+export { http, HttpClient, HttpError } from '../.nativecore/core/http.js';
+export type {
+	Backoff,
+	HttpMethod,
+	HttpRequestConfig,
+	HttpResult,
+	RequestInterceptor,
+	ResponseInterceptor
+} from '../.nativecore/core/http.js';
+
+export { useForm } from '../.nativecore/core/form.js';
+export type { UseFormOptions, UseFormResult } from '../.nativecore/core/form.js';
+
+export {
+	required,
+	minLength,
+	maxLength,
+	pattern,
+	email,
+	url,
+	min,
+	max,
+	oneOf,
+	compose
+} from '../.nativecore/core/validators.js';
+export type { Validator } from '../.nativecore/core/validators.js';
+
+export { I18n, i18n, t, configureI18n } from '../.nativecore/core/i18n.js';
+export type {
+	I18nOptions,
+	LocaleCode,
+	MessageDictionary,
+	MessagesByLocale,
+	NamespaceLoader
+} from '../.nativecore/core/i18n.js';
+
+export { connectWebSocket } from '../.nativecore/core/ws.js';
+export type {
+	WSConnectOptions,
+	WSController,
+	WSHandlers,
+	WSHeartbeat,
+	WSReconnectOptions
+} from '../.nativecore/core/ws.js';
+
+export { mountDevTools } from '../.nativecore/core/devtools.js';
+
 export type {
 	ComponentConstructor,
 	ComponentState
