@@ -292,6 +292,9 @@ function moveDraw(x: number, y: number): void {
         redrawAll(state.dragIndex);
         return;
     }
+    // After mouseup, endDraw clears current but mousemove still fires — guard both flags.
+    if (!state.drawing || !state.current) return;
+
     const ctx = getCtx();
     if (!ctx) return;
 
@@ -332,12 +335,18 @@ function endDraw(x: number, y: number): void {
     }
 
     if (state.tool !== 'pen') {
-        if (!state.current) return;
+        if (!state.current) {
+            state.drawing = false;
+            return;
+        }
         state.current.x2 = x;
         state.current.y2 = y;
     }
 
-    if (!state.current) return;
+    if (!state.current) {
+        state.drawing = false;
+        return;
+    }
     const s = state.current;
     const hasContent = s.tool === 'pen'
         ? s.points.length > 1
@@ -346,6 +355,7 @@ function endDraw(x: number, y: number): void {
     if (hasContent) state.committed.push(s);
 
     state.current = null;
+    state.drawing = false;
     redrawAll();
 }
 

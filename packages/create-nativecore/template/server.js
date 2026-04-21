@@ -496,41 +496,182 @@ async function editComponentFile({ tagName, filePath, changes, styleChanges }) {
     }
 }
 
+/** Map SPA paths to view HTML files (used by DevTools instance save + SEO patch). */
+function resolveViewHtmlPath(viewPath) {
+    const viewsMap = {
+        '/': 'src/views/public/home.html',
+        '/about': 'src/views/public/about.html',
+        '/login': 'src/views/public/login.html',
+        '/components': 'src/views/public/components.html',
+        '/dashboard': 'src/views/protected/dashboard.html',
+        '/under-construction': 'src/views/protected/under-construction.html',
+        '/testing': 'src/views/protected/testing.html',
+        '/user/:id': 'src/views/protected/user-detail.html'
+    };
+
+    let htmlFilePath = viewsMap[viewPath];
+    if (!htmlFilePath) {
+        for (const [route, file] of Object.entries(viewsMap)) {
+            if (route.includes(':')) {
+                const routePattern = route.replace(/:[^/]+/g, '[^/]+');
+                const regex = new RegExp(`^${routePattern}$`);
+                if (regex.test(viewPath)) {
+                    htmlFilePath = file;
+                    break;
+                }
+            }
+        }
+    }
+    return htmlFilePath || null;
+}
+
+function escapeSeoAttr(s) {
+    return String(s)
+        .replace(/&/g, '&amp;')
+        .replace(/"/g, '&quot;');
+}
+
+function escapeSeoTitleText(s) {
+    return String(s)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;');
+}
+
+/**
+ * Apply SEO-related edits from the dev overlay: index.html head tags + current route view HTML.
+ */
+async function saveSeoDevPatches({ viewPath, head, view }) {
+    try {
+        const headActive = head && typeof head === 'object' && Object.keys(head).some(
+            (k) => head[k] !== undefined && head[k] !== ''
+        );
+        const viewActive = view && typeof view === 'object' && (
+            (view.firstH1 !== undefined && view.firstH1 !== '') ||
+            (Array.isArray(view.imageAlts) && view.imageAlts.some((x) => x && x.srcContains && x.alt !== undefined))
+        );
+
+        if (!headActive && !viewActive) {
+            return { success: false, message: 'No SEO fields to save' };
+        }
+
+        if (headActive) {
+            const indexPath = validatePath('index.html');
+            if (!fs.existsSync(indexPath)) {
+                return { success: false, message: 'index.html not found' };
+            }
+            let idx = fs.readFileSync(indexPath, 'utf-8');
+
+            if (head.htmlLang !== undefined && head.htmlLang !== '') {
+                idx = idx.replace(/<html(\s[^>]*)?>/im, (full) => {
+                    if (/lang\s*=/i.test(full)) {
+                        return full.replace(/lang\s*=\s*"[^"]*"/i, `lang="${escapeSeoAttr(head.htmlLang)}"`);
+                    }
+                    return full.replace('<html', `<html lang="${escapeSeoAttr(head.htmlLang)}"`);
+                });
+            }
+
+            if (head.title !== undefined && head.title !== '') {
+                idx = idx.replace(/<title>[^<]*<\/title>/i, `<title>${escapeSeoTitleText(head.title)}</title>`);
+                idx = idx.replace(
+                    /(<meta\s+name="title"\s+content=")[^"]*("\s*\/?>)/i,
+                    `$1${escapeSeoAttr(head.title)}$2`
+                );
+            }
+            if (head.metaDescription !== undefined && head.metaDescription !== '') {
+                idx = idx.replace(
+                    /(<meta\s+name="description"\s+content=")[^"]*("\s*\/?>)/i,
+                    `$1${escapeSeoAttr(head.metaDescription)}$2`
+                );
+            }
+            if (head.canonicalHref !== undefined && head.canonicalHref !== '') {
+                idx = idx.replace(
+                    /(<link\s+rel="canonical"\s+href=")[^"]*("\s*\/?>)/i,
+                    `$1${escapeSeoAttr(head.canonicalHref)}$2`
+                );
+            }
+            if (head.ogTitle !== undefined && head.ogTitle !== '') {
+                idx = idx.replace(
+                    /(<meta\s+property="og:title"\s+content=")[^"]*("\s*\/?>)/i,
+                    `$1${escapeSeoAttr(head.ogTitle)}$2`
+                );
+                idx = idx.replace(
+                    /(<meta\s+name="twitter:title"\s+content=")[^"]*("\s*\/?>)/i,
+                    `$1${escapeSeoAttr(head.ogTitle)}$2`
+                );
+            }
+            if (head.ogDescription !== undefined && head.ogDescription !== '') {
+                idx = idx.replace(
+                    /(<meta\s+property="og:description"\s+content=")[^"]*("\s*\/?>)/i,
+                    `$1${escapeSeoAttr(head.ogDescription)}$2`
+                );
+                idx = idx.replace(
+                    /(<meta\s+name="twitter:description"\s+content=")[^"]*("\s*\/?>)/i,
+                    `$1${escapeSeoAttr(head.ogDescription)}$2`
+                );
+            }
+
+            fs.writeFileSync(indexPath, idx, 'utf-8');
+            console.log('[DevTools] SEO: updated index.html head');
+            notifyHMRClients('index.html');
+        }
+
+        if (viewActive) {
+            const htmlFilePath = resolveViewHtmlPath(viewPath);
+            if (!htmlFilePath) {
+                return {
+                    success: false,
+                    message: `Unknown view path for SEO view patch: ${viewPath}. Add it to resolveViewHtmlPath in server.js`
+                };
+            }
+            const fullPath = validatePath(htmlFilePath);
+            if (!fs.existsSync(fullPath)) {
+                return { success: false, message: `View file not found: ${htmlFilePath}` };
+            }
+            let content = fs.readFileSync(fullPath, 'utf-8');
+
+            if (view.firstH1 !== undefined && view.firstH1 !== '') {
+                content = content.replace(/<h1[^>]*>[\s\S]*?<\/h1>/i, (match) => {
+                    const open = match.match(/^<h1[^>]*>/i);
+                    return open ? `${open[0]}${escapeSeoTitleText(view.firstH1)}</h1>` : match;
+                });
+            }
+
+            if (Array.isArray(view.imageAlts)) {
+                for (const { srcContains, alt } of view.imageAlts) {
+                    if (!srcContains || alt === undefined) continue;
+                    const esc = escapeSeoAttr(alt);
+                    content = content.replace(/<img[^>]+>/gi, (tag) => {
+                        if (!tag.includes(srcContains)) return tag;
+                        if (/alt\s*=\s*"/i.test(tag)) {
+                            return tag.replace(/alt\s*=\s*"[^"]*"/i, `alt="${esc}"`);
+                        }
+                        return tag.replace(/<img/i, `<img alt="${esc}"`);
+                    });
+                }
+            }
+
+            fs.writeFileSync(fullPath, content, 'utf-8');
+            console.log(`[DevTools] SEO: updated view ${htmlFilePath}`);
+            notifyHMRClients(htmlFilePath);
+        }
+
+        return { success: true, message: 'SEO patches saved' };
+    } catch (error) {
+        console.error('[DevTools] SEO save error:', error);
+        return { success: false, message: error.message };
+    }
+}
+
 /**
  * Save changes to a specific component instance in an HTML file
  */
 async function saveInstanceChanges({ tagName, viewPath, attributes, inlineStyles, elementIndex }) {
     try {
         console.log('[DevTools] saveInstanceChanges called with:', { tagName, viewPath, attributes, elementIndex });
-        
-        // Map route paths to actual HTML file paths
-        const viewsMap = {
-            '/': 'src/views/public/home.html',
-            '/about': 'src/views/public/about.html',
-            '/login': 'src/views/public/login.html',
-            '/components': 'src/views/public/components.html',
-            '/dashboard': 'src/views/protected/dashboard.html',
-            '/under-construction': 'src/views/protected/under-construction.html',
-            '/testing': 'src/views/protected/testing.html',
-            '/user/:id': 'src/views/protected/user-detail.html'
-        };
 
-        // Handle dynamic routes (e.g., /user/123)
-        let htmlFilePath = viewsMap[viewPath];
-        if (!htmlFilePath) {
-            // Try to match dynamic routes
-            for (const [route, file] of Object.entries(viewsMap)) {
-                if (route.includes(':')) {
-                    const routePattern = route.replace(/:[^/]+/g, '[^/]+');
-                    const regex = new RegExp(`^${routePattern}$`);
-                    if (regex.test(viewPath)) {
-                        htmlFilePath = file;
-                        break;
-                    }
-                }
-            }
-        }
-        
+        const htmlFilePath = resolveViewHtmlPath(viewPath);
+
         if (!htmlFilePath) {
             console.error('[DevTools] Unknown view path:', viewPath);
             return { success: false, message: `Unknown view path: ${viewPath}. Add it to viewsMap in server.js` };
@@ -922,6 +1063,15 @@ async function proxyRemoteLogin(body) {
             const body = await parseBody(req);
             const result = await saveGlobalChanges(body);
             
+            res.writeHead(result.success ? 200 : 400, { 'Content-Type': 'application/json' });
+            res.end(JSON.stringify(result));
+            return;
+        }
+
+        // POST /api/dev/seo/save — dev overlay SEO tool (index.html + current view HTML)
+        if (pathname === '/api/dev/seo/save' && method === 'POST') {
+            const body = await parseBody(req);
+            const result = await saveSeoDevPatches(body);
             res.writeHead(result.success ? 200 : 400, { 'Content-Type': 'application/json' });
             res.end(JSON.stringify(result));
             return;

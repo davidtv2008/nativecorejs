@@ -12,6 +12,7 @@
  *   - NET              pending fetches + last 5 API calls
  *   - ERRORS           unhandled rejections + console errors/warns
  *   - COMPONENTS       mounted Web Component count + list
+ *   - SEO              on-page SEO score (scan on route load) + detail modal with apply-to-source
  *   - CONNECTION       navigator.connection info
  */
 
@@ -56,6 +57,24 @@ interface ConsoleEntry {
     level: 'error' | 'warn';
     msg: string;
     ts: number;
+}
+
+interface SeoCheckItem {
+    id: string;
+    label: string;
+    status: 'good' | 'warn' | 'bad';
+    points: number;
+    maxPoints: number;
+    detail: string;
+}
+
+interface SeoInputRow {
+    key: string;
+    label: string;
+    value: string;
+    hint: string;
+    group: 'head' | 'view' | 'img';
+    imgSrcContains?: string;
 }
 
 declare global {
@@ -136,6 +155,11 @@ const state = {
     // Components
     componentCount: 0,
     componentList: [] as string[],
+
+    // SEO (dev scan)
+    seoScore: 0,
+    seoChecks: [] as SeoCheckItem[],
+    seoInputs: [] as SeoInputRow[],
 };
 
 // ─── Formatters ──────────────────────────────────────────────────────────────
@@ -353,6 +377,59 @@ function injectStyles(): void {
         }
         #${MODAL_ID} .nc-chip.bad  { border-color: rgba(255,68,68,.5);  background: rgba(255,68,68,.08);  color: #ff4444; }
         #${MODAL_ID} .nc-chip.warn { border-color: rgba(255,204,0,.5);  background: rgba(255,204,0,.08);  color: #ffcc00; }
+        #${MODAL_ID} .nc-m-seo-field { margin-bottom: 10px; }
+        #${MODAL_ID} .nc-m-seo-label {
+            display: block;
+            color: rgba(0,255,136,0.55);
+            font-size: 9px;
+            text-transform: uppercase;
+            letter-spacing: .08em;
+            margin-bottom: 4px;
+        }
+        #${MODAL_ID} .nc-m-textarea {
+            width: 100%;
+            box-sizing: border-box;
+            background: rgba(0,0,0,0.35);
+            border: 1px solid rgba(0,255,136,0.22);
+            border-radius: 4px;
+            color: #00ff88;
+            font-family: inherit;
+            font-size: 11px;
+            padding: 8px 10px;
+            resize: vertical;
+            min-height: 44px;
+        }
+        #${MODAL_ID} .nc-m-textarea:focus {
+            outline: none;
+            border-color: rgba(0,255,136,0.45);
+        }
+        #${MODAL_ID} .nc-m-btn-row {
+            display: flex;
+            gap: 10px;
+            margin-top: 14px;
+            flex-wrap: wrap;
+        }
+        #${MODAL_ID} .nc-m-btn {
+            background: rgba(0,255,136,0.08);
+            border: 1px solid rgba(0,255,136,0.28);
+            color: #00ff88;
+            font-family: inherit;
+            font-size: 11px;
+            padding: 8px 16px;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+        #${MODAL_ID} .nc-m-btn:hover { background: rgba(0,255,136,0.14); }
+        #${MODAL_ID} .nc-m-btn-primary {
+            background: rgba(0,255,136,0.18);
+            border-color: rgba(0,255,136,0.45);
+        }
+        #${MODAL_ID} .nc-m-seo-note {
+            color: rgba(0,255,136,0.28);
+            font-size: 9px;
+            line-height: 1.5;
+            margin-top: 12px;
+        }
     `;
     document.head.appendChild(s);
 }
@@ -395,6 +472,418 @@ function snapshotComponents(): void {
     state.componentList = Object.entries(freq)
         .sort((a, b) => b[1] - a[1])
         .map(([t, n]) => n > 1 ? `${t} ×${n}` : t);
+}
+
+function seoScoreColor(score: number): string {
+    if (score >= 85) return '#00ff88';
+    if (score >= 60) return '#ffcc00';
+    return '#ff4444';
+}
+
+function escapeModalText(s: string): string {
+    return s
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;');
+}
+
+function runSeoScan(): void {
+    const checks: SeoCheckItem[] = [];
+    const inputs: SeoInputRow[] = [];
+    let score = 0;
+
+    const body = document.body;
+    if (!body) {
+        state.seoScore = 0;
+        state.seoChecks = [];
+        state.seoInputs = [];
+        return;
+    }
+
+    const pushInput = (row: SeoInputRow): void => {
+        if (inputs.some(i => i.group === 'img' && i.imgSrcContains === row.imgSrcContains)) return;
+        if (row.group !== 'img' && inputs.some(i => i.key === row.key && i.group === row.group)) return;
+        inputs.push(row);
+    };
+
+    // 1. html[lang] — 5 pts
+    const lang = document.documentElement.getAttribute('lang')?.trim() ?? '';
+    if (lang.length >= 2) {
+        score += 5;
+        checks.push({
+            id: 'lang',
+            label: 'html[lang]',
+            status: 'good',
+            points: 5,
+            maxPoints: 5,
+            detail: `lang="${lang}"`,
+        });
+    } else {
+        checks.push({
+            id: 'lang',
+            label: 'html[lang]',
+            status: 'bad',
+            points: 0,
+            maxPoints: 5,
+            detail: 'Missing or too short — search engines use language for indexing.',
+        });
+        pushInput({ key: 'htmlLang', label: 'Language (html lang)', value: lang || 'en', hint: 'BCP-47, e.g. en, es, en-US', group: 'head' });
+    }
+
+    // 2. <title> — 15 pts
+    const title = (document.title || '').trim();
+    let titlePts = 0;
+    if (title.length === 0) {
+        checks.push({
+            id: 'title',
+            label: '<title>',
+            status: 'bad',
+            points: 0,
+            maxPoints: 15,
+            detail: 'Empty — set a unique title per route.',
+        });
+        pushInput({ key: 'title', label: 'Document title', value: '', hint: 'Target ~10–70 characters', group: 'head' });
+    } else if (title.length >= 10 && title.length <= 70) {
+        titlePts = 15;
+        checks.push({
+            id: 'title',
+            label: '<title>',
+            status: 'good',
+            points: 15,
+            maxPoints: 15,
+            detail: `${title.length} characters`,
+        });
+    } else if (title.length < 10) {
+        titlePts = 7;
+        checks.push({
+            id: 'title',
+            label: '<title>',
+            status: 'warn',
+            points: 7,
+            maxPoints: 15,
+            detail: `Short (${title.length} chars) — aim for at least ~10 characters.`,
+        });
+        pushInput({ key: 'title', label: 'Document title', value: title, hint: 'Expand toward 10–70 chars', group: 'head' });
+    } else {
+        titlePts = 10;
+        checks.push({
+            id: 'title',
+            label: '<title>',
+            status: 'warn',
+            points: 10,
+            maxPoints: 15,
+            detail: `Long (${title.length} chars) — may truncate in SERPs (≤70 is safer).`,
+        });
+        pushInput({ key: 'title', label: 'Document title', value: title, hint: 'Shorten to ~70 chars', group: 'head' });
+    }
+    score += titlePts;
+
+    // 3. meta description — 15 pts
+    const metaDesc = document.querySelector('meta[name="description"]')?.getAttribute('content')?.trim() ?? '';
+    let descPts = 0;
+    if (!metaDesc) {
+        checks.push({
+            id: 'meta-desc',
+            label: 'meta description',
+            status: 'bad',
+            points: 0,
+            maxPoints: 15,
+            detail: 'Missing — add <meta name="description" content="…"> in index.html head.',
+        });
+        pushInput({
+            key: 'metaDescription',
+            label: 'Meta description',
+            value: '',
+            hint: 'Roughly 50–160 characters',
+            group: 'head',
+        });
+    } else if (metaDesc.length >= 50 && metaDesc.length <= 160) {
+        descPts = 15;
+        checks.push({
+            id: 'meta-desc',
+            label: 'meta description',
+            status: 'good',
+            points: 15,
+            maxPoints: 15,
+            detail: `${metaDesc.length} characters`,
+        });
+    } else if (metaDesc.length < 50) {
+        descPts = 8;
+        checks.push({
+            id: 'meta-desc',
+            label: 'meta description',
+            status: 'warn',
+            points: 8,
+            maxPoints: 15,
+            detail: `Short (${metaDesc.length} chars) — aim for ~50–160.`,
+        });
+        pushInput({
+            key: 'metaDescription',
+            label: 'Meta description',
+            value: metaDesc,
+            hint: 'Expand toward 50–160 chars',
+            group: 'head',
+        });
+    } else {
+        descPts = 10;
+        checks.push({
+            id: 'meta-desc',
+            label: 'meta description',
+            status: 'warn',
+            points: 10,
+            maxPoints: 15,
+            detail: `Long (${metaDesc.length} chars) — may truncate (≤160 is safer).`,
+        });
+        pushInput({
+            key: 'metaDescription',
+            label: 'Meta description',
+            value: metaDesc,
+            hint: 'Shorten to ~160 chars',
+            group: 'head',
+        });
+    }
+    score += descPts;
+
+    // 4. viewport — 5 pts
+    const hasViewport = !!document.querySelector('meta[name="viewport"]');
+    if (hasViewport) {
+        score += 5;
+        checks.push({
+            id: 'viewport',
+            label: 'viewport meta',
+            status: 'good',
+            points: 5,
+            maxPoints: 5,
+            detail: 'Present',
+        });
+    } else {
+        checks.push({
+            id: 'viewport',
+            label: 'viewport meta',
+            status: 'bad',
+            points: 0,
+            maxPoints: 5,
+            detail: 'Missing — required for mobile-friendly ranking.',
+        });
+    }
+
+    // 5. canonical — 10 pts
+    const canonicalHref = document.querySelector('link[rel="canonical"]')?.getAttribute('href')?.trim() ?? '';
+    if (canonicalHref) {
+        score += 10;
+        checks.push({
+            id: 'canonical',
+            label: 'canonical URL',
+            status: 'good',
+            points: 10,
+            maxPoints: 10,
+            detail: clamp(canonicalHref, 56),
+        });
+    } else {
+        checks.push({
+            id: 'canonical',
+            label: 'canonical URL',
+            status: 'bad',
+            points: 0,
+            maxPoints: 10,
+            detail: 'Missing <link rel="canonical" href="…">',
+        });
+        pushInput({
+            key: 'canonicalHref',
+            label: 'Canonical URL',
+            value: `${window.location.origin}${window.location.pathname}`,
+            hint: 'Preferred URL for this page',
+            group: 'head',
+        });
+    }
+
+    // 6. Open Graph — 10 pts (5 + 5)
+    const ogTitle = document.querySelector('meta[property="og:title"]')?.getAttribute('content')?.trim() ?? '';
+    const ogDesc = document.querySelector('meta[property="og:description"]')?.getAttribute('content')?.trim() ?? '';
+    let ogPts = 0;
+    if (ogTitle) {
+        ogPts += 5;
+        checks.push({
+            id: 'og-title',
+            label: 'og:title',
+            status: 'good',
+            points: 5,
+            maxPoints: 5,
+            detail: clamp(ogTitle, 48),
+        });
+    } else {
+        checks.push({
+            id: 'og-title',
+            label: 'og:title',
+            status: 'bad',
+            points: 0,
+            maxPoints: 5,
+            detail: 'Missing — used for social previews.',
+        });
+        pushInput({
+            key: 'ogTitle',
+            label: 'Open Graph title',
+            value: title || '',
+            hint: 'Often matches page title',
+            group: 'head',
+        });
+    }
+    if (ogDesc) {
+        ogPts += 5;
+        checks.push({
+            id: 'og-desc',
+            label: 'og:description',
+            status: 'good',
+            points: 5,
+            maxPoints: 5,
+            detail: clamp(ogDesc, 48),
+        });
+    } else {
+        checks.push({
+            id: 'og-desc',
+            label: 'og:description',
+            status: 'bad',
+            points: 0,
+            maxPoints: 5,
+            detail: 'Missing — add for link previews.',
+        });
+        pushInput({
+            key: 'ogDescription',
+            label: 'Open Graph description',
+            value: metaDesc || '',
+            hint: 'Often matches meta description',
+            group: 'head',
+        });
+    }
+    score += ogPts;
+
+    // 7. Single H1 — 15 pts
+    const h1List = Array.from(body.querySelectorAll('h1'));
+    const h1Count = h1List.length;
+    let h1Pts = 0;
+    const firstH1Text = h1List[0]?.textContent?.replace(/\s+/g, ' ').trim() ?? '';
+    if (h1Count === 1) {
+        h1Pts = 15;
+        checks.push({
+            id: 'h1',
+            label: 'H1 heading',
+            status: 'good',
+            points: 15,
+            maxPoints: 15,
+            detail: `"${clamp(firstH1Text, 40)}"`,
+        });
+    } else if (h1Count === 0) {
+        checks.push({
+            id: 'h1',
+            label: 'H1 heading',
+            status: 'bad',
+            points: 0,
+            maxPoints: 15,
+            detail: 'No visible <h1> — add one clear topic heading.',
+        });
+        pushInput({
+            key: 'firstH1',
+            label: 'Primary H1 text (view HTML)',
+            value: '',
+            hint: 'Replaces first <h1> in this route view file',
+            group: 'view',
+        });
+    } else {
+        h1Pts = 7;
+        checks.push({
+            id: 'h1',
+            label: 'H1 heading',
+            status: 'warn',
+            points: 7,
+            maxPoints: 15,
+            detail: `${h1Count} <h1> elements — use one per page when possible.`,
+        });
+        pushInput({
+            key: 'firstH1',
+            label: 'First H1 text (edit in source)',
+            value: firstH1Text,
+            hint: 'Consider removing extra H1s manually in the view file',
+            group: 'view',
+        });
+    }
+    score += h1Pts;
+
+    // 8. Images alt — up to 15 pts
+    const imgs = Array.from(body.querySelectorAll('img'));
+    const missingAlt = imgs.filter(img => !img.hasAttribute('alt'));
+    const imgDeduction = Math.min(15, missingAlt.length * 3);
+    const imgPts = 15 - imgDeduction;
+    score += imgPts;
+    if (missingAlt.length === 0) {
+        checks.push({
+            id: 'img-alt',
+            label: 'Image alt text',
+            status: 'good',
+            points: 15,
+            maxPoints: 15,
+            detail: `${imgs.length} image(s), all have alt`,
+        });
+    } else {
+        checks.push({
+            id: 'img-alt',
+            label: 'Image alt text',
+            status: imgPts < 8 ? 'bad' : 'warn',
+            points: imgPts,
+            maxPoints: 15,
+            detail: `${missingAlt.length} image(s) without an alt attribute (decorative images may use alt="").`,
+        });
+        for (const img of missingAlt) {
+            const rawSrc = (img.getAttribute('src') || '').split('?')[0] || '';
+            const src = rawSrc;
+            const slice = src.includes('/') ? src.split('/').pop() || src : src;
+            const srcContains = slice.length > 4 ? slice.slice(0, 80) : src.slice(0, 80);
+            if (!srcContains) continue;
+            pushInput({
+                key: `img-${srcContains}`,
+                label: `alt for …${escapeModalText(clamp(srcContains, 32))}`,
+                value: '',
+                hint: 'Short description for SEO & a11y',
+                group: 'img',
+                imgSrcContains: srcContains,
+            });
+        }
+    }
+
+    // 9. Links with empty text — up to 10 pts
+    const anchors = Array.from(body.querySelectorAll('a[href]'));
+    const emptyLinks = anchors.filter(a => {
+        const t = (a.textContent || '').replace(/\s+/g, ' ').trim();
+        if (t.length > 0) return false;
+        if (a.querySelector('img')) return false;
+        return true;
+    });
+    const linkDeduction = Math.min(10, emptyLinks.length * 2);
+    const linkPts = 10 - linkDeduction;
+    score += linkPts;
+    if (emptyLinks.length === 0) {
+        checks.push({
+            id: 'link-text',
+            label: 'Link text',
+            status: 'good',
+            points: 10,
+            maxPoints: 10,
+            detail: 'No empty text links detected',
+        });
+    } else {
+        checks.push({
+            id: 'link-text',
+            label: 'Link text',
+            status: linkPts < 5 ? 'bad' : 'warn',
+            points: linkPts,
+            maxPoints: 10,
+            detail: `${emptyLinks.length} link(s) with no visible text — add labels or aria-label in source.`,
+        });
+    }
+
+    state.seoScore = Math.min(100, Math.round(score));
+    state.seoChecks = checks;
+    state.seoInputs = inputs;
 }
 
 // ─── Console intercept ───────────────────────────────────────────────────────
@@ -518,12 +1007,14 @@ function observeRouteChanges(): void {
     window.addEventListener('pageloaded', () => {
         snapshotDom();
         snapshotComponents();
+        runSeoScan();
         const duration = performance.now() - navStartTime;
         const path = window.location.pathname;
         state.routeTime = duration;
         state.routePath = path;
         state.routeHistory.unshift({ path, duration, domNodes: state.domNodes, ts: Date.now() });
         if (state.routeHistory.length > MAX_ROUTE_LOG) state.routeHistory.pop();
+        updateOverlay();
     });
 }
 
@@ -603,6 +1094,7 @@ function renderOverlayHTML(): string {
     html += `<hr class="nc-div">`;
     html += row('DOM', `${state.domNodes}${domDeltaStr}`, 'dom');
     html += row('COMPONENTS', `<span class="nc-muted">${state.componentCount}</span>`, 'components');
+    html += row('SEO', `<span style="color:${seoScoreColor(state.seoScore)}">${state.seoScore}</span>`, 'seo');
     html += `<hr class="nc-div">`;
 
     if (state.fcp > 0 || state.lcp > 0) {
@@ -684,6 +1176,10 @@ function openModal(section: string): void {
     });
     backdrop.querySelector('.nc-m-close')?.addEventListener('click', closeModal);
     document.addEventListener('keydown', onEscClose);
+
+    if (section === 'seo') {
+        initSeoModal(backdrop);
+    }
 }
 
 function closeModal(): void {
@@ -707,6 +1203,7 @@ function renderModalContent(section: string): string {
         case 'net':        return modalNet();
         case 'errors':     return modalErrors();
         case 'conn':       return modalConn();
+        case 'seo':        return modalSeo();
         default:           return `<div class="nc-m-title"><span>Dev</span><span class="nc-m-close">&#x2715;</span></div><p class="nc-m-empty">No data.</p>`;
     }
 }
@@ -891,6 +1388,106 @@ function modalConn(): string {
             kv('Save-data mode', conn.saveData ? '<span class="nc-caution">enabled</span>' : '<span class="nc-muted">off</span>'));
 }
 
+// SEO modal
+function modalSeo(): string {
+    const sc = seoScoreColor(state.seoScore);
+    const chips = state.seoChecks.map(c => {
+        const cls = c.status === 'good' ? '' : c.status === 'warn' ? 'warn' : 'bad';
+        return `<span class="nc-chip ${cls}">${escapeModalText(c.label)} ${c.points}/${c.maxPoints}</span>`;
+    }).join('');
+
+    const issueRows = state.seoChecks.map(c => {
+        const col = c.status === 'good' ? '#00ff88' : c.status === 'warn' ? '#ffcc00' : '#ff4444';
+        return `<div class="nc-m-kv" style="align-items:flex-start"><span class="k" style="color:${col}">${escapeModalText(c.label)}</span><span style="text-align:right;max-width:72%;word-break:break-word">${escapeModalText(c.detail)}</span></div>`;
+    }).join('');
+
+    const formRows = state.seoInputs.map((row, i) => {
+        const id = `nc-seo-in-${i}`;
+        return `<div class="nc-m-seo-field"><label class="nc-m-seo-label" for="${id}">${escapeModalText(row.label)}</label><textarea id="${id}" class="nc-m-textarea" rows="2" placeholder="${escapeModalText(row.hint)}">${escapeModalText(row.value)}</textarea></div>`;
+    }).join('');
+
+    const actions = state.seoInputs.length > 0
+        ? `<div class="nc-m-btn-row"><button type="button" class="nc-m-btn nc-m-btn-primary" id="nc-seo-apply">Apply to source</button><button type="button" class="nc-m-btn" id="nc-seo-rescan">Rescan</button></div>`
+        : `<div class="nc-m-btn-row"><button type="button" class="nc-m-btn" id="nc-seo-rescan">Rescan</button></div>`;
+
+    const note = '<p class="nc-m-seo-note">Applies edits through the dev server (like the component editor &quot;Apply Changes&quot;): index.html for head tags, and the mapped view HTML file for H1 / image alt. Unknown routes must be added to resolveViewHtmlPath in server.js.</p>';
+
+    return modalHeader('SEO — Page scan') +
+        sect('Score', `<div style="font-size:26px;font-weight:bold;color:${sc};margin-bottom:8px">${state.seoScore}<span style="color:rgba(0,255,136,0.35)">/100</span></div><div>${chips}</div>`) +
+        sect('Checks', issueRows || '<span class="nc-m-empty">No data</span>') +
+        sect('Edit & apply to project files', (formRows || '') + actions + note);
+}
+
+async function submitSeoPatches(backdrop: HTMLElement): Promise<void> {
+    const textareas = backdrop.querySelectorAll('.nc-m-textarea');
+    const head: Record<string, string> = {};
+    const view: { firstH1?: string; imageAlts: { srcContains: string; alt: string }[] } = { imageAlts: [] };
+
+    textareas.forEach((el, i) => {
+        const row = state.seoInputs[i];
+        if (!row) return;
+        const v = (el as HTMLTextAreaElement).value.trim();
+        if (!v) return;
+        if (row.group === 'head') {
+            head[row.key] = v;
+        } else if (row.group === 'view' && row.key === 'firstH1') {
+            view.firstH1 = v;
+        } else if (row.group === 'img' && row.imgSrcContains) {
+            view.imageAlts.push({ srcContains: row.imgSrcContains, alt: v });
+        }
+    });
+
+    const payload: {
+        viewPath: string;
+        head?: Record<string, string>;
+        view?: { firstH1?: string; imageAlts: { srcContains: string; alt: string }[] };
+    } = { viewPath: window.location.pathname };
+
+    if (Object.keys(head).length) payload.head = head;
+    if (view.firstH1 || view.imageAlts.length) {
+        payload.view = {
+            ...(view.firstH1 ? { firstH1: view.firstH1 } : {}),
+            imageAlts: view.imageAlts,
+        };
+    }
+
+    if (!payload.head && !payload.view) {
+        alert('Enter at least one value to apply, or fix issues manually in the repo.');
+        return;
+    }
+
+    try {
+        const res = await fetch('/api/dev/seo/save', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload),
+        });
+        const data = (await res.json().catch(() => ({}))) as { message?: string };
+        if (!res.ok) {
+            alert(`Save failed: ${data.message || res.statusText}`);
+            return;
+        }
+        closeModal();
+    } catch (e) {
+        alert(`Save failed: ${e instanceof Error ? e.message : String(e)}`);
+    }
+}
+
+function initSeoModal(backdrop: HTMLElement): void {
+    const apply = backdrop.querySelector('#nc-seo-apply');
+    apply?.addEventListener('click', (e) => {
+        e.stopPropagation();
+        void submitSeoPatches(backdrop);
+    });
+    backdrop.querySelector('#nc-seo-rescan')?.addEventListener('click', (e) => {
+        e.stopPropagation();
+        runSeoScan();
+        updateOverlay();
+        closeModal();
+        openModal('seo');
+    });
+}
+
 // ─── Draggable ───────────────────────────────────────────────────────────────
 
 function makeDraggable(el: HTMLElement): void {
@@ -947,6 +1544,7 @@ function showOverlay(): void {
     injectStyles();
     snapshotDom();
     snapshotComponents();
+    runSeoScan();
     domBaselineNodes = state.domNodes;
     createOverlay();
     startFpsLoop();
@@ -989,4 +1587,9 @@ export function initDevOverlay(): void {
     } else {
         start();
     }
+
+    setTimeout(() => {
+        runSeoScan();
+        if (document.getElementById(OVERLAY_ID)) updateOverlay();
+    }, 0);
 }

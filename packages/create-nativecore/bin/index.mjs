@@ -791,7 +791,7 @@ async function main() {
         : useDefaults
             ? true
             : await askYesNo('Include auth flow?', true);
-    const includeDashboard = config.template !== 'default'
+    const includeDashboard = template !== 'default'
         ? false  // non-default templates own their own routes
         : hasFlag('--no-dashboard')
             ? false
