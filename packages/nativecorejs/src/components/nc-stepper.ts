@@ -101,7 +101,7 @@ export class NcStepper extends Component {
                     <div class="step__indicator">${raw(iconContent)}</div>
                     <div class="step__text">
                         <span class="step__label">${raw(escapeHTML(label))}</span>
-                        ${raw(desc ? `<span class="step__desc">${raw(escapeHTML(desc)))}</span>` : ''}
+                        ${raw(desc ? `<span class="step__desc">${escapeHTML(desc)}</span>` : '')}
                     </div>
                     ${raw(i < total - 1 ? `<div class="step__connector"></div>` : '')}
                 </div>`;

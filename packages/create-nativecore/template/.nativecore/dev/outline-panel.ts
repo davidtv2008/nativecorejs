@@ -1112,7 +1112,6 @@ export class OutlinePanel {
      * Public method to be called when gear icon is clicked
      */
     public expandToElement(targetElement: HTMLElement): void {
-        console.log('[OutlinePanel] Expanding to element:', targetElement.tagName);
         
         // Find all parent elements up to body
         const parents: Element[] = [];
@@ -1123,7 +1122,6 @@ export class OutlinePanel {
             current = current.parentElement;
         }
         
-        console.log('[OutlinePanel] Parents to expand:', parents.map(p => p.tagName));
         
         // Build a path of indices to identify the exact element
         const pathIndices: number[] = [];
@@ -1139,14 +1137,12 @@ export class OutlinePanel {
             elem = parent;
         }
         
-        console.log('[OutlinePanel] Path indices:', pathIndices);
         
         // Expand each parent node in the tree
         parents.forEach((parent, _parentIndex) => {
             // Find the tree node for this element
             const treeNodes = this.panel?.querySelectorAll('.nc-tree-node');
             if (!treeNodes) {
-                console.log('[OutlinePanel] No tree nodes found');
                 return;
             }
             
@@ -1171,7 +1167,6 @@ export class OutlinePanel {
                 
                 if (matches) {
                     matchCount++;
-                    console.log(`[OutlinePanel] Matched node for ${parent.tagName}:`, {tagName, nodeId, nodeClass});
                     
                     // Expand this node's children
                     const toggle = node.querySelector('.nc-tree-toggle');
@@ -1181,12 +1176,10 @@ export class OutlinePanel {
                     if (toggle && childrenContainer) {
                         toggle.classList.remove('collapsed');
                         childrenContainer.classList.remove('hidden');
-                        console.log('[OutlinePanel] Expanded node');
                     }
                     
                     // If this is the target element, highlight and scroll to it
                     if (parent === targetElement) {
-                        console.log('[OutlinePanel] Highlighting target element');
                         (node as HTMLElement).style.backgroundColor = 'rgba(92, 200, 255, 0.2)';
                         node.scrollIntoView({ behavior: 'smooth', block: 'center' });
                         
@@ -1199,7 +1192,7 @@ export class OutlinePanel {
             });
             
             if (matchCount === 0) {
-                console.log(`[OutlinePanel] No matches found for ${parent.tagName}`);
+                //console.log(`[OutlinePanel] No matches found for ${parent.tagName}`);
             }
         });
         

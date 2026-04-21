@@ -129,7 +129,7 @@ export class NcNavItem extends Component {
             <${tag} ${tagAttrs} ${disabled ? (href ? 'aria-disabled="true"' : 'disabled') : ''} aria-current="${active ? 'page' : 'false'}">
                 ${raw(iconHtml ? `<span class="icon">${raw(iconHtml)}<slot name="icon"></slot></span>` : '<slot name="icon"></slot>')}
                 <span class="label">${raw(escapeHTML(label))}<slot></slot></span>
-                ${raw(badge ? `<span class="badge">${raw(escapeHTML(badge)))}<slot name="badge"></slot></span>` : '<slot name="badge"></slot>'}
+                ${raw(badge ? `<span class="badge">${escapeHTML(badge)}<slot name="badge"></slot></span>` : '<slot name="badge"></slot>')}
             </${tag}>
         `;
     }

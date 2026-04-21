@@ -51,7 +51,7 @@ export class NcDivider extends Component {
             </style>
             <div class="divider" role="separator" aria-orientation="${orientation}">
                 <span class="line"></span>
-                ${raw(label ? `<span class="label">${raw(escapeHTML(label)))}</span><span class="line"></span>` : ''}
+                ${raw(label ? `<span class="label">${escapeHTML(label)}</span><span class="line"></span>` : '')}
             </div>
         `;
     }

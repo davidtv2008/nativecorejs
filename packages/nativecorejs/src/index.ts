@@ -1,3 +1,4 @@
+import './install-template-globals.js';
 export { Component, defineComponent } from '../.nativecore/core/component.js';
 export {
 	LoadingSpinner,
@@ -103,6 +104,7 @@ export {
 	trackEvents,
 	trackSubscriptions
 } from '../.nativecore/utils/events.js';
+export { connectSSE } from '../.nativecore/core/sse.js';
 
 export type {
 	ComponentConstructor,
@@ -131,5 +133,7 @@ export {
 } from './plugin.js';
 
 export type { NCPlugin, NCPluginNavigateContext } from './plugin.js';
+
+export type { SSEConnectOptions, SSEHandlers } from '../.nativecore/core/sse.js';
 
 

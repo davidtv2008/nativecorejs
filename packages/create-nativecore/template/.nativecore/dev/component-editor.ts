@@ -801,9 +801,7 @@ export class ComponentEditor {
     open(element: HTMLElement, metadata: ExtendedMetadata): void {
         if (!this.drawer) return;
 
-        console.log('[ComponentEditor] Opening with metadata:', metadata);
-        console.log('[ComponentEditor] Attributes:', metadata.attributes);
-
+        
         // Clean up previous element's outline before switching to new element
         if (this.currentElement && this.currentElement !== element) {
             this.currentElement.style.outline = '';
@@ -915,6 +913,41 @@ export class ComponentEditor {
             ${this.buildStyleField('padding', 'padding', cs.padding)}
             ${this.buildStyleField('borderRadius', 'radius', cs.borderRadius)}
         `);
+
+        // Nested Components section — scan shadow root for custom elements
+        const shadowRoot = element.shadowRoot;
+        if (shadowRoot) {
+            const nested = Array.from(shadowRoot.querySelectorAll('*'))
+                .filter(el => el.tagName.includes('-') && customElements.get(el.tagName.toLowerCase()))
+                .reduce((acc: Element[], el) => {
+                    if (!acc.find(e => e.tagName === el.tagName)) acc.push(el);
+                    return acc;
+                }, []);
+
+            if (nested.length > 0) {
+                sectionCount++;
+                const nestedItems = nested.map(el => `
+                    <div class="nc-editor-nested-item" data-nested-tag="${el.tagName.toLowerCase()}">
+                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M4.22 4.22l2.12 2.12M17.66 17.66l2.12 2.12M2 12h3M19 12h3M4.22 19.78l2.12-2.12M17.66 6.34l2.12-2.12"/></svg>
+                        <span>&lt;${el.tagName.toLowerCase()}&gt;</span>
+                        <svg class="nc-editor-nested-arrow" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 18l6-6-6-6"/></svg>
+                    </div>
+                `).join('');
+                html += this.buildSection('Nested Components', nested.length, chevron, false, `
+                    <style>
+                        .nc-editor-nested-item {
+                            display: flex; align-items: center; gap: 8px;
+                            padding: 8px 12px; cursor: pointer; border-radius: 6px;
+                            color: #a6adc8; font-size: 12px; font-family: monospace;
+                            transition: background 0.15s, color 0.15s;
+                        }
+                        .nc-editor-nested-item:hover { background: rgba(137,180,250,0.1); color: #89b4fa; }
+                        .nc-editor-nested-arrow { margin-left: auto; opacity: 0.5; }
+                    </style>
+                    ${nestedItems}
+                `);
+            }
+        }
 
         if (html === '') {
             html = '<div class="nc-editor-empty">No editable properties found</div>';
@@ -1245,6 +1278,25 @@ export class ComponentEditor {
                 if (range) range.value = t.value;
             });
         });
+
+        // Nested component drill-down
+        container.querySelectorAll('[data-nested-tag]').forEach(item => {
+            item.addEventListener('click', async () => {
+                const tagName = (item as HTMLElement).dataset.nestedTag!;
+                const shadowRoot = element.shadowRoot;
+                if (!shadowRoot) return;
+                const nestedEl = shadowRoot.querySelector(tagName) as HTMLElement | null;
+                if (!nestedEl) return;
+                try {
+                    const response = await fetch(`/api/dev/component/${tagName}`);
+                    if (!response.ok) return;
+                    const metadata = await response.json();
+                    this.open(nestedEl, metadata);
+                } catch (e) {
+                    console.warn('[DevTools] Could not load nested component metadata:', tagName, e);
+                }
+            });
+        });
     }
 
     private rgbToHex(rgb: string): string {
@@ -1341,7 +1393,7 @@ export class ComponentEditor {
             });
             setTimeout(() => this.close(), 500);
         } catch (e) {
-            console.error('[ComponentEditor] Save failed:', e);
+            //console.error('[ComponentEditor] Save failed:', e);
         }
     }
 

@@ -162,7 +162,7 @@ export class NcSplash extends Component {
                 <div class="splash-glow"></div>
                 <div class="splash-content" id="content">
                     <h1 class="splash-title">${raw(escapeHTML(title))}</h1>
-                    ${raw(subtitle ? `<p class="splash-subtitle">${raw(escapeHTML(subtitle)))}</p>` : ''}
+                    ${raw(subtitle ? `<p class="splash-subtitle">${escapeHTML(subtitle)}</p>` : '')}
                     <div class="splash-prompt" id="prompt">
                         Click to start <span class="splash-cursor"></span>
                     </div>

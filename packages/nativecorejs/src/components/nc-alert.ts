@@ -83,7 +83,7 @@ export class NcAlert extends Component {
             <div class="alert alert--${variant}" role="alert" aria-live="polite">
                 ${raw(showIcon ? `<span class="alert__icon">${ICONS[variant] ?? ICONS.info}</span>` : '')}
                 <div class="alert__body">
-                    ${raw(title ? `<strong class="alert__title">${raw(escapeHTML(title)))}</strong>` : ''}
+                    ${raw(title ? `<strong class="alert__title">${escapeHTML(title)}</strong>` : '')}
                     <slot></slot>
                 </div>
                 ${raw(dismissible ? `

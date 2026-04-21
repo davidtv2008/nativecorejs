@@ -60,7 +60,7 @@ export class NcCopyButton extends Component {
             </style>
             <button type="button" aria-label="${raw(escapeHTML(isCopied ? copiedLabel : label))}" ${isCopied ? 'disabled' : ''}>
                 <span class="icon">${isCopied ? checkIcon : copyIcon}</span>
-                ${raw(!iconOnly ? `<span>${raw(escapeHTML(isCopied ? copiedLabel : label)))}</span>` : ''}
+                ${raw(!iconOnly ? `<span>${escapeHTML(isCopied ? copiedLabel : label)}</span>` : '')}
             </button>
         `;
     }

@@ -86,9 +86,10 @@ function prepareDeployDirectory() {
         const sourcePath = path.join(distDir, entry.name);
         const destPath = path.join(jsDeployDir, entry.name);
 
-        // Skip static assets that were previously mixed into dist/.
-        // We only want the TS compiler output here.
-        if (['src', 'docs', 'bot', 'index.html', 'manifest.json',
+        // Skip non-JS artefacts that may exist at the dist root (legacy or dev builds).
+        // NOTE: 'src' must NOT be skipped — compiled app JS lives at dist/src/app.js
+        // and the browser fetches it as /dist/src/app.js, /dist/src/components/... etc.
+        if (['docs', 'bot', 'index.html', 'manifest.json',
              'robots.txt', 'sitemap.xml', '.well-known'].includes(entry.name)) {
             continue;
         }

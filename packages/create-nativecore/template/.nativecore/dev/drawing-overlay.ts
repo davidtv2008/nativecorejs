@@ -666,11 +666,20 @@ function renderToolbar(bar: HTMLElement): void {
             const video = document.createElement('video');
             video.srcObject = stream;
             video.muted = true;
+            // Wait for actual frame data — 'playing' fires when the first real frame is ready
             await new Promise<void>((resolve) => {
-                video.onloadedmetadata = () => { video.play(); resolve(); };
+                video.onplaying = () => resolve();
+                video.play();
             });
-            // Wait one animation frame for the first real frame to paint
-            await new Promise<void>(r => requestAnimationFrame(() => requestAnimationFrame(() => r())));
+            // Ensure video has real dimensions (guards against black-frame race)
+            let attempts = 0;
+            while (video.videoWidth === 0 && attempts++ < 20) {
+                await new Promise<void>(r => requestAnimationFrame(() => r()));
+            }
+            // Extra frames to let the compositor settle
+            for (let i = 0; i < 4; i++) {
+                await new Promise<void>(r => requestAnimationFrame(() => r()));
+            }
 
             stream.getTracks().forEach((t: MediaStreamTrack) => t.stop());
 

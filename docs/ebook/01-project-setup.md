@@ -251,8 +251,7 @@ export function registerRoutes(router: any): void {
             lazyController('loginController', '../controllers/login.controller.js'))
 
         .register('/dashboard', 'src/views/protected/dashboard.html',
-            lazyController('dashboardController', '../controllers/dashboard.controller.js'))
-        .cache({ ttl: 30, revalidate: true });
+            lazyController('dashboardController', '../controllers/dashboard.controller.js'));
 }
 
 export const protectedRoutes = ['/dashboard'];
@@ -271,6 +270,7 @@ The `protectedRoutes` export is the authoritative list of paths that require aut
       "@core/*":        [".nativecore/core/*"],
       "@core-utils/*":  [".nativecore/utils/*"],
       "@core-types/*":  [".nativecore/types/*"],
+      "@dev/*": [".nativecore/dev/*"],
       "@components/*":  ["src/components/*"],
       "@services/*":    ["src/services/*"],
       "@utils/*":       ["src/utils/*"],
@@ -285,7 +285,7 @@ The `protectedRoutes` export is the authoritative list of paths that require aut
 }
 ```
 
-`@core/*` and `@core-utils/*` resolve into the `.nativecore/` folder — the framework internals that ship with the scaffolder. Everything else resolves into `src/`. Always include the `.js` extension on every import even in TypeScript files, because the compiled output is plain ES modules.
+`@core/*`, `@core-utils/*` and `@dev/*` resolve into the `.nativecore/` folder — the framework internals that ship with the scaffolder. Everything else resolves into `src/`. Always include the `.js` extension on every import even in TypeScript files, because the compiled output is plain ES modules.
 
 ---
 

@@ -75,8 +75,8 @@ export class NcEmptyState extends Component {
                 <div class="icon-wrap">
                     ${customIcon ? '<slot name="icon"></slot>' : iconMarkup}
                 </div>
-                ${raw(title ? `<p class="title">${raw(escapeHTML(title)))}</p>` : '<slot name="title"></slot>'}
-                ${raw(description ? `<p class="desc">${raw(escapeHTML(description)))}</p>` : '<slot name="description"></slot>'}
+                ${raw(title ? `<p class="title">${escapeHTML(title)}</p>` : '<slot name="title"></slot>')}
+                ${raw(description ? `<p class="desc">${escapeHTML(description)}</p>` : '<slot name="description"></slot>')}
                 <div class="actions"><slot name="actions"></slot></div>
             </div>
         `;

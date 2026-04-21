@@ -72,6 +72,40 @@ function validatePath(userPath, rootDir = ROOT_DIR) {
     return resolved;
 }
 
+/**
+ * Path portion of the request (no query string). Handles absolute-form Request-URI
+ * (e.g. GET http://localhost:8000/api/foo HTTP/1.1) so /api/* routes are not missed.
+ */
+function getRequestPathname(req) {
+    let raw = req.url || '/';
+    try {
+        if (/^https?:\/\//i.test(raw)) {
+            const p = new URL(raw).pathname;
+            return p.length > 1 && p.endsWith('/') ? p.slice(0, -1) : p;
+        }
+    } catch {
+        /* fall through */
+    }
+    const q = raw.indexOf('?');
+    if (q !== -1) raw = raw.slice(0, q);
+    if (raw.length > 1 && raw.endsWith('/')) raw = raw.slice(0, -1);
+    return raw || '/';
+}
+
+/** Query string only (for URLSearchParams), works with absolute Request-URI. */
+function getRequestQuery(req) {
+    const raw = req.url || '';
+    try {
+        if (/^https?:\/\//i.test(raw)) {
+            return new URL(raw).search.slice(1);
+        }
+    } catch {
+        /* ignore */
+    }
+    const q = raw.indexOf('?');
+    return q === -1 ? '' : raw.slice(q + 1);
+}
+
 // ============================================
 // DEV TOOLS: Component Metadata Parser
 // ============================================
@@ -220,7 +254,8 @@ async function getComponentMetadata(tagName) {
                           sourceCode.includes('this.attachShadow');
     
     // Detect observed attributes
-    const observedAttrsMatch = sourceCode.match(/static get observedAttributes\(\)\s*\{\s*return\s*\[([^\]]+)\]/);
+    // Detect observed attributes — supports both static field and getter syntax
+    const observedAttrsMatch = sourceCode.match(/static\s+(?:get\s+)?observedAttributes(?:\s*\(\s*\)\s*\{\s*return)?\s*[=]?\s*\[([^\]]+)\]/);
     console.log(`[DEBUG] observedAttributes match for ${tagName}:`, observedAttrsMatch ? observedAttrsMatch[1] : 'NOT FOUND');
     if (observedAttrsMatch) {
         const attrNames = observedAttrsMatch[1].match(/['"]([^'"]+)['"]/g);
@@ -674,7 +709,8 @@ setInterval(() => {
 
 // Handle API routes
 async function handleApiRoute(req, res) {
-    const url = req.url;
+    const pathname = getRequestPathname(req);
+    const query = getRequestQuery(req);
     const method = req.method;
     
     // CORS headers
@@ -710,10 +746,18 @@ async function proxyRemoteLogin(body) {
         res.end();
         return;
     }
-    
+
     try {
+        // GET /api/sse/demo — dev mock Server-Sent Events stream (see api/mockApi.js)
+        if (pathname === mockApi.DEV_SSE_DEMO_PATH && method === 'GET') {
+            const intervalParam = new URLSearchParams(query).get('interval');
+            const intervalMs = intervalParam ? Number(intervalParam) : undefined;
+            mockApi.attachDevDemoSSE(req, res, intervalMs && !Number.isNaN(intervalMs) ? { intervalMs } : {});
+            return;
+        }
+
         // POST /api/auth/login
-        if (url === '/api/auth/login' && method === 'POST') {
+        if (pathname === '/api/auth/login' && method === 'POST') {
             const clientIP = req.socket.remoteAddress || 'unknown';
             if (!checkRateLimit(clientIP)) {
                 res.writeHead(429, { 'Content-Type': 'application/json' });
@@ -740,7 +784,7 @@ async function proxyRemoteLogin(body) {
         }
         
         // GET /api/dashboard/stats
-        if (url === '/api/dashboard/stats' && method === 'GET') {
+        if (pathname === '/api/dashboard/stats' && method === 'GET') {
             const authHeader = req.headers.authorization;
             const user = mockApi.verifyToken(authHeader);
             
@@ -757,7 +801,7 @@ async function proxyRemoteLogin(body) {
         }
 
         // GET /api/auth/verify
-        if (url === '/api/auth/verify' && method === 'GET') {
+        if (pathname === '/api/auth/verify' && method === 'GET') {
             const authHeader = req.headers.authorization;
             const user = mockApi.verifyToken(authHeader);
 
@@ -774,7 +818,7 @@ async function proxyRemoteLogin(body) {
         }
 
         // GET /api/users/:id
-        if (url.startsWith('/api/users/') && method === 'GET') {
+        if (pathname.startsWith('/api/users/') && method === 'GET') {
             const authHeader = req.headers.authorization;
             const user = mockApi.verifyToken(authHeader);
 
@@ -784,7 +828,7 @@ async function proxyRemoteLogin(body) {
                 return;
             }
 
-            const userId = url.replace('/api/users/', '').split('?')[0];
+            const userId = pathname.replace('/api/users/', '');
             const result = mockApi.handleUserDetail(userId);
             res.writeHead(result.status, { 'Content-Type': 'application/json' });
             res.end(JSON.stringify(result.data));
@@ -797,8 +841,8 @@ async function proxyRemoteLogin(body) {
         // ============================================
         
         // GET /api/dev/component/:tagName - Get component metadata
-        if (url.startsWith('/api/dev/component/') && method === 'GET' && !url.includes('/edit')) {
-            const tagName = url.replace('/api/dev/component/', '');
+        if (pathname.startsWith('/api/dev/component/') && method === 'GET' && !pathname.includes('/edit')) {
+            const tagName = pathname.replace('/api/dev/component/', '');
             const metadata = await getComponentMetadata(tagName);
             
             if (!metadata) {
@@ -813,7 +857,7 @@ async function proxyRemoteLogin(body) {
         }
         
         // POST /api/dev/component/edit - Edit component file
-        if (url === '/api/dev/component/edit' && method === 'POST') {
+        if (pathname === '/api/dev/component/edit' && method === 'POST') {
             const body = await parseBody(req);
             const result = await editComponentFile(body);
             
@@ -823,7 +867,7 @@ async function proxyRemoteLogin(body) {
         }
         
         // POST /api/dev/component/save-instance - Save instance changes to HTML
-        if (url === '/api/dev/component/save-instance' && method === 'POST') {
+        if (pathname === '/api/dev/component/save-instance' && method === 'POST') {
             const body = await parseBody(req);
             const result = await saveInstanceChanges(body);
             
@@ -833,7 +877,7 @@ async function proxyRemoteLogin(body) {
         }
         
         // POST /api/dev/component/save-global - Save global changes to component file
-        if (url === '/api/dev/component/save-global' && method === 'POST') {
+        if (pathname === '/api/dev/component/save-global' && method === 'POST') {
             const body = await parseBody(req);
             const result = await saveGlobalChanges(body);
             
@@ -843,7 +887,7 @@ async function proxyRemoteLogin(body) {
         }
         
         // POST /api/dev/component/delete-instance - Delete component instance from HTML
-        if (url === '/api/dev/component/delete-instance' && method === 'POST') {
+        if (pathname === '/api/dev/component/delete-instance' && method === 'POST') {
             const body = await parseBody(req);
             const { tagName, htmlPath, outerHTML } = body;
             const fullPath = validatePath(htmlPath);
@@ -890,8 +934,8 @@ async function proxyRemoteLogin(body) {
 }
 
 const server = http.createServer(async (req, res) => {
-    // Handle API routes
-    if (req.url.startsWith('/api/')) {
+    const pathOnly = getRequestPathname(req);
+    if (pathOnly.startsWith('/api/')) {
         await handleApiRoute(req, res);
         return;
     }

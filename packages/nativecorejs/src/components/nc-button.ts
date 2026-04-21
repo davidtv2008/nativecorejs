@@ -289,12 +289,14 @@ export class NcButton extends Component {
             }
         });
         
-        // Handle click - prevent when disabled/loading
+        // Handle click - prevent when disabled/loading, emit custom event otherwise
         this.addEventListener('click', (e) => {
             if (this.hasAttribute('disabled') || this.hasAttribute('loading')) {
                 e.stopPropagation();
                 e.preventDefault();
+                return;
             }
+            this.emitEvent('nc-button-click', { originalEvent: e });
         });
     }
     

@@ -155,7 +155,7 @@ export class NcTimelineItem extends Component {
             <div class="content">
                 <div class="header">
                     <p class="title"><slot name="title">${raw(escapeHTML(title))}</slot></p>
-                    ${raw(time ? `<span class="time"><slot name="time">${raw(escapeHTML(time)))}</slot></span>` : '<slot name="time"></slot>'}
+                    ${raw(time ? `<span class="time"><slot name="time">${escapeHTML(time)}</slot></span>` : '<slot name="time"></slot>')}
                 </div>
                 <div class="body"><slot></slot></div>
             </div>

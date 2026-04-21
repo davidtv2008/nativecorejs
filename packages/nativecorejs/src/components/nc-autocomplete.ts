@@ -146,10 +146,10 @@ export class NcAutocomplete extends Component {
             <div class="dropdown" role="listbox">
                 ${raw(results.map((opt, i) => {
                     const safeOpt = escapeHTML(opt);
-                    const escaped = this._inputValue.replace(/[.*+?^${)}()|[\]\\]/g, '\\$&');
-                    const hl = escaped ? safeOpt.replace(new RegExp(`(${raw(escapeHTML(escaped))})`, 'gi'), '<mark>$1</mark>') : safeOpt;
+                    const escaped = this._inputValue.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+                    const hl = escaped ? safeOpt.replace(new RegExp(`(${escaped})`, 'gi'), '<mark>$1</mark>') : safeOpt;
                     return `<div class="option${i === this._activeIndex ? ' active' : ''}" role="option" data-value="${safeOpt}" aria-selected="${i === this._activeIndex}">${hl}</div>`;
-                }).join('')}
+                }).join(''))}
             </div>
         `;
     }
@@ -279,7 +279,7 @@ export class NcAutocomplete extends Component {
         dropdown.innerHTML = results.map((opt, i) => {
             const safeOpt = escapeHTML(opt);
             const escaped = this._inputValue.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-            const hl = escaped ? safeOpt.replace(new RegExp(`(${raw(escapeHTML(escaped))})`, 'gi'), '<mark>$1</mark>') : safeOpt;
+            const hl = escaped ? safeOpt.replace(new RegExp(`(${escaped})`, 'gi'), '<mark>$1</mark>') : safeOpt;
             return `<div class="option${i === this._activeIndex ? ' active' : ''}" role="option" data-value="${safeOpt}" aria-selected="${i === this._activeIndex}">${hl}</div>`;
         }).join('');
         const input = this.$<HTMLInputElement>('input');

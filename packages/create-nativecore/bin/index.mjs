@@ -224,8 +224,8 @@ function routesTemplate(config) {
         ? "        .register('/login', 'src/views/public/login.html', lazyController('loginController', '../controllers/login.controller.js'))\n"
         : '';
     const dashboardRoute = config.includeDashboard
-        ? "        .register('/dashboard', 'src/views/protected/dashboard.html', lazyController('dashboardController', '../controllers/dashboard.controller.js'))\n"
-        : '';
+        ? "        .register('/dashboard', 'src/views/protected/dashboard.html', lazyController('dashboardController', '../controllers/dashboard.controller.js'));\n"
+        : ';\n';
     const protectedRoutes = config.includeAuth && config.includeDashboard ? "export const protectedRoutes = ['/dashboard'];\n" : "export const protectedRoutes = [];\n";
 
     return `/**
@@ -244,6 +244,7 @@ function lazyController(controllerName: string, controllerPath: string): Control
 export function registerRoutes(router: Router): void {
     router
         .register('/', 'src/views/public/home.html', lazyController('homeController', '../controllers/home.controller.js'))
+        .cache({ ttl: 300, revalidate: true })
 ${loginRoute}${dashboardRoute}}
 
 ${protectedRoutes}`;
@@ -251,7 +252,7 @@ ${protectedRoutes}`;
 
 function appTsTemplate(config) {
     const authImports = config.includeAuth
-        ? "import auth from './services/auth.service.js';\nimport type { User } from './services/auth.service.js';\nimport api from './services/api.service.js';\nimport { authMiddleware } from './middleware/auth.middleware.js';\n"
+        ? "import auth from '@services/auth.service.js';\nimport type { User } from '@services/auth.service.js';\nimport api from '@services/api.service.js';\nimport { authMiddleware } from '@middleware/auth.middleware.js';\n"
         : "";
     const authVerify = config.includeAuth
         ? `async function verifyExistingSession(): Promise<void> {
@@ -280,8 +281,13 @@ function appTsTemplate(config) {
         if (!isAuth) {
             router.replace('/login');
             document.body.classList.remove('sidebar-enabled');
-            document.getElementById('app')?.classList.remove('sidebar-collapsed');
-            document.getElementById('app')?.classList.add('no-sidebar');
+            const app = dom.$('#app');
+            app?.classList.remove('sidebar-collapsed');
+            app?.classList.add('no-sidebar');
+            localStorage.removeItem('sidebar-collapsed');
+            const sidebar = dom.$('#appSidebar');
+            sidebar?.removeAttribute('collapsed');
+            dom.$('.app-layout')?.classList.remove('sidebar-collapsed');
         } else {
             updateSidebarVisibility();
         }
@@ -292,13 +298,27 @@ function appTsTemplate(config) {
 
     return `/**
  * Main Application Entry Point
+ *
+ * Boot order:
+ *   1. Verify any existing JWT session with the server (keeps users logged in on refresh)
+ *   2. Lazy-load Web Components registered in components/registry.ts
+ *   3. Expose a frozen router API on window for use inside component templates
+ *   4. Register the auth middleware (redirects unauthenticated users away from protected routes)
+ *   5. Register all routes from routes/routes.ts
+ *   6. Start the router (begins listening for navigation events and renders the first view)
+ *   7. Initialize sidebar state
+ *   8. Load dev tools (localhost only — never ships to production)
+ *
+ * Keep this file minimal. Business logic belongs in controllers and services.
+ * Routes belong in routes/routes.ts. Components belong in components/registry.ts.
  */
 import router from '@core/router.js';
-${authImports}import { registerRoutes, protectedRoutes } from './routes/routes.js';
-import { initSidebar } from './utils/sidebar.js';
+${authImports}import { registerRoutes, protectedRoutes } from '@routes/routes.js';
+import { initSidebar } from '@utils/sidebar.js';
 import { initLazyComponents } from '@core/lazyComponents.js';
-import '@core-utils/dom.js';
-import './components/registry.js';
+import { dom } from '@core-utils/dom.js';
+import { pausePageCleanupCollection, resumePageCleanupCollection } from '@core/pageCleanupRegistry.js';
+import '@components/registry.js';
 
 function isLocalhost(): boolean {
     const hostname = window.location.hostname;
@@ -312,7 +332,7 @@ function updateSidebarVisibility() {
 ${config.includeAuth ? `    const isAuthenticated = auth.isAuthenticated();` : '    const isAuthenticated = false;'}
     const currentPath = window.location.pathname;
     const isProtectedRoute = protectedRoutes.some(route => currentPath.startsWith(route));
-    const app = document.getElementById('app');
+    const app = dom.$('#app');
 
     if (isAuthenticated && isProtectedRoute) {
         document.body.classList.add('sidebar-enabled');
@@ -339,7 +359,10 @@ ${authVerificationCall}    await initLazyComponents();
     });
 
 ${authMiddlewareSetup}    registerRoutes(router);
+
+    pausePageCleanupCollection();
     router.start();
+    resumePageCleanupCollection();
 
     initSidebar();
 
@@ -347,7 +370,6 @@ ${authChangeHandler}    window.addEventListener('pageloaded', () => {
         updateSidebarVisibility();
     });
 
-    updateSidebarVisibility();
     initDevTools();
 }
 
@@ -357,9 +379,9 @@ function initDevTools(): void {
     }
 
     Promise.all([
-        import('../.nativecore/hmr.js'),
-        import('../.nativecore/denc-tools.js'),
-        import('./utils/devOverlay.js'),
+        import('@dev/hmr.js'),
+        import('@dev/denc-tools.js'),
+        import('@dev/devOverlay.js'),
     ])
         .then(([, , { initDevOverlay }]) => {
             window.__NATIVECORE_DEV__ = true;

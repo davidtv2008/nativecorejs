@@ -111,7 +111,7 @@ export class NcOtpInput extends Component {
             <div class="wrap" role="group" aria-label="${label || 'OTP input'}">
                 ${raw(boxesHtml)}
             </div>
-            ${raw(error ? `<p class="error">${raw(escapeHTML(error)))}</p>` : hint ? `<p class="hint">${raw(escapeHTML(hint))}</p>` : ''}
+            ${raw(error ? `<p class="error">${escapeHTML(error)}</p>` : hint ? `<p class="hint">${escapeHTML(hint)}</p>` : '')}
         `;
     }
 

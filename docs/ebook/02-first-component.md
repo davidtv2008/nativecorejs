@@ -53,26 +53,57 @@ If you need a component that participates in the page's normal style cascade —
 The `template()` method returns the HTML string that is stamped into the shadow root on first mount:
 
 ```typescript
-template(): string {
-  return `
-    <article class="task-card">
-      <header class="task-card__header">
-        <span class="task-card__status"></span>
-        <h3 class="task-card__title"></h3>
-      </header>
-      <p class="task-card__description"></p>
-    </article>
-    <style>
-      :host { display: block; }
-      .task-card { border: 1px solid #e2e8f0; border-radius: 8px; padding: 1rem; }
-      .task-card__header { display: flex; align-items: center; gap: 0.5rem; }
-      .task-card__title { margin: 0; font-size: 1rem; }
-      .task-card__description { color: #64748b; font-size: 0.875rem; margin-top: 0.5rem; }
-      .task-card__status[data-status="done"] { color: #16a34a; }
-      .task-card__status[data-status="pending"] { color: #d97706; }
-    </style>
-  `;
+import { Component, defineComponent } from '@core/component.js';
+import { html } from '@core-utils/templates.js';
+// import { useState, computed } from '@core/state.js';
+// import type { State } from '@core/state.js';
+
+export class TaskCard extends Component {
+    static useShadowDOM = true;
+
+    constructor() {
+        super();
+        // this.titleState = useState('');
+        // this.myComputed = computed(() => this.titleState?.value);
+    }
+
+    template() {
+        return html`
+            <style>
+                :host { display: block; }
+                .task-card { border: 1px solid #e2e8f0; border-radius: 8px; padding: 1rem; }
+                .task-card__header { display: flex; align-items: center; gap: 0.5rem; }
+                .task-card__title { margin: 0; font-size: 1rem; }
+                .task-card__description { color: #64748b; font-size: 0.875rem; margin-top: 0.5rem; }
+                .task-card__status[data-status="done"] { color: #16a34a; }
+                .task-card__status[data-status="pending"] { color: #d97706; }
+            </style>
+            <div class="task-card" data-view="task-card">
+                <header class="task-card__header">
+                    <span class="task-card__status" data-hook="status"></span>
+                    <h3 class="task-card__title" data-hook="title"></h3>
+                </header>
+                <p class="task-card__description" data-hook="description"></p>
+            </div>
+        `;
+    }
+
+    onMount() {
+        this.on('click', '[data-action]', (e) => {
+            const action = (e.target as HTMLElement).getAttribute('data-action');
+            // handle actions here, or emit upward:
+            // this.emitEvent('task-action', { action });
+        });
+
+        // this.bind(this.title, '[data-hook="title"]');
+    }
+
+    onUnmount() {
+        // this.title?.dispose();
+    }
 }
+
+defineComponent('task-card', TaskCard);
 ```
 
 `template()` is called by `render()`, which the framework invokes on first mount and again whenever an observed attribute changes (unless you override `attributeChangedCallback` directly, which suppresses the automatic re-render). For high-frequency updates driven by reactive state, use the `bind()` API (Chapter 04) to surgically update individual DOM nodes without triggering a full re-render.
@@ -84,17 +115,17 @@ template(): string {
 > // variant and title are both escaped — XSS-safe
 > ```
 >
-> When you intentionally interpolate a developer-authored HTML string (icon markup, a `map().join('')` result, a sub-template), wrap it in `raw()` to bypass escaping:
+> When you intentionally interpolate a developer-authored HTML string (icon markup, a `map().join('')` result, a sub-template), wrap it in `trusted()` to bypass escaping:
 >
 > ```typescript
-> import { html, raw, escapeHTML } from 'nativecorejs/utils/templates.js';
+> import { html, trusted, escapeHtml } from '@core-utils/templates.js';
 >
 > // Build HTML sub-strings safely: escape user data inside, then mark the result as safe
-> const itemsHtml = items.map(i => `<li>${escapeHTML(i.label)}</li>`).join('');
-> return html`<ul>${raw(itemsHtml)}</ul>`;
+> const itemsHtml = items.map(i => `<li>${escapeHtml(i.label)}</li>`).join('');
+> return html`<ul>${trusted(itemsHtml)}</ul>`;
 > ```
 >
-> Rule: static structure (tags, class names) in `template()` is safe. User-supplied values (API responses, attribute values from external sources) belong in `textContent` assignments or are auto-escaped by the `html` tag. Use `raw()` only for HTML you construct yourself in component code — never pass user input through `raw()`.
+> Rule: static structure (tags, class names) in `template()` is safe. User-supplied values (API responses, attribute values from external sources) belong in `textContent` assignments or are auto-escaped by the `html` tag. Use `trusted()` only for HTML you construct yourself in component code — never pass user input through `trusted()`.
 
 ---
 
@@ -274,17 +305,23 @@ Shadow DOM's `<slot>` element lets consumers project light-DOM children into spe
 
 ```typescript
 template(): string {
-  return `
-    <article class="task-card">
+  return html`
+    <style>
+      :host { display: block; }
+      .task-card { border: 1px solid #e2e8f0; border-radius: 8px; padding: 1rem; }
+      .task-card__header { display: flex; align-items: center; gap: 0.5rem; }
+      .task-card__title { margin: 0; font-size: 1rem; }
+      .task-card__description { color: #64748b; font-size: 0.875rem; margin-top: 0.5rem; }
+    </style>
+    <div class="task-card" data-view="task-card">
       <header class="task-card__header">
-        <span class="task-card__status"></span>
-        <h3 class="task-card__title"></h3>
+        <h3 class="task-card__title" data-hook="title"></h3>
       </header>
-      <p class="task-card__description"></p>
+      <p class="task-card__description" data-hook="description"></p>
       <footer class="task-card__footer">
         <slot name="actions"></slot>
       </footer>
-    </article>
+    </div>
     <!-- styles omitted for brevity -->
   `;
 }
@@ -299,28 +336,16 @@ Here is the full file with everything assembled:
 ```typescript
 // src/components/ui/task-card.ts
 import { Component, defineComponent } from '@core/component.js';
+import { html } from '@core-utils/templates.js';
 
 export class TaskCard extends Component {
   static useShadowDOM = true;
 
+  // Attributes listed here appear in the dev tools sidebar and trigger onAttributeChange.
   static observedAttributes = ['title', 'description', 'status'];
 
-  static attributeOptions = {
-    status: ['pending', 'in-progress', 'done'],
-  };
-
-  template(): string {
-    return `
-      <article class="task-card">
-        <header class="task-card__header">
-          <span class="task-card__status" data-status="pending">● Pending</span>
-          <h3 class="task-card__title"></h3>
-        </header>
-        <p class="task-card__description"></p>
-        <footer class="task-card__footer">
-          <slot name="actions"></slot>
-        </footer>
-      </article>
+  template() {
+    return html`
       <style>
         :host { display: block; }
         .task-card {
@@ -343,22 +368,25 @@ export class TaskCard extends Component {
         .task-card__status[data-status="in-progress"] { color: #2563eb; }
         .task-card__status[data-status="pending"]     { color: #d97706; }
       </style>
+      <div class="task-card" data-view="task-card">
+        <header class="task-card__header">
+          <span class="task-card__status" data-hook="status">● Pending</span>
+          <h3 class="task-card__title" data-hook="title"></h3>
+        </header>
+        <p class="task-card__description" data-hook="description"></p>
+        <footer class="task-card__footer">
+          <slot name="actions"></slot>
+        </footer>
+      </div>
     `;
   }
 
-  attributeChangedCallback(name: string, _old: string | null, value: string | null): void {
-    if (name === 'title') {
-      const el = this.shadowRoot?.querySelector('.task-card__title');
-      if (el) el.textContent = value ?? '';
-    }
-
-    if (name === 'description') {
-      const el = this.shadowRoot?.querySelector('.task-card__description');
-      if (el) el.textContent = value ?? '';
-    }
-
+  attributeChangedCallback(name: string, oldValue: string | null, value: string | null): void {
+    if (oldValue === value || !this._mounted) return;
+    if (name === 'title') this.titleState.value = value ?? '';
+    if (name === 'description') this.descriptionState.value = value ?? '';
     if (name === 'status') {
-      const el = this.shadowRoot?.querySelector('.task-card__status');
+      const el = this.$<HTMLElement>('[data-hook="status"]');
       if (!el) return;
       const labels: Record<string, string> = {
         'done':        '✓ Done',
@@ -368,6 +396,18 @@ export class TaskCard extends Component {
       el.textContent = labels[value ?? 'pending'] ?? '● Pending';
       el.setAttribute('data-status', value ?? 'pending');
     }
+  }
+
+  onMount() {
+    this.on('click', '[data-action]', (e) => {
+      const action = (e.target as HTMLElement).getAttribute('data-action');
+      this.emitEvent('task-card-action', { action });
+    });
+  }
+
+  onUnmount() {
+    // Clean up after yourself — dispose any computed() instances here.
+    // useState() is cleaned up automatically when this.bind() unsubscribes.
   }
 }
 
@@ -405,6 +445,53 @@ With the component registered, you can drop it into any HTML view. Open `src/vie
 You do not need to import the component in your controller or view. Because you registered it in `src/components/appRegistry.ts` when you ran `make:component`, the framework's lazy loader will fetch and define the custom element automatically the first time it appears in a rendered view.
 
 Save and check the browser — you should see two styled task cards with correct status badges.
+
+---
+
+## Using Components Inside Other Components
+
+The lazy loader watches `document.body` with a `MutationObserver`. It sees every custom element that lands in the **light DOM** (your view HTML) and loads it on demand. However, elements inside a **Shadow DOM** are hidden from `document.body` — the browser enforces this as a security and encapsulation boundary.
+
+This means: if your component's `template()` uses another custom element (e.g. `<nc-button>`), the lazy loader will never see it. You must import it explicitly at the top of your component file:
+
+```typescript
+import { Component, defineComponent } from '@core/component.js';
+import { html } from '@core-utils/templates.js';
+import '@components/core/nc-button.js'; // ← explicit import required
+
+export class TaskCard extends Component {
+    template() {
+        return html`
+            <nc-button variant="outline" data-action="primary">Action</nc-button>
+        `;
+    }
+}
+```
+
+The rule is simple:
+
+| Where is the custom element placed? | How is it loaded? |
+|---|---|
+| In a view HTML file (`home.html`, etc.) | Lazy loader — no import needed |
+| Inside another component's `template()` | Explicit `import` in the component file |
+
+### Listening for Events from Nested Components
+
+`nc-button` emits an `nc-button-click` custom event (not a plain `click`) so the parent component can respond without using inline `onclick` handlers:
+
+```typescript
+onMount() {
+    this.on('nc-button-click', '[data-action="primary"]', (e) => {
+        this.emitEvent('task-card-action', { originalEvent: e });
+    });
+}
+```
+
+The chain keeps each layer decoupled: `nc-button` → `nc-button-click` → caught by `task-card` → re-emitted as `task-card-action` → handled by the controller.
+
+### Dev Tools: Inspecting Nested Components
+
+Because nested custom elements live inside a shadow root, the dev tools overlay gear icon won't appear on them directly. Instead, open the gear on the **root component** (`task-card`) and look for the **Nested Components** section at the bottom of the editor sidebar. Each nested custom element found in the shadow root is listed there — click one to drill into its attributes and styles.
 
 ---
 

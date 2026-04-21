@@ -69,14 +69,15 @@ Unlike `useState()`, a `computed()` holds a subscription to its upstream state. 
 When you create a `computed()` inside a **component**, dispose it manually in `onUnmount()` because components can live across multiple page navigations:
 
 ```typescript
-private pct!: ComputedState<number>;
+private pctState!: ComputedState<number>;
 
 onMount(): void {
-  this.pct = computed(() => /* ... */);
+  this.pctState = computed(() => /* ... */);
 }
 
 onUnmount(): void {
-  this.pct.dispose();
+  this.pctState.dispose();
+}
 }
 ```
 

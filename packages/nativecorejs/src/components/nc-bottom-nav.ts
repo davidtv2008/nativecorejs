@@ -129,9 +129,9 @@ export class NcBottomNavItem extends Component {
                 <span class="icon-wrap">
                     ${raw(iconHtml)}
                     <slot name="icon"></slot>
-                    ${raw(badge ? `<span class="badge">${raw(escapeHTML(badge)))}</span>` : ''}
+                    ${raw(badge ? `<span class="badge">${escapeHTML(badge)}</span>` : '')}
                 </span>
-                ${raw(!iconOnly && label ? `<span>${raw(escapeHTML(label)))}</span>` : ''}
+                ${raw(!iconOnly && label ? `<span>${escapeHTML(label)}</span>` : '')}
             </button>
         `;
     }
@@ -173,7 +173,6 @@ export class NcBottomNav extends Component {
                     background: var(--nc-bg-elevated, var(--nc-bg));
                     ${bordered ? 'border-top: 1px solid var(--nc-border);' : ''}
                     ${elevated ? 'box-shadow: 0 -2px 12px rgba(0,0,0,.08);' : ''}
-                    safe-area-inset-bottom: env(safe-area-inset-bottom);
                     padding-bottom: env(safe-area-inset-bottom);
                 }
             </style>

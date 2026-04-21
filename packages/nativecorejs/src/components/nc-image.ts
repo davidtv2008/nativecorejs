@@ -104,7 +104,7 @@ export class NcImage extends Component {
                     <span>Image not found</span>
                 </div>
             </figure>
-            ${raw(caption ? `<figcaption>${raw(escapeHTML(caption)))}</figcaption>` : ''}
+            ${raw(caption ? `<figcaption>${escapeHTML(caption)}</figcaption>` : '')}
         `;
     }
 

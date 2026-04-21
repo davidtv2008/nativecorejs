@@ -196,9 +196,9 @@ export class NcInput extends Component {
                     ${disabled ? 'disabled' : ''}
                     ${readonly ? 'readonly' : ''}
                     ${required ? 'required' : ''}
-                    ${raw(maxlength ? `maxlength="${raw(escapeHTML(maxlength)))}"` : ''}
-                    ${raw(minlength ? `minlength="${raw(escapeHTML(minlength)))}"` : ''}
-                    ${raw(pattern ? `pattern="${raw(escapeHTML(pattern)))}"` : ''}
+                    ${raw(maxlength ? `maxlength="${escapeHTML(String(maxlength))}"` : '')}
+                    ${raw(minlength ? `minlength="${escapeHTML(String(minlength))}"` : '')}
+                    ${raw(pattern ? `pattern="${escapeHTML(String(pattern))}"` : '')}
                     ${error ? 'class="has-error"' : ''}
                     aria-invalid="${!!error}"
                     aria-describedby="${error ? 'subtext' : hint ? 'subtext' : ''}"
@@ -217,8 +217,8 @@ export class NcInput extends Component {
                 </span>` : ''}
             </div>
 
-            ${raw(error ? `<span class="subtext subtext--error" id="subtext" role="alert">${raw(escapeHTML(error)))}</span>` : ''}
-            ${raw(hint && !error ? `<span class="subtext subtext--hint" id="subtext">${raw(escapeHTML(hint)))}</span>` : ''}
+            ${raw(error ? `<span class="subtext subtext--error" id="subtext" role="alert">${escapeHTML(error)}</span>` : '')}
+            ${raw(hint && !error ? `<span class="subtext subtext--hint" id="subtext">${escapeHTML(hint)}</span>` : '')}
         `;
     }
 

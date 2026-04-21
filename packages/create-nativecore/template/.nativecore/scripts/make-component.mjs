@@ -68,213 +68,73 @@ if (fs.existsSync(componentFile)) {
 }
 
 // Template files
-const jsTemplate = `/**
- * ${className} Component
- * Generated on ${new Date().toLocaleDateString()}
- * 
- * DEV MODE INTEGRATION:
- * - Define variant/size CSS classes for automatic dropdown detection
- * - Add attributes to observedAttributes for live editing
- * - Implement attributeChangedCallback for instant preview updates
- * - Changes can be saved to instance (HTML) or globally (component file)
- * 
- * REGISTRATION:
- * This component is automatically registered in src/components/appRegistry.ts
- * Usage: <${componentName}></${componentName}>
- * 
- * PERFORMANCE:
- * - Lazy-loaded by default (loads on first use)
- * - For critical components: Add to src/components/preloadRegistry.ts
- */
-import { Component, defineComponent } from '@core/component.js';
+const jsTemplate = `import { Component, defineComponent } from '@core/component.js';
 import { html } from '@core-utils/templates.js';
-// Uncomment as needed:
-// import { useState, computed } from '@core/state.js';
-// import type { State, ComputedState } from '@core/state.js';
+import { useState, computed } from '@core/state.js';
+import type { State } from '@core/state.js';
+import '@components/core/nc-button.js';
 
 export class ${className} extends Component {
-    // ========== Shadow DOM ==========
-    // Required for CSS encapsulation and <slot> support.
-    // All UI components must have this set to true.
     static useShadowDOM = true;
-    
-    // ========== Dev Tools: Attribute Options ==========
-    // Defines the dropdown values shown in the dev tools panel for each attribute.
-    // This takes priority over automatic CSS class detection.
-    // Add one entry per observed attribute that has a fixed set of valid values.
-    // The variant values here must match your CSS class names below (e.g. .primary { ... })
-    static attributeOptions = {
-        variant: ['primary', 'secondary', 'success'],
-        size: ['small', 'medium', 'large'],
-    };
-    
-    // ========== Observed Attributes (Dev Tools Integration) ==========
-    // Attributes listed here:
-    // - Show up in dev tools sidebar
-    // - Trigger attributeChangedCallback when changed
-    static get observedAttributes() {
-        return ['variant', 'size', 'disabled'];
-    }
-    
-    // ========== Local Reactive State ==========
-    // Declare state fields here; initialize them in the constructor.
-    // Store the watcher unsubscribe function so it can be cleaned up in onUnmount.
-    //
-    // private count?: State<number>;
-    // private _unwatchCount?: () => void;
-    
-    // ========== Computed State ==========
-    // Auto-updates when dependencies change. Must call .dispose() in onUnmount().
-    // private doubleCount?: ComputedState<number>;
-    
+
+    // Attributes listed here appear in the dev tools sidebar and trigger onAttributeChange.
+    static observedAttributes = ['title', 'description'];
+
+    // Internal state (not reflected as attributes) can be defined like this:
+    titleState: State<string> = useState('');
+    descriptionState: State<string> = useState('');
+    titleDescComputed = computed(() => \`\${this.titleState.value} - \${this.descriptionState.value}\`);
+
     constructor() {
         super();
-        
-        // ========== Initialize Local State ==========
-        // this.count = useState(0);
-        
-        // ========== Initialize Computed Values ==========
-        // this.doubleCount = computed(() => this.count!.value * 2);
     }
-    
+
     template() {
-        // ========== Get Attributes ==========
-        const variant = this.attr('variant', 'primary');
-        const size = this.attr('size', 'medium');
-        const disabled = this.hasAttribute('disabled');
-        
-        // TIP: Keep attributeOptions.variant in sync with the CSS class names below.
-        // Each value in the array needs a matching CSS rule (e.g. .primary { ... })
-        //
-        // CSS variables used below (var(--primary), var(--spacing-md), etc.) are
-        // defined in src/styles/variables.css — edit that file to change tokens globally.
-        
         return html\`
             <style>
-                :host {
-                    display: block;
-                }
-                
-                .${componentName} {
-                    padding: var(--spacing-md);
-                    background: var(--bg-primary);
-                    border-radius: var(--radius-md);
-                }
-                
-                /* ========== Variant Examples ========== */
-                /* Dev tools will detect these as dropdown options */
-                .primary {
-                    background: var(--primary);
-                    color: white;
-                }
-                
-                .secondary {
-                    background: var(--secondary);
-                    color: white;
-                }
-                
-                .success {
-                    background: var(--success);
-                    color: white;
-                }
-                
-                /* ========== Size Examples ========== */
-                .small {
-                    padding: var(--spacing-sm);
-                    font-size: 0.875rem;
-                }
-                
-                .medium {
-                    padding: var(--spacing-md);
-                    font-size: 1rem;
-                }
-                
-                .large {
-                    padding: var(--spacing-lg);
-                    font-size: 1.125rem;
-                }
+                :host { display: block; }
+                .${componentName} {}
+                .${componentName}__header {}
+                .${componentName}__title {}
+                .${componentName}__description {}
             </style>
-            
-            <div class="${componentName} \${variant} \${size}" \${disabled ? 'disabled' : ''}>
-                <h3>${className}</h3>
-                <p>Your component content here</p>
+            <div class="${componentName}" data-view="${componentName}">
+                <header class="${componentName}__header">
+                    <h3 class="${componentName}__title" data-hook="title"></h3>
+                </header>
+                <p class="${componentName}__description" data-hook="description"></p>
+                <p class="${componentName}__title-desc" data-hook="title-desc"></p> <!-- example of using a computed state -->
+                <nc-button class="${componentName}__action" variant="outline" data-action="primary">Action</nc-button>
                 <slot></slot>
             </div>
         \`;
     }
-    
-    /**
-     * Live attribute updates (Dev Tools Integration)
-     * Called automatically when observed attributes change.
-     * Performs surgical DOM updates instead of a full re-render.
-     */
+
     attributeChangedCallback(name: string, oldValue: string | null, newValue: string | null): void {
-        if (!this._mounted) return;
-        
-        const container = this.$('.${componentName}') as HTMLElement;
-        if (!container) return;
-        
-        switch (name) {
-            case 'variant':
-            case 'size':
-                this.updateClasses(container);
-                break;
-                
-            case 'disabled':
-                container.toggleAttribute('disabled', this.hasAttribute('disabled'));
-                break;
-        }
+        if (oldValue === newValue || !this._mounted) return;
+        if (name === 'title') this.titleState.value = newValue ?? '';
+        if (name === 'description') this.descriptionState.value = newValue ?? '';
     }
-    
-    private updateClasses(element: HTMLElement): void {
-        const variant = this.attr('variant', 'primary');
-        const size = this.attr('size', 'medium');
-        element.className = \`${componentName} \${variant} \${size}\`;
-    }
-    
+
     onMount() {
-        // ========== Event Delegation (Recommended Pattern) ==========
-        // Always listen on this.shadowRoot, not on this (the host element).
-        // Attaching to the host causes event retargeting to lose the original
-        // e.target inside Shadow DOM, making selector matching fail.
-        //
-        // this.shadowRoot!.addEventListener('click', (e) => {
-        //     const target = e.target as HTMLElement;
-        //     if (target.matches('.btn-increment')) {
-        //         if (this.count) this.count.value++;
-        //     }
-        // });
-        
-        // ========== Fine-Grained Reactive Bindings ==========
-        // bind(state, selector) watches a reactive state and surgically updates
-        // only the matched DOM element. Bindings are auto-disposed on unmount.
-        //
-        // this.bind(this.count, '.count-display');              // updates textContent
-        // this.bind(this.count, '.track', 'innerHTML');         // updates a property
-        // this.bindAttr(this.count, '.track', 'aria-valuenow'); // updates an attribute
-        //
-        // Batch form:
-        // this.bindAll({
-        //     '.count-display': this.count,
-        // });
-        
-        // ========== Manual State Watchers ==========
-        // For side effects that are not covered by bind(), use state.watch() directly.
-        // Store the returned unsubscribe function and call it in onUnmount.
-        //
-        // this._unwatchCount = this.count!.watch(val => {
-        //     console.log('count changed:', val);
-        // });
+        // Seed state from initial HTML attributes.
+        this.titleState.value = this.getAttribute('title') ?? '';
+        this.descriptionState.value = this.getAttribute('description') ?? '';
+
+        // Wire up events and reactive bindings here.
+        this.on('nc-button-click', '[data-action]', (e) => {
+            this.emitEvent('${componentName}-action', { e });
+        });
+
+        this.bind(this.titleState, '[data-hook="title"]'); // surgically updates the element's textContent when state changes — no full re-render
+        this.bind(this.descriptionState, '[data-hook="description"]'); // surgically updates the element's textContent when state changes — no full re-render
+        this.bind(this.titleDescComputed, '[data-hook="title-desc"]'); // example of binding a computed state
     }
-    
+
     onUnmount() {
-        // bind() / bindAll() / bindAttr() are disposed automatically — no action needed.
-        //
-        // Manual state watchers must be unsubscribed here:
-        // this._unwatchCount?.();
-        //
-        // Computed values must be disposed here to prevent memory leaks:
-        // this.doubleCount?.dispose();
+        // Clean up after yourself — dispose any computed() instances here.
+        // useState() is cleaned up automatically when this.bind() unsubscribes.
+        this.titleDescComputed?.dispose();
     }
 }
 

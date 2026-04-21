@@ -109,10 +109,10 @@ export class NcAvatar extends Component {
                 }
             </style>
             <div class="avatar" title="${raw(escapeHTML(alt))}" aria-label="${raw(escapeHTML(alt))}" role="img">
-                ${raw(showImage ? `<img src="${raw(sanitizeURL(src)))}" alt="${raw(escapeHTML(alt))}" />` : ''}
+                ${raw(showImage ? `<img src="${sanitizeURL(src)}" alt="${escapeHTML(alt)}" />` : '')}
                 <span class="initials">${letters || '?'}</span>
             </div>
-            ${raw(status ? `<span class="status-dot" aria-label="${raw(escapeHTML(status)))}"></span>` : ''}
+            ${raw(status ? `<span class="status-dot" aria-label="${escapeHTML(status)}"></span>` : '')}
         `;
     }
 

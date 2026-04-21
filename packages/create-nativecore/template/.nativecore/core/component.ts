@@ -232,10 +232,19 @@ export class Component extends HTMLElement {
         selector: string,
         handler: (this: Element, ev: HTMLElementEventMap[K]) => any
     ): void;
+    on(
+        event: string,
+        handler: (this: HTMLElement, ev: Event) => any
+    ): void;
+    on(
+        event: string,
+        selector: string,
+        handler: (this: Element, ev: Event) => any
+    ): void;
     on<K extends keyof HTMLElementEventMap>(
-        event: K,
-        selectorOrHandler: string | ((this: HTMLElement, ev: HTMLElementEventMap[K]) => any),
-        handler?: (this: Element, ev: HTMLElementEventMap[K]) => any
+        event: K | string,
+        selectorOrHandler: string | ((this: HTMLElement, ev: any) => any),
+        handler?: (this: Element, ev: any) => any
     ): void {
         if (typeof selectorOrHandler === 'function') {
             this.addEventListener(event, selectorOrHandler as EventListener);

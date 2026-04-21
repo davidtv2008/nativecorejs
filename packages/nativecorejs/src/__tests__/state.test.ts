@@ -84,7 +84,8 @@ describe('sanitizeValue (prototype pollution protection)', () => {
     it('strips constructor from a set value', () => {
         const s = useState<Record<string, unknown>>({});
         s.value = { constructor: 'evil', data: 'ok' };
-        expect((s.value as Record<string, unknown>).constructor).toBeUndefined();
+        // Own key is removed; inherited Object.prototype.constructor still exists
+        expect(Object.hasOwn(s.value, 'constructor')).toBe(false);
         expect((s.value as Record<string, unknown>).data).toBe('ok');
     });
 

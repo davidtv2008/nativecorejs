@@ -26,6 +26,7 @@
  *   </nc-code>
  */
 import { Component, defineComponent } from '../../.nativecore/core/component.js';
+import { html, raw } from '../../.nativecore/utils/templates.js';
 
 // -- Simple tokenizer ---------------------------------------------------------
 
@@ -156,17 +157,17 @@ export class NcCode extends Component {
         const hlLines    = new Set((this.getAttribute('highlight') ?? '').split(',').map(s => parseInt(s.trim(), 10)).filter(Boolean));
 
         // Get code from property, attribute, or slot text
-        let raw = this._code ?? '';
-        if (!raw) {
+        let codeSource = this._code ?? '';
+        if (!codeSource) {
             const slot = this.shadowRoot?.querySelector('slot');
             if (slot) {
-                raw = slot.assignedNodes({ flatten: true })
+                codeSource = slot.assignedNodes({ flatten: true })
                     .map(n => n.textContent ?? '').join('');
             }
         }
-        raw = raw.replace(/^\n/, '').replace(/\n$/, '');
+        codeSource = codeSource.replace(/^\n/, '').replace(/\n$/, '');
 
-        const tokens = tokenize(raw, lang);
+        const tokens = tokenize(codeSource, lang);
         const tokenLines = tokens.split('\n');
 
         const linesHtml = tokenLines.map((line, i) => {

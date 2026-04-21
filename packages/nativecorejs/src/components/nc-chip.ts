@@ -64,7 +64,7 @@ export class NcChip extends Component {
                 ::slotted(*) { pointer-events: none; }
             </style>
             <span class="chip chip--${variant}">
-                ${raw(icon ? `<img class="chip__icon" src="${raw(sanitizeURL(icon)))}" alt="" aria-hidden="true" />` : ''}
+                ${raw(icon ? `<img class="chip__icon" src="${sanitizeURL(icon)}" alt="" aria-hidden="true" />` : '')}
                 <slot></slot>
                 ${raw(dismissible ? `
                 <button class="chip__dismiss" type="button" aria-label="Remove">
