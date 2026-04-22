@@ -1,5 +1,7 @@
 # Chapter 29 — Dev Tools and the Performance Overlay
 
+> **What you'll build in this chapter:** Profile EnterpriseKit routes with the performance overlay, identify and optimize the slowest controller, and confirm the overlay is completely absent from the production build.
+
 NativeCoreJS ships with a built-in developer tooling layer that is only ever active on `localhost` and is completely stripped from production builds. This chapter covers everything it provides: the component inspector, the outline panel, HMR, and — the focus of this chapter — the **Performance Overlay**, a live terminal-style HUD that helps you catch memory leaks, slow routes, long-running tasks, and API failures before they reach users.
 
 In addition to the dev-overlay, the framework now ships a small **in-page DevTools panel** (`mountDevTools()`) that runs without any browser extension. It adds a floating panel with three tabs — **Stores**, **Components**, and **Router** — lets you inspect and mutate any `createStore()` value live, highlights mounted `nc-*` elements when you hover over them, and shows the current route/query. Because it lives inside a closed Shadow Root it never clashes with your app's styles, and because it is opt-in you decide when and how to load it.
@@ -339,14 +341,7 @@ The localStorage key `nativecore-devtools-visible` is the shared source of truth
 
 ---
 
-## Apply This Chapter to Project 4 — EnterpriseKit
-
-> **Project:** EnterpriseKit — Internal Tools Platform  
-> **Feature:** Profile EnterpriseKit routes with the performance overlay and optimize a slow route.
-
-Enable DEV MODE in the performance overlay on the EnterpriseKit dashboard. Identify the route with the highest ROUTE time. Open its controller and reduce the initialization time by either using a `loader` for mandatory data or deferring a non-critical fetch to after first paint. Confirm the overlay is absent in `npm run build` output.
-
-### Done Criteria
+## Done Criteria
 
 - [ ] DEV MODE is toggled on and the overlay is visible on the EnterpriseKit dashboard route.
 - [ ] At least one route's ROUTE time is visible in the overlay and logged to the console.

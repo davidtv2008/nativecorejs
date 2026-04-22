@@ -101,7 +101,7 @@ npm run make:store <name>        # global reactive store with actions
    HTML views, `routes.ts`, `router.register()`, `lazyController()`, protected routes, `data-*` conventions, and `npm run make:view`.
 
 7. **[07 — Controllers](./07-controllers.md)**
-   Controllers as async cleanup functions, `effect()`, `trackEvents()`, `disposers[]`, and `dom.data()`.
+   Controllers as async cleanup functions, `effect()`, `trackEvents()`, `disposers[]`, and `dom.view()`.
 
 8. **[08 — Authentication](./08-authentication.md)**
    Auth flow, `auth.service`, protected routes, session persistence, the login view, and redirecting after sign-in.

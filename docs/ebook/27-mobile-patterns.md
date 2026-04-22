@@ -1,4 +1,6 @@
-# Chapter 26 — Mobile Patterns
+# Chapter 27 — Mobile Patterns
+
+> **What you'll build in this chapter:** Add a hamburger-triggered `<nc-drawer>` and a fixed `<nc-bottom-nav>` to DevHub, apply safe area insets, verify 44×44px tap targets — then deploy to complete Project 3.
 
 Mobile quality is where vague frontend claims stop mattering. Users do not care what framework powers the app if tap targets are cramped, drawers feel awkward, and forms break when the keyboard opens. NativeCoreJS works well for mobile-oriented SPA work, but mobile quality comes from layout discipline and interaction design — not framework features alone.
 
@@ -83,7 +85,7 @@ import { trackEvents } from '@core-utils/events.js';
 
 export async function appShellController(): Promise<() => void> {
     const events  = trackEvents();
-    const scope   = dom.data('app-shell');
+    const scope   = dom.view('app-shell');
     const drawer  = scope.$<HTMLElement & { open: boolean }>('#mobile-drawer');
     const openBtn = scope.$<HTMLButtonElement>('#btn-open-nav');
 
@@ -201,14 +203,7 @@ nc-bottom-nav {
 
 ---
 
-## Apply This Chapter to Project 3 — DevHub ✅ Checkpoint
-
-> **Project:** DevHub — Developer Portfolio & Live Feed  
-> **Feature:** Add a mobile shell with `<nc-drawer>` navigation and `<nc-bottom-nav>`, then deploy.
-
-Add a hamburger button to the DevHub header that opens an `<nc-drawer>` with the full site navigation. Add `<nc-bottom-nav>` with four primary destination tabs fixed at the viewport bottom. Apply `env(safe-area-inset-*)` insets to the bottom nav and the header. Verify tap targets, deploy DevHub to a public URL, and open it on a real mobile device or the Chrome DevTools device emulator.
-
-### Done Criteria
+## Done Criteria
 
 - [ ] `<nc-drawer>` opens from the hamburger button and closes on backdrop click or Escape.
 - [ ] `<nc-bottom-nav>` shows the four primary DevHub destinations fixed at the viewport bottom.

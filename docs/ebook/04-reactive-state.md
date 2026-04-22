@@ -1,5 +1,5 @@
-# Chapter 03 — Reactive State
-
+# Chapter 04 — Reactive State
+> **What you'll build in this chapter:** Build `<task-stats>` — a live counter component for Taskflow's dashboard that tracks total tasks, completed tasks, and a reactive completion percentage using `useState()`, `computed()`, and `batch()`.
 ## Why Reactive State?
 
 Plain JavaScript variables are invisible to the framework. Assign a new value to `let count = 0` and nothing in the DOM knows it changed. Reactive state solves this by wrapping a value in a container that can notify subscribers when it is written to.
@@ -64,7 +64,7 @@ console.log(percentage.value); // 80
 
 ### Disposing a Computed
 
-Unlike `useState()`, a `computed()` holds a subscription to its upstream state. When you create a `computed()` inside a **controller**, you do not need to do anything — the framework's Page Cleanup Registry automatically calls `.dispose()` on every computed when the router navigates away from the current page (see Chapter 06 for details).
+Unlike `useState()`, a `computed()` holds a subscription to its upstream state. When you create a `computed()` inside a **controller**, you do not need to do anything — the framework's Page Cleanup Registry automatically calls `.dispose()` on every computed when the router navigates away from the current page (see Chapter 07 for details).
 
 When you create a `computed()` inside a **component**, dispose it manually in `onUnmount()` because components can live across multiple page navigations:
 
@@ -331,14 +331,7 @@ batch(() => {
 
 ---
 
-## Apply This Chapter to Project 1 — Taskflow
-
-> **Project:** Taskflow — Personal Task Manager  
-> **Feature:** Build the `<task-stats>` component with live counters and a `batch()` update.
-
-Generate `task-stats` with `npm run make:component task-stats`. Implement `total`, `completed`, and `percentage` as `useState`/`computed` values. Wire `attributeChangedCallback` to update the state. Use `batch()` in the mock data-loader function that sets both `total` and `completed` at once. Add the component to `dashboard.html` and verify it updates from the browser console.
-
-### Done Criteria
+## Done Criteria
 
 - [ ] `src/components/ui/task-stats.ts` exists and shows total, completed, and percentage.
 - [ ] Setting the `total` and `completed` attributes from the browser console updates all three stats.

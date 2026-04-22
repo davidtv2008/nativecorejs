@@ -1,4 +1,6 @@
-# Chapter 25 — Internationalization (i18n)
+# Chapter 26 — Internationalization (i18n)
+
+> **What you'll build in this chapter:** Add `en-US`, `es-MX`, and `fr-FR` support to DevHub with a reactive locale store, a `t()` translation helper, `Intl`-based date and number formatting, and a locale switcher in the header that updates the entire UI without a page reload.
 
 Internationalization is one of those topics that punishes wishful thinking. If you postpone it, layout, routing, formatting, and content design all become harder to untangle. NativeCoreJS gives you two paths:
 
@@ -185,7 +187,7 @@ export async function pricingController(): Promise<() => void> {
     const events    = trackEvents();
     const disposers: Array<() => void> = [];
 
-    const scope       = dom.data('pricing');
+    const scope       = dom.view('pricing');
     const titleEl     = scope.hook('title');
     const priceEl     = scope.hook('price');
     const switcherEl  = scope.$<HTMLSelectElement>('#locale-switcher');
@@ -292,14 +294,7 @@ if (switcherEl) switcherEl.value = locale.value;
 
 ---
 
-## Apply This Chapter to Project 3 — DevHub
-
-> **Project:** DevHub — Developer Portfolio & Live Feed  
-> **Feature:** Add `en-US`, `es-MX`, and `fr-FR` locale support with a locale switcher.
-
-Create `src/stores/locale.store.ts` and `src/utils/i18n.ts` with translation keys for all DevHub UI strings. Add a locale switcher `<nc-select>` to the DevHub header. Format post timestamps with `Intl.DateTimeFormat` and view counts with `Intl.NumberFormat`. Verify that switching locale updates all displayed strings without a page reload.
-
-### Done Criteria
+## Done Criteria
 
 - [ ] `src/stores/locale.store.ts` persists the active locale to `localStorage`.
 - [ ] `t('home.hero.title')` returns the correct string in all three locales.

@@ -1,4 +1,13 @@
 import { spawn } from 'child_process';
+import fs from 'fs';
+import path from 'path';
+import { fileURLToPath } from 'url';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+// Sentinel file written after every full tsc + tsc-alias cycle.
+// server.js watches for this to know when aliases are resolved.
+const SENTINEL_PATH = path.join(__dirname, '..', '..', 'dist', '.hmr-ready');
 
 const tscArgs = ['tsc', '--watch', '--preserveWatchOutput'];
 let aliasProcess = null;
@@ -29,6 +38,10 @@ function runAlias() {
         }
 
         aliasProcess = null;
+
+        // Signal to server.js that the full tsc + tsc-alias cycle is done.
+        // This prevents HMR from firing before path aliases are resolved.
+        try { fs.writeFileSync(SENTINEL_PATH, String(Date.now())); } catch { /* dist may not exist yet */ }
 
         if (aliasQueued) {
             aliasQueued = false;

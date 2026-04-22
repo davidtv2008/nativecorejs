@@ -13,6 +13,7 @@ export class AppSidebar extends Component {
     private _unwatchCollapsed?: () => void;
     private _unwatchMobileOpen?: () => void;
     private _overlayEl: HTMLDivElement | null = null;
+    private _resizeTimer: ReturnType<typeof setTimeout> | null = null;
     private readonly _handleClick = (e: Event) => {
         const target = e.target as HTMLElement;
 
@@ -46,9 +47,13 @@ export class AppSidebar extends Component {
         }
     };
     private readonly _onResize = () => {
-        if (!this.isMobileViewport()) {
-            this.closeMobileSidebar();
-        }
+        if (this._resizeTimer !== null) clearTimeout(this._resizeTimer);
+        this._resizeTimer = setTimeout(() => {
+            this._resizeTimer = null;
+            if (!this.isMobileViewport()) {
+                this.closeMobileSidebar();
+            }
+        }, 150);
     };
 
     static get observedAttributes() {
@@ -152,6 +157,10 @@ export class AppSidebar extends Component {
         window.removeEventListener('sidebar-toggle', this._onSidebarToggle);
         window.removeEventListener('pageloaded', this._onPageLoaded);
         window.removeEventListener('resize', this._onResize);
+        if (this._resizeTimer !== null) {
+            clearTimeout(this._resizeTimer);
+            this._resizeTimer = null;
+        }
         this._unwatchCollapsed?.();
         this._unwatchMobileOpen?.();
         if (this._overlayEl) {

@@ -1384,6 +1384,19 @@ let distDebounceTimer = null;
 safeWatch(distDir, { recursive: true }, (eventType, filename) => {
     if (!filename) return;
     const norm = filename.replace(/\\/g, '/');
+
+    // Sentinel written by watch-compile.mjs after tsc-alias finishes.
+    // Firing HMR here ensures @core/* aliases are resolved before reload.
+    if (norm === '.hmr-ready') {
+        clearTimeout(distDebounceTimer);
+        if (pendingJsFile) {
+            console.log(`[HMR] compile ready: ${pendingJsFile}`);
+            notifyFile(pendingJsFile);
+            pendingJsFile = null;
+        }
+        return;
+    }
+
     if (norm.endsWith('.js') && !norm.endsWith('.d.ts')) {
         pendingJsFile = norm;
     }

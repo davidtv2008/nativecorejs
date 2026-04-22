@@ -4154,9 +4154,9 @@ We've moved beyond verbose vanilla DOM queries:
 - **Never use** `dom.$('#id') as HTMLElement`. Instead, use `dom.$<HTMLElement>('#id')` where generics are only needed if your element requires highly specific typings (e.g. `.hidden` or `<HTMLInputElement>`).
 - If you're building a data structure inside a complex UI, explore `dom.within(shadowRoot, 'selector')` for safe DOM drilling avoiding global queries.
 
-### Data Attributes and the `dom.data(...)` Scope
+### Data Attributes and the `dom.view(...)` Scope
 
-As your controllers grow, directly targeting globally unique `#ids` gets brittle and clutters your HTML. NativeCore champions a **Data Attribute Scoping Convention** powered by `dom.data(viewName)`.
+As your controllers grow, directly targeting globally unique `#ids` gets brittle and clutters your HTML. NativeCore champions a **Data Attribute Scoping Convention** powered by `dom.view(viewName)`.
 
 By structuring your view around three data attributes, you can completely sidestep ID collisions and create a beautiful interface inside your controller.
 - `[data-view="name"]` – Creates a query boundary around the page or block.
@@ -4175,12 +4175,12 @@ By structuring your view around three data attributes, you can completely sidest
 ```
 
 #### Controller Usage
-In the controller, you instantiate the scope once with `dom.data('profile')` and then effortlessly retrieve elements using the strongly-typed helper methods:
+In the controller, you instantiate the scope once with `dom.view('profile')` and then effortlessly retrieve elements using the strongly-typed helper methods:
 
 ```typescript
 export async function profileController() {
     // Defines scope: document.querySelector('[data-view="profile"]')
-    const view = dom.data('profile');
+    const view = dom.view('profile');
 
     // -- DOM refs --
     // Safely drills: [data-view="profile"] [data-hook="title"]

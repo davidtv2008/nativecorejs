@@ -1,4 +1,6 @@
-# Chapter 20 — TypeScript Patterns in NativeCoreJS
+# Chapter 21 — TypeScript Patterns in NativeCoreJS
+
+> **What you'll build in this chapter:** Type DevHub's API response shapes, custom events, and store values so `tsc --noEmit` confirms zero errors across the entire DevHub project.
 
 JavaScript is perfectly capable of running a NativeCoreJS application, but TypeScript transforms it. In a component-based framework where data flows through attributes, custom events, controllers, and reactive state, the compiler becomes a second reviewer that catches whole classes of bugs before the browser ever runs a line of code. This chapter collects the TypeScript patterns you will use repeatedly as Taskflow grows.
 
@@ -415,14 +417,7 @@ const token = localStorage.getItem(STORAGE_KEYS.ACCESS_TOKEN);
 
 ---
 
-## Apply This Chapter to Project 3 — DevHub
-
-> **Project:** DevHub — Developer Portfolio & Live Feed  
-> **Feature:** Type all API response shapes and custom events for DevHub.
-
-Create `src/types/index.ts` with interfaces for `Post`, `Project`, `Comment`, and `User`. Update every `api.get()` and `api.post()` call in DevHub's controllers to cast the result to the correct type. Type the custom events emitted by `<post-card>` and `<project-badge>` using `CustomEvent<T>`. Run `tsc --noEmit` and confirm zero errors.
-
-### Done Criteria
+## Done Criteria
 
 - [ ] `src/types/index.ts` exports `Post`, `Project`, `Comment`, and `User` interfaces.
 - [ ] Every `api.get()` / `api.post()` call in DevHub is typed at the call site.

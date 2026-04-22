@@ -1,5 +1,7 @@
 # Chapter 03 — Error Boundaries
 
+> **What you'll build in this chapter:** Add a root error boundary to Taskflow's `index.html` and a nested boundary around the dashboard stats area, so that component failures show a developer-friendly debug panel in dev mode and a clean fallback message in production.
+
 NativeCoreJS ships `<nc-error-boundary>` as a first-class, zero-config safety net. Every new project scaffolds one at the root of the shell HTML automatically. It catches component lifecycle failures, router/controller errors, global JS exceptions, and unhandled promise rejections — then renders a developer-friendly debug panel in dev mode or a graceful fallback in production.
 
 ---
@@ -33,6 +35,9 @@ Every new project gets a root boundary in `index.html` wrapping `#main-content`:
 ```
 
 The `mode="dev"` attribute is stripped and replaced with `mode="production"` automatically when you run `npm run build`.
+
+> **Apply to Taskflow — check `index.html`**
+> Open `index.html` in the Taskflow project and confirm the root boundary is present. Because the CLI scaffolds it automatically, it should already be there wrapping `#main-content`. If you scaffolded without auth flow and the boundary is missing, add the `<nc-error-boundary mode="dev">` wrapper now.
 
 ---
 
@@ -148,6 +153,9 @@ boundary.reset();
 
 Components can proactively report errors to the nearest boundary — useful for async failures that happen after `onMount()` returns:
 
+> **Apply to Taskflow — trigger a test error**
+> Open `src/components/ui/task-card.ts` and temporarily add `throw new Error('test boundary')` as the first line of `onMount()`. Save, and navigate to a route that renders `<task-card>`. You should see the dev panel appear with the error message and component name. Remove the throw when you're done — this is just a smoke test to confirm your boundaries are wired correctly.
+
 ```typescript
 // src/components/ui/live-feed.ts
 export class LiveFeed extends Component {
@@ -193,6 +201,17 @@ The root boundary is the catch-all. You can add nested boundaries to isolate ind
 
 > Nested boundaries only receive `nativecore:component-error` events that bubble up through the DOM. Only the root boundary (direct child of `<body>` or outermost boundary) also hooks `window.onerror` and `window.unhandledrejection`.
 
+> **Apply to Taskflow — add a nested boundary in `dashboard.html`**
+> Open `src/views/protected/dashboard.html`. Wrap the section that will hold `<task-stats>` (or whatever widget area you have) in a nested boundary:
+>
+> ```html
+> <nc-error-boundary mode="dev" fallback="Stats could not be loaded">
+>   <task-stats id="stats" total="0" completed="0"></task-stats>
+> </nc-error-boundary>
+> ```
+>
+> This isolates the stats widget — if it throws, the rest of the dashboard continues working normally.
+
 ---
 
 ## Build-Time Mode Swap
@@ -200,6 +219,9 @@ The root boundary is the catch-all. You can add nested boundaries to isolate ind
 `npm run build` automatically replaces `mode="dev"` with `mode="production"` in all output HTML files. This is handled by `.nativecore/scripts/strip-dev-blocks.mjs` — the same script that strips `<!-- DEnc-ONLY-START -->` dev-only blocks.
 
 You never need to manually change the attribute — just leave `mode="dev"` in your source and the build handles it.
+
+> **Apply to Taskflow — verify the build swap**
+> Run `npm run build` in the Taskflow project. Then open `dist/index.html` and confirm that `mode="dev"` has been replaced with `mode="production"`. This is the only place in Taskflow where you need to verify the build swap — all other error boundary instances get the same treatment.
 
 ---
 
@@ -217,14 +239,7 @@ You never need to manually change the attribute — just leave `mode="dev"` in y
 
 ---
 
-## Apply This Chapter to Project 1 — Taskflow
-
-> **Project:** Taskflow — Personal Task Manager  
-> **Feature:** Add a root error boundary and a nested boundary around the dashboard widget area.
-
-Wrap `#main-content` in `<nc-error-boundary mode="dev">` in `index.html`. Then add a second nested boundary around the section of the dashboard view that holds the task stats widget. Trigger a deliberate throw in `<task-card>` to confirm the dev panel appears.
-
-### Done Criteria
+## Done Criteria
 
 - [ ] `<nc-error-boundary mode="dev">` wraps `#main-content` in `index.html`.
 - [ ] A nested boundary wraps the `<task-stats>` area in `dashboard.html`.

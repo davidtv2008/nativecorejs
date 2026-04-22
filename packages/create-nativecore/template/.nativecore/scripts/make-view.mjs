@@ -102,7 +102,7 @@ function createViewTemplate({ accessLabel, flatName, viewTitle, withController }
             <article class="card">
                 <div class="card__icon">&#10022;</div>
                 <h3 class="card__title">Logic lives in the controller</h3>
-                <p class="card__body">Use <code>dom.data('${flatName}')</code>, <code>trackEvents</code>, and <code>trackSubscriptions</code> to wire behavior without touching the DOM directly.</p>
+                <p class="card__body">Use <code>dom.view('${flatName}')</code>, <code>trackEvents</code>, and <code>trackSubscriptions</code> to wire behavior without touching the DOM directly.</p>
             </article>
             <article class="card">
                 <div class="card__icon">&#9632;</div>
@@ -165,9 +165,8 @@ export async function ${controllerName}Controller(params: Record<string, string>
     const disposers: Array<() => void> = [];
 
     // -- DOM refs ------------------------------------------------------------
-    // Use dom.data('${flatName}') for scoped queries within a [data-view="${flatName}"] container,
-    // or dom.$('#id') for direct ID lookups anywhere in the document.
-    const view    = dom.data('${flatName}');
+    // dom.view() scopes all queries to [data-view="${flatName}"] — nothing leaks outside.
+    const view    = dom.view('${flatName}');
     const titleEl = view.hook('title');
 
     // -- State & computed ----------------------------------------------------

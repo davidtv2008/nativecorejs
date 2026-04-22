@@ -1,4 +1,6 @@
-# Chapter 28 — Migration Guide
+# Chapter 30 — Migration Guide
+
+> **What you'll build in this chapter:** Migrate a legacy React component into EnterpriseKit as a NativeCoreJS component, following the mental-model mapping tables, and write two Vitest tests for the migrated component.
 
 Migration work succeeds when teams preserve their intent while changing their tools. The hardest part is rarely syntax. It is learning which abstractions were essential, which were incidental, and which can become simpler once you move closer to the platform.
 
@@ -13,7 +15,7 @@ NativeCoreJS rewards explicit architecture. If you come from a framework that hi
 | React concept | NativeCoreJS equivalent |
 |---|---|
 | `useState(v)` hook | `useState(v)` — same name, same purpose, but a class property or module-level variable rather than a hook |
-| `useEffect(() => {}, [deps])` | `effect(() => { })` — auto-tracks dependencies; return a cleanup function or push to `disposers[]` |
+| `useEffect(() => {}, [deps])` | `effect(() => { }, { maxRunsPerFlush?: number })` — auto-tracks dependencies; default guard is `1000` runs/flush, `0` disables |
 | `useMemo(() => derived, [deps])` | `computed(() => derived)` — same auto-tracking, dispose with `.dispose()` |
 | Props | HTML attributes (`static observedAttributes`) or slots |
 | Context / Provider | A module-level store: `export const taskStore = useState(...)` |
@@ -93,6 +95,7 @@ defineComponent('counter-card', CounterCard);
 **Key differences:**
 - State lives on the class, not inside a function — it persists across re-renders because there are no re-renders, only targeted DOM patches
 - `effect()` tracks dependencies automatically — no dependency array needed
+- `effect()` has a default loop guard (`1000` runs/flush); override per effect with `maxRunsPerFlush`, or set `0` to disable intentionally
 - Event listeners go through `this.on()` (auto-cleaned) or `this.bind()` — no synthetic event system
 - Cleanup is explicit in `onUnmount()` rather than hidden inside `useEffect`
 
@@ -187,14 +190,7 @@ A safe migration from an existing codebase:
 
 ---
 
-## Apply This Chapter to Project 4 — EnterpriseKit
-
-> **Project:** EnterpriseKit — Internal Tools Platform  
-> **Feature:** Migrate a legacy React component into EnterpriseKit.
-
-Pick any small React component (a counter, a card, or a user avatar with a dropdown). Follow the mental-model mapping table in this chapter to rewrite it as a NativeCoreJS component. Write two tests for the migrated component using `mountComponent`. Confirm no React runtime imports remain in the component file.
-
-### Done Criteria
+## Done Criteria
 
 - [ ] A legacy React component is rewritten as a NativeCoreJS `Component` subclass.
 - [ ] The mental-model mapping table is annotated with personal migration notes in a code comment.

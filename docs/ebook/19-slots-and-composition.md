@@ -1,4 +1,6 @@
-# Chapter 18 — Component Composition and Slots
+# Chapter 19 — Component Composition and Slots
+
+> **What you'll build in this chapter:** Build ShopBoard's `<product-card>` with default and named slots, and `<product-grid>` that lays out slotted cards with `::slotted()` CSS.
 
 By this point in the Taskflow project you have individual components — `<task-card>`, `<task-stats>`, `<priority-badge>` — that each manage their own state and styles. Now comes the natural next question: how do you *compose* those pieces into larger structures? How does a `<task-list>` hold multiple `<task-card>` elements? How does a `<project-panel>` embed a `<task-list>` without those two components being tightly coupled?
 
@@ -283,14 +285,7 @@ onUnmount(): void {
 
 ---
 
-## Apply This Chapter to Project 2 — ShopBoard
-
-> **Project:** ShopBoard — E-commerce Analytics Dashboard  
-> **Feature:** Build `<product-card>` with named slots and `<product-grid>` using `::slotted()`.
-
-Generate `product-card` with `npm run make:component product-card`. Add a default slot for the card body (image, title, price) and a named `actions` slot for the "Add to Cart" and "Wishlist" buttons. Generate `product-grid` with `npm run make:component product-grid` and use `::slotted(product-card)` to apply grid layout to the projected children. Confirm that removing `slot="actions"` content from the parent does not break the component.
-
-### Done Criteria
+## Done Criteria
 
 - [ ] `<product-card>` has a default slot and an `actions` named slot.
 - [ ] `<product-grid>` styles its slotted children with CSS Grid via `::slotted(product-card)`.

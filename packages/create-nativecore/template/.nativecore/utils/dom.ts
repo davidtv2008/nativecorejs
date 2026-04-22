@@ -197,9 +197,14 @@ export const dom = {
     },
 
     /**
-     * Create a scoped helper around a [data-view="..."] container.
+     * Create a scoped accessor for [data-view="..."] containers. Use in controllers
+     * to scope queries to a specific view without leaking into other parts of the page.
+     *
+     * @example dom.view('tasks').hook('list')     // [data-hook="list"] inside [data-view="tasks"]
+     * @example dom.view('tasks').action('add')    // [data-action="add"]
+     * @example dom.view('tasks').query('.badge')  // arbitrary selector
      */
-    data: (viewName: string, root?: Element | ShadowRoot | string | null) =>
+    view: (viewName: string, root?: Element | ShadowRoot | string | null) =>
         createDataScope(viewName, root)
 };
 

@@ -1,4 +1,6 @@
-# Chapter 24 — Real-Time Features and WebSockets
+# Chapter 25 — Real-Time Features and WebSockets
+
+> **What you'll build in this chapter:** Build DevHub's `/notifications` route with a controller-owned WebSocket connection, reactive message rendering using `effect()`, and an exponential-backoff reconnect strategy — verified to leave no orphaned connections after navigation.
 
 Real-time features are where reactive architecture and lifecycle discipline converge. When a user expects instant feedback from a live data source — a chat thread, a dashboard counter, a collaborative document — you need a pattern that opens a connection cleanly, reacts to incoming data, and closes the connection without leaking memory when the user navigates away.
 
@@ -85,7 +87,7 @@ export async function chatThreadController(params: { threadId: string }): Promis
     const disposers: Array<() => void> = [];
 
     // -- DOM refs ------------------------------------------------------------
-    const scope      = dom.data('chat-thread');
+    const scope      = dom.view('chat-thread');
     const list       = scope.hook('message-list');
     const statusEl   = scope.hook('connection-status');
     const form       = scope.form('message-form');
@@ -251,14 +253,7 @@ return () => {
 
 ---
 
-## Apply This Chapter to Project 3 — DevHub
-
-> **Project:** DevHub — Developer Portfolio & Live Feed  
-> **Feature:** Build a live notifications feed with WebSocket and automatic reconnect.
-
-Use `npm run make:view notifications` to create the `/notifications` protected route. Implement its controller to open a WebSocket on mount and close it in the cleanup function. Render incoming messages reactively using `effect()`. Implement the backoff reconnect pattern. Open DevTools → Network → WS and verify no orphaned connections remain after navigating away.
-
-### Done Criteria
+## Done Criteria
 
 - [ ] Navigating to `/notifications` opens a WebSocket connection.
 - [ ] Incoming messages are appended to the notifications list reactively without a full re-render.

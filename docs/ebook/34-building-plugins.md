@@ -1,5 +1,7 @@
 # Chapter 34 — Building Plugins
 
+> **What you'll build in this chapter:** Build an analytics plugin and a feature-flags plugin for EnterpriseKit, register them before `router.start()`, and verify that `unregisterPlugin('analytics')` cleanly removes the plugin.
+
 The NativeCoreJS plugin system lets you extend the framework with cross-cutting behaviour — analytics, error monitoring, performance tracing, feature flags, A/B testing, and more — without modifying the router or state source code, and without coupling that behaviour to any individual controller.
 
 A plugin is a plain object. It has a name and one or more optional lifecycle hooks. You install it with one function call before the router starts.
@@ -258,14 +260,7 @@ Plugin hooks cannot modify route behaviour. If you need to *block* navigation (e
 
 ---
 
-## Apply This Chapter to Project 4 — EnterpriseKit
-
-> **Project:** EnterpriseKit — Internal Tools Platform  
-> **Feature:** Build an analytics plugin and a feature-flag plugin for EnterpriseKit.
-
-Create `src/plugins/analytics.plugin.ts` that sends a page-view event in `onNavigated`. Create `src/plugins/feature-flags.plugin.ts` that fetches a flags config in `onInstall` and exposes `window.__flags.isEnabled(flagName)`. Register both plugins in `src/app.ts` before `router.start()`. Verify that calling `unregisterPlugin('analytics')` stops event sending.
-
-### Done Criteria
+## Done Criteria
 
 - [ ] `analyticsPlugin` calls `console.log('pageview:', ctx.path)` (or a real analytics endpoint) on every `onNavigated`.
 - [ ] `featureFlagPlugin` fetches flags in `onInstall` and exposes `isEnabled(flag)` globally.

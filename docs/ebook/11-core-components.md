@@ -1,4 +1,6 @@
-# Chapter 10 — Core Components
+# Chapter 11 — Core Components
+
+> **What you'll build in this chapter:** Upgrade Taskflow's dashboard — replace the raw task list with `<nc-table>`, wrap priorities in `<nc-badge>`, organise sections with `<nc-tabs>`, and show a success `<nc-toast>` when a task is completed. This chapter is also the definitive reference for every `nc-*` built-in component.
 
 NativeCoreJS ships a complete suite of `nc-*` custom elements that cover virtually every common UI need. They are registered globally when the framework boots via the builtin component registry, so you can drop any of them into any template without an import. This chapter is the definitive reference for every built-in component — attributes, events, methods, and usage examples from the Taskflow app.
 
@@ -1773,11 +1775,9 @@ Never delete component files manually; the registry entry would remain and cause
 
 ---
 
-**Back:** [Chapter 09 — Forms and Validation](./09-forms-and-validation.md)  
-**Next:** [Chapter 12 — Advanced Patterns](./12-advanced-patterns.md)
-# Chapter 10 — Core Components
+## Quick Reference \u2014 Core Components
 
-NativeCoreJS ships a suite of `nc-*` custom elements that cover the most common UI needs. They are registered globally when the framework boots, so you can drop them into any template without an import. This chapter tours every major component with its key attributes and a usage snippet drawn from the Taskflow app.
+> The following is a condensed attribute reference for quick lookup. The detailed documentation with full event listings, methods, and usage examples is in the sections above.
 
 ---
 
@@ -1802,7 +1802,7 @@ A fully accessible button element with built-in loading and icon support.
 
 ## `<nc-badge>`
 
-Small counters and status indicators — ideal for task counts in sidebar nav items.
+Small counters and status indicators \u2014 ideal for task counts in sidebar nav items.
 
 | Attribute | Type | Description |
 |---|---|---|
@@ -2100,14 +2100,7 @@ npm run remove:component task-card
 
 ---
 
-## Apply This Chapter to Project 1 — Taskflow
-
-> **Project:** Taskflow — Personal Task Manager  
-> **Feature:** Use `<nc-table>`, `<nc-badge>`, `<nc-tabs>`, and `<nc-toast>` in the Taskflow dashboard.
-
-Replace the raw `<ul>` task list in `dashboard.html` with an `<nc-table>`. Wrap priority values with `<nc-badge variant="warning|danger|success">`. Organise the dashboard into tabs (All Tasks / In Progress / Done) using `<nc-tabs>`. Show an `<nc-toast>` after completing a task.
-
-### Done Criteria
+## Done Criteria
 
 - [ ] The dashboard task list uses `<nc-table>` with column definitions for title, priority, and due date.
 - [ ] Task priority values are displayed with `<nc-badge>` using the correct variant per priority level.

@@ -1,4 +1,6 @@
-# Chapter 11 — Advanced Patterns
+# Chapter 12 — Advanced Patterns
+
+> **What you'll build in this chapter:** Extract Taskflow's state into a global `taskStore`, build a `<project-filter>` component with custom events, and wire cross-view reactivity so the dashboard badge updates whenever the task list changes.
 
 The patterns covered so far — per-controller state, direct DOM bindings, and `api.service` calls — scale surprisingly far. But once the Taskflow app grows to multiple inter-dependent views you will want something more: state that lives outside any single controller, components that talk to each other, and computed values that derive from several sources at once. This chapter addresses all three, and finishes with a working `<project-filter>` component that drives the tasks list.
 
@@ -151,6 +153,16 @@ const stopEffect = effect(() => {
 disposers.push(stopEffect);
 ```
 
+`effect()` has a built-in loop guard: default max **1000** runs per notification flush. You can override it per effect when needed:
+
+```typescript
+const stopEffect = effect(() => {
+  debouncedSearch(searchQuery.value);
+}, { maxRunsPerFlush: 1500 });
+```
+
+Use `maxRunsPerFlush: 0` only when you deliberately want to disable the guard for a specific effect.
+
 If you prefer not to import the helper, you can manage the timer manually:
 
 ```typescript
@@ -264,7 +276,7 @@ import { useState, computed, effect } from '@core/state.js';
 import { trackEvents } from '@core-utils/events.js';
 
 export async function tasksController(): Promise<() => void> {
-  const scope     = dom.data('tasks');
+  const scope     = dom.view('tasks');
   const { on, dispose } = trackEvents();
   const disposers: Array<() => void> = [];
 
@@ -327,14 +339,7 @@ export async function tasksController(): Promise<() => void> {
 
 ---
 
-## Apply This Chapter to Project 1 — Taskflow
-
-> **Project:** Taskflow — Personal Task Manager  
-> **Feature:** Add a `<project-filter>` component and a global `taskStore`.
-
-Create `src/stores/task.store.ts` exporting `tasks`, `loadingTasks`, `taskCount`, and `doneTasks` as module-level state. Migrate the tasks controller to read from and write to `taskStore` instead of local state. Build a `<project-filter>` component that emits `project-filter-change` and wire the tasks controller to filter `taskStore.tasks` by the selected project ID. Confirm cross-view reactivity: the dashboard badge updates when the task list changes.
-
-### Done Criteria
+## Done Criteria
 
 - [ ] `src/stores/task.store.ts` exports `tasks`, `loadingTasks`, and derived computeds (`taskCount`, `doneTasks`).
 - [ ] The dashboard badge reacts to `taskStore.tasks.value` changes made by the tasks controller.

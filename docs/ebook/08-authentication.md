@@ -1,4 +1,6 @@
-# Chapter 7 — Authentication
+# Chapter 08 — Authentication
+
+> **What you'll build in this chapter:** Implement Taskflow's full login flow — the login form, JWT session persistence, protected route redirects, and logout — so that unauthenticated users are always redirected to `/login`.
 
 Almost every real application has protected pages. NativeCoreJS ships a first-class `auth.service` and a router middleware that together keep unauthenticated users away from sensitive routes. In this chapter you will wire up a full login flow for the Taskflow app and learn the exact pattern for adding new protected pages.
 
@@ -158,7 +160,7 @@ import { useState } from '@core/state.js';
 import { trackEvents } from '@core-utils/events.js';
 
 export async function loginController(): Promise<() => void> {
-  const scope     = dom.data('login');
+  const scope     = dom.view('login');
   const { on, dispose } = trackEvents();
 
   const isLoading = useState(false);
@@ -259,14 +261,7 @@ NativeCoreJS provides a clean structure for auth. It does not solve:
 
 ---
 
-## Apply This Chapter to Project 1 — Taskflow
-
-> **Project:** Taskflow — Personal Task Manager  
-> **Feature:** Add the login form, JWT session persistence, and protected route redirects.
-
-Implement `loginController` to call `auth.setTokens()` and `auth.setUser()` on success and then navigate to `/dashboard`. Add `/dashboard` and `/tasks` to `protectedRoutes`. Confirm that visiting `/dashboard` without a token redirects to `/login` and that the destination URL is restored after signing in.
-
-### Done Criteria
+## Done Criteria
 
 - [ ] Visiting `/dashboard` or `/tasks` without a token redirects to `/login`.
 - [ ] Successful login stores the JWT and navigates to the originally requested URL.

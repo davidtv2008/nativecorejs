@@ -14,7 +14,7 @@ export async function cartController(): Promise<() => void> {
     const events = trackEvents();
     const disposers: Array<() => void> = [];
 
-    const scope = dom.data('cart');
+    const scope = dom.view('cart');
     const cartList = scope.hook('cart-list');
     const empty = scope.hook('empty');
     const cartContent = scope.hook('cart-content');

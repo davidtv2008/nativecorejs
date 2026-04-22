@@ -1,4 +1,6 @@
-# Chapter 21 — Accessibility and ARIA
+# Chapter 22 — Accessibility and ARIA
+
+> **What you'll build in this chapter:** ARIA-annotate DevHub's `<post-card>` component, add an `aria-live` region to the notifications area, verify keyboard navigation across all interactive elements, and resolve every critical Axe DevTools violation on the home page.
 
 Accessibility is not a feature you bolt on at the end of a project. It is a quality attribute — like performance or security — that shapes every component decision from the start. For Taskflow, that means structuring the DOM correctly, handling keyboards explicitly, managing focus, and verifying everything with real tools. Shadow DOM adds one layer of complexity, but ARIA support in modern browsers handles it gracefully.
 
@@ -247,7 +249,7 @@ Add a skip link at the very top of `index.html` so keyboard users can bypass the
 
 ## 21.8 Color Contrast
 
-CSS custom properties make it easy to guarantee sufficient contrast ratios. The token system defined in Chapter 19 pairs `--text-primary` (`#111827`) against `--background` (`#ffffff`) for a contrast ratio of 16.75:1 — well above the WCAG AA minimum of 4.5:1.
+CSS custom properties make it easy to guarantee sufficient contrast ratios. The token system defined in Chapter 20 pairs `--text-primary` (`#111827`) against `--background` (`#ffffff`) for a contrast ratio of 16.75:1 — well above the WCAG AA minimum of 4.5:1.
 
 Always check:
 
@@ -351,14 +353,7 @@ The returned disposer removes the `keydown` listener and restores native tabinde
 
 ---
 
-## Apply This Chapter to Project 3 — DevHub
-
-> **Project:** DevHub — Developer Portfolio & Live Feed  
-> **Feature:** ARIA-annotate DevHub components and verify keyboard accessibility.
-
-Update `<post-card>` to include `role="article"` and a dynamic `aria-label` that includes the post title. Add `aria-live="polite"` to the live notifications area. Verify all interactive elements are reachable by tab key and operable with Enter/Space. Run the Axe DevTools browser extension and resolve all critical violations on the home page.
-
-### Done Criteria
+## Done Criteria
 
 - [ ] `<post-card>` has `role="article"` and `aria-label="Post: {title}"`.
 - [ ] The notifications list has `aria-live="polite"` so new entries are announced to screen readers.

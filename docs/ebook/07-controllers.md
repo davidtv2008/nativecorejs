@@ -1,4 +1,6 @@
-# Chapter 06 — Controllers
+# Chapter 07 — Controllers
+
+> **What you'll build in this chapter:** Wire up Taskflow's `tasksController` — the brain of the tasks view — using `effect()`, `trackEvents()`, `dom.view()`, and the standard controller section structure.
 
 ## What Is a Controller?
 
@@ -74,15 +76,15 @@ The `disposers` array collects every cleanup function the controller creates. Th
 
 ---
 
-## `dom.data('view-name')` — Scoped DOM Access
+## `dom.view('view-name')` — Scoped DOM Access
 
 The `dom` utility provides scoped DOM queries that match the `data-view` / `data-hook` / `data-action` conventions from Chapter 05.
 
 ```typescript
-const view = dom.data('tasks');
+const view = dom.view('tasks');
 ```
 
-`dom.data('tasks')` returns a scope object whose methods query within `[data-view="tasks"]`.
+`dom.view('tasks')` returns a scope object whose methods query within `[data-view="tasks"]`.
 
 ### `.hook('name')` → `[data-hook="name"]`
 
@@ -150,6 +152,20 @@ disposers.push(effect(() => {
 
 `effect()` returns a stop function. Pushing it into `disposers` is optional but **recommended** — it makes ownership explicit. Either way, the framework auto-registers the stop function with the **Page Cleanup Registry** the moment `effect()` is called, so the effect is always torn down when the router leaves the page.
 
+> **Loop guard (default + override):** `effect()` includes a built-in loop guard to prevent runaway reactive cycles.
+>
+> - Default: max **1000** effect runs in a single notification flush
+> - Override: `effect(fn, { maxRunsPerFlush: N })`
+> - Disable intentionally: `effect(fn, { maxRunsPerFlush: 0 })`
+>
+> If the threshold is exceeded, NativeCore logs a `console.warn`, auto-disposes that effect, and reports the event in Dev Tools under **LOOP GUARD**.
+
+```typescript
+disposers.push(effect(() => {
+  taskCount.textContent = String(tasks.value.length);
+}, { maxRunsPerFlush: 1500 })); // optional override (default is 1000)
+```
+
 ### How stop functions are idempotent
 
 Whether the stop function runs via your explicit `disposers.forEach(d => d())` path or via the registry flush, the second call is a no-op: the internal dependency maps are already cleared after the first call, so nothing is double-freed.
@@ -209,7 +225,7 @@ async function tasksController(params: RouteParams): Promise<() => void> {
   disposers.push(disposeEvents);
 
   // ─── DOM Refs ───────────────────────────────────────────────────────────
-  const view      = dom.data('tasks');
+  const view      = dom.view('tasks');
   const taskList  = view.hook('task-list')  as HTMLUListElement;
   const statsEl   = view.hook('stats')      as HTMLElement;
   const emptyMsg  = view.hook('empty-state') as HTMLElement;
@@ -285,7 +301,7 @@ async function tasksController(params: RouteParams): Promise<() => void> {
   });
 
   on(document, 'click', view.actionSelector('new-task'), () => {
-    // Navigation to new-task form — wired up in Chapter 09
+    // Navigation to new-task form — wired up in Chapter 10
     window.history.pushState({}, '', '/tasks/new');
   });
 
@@ -312,13 +328,13 @@ export default tasksController;
 
 **Setup** — `disposers` is declared first. Every subscription and listener the controller creates is paired with an entry in this array.
 
-**DOM Refs** — all `dom.data()` lookups happen before the async fetch. The DOM is already mounted when the controller runs.
+**DOM Refs** — all `dom.view()` lookups happen before the async fetch. The DOM is already mounted when the controller runs.
 
 **State** — `tasks` and `filter` are plain `useState` containers. `filteredTasks` and `completedCount` are computed values whose dispose functions are pushed into `disposers`.
 
 **Data Fetch** — `await apiService.get()` loads tasks. If it throws, we log the error and leave `tasks` as an empty array rather than crashing the view.
 
-**Reactive Bindings** — a single `effect()` re-renders the task list whenever `filteredTasks.value` or `completedCount.value` changes. Its stop function is pushed into `disposers`, but even if you omitted that push the Page Cleanup Registry would still tear down the effect on navigation. This is the "one effect for the list" pattern — efficient for moderate list sizes. For very large lists you would diff the previous and next arrays; Chapter 11 covers optimisation strategies.
+**Reactive Bindings** — a single `effect()` re-renders the task list whenever `filteredTasks.value` or `completedCount.value` changes. Its stop function is pushed into `disposers`, but even if you omitted that push the Page Cleanup Registry would still tear down the effect on navigation. This is the "one effect for the list" pattern — efficient for moderate list sizes. For very large lists you would diff the previous and next arrays; Chapter 12 covers optimisation strategies.
 
 **Events** — `trackEvents()` registers all delegated listeners. The filter click handler uses `dom.$$()` to query matching buttons and reads `btn.dataset.filter` and writes to `filter.value`, which triggers the computed, which triggers the effect — a clean reactive loop.
 
@@ -484,14 +500,7 @@ window.addEventListener('nc-route-loaded', () => {
 
 ---
 
-## Apply This Chapter to Project 1 — Taskflow
-
-> **Project:** Taskflow — Personal Task Manager  
-> **Feature:** Wire up the tasks controller with reactive state, `effect()`, and `trackEvents()`.
-
-Open `tasks.controller.ts` and implement the full controller structure: DOM refs, state variables, an `effect()` that renders the task list whenever state changes, and `trackEvents()` bindings for the "New Task" button. Return a cleanup function. Verify that navigating away and back to `/tasks` does not produce duplicate event listeners.
-
-### Done Criteria
+## Done Criteria
 
 - [ ] `tasks.controller.ts` follows the standard section structure (Setup, DOM Refs, State, Data Fetch, Reactive Bindings, Events).
 - [ ] An `effect()` renders the task list DOM whenever `tasks.value` changes.

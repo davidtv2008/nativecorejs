@@ -17,7 +17,7 @@ interface ProductDetail {
 
 export async function productDetailController(params: Record<string, string>): Promise<() => void> {
     const events = trackEvents();
-    const scope = dom.data('product-detail');
+    const scope = dom.view('product-detail');
 
     const skeleton = scope.hook('skeleton');
     const productEl = scope.hook('product');

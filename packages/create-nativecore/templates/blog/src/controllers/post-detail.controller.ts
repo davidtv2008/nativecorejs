@@ -15,7 +15,7 @@ interface PostDetail {
 
 export async function postDetailController(params: Record<string, string>): Promise<() => void> {
     const events = trackEvents();
-    const scope = dom.data('post-detail');
+    const scope = dom.view('post-detail');
 
     const skeleton = scope.hook('skeleton');
     const article = scope.hook('post');

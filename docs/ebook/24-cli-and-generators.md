@@ -1,8 +1,10 @@
-# Chapter 23 — CLI Mastery and the Generator Workflow
+# Chapter 24 — CLI Mastery and the Generator Workflow
+
+> **What you'll build in this chapter:** Audit DevHub and confirm every file was generated with a `make:*` command — regenerating any manually created files — then document the complete generator history in `routes.ts`.
 
 Every framework has a philosophy about how you create new files. In NativeCoreJS, the philosophy is simple: **you don't create them manually**. The `npm run make:*` generators exist so that every component, view, and controller in your project starts life in the correct location, with the correct imports, and with the correct structure. Consistency is enforced by tooling, not by convention documents that people forget to read.
 
-This chapter is your complete reference for every generator, the conventions they enforce, and the precise workflow used to build Taskflow from Chapter 2 through Chapter 22.
+This chapter is your complete reference for every generator, the conventions they enforce, and the precise workflow used to build Taskflow from Chapter 02 through Chapter 23.
 
 ---
 
@@ -340,14 +342,7 @@ The best way to deepen your understanding is to extend the projects in this book
 
 ---
 
-## Apply This Chapter to Project 3 — DevHub
-
-> **Project:** DevHub — Developer Portfolio & Live Feed  
-> **Feature:** Generate all remaining DevHub views and components using `make:*` commands.
-
-Audit your DevHub project. For every view, component, or controller that exists as a manually created file, delete it and regenerate it with the appropriate `make:*` command. Document the complete generator command history in a comment at the top of `src/routes/routes.ts`.
-
-### Done Criteria
+## Done Criteria
 
 - [ ] Every view in DevHub was created with `npm run make:view`.
 - [ ] Every component in DevHub was created with `npm run make:component` (use `--with-tests` for all feature components).

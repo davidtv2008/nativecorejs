@@ -17,7 +17,7 @@ export async function shopController(): Promise<() => void> {
     const events = trackEvents();
     const disposers: Array<() => void> = [];
 
-    const scope = dom.data('shop');
+    const scope = dom.view('shop');
     const grid = scope.hook('product-grid');
     const empty = scope.hook('empty');
     const pagination = scope.hook('pagination') as any;

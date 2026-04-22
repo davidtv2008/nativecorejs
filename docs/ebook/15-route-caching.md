@@ -1,4 +1,6 @@
-# Chapter 14 — Route Caching and Prefetching
+# Chapter 15 — Route Caching and Prefetching
+
+> **What you'll build in this chapter:** Apply a caching strategy to ShopBoard's product catalog and product detail routes so that back-navigation never hits the network, and verify that `router.bustCache()` works from the browser console.
 
 Every time a user navigates to a route, NativeCoreJS fetches the route's HTML file from the server. For most SPAs that fetch is tiny — a few kilobytes of template markup — but it still costs a round trip. On a slow connection or a high-traffic server, those round trips add up. Route caching eliminates them.
 
@@ -8,7 +10,7 @@ This chapter covers the router's built-in HTML cache: how to configure it, the t
 
 ## What the Route Cache Actually Stores
 
-The route cache is distinct from the API data cache you'll meet in Chapter 15. It stores the **raw HTML content of the view's template file** — the `.view.html` string — in memory. Once the router has fetched and cached a view's HTML, it can switch to that route without touching the network at all.
+The route cache is distinct from the API data cache you'll meet in Chapter 16. It stores the **raw HTML content of the view's template file** — the `.view.html` string — in memory. Once the router has fetched and cached a view's HTML, it can switch to that route without touching the network at all.
 
 This makes back-navigation essentially free. If a user opens a task, returns to the list, opens another task, and hits back again, the task list HTML is served from memory every time after the first visit.
 
@@ -152,7 +154,7 @@ export async function loginController(
     router.prefetch('/tasks');
 
     events.onClick('submit', async () => {
-        const form = dom.data('login').hook('form') as HTMLFormElement;
+        const form = dom.view('login').hook('form') as HTMLFormElement;
         const data = new FormData(form);
 
         try {
@@ -202,7 +204,7 @@ You can also bust all cached routes at once by calling `router.bustCache()` with
 > router.bustCache('/tasks');
 > api.invalidateTags('tasks');   // also clear the API data cache
 > ```
-> Chapter 15 covers `api.invalidateTags()` in detail.
+> Chapter 16 covers `api.invalidateTags()` in detail.
 
 ---
 
@@ -237,14 +239,7 @@ On repeated navigation patterns — which are extremely common in task managemen
 
 ---
 
-## Apply This Chapter to Project 2 — ShopBoard
-
-> **Project:** ShopBoard — E-commerce Analytics Dashboard  
-> **Feature:** Apply a caching strategy to the product catalog and product detail routes.
-
-Add `.cache({ ttl: 300, revalidate: true })` to the `/products` route and `.cache({ ttl: 60, revalidate: true })` to `/products/:id`. Verify in DevTools that the products HTML file is not re-fetched on back navigation. Test `router.bustCache('/products')` from the browser console and confirm the cache is cleared.
-
-### Done Criteria
+## Done Criteria
 
 - [ ] `/products` uses `.cache({ ttl: 300, revalidate: true })`.
 - [ ] `/products/:id` uses `.cache({ ttl: 60, revalidate: true })`.

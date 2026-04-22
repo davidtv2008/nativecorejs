@@ -1,4 +1,6 @@
-# Chapter 22 — Testing with Vitest
+# Chapter 23 — Testing with Vitest
+
+> **What you'll build in this chapter:** Write DevHub's complete test suite — unit tests for the posts store, a controller test that verifies the home page populates correctly, and a component test that checks `<post-card>` renders every attribute combination.
 
 A NativeCoreJS application has four testable layers: state functions, stores, controllers, and components. Each layer has a distinct testing strategy. This chapter walks through all four using Vitest and happy-dom, the test environment the framework template ships with by default.
 
@@ -544,14 +546,7 @@ The generated test file includes `mountComponent`, `waitFor`, `afterEach` cleanu
 
 ---
 
-## Apply This Chapter to Project 3 — DevHub
-
-> **Project:** DevHub — Developer Portfolio & Live Feed  
-> **Feature:** Write a full test suite for DevHub's stores, controllers, and components.
-
-Create tests for the posts store (state changes, computed values), the home controller (verify it populates the post list), and the `<post-card>` component (attribute rendering). Target 100% coverage of all store actions. Run `npm test` and confirm all tests pass.
-
-### Done Criteria
+## Done Criteria
 
 - [ ] `tests/unit/post.store.test.ts` covers `useState`, `computed`, and store actions for the posts store.
 - [ ] `tests/unit/home.controller.test.ts` verifies the home controller populates the post list state.

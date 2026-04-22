@@ -122,8 +122,14 @@ export class ${className} extends Component {
         this.descriptionState.value = this.getAttribute('description') ?? '';
 
         // Wire up events and reactive bindings here.
-        this.on('nc-button-click', '[data-action]', (e) => {
-            this.emitEvent('${componentName}-action', { e });
+        // this.shadow() scopes element access to this component's shadow root:
+        //   this.shadow('${componentName}').hook('title')    // [data-hook="title"]
+        //   this.shadow('${componentName}').action('primary') // [data-action="primary"]
+        // nc-button emits 'nc-button-click' on itself (composed: true), so e.target
+        // is the <nc-button> element — read data-action directly from it.
+        this.on('nc-button-click', (e) => {
+            const action = (e.target as HTMLElement).getAttribute('data-action');
+            if (action) this.emitEvent('${componentName}-action', { action });
         });
 
         this.bind(this.titleState, '[data-hook="title"]'); // surgically updates the element's textContent when state changes — no full re-render
@@ -133,6 +139,7 @@ export class ${className} extends Component {
 
     onUnmount() {
         // Clean up after yourself — dispose any computed() instances here.
+        //example myComputed.dispose();
         // useState() is cleaned up automatically when this.bind() unsubscribes.
         this.titleDescComputed?.dispose();
     }

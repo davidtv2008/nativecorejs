@@ -1,5 +1,7 @@
 # Chapter 01 — Project Setup
 
+> **What you'll build in this chapter:** Scaffold the Taskflow project with the CLI, explore the generated file structure, understand the path alias system and dev server, and create the three core views — `/login`, `/tasks`, and `/dashboard` — that the rest of Project 1 builds into.
+
 ## Scaffolding with the CLI
 
 NativeCoreJS ships a zero-config project scaffolder. Open a terminal, navigate to wherever you keep your projects, and run:
@@ -360,14 +362,7 @@ After running these, `src/routes/routes.ts` will have the new routes appended in
 
 ---
 
-## Apply This Chapter to Project 1 — Taskflow
-
-> **Project:** Taskflow — Personal Task Manager  
-> **Feature:** Scaffold the project, start the dev server, and create the three core views.
-
-Run the CLI scaffolder for Taskflow, start the dev server, and use `make:view` to create the `/login`, `/tasks`, and `/dashboard` routes. Confirm all three routes load in the browser before moving to Chapter 02.
-
-### Done Criteria
+## Done Criteria
 
 - [ ] `npm create nativecore@latest taskflow` completes without errors.
 - [ ] `npm run dev` opens the app at `http://localhost:8000`.

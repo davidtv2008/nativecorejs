@@ -1,8 +1,6 @@
-# Chapter 04 — The Bind API
+# Chapter 05 — The Bind API
 
-## Why `bind()` Exists
-
-The `render()` method from Chapter 03 works, but it has a significant flaw: it re-queries and re-writes *every* stat node every time *any* attribute changes. If `total` changes, we still re-write the `completed` and `percentage` nodes even though their state is unchanged. In a component with dozens of bindings, this waste adds up — and it makes the update logic tangled with DOM queries.
+> **What you'll build in this chapter:** Refactor `<task-stats>` to replace its manual `render()` method with `bind()` calls, and update `<task-card>` to use `bindAttr()` so the CSS status badge is driven purely by reactive state. works, but it has a significant flaw: it re-queries and re-writes *every* stat node every time *any* attribute changes. If `total` changes, we still re-write the `completed` and `percentage` nodes even though their state is unchanged. In a component with dozens of bindings, this waste adds up — and it makes the update logic tangled with DOM queries.
 
 The `bind()` API decouples state from DOM. You declare, once, which DOM node each piece of state drives. After that, when state changes, only the node tied to that state is touched. The framework wires up and tears down the subscription automatically.
 
@@ -291,14 +289,7 @@ The rule is simple: if you call it on `this` (bind/on), the framework disposes i
 
 ---
 
-## Apply This Chapter to Project 1 — Taskflow
-
-> **Project:** Taskflow — Personal Task Manager  
-> **Feature:** Replace the manual `render()` helper in `<task-stats>` with `bind()` and upgrade `<task-card>` with `bindAttr()`.
-
-Open `task-stats.ts` and replace the `private render()` method with three `this.bind()` calls in `onMount()`. Open `task-card.ts` and add `this.bindAttr(this.status, '.task-card__status', 'data-status')` so the CSS attribute selector drives the badge color without any manual DOM updates.
-
-### Done Criteria
+## Done Criteria
 
 - [ ] `this.bind()` drives `.stats__total`, `.stats__completed`, and `.stats__percentage` in `task-stats.ts`.
 - [ ] The `private render()` helper is removed from `task-stats.ts`.

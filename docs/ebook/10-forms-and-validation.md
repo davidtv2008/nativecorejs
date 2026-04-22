@@ -1,4 +1,6 @@
-# Chapter 9 — Forms and Validation
+# Chapter 10 — Forms and Validation
+
+> **What you'll build in this chapter:** Build Taskflow's "Create Task" form inside an `<nc-modal>` with `<nc-input>` for the title, `<nc-select>` for priority, client-side validation, and a `api.post()` submit handler that closes the modal and shows a success toast on success.
 
 Forms are the primary way users create and update data. NativeCoreJS's `nc-*` input components handle accessibility, styling, and interactive states out of the box, but you still need to wire up reading values, validating input, displaying errors, and calling the API. This chapter codifies that pattern and builds the Taskflow "create task" form inside an `<nc-modal>`.
 
@@ -287,7 +289,7 @@ import { useState }    from '@core/state.js';
 import { trackEvents } from '@core-utils/events.js';
 
 export async function tasksController(): Promise<() => void> {
-  const scope     = dom.data('tasks');
+  const scope     = dom.view('tasks');
   const { on, dispose } = trackEvents();
 
   const modal      = scope.$('#modal-create-task') as any;
@@ -377,14 +379,7 @@ export async function tasksController(): Promise<() => void> {
 
 ---
 
-## Apply This Chapter to Project 1 — Taskflow
-
-> **Project:** Taskflow — Personal Task Manager  
-> **Feature:** Build the "Create Task" form inside an `<nc-modal>`.
-
-Add a "New Task" button to `tasks.html` that opens an `<nc-modal>` containing an `<nc-input>` for the title, an `<nc-select>` for priority, and an `<nc-date-picker>` for the due date. Validate that the title is not empty before submitting. On success, call `api.post('/tasks', body)`, close the modal, and show an `<nc-toast>` confirmation.
-
-### Done Criteria
+## Done Criteria
 
 - [ ] Clicking "New Task" opens an `<nc-modal>` with the create-task form.
 - [ ] Submitting with an empty title shows an error state on the `<nc-input>` field.

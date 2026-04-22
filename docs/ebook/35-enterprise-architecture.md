@@ -1,5 +1,7 @@
 # Chapter 35 — Enterprise Architecture
 
+> **What you'll build in this chapter:** Reorganize EnterpriseKit from a type-based layout into feature modules (`features/auth/`, `features/users/`, `features/reports/`), enforce cross-module boundaries, and move shared components into a barrel-exported `src/shared/` layer.
+
 This chapter covers patterns for scaling a NativeCoreJS application across multiple feature teams, large route counts, and long-term maintainability requirements.
 
 ---
@@ -390,14 +392,7 @@ afterAll(() => resumePageCleanupCollection());
 
 ---
 
-## Apply This Chapter to Project 4 — EnterpriseKit
-
-> **Project:** EnterpriseKit — Internal Tools Platform  
-> **Feature:** Reorganize EnterpriseKit into feature modules.
-
-Migrate the EnterpriseKit source from a type-based layout (`controllers/`, `components/`, `stores/`) to a feature-module layout (`features/auth/`, `features/users/`, `features/reports/`). Confirm each feature exports only its own routes and that no feature module imports directly from another. Move shared components to `src/shared/components/` with barrel exports.
-
-### Done Criteria
+## Done Criteria
 
 - [ ] `src/features/auth/`, `src/features/users/`, and `src/features/reports/` directories exist with their own controllers, stores, views, and components.
 - [ ] Each feature has a local `routes.ts` imported by the root `src/routes/routes.ts`.

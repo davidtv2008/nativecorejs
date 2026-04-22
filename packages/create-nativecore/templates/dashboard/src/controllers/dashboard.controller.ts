@@ -20,7 +20,7 @@ export async function dashboardController(): Promise<() => void> {
     const events = trackEvents();
     const disposers: Array<() => void> = [];
 
-    const scope = dom.data('dashboard');
+    const scope = dom.view('dashboard');
     const statUsers = scope.hook('stat-users');
     const statRevenue = scope.hook('stat-revenue');
     const statSessions = scope.hook('stat-sessions');

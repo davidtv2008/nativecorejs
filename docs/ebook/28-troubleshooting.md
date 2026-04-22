@@ -1,4 +1,6 @@
-# Chapter 27 — Troubleshooting Guide
+# Chapter 28 — Troubleshooting Guide
+
+> **What you'll build in this chapter:** Scaffold EnterpriseKit (Project 4), deliberately introduce and diagnose three bugs — a routing failure, a component registration failure, and an auth redirect loop — using the diagnostic checklists in this chapter.
 
 NativeCoreJS bugs are usually localised to one of four places: route registration, component registration, cleanup boundaries, or import paths. This chapter organises the most common failures by symptom so you can reach the cause faster.
 
@@ -125,14 +127,7 @@ Run this whenever you are stuck:
 
 ---
 
-## Apply This Chapter to Project 4 — EnterpriseKit
-
-> **Project:** EnterpriseKit — Internal Tools Platform  
-> **Feature:** Scaffold EnterpriseKit and deliberately introduce and fix three bugs using the diagnostic checklists.
-
-Run `npx create-nativecore enterprise-kit` to scaffold the project. Introduce three bugs — one routing failure (wrong HTML path), one component registration failure (missing hyphen in tag name), and one auth redirect loop — then use the diagnostic checklists from this chapter to find and fix each one. Document each root cause and fix with a code comment.
-
-### Done Criteria
+## Done Criteria
 
 - [ ] `npx create-nativecore enterprise-kit` scaffolds the EnterpriseKit project.
 - [ ] Three intentional bugs are introduced, diagnosed, and fixed using this chapter's checklists.

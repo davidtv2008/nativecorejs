@@ -1,4 +1,6 @@
-# Chapter 19 — Styling, Theming, and CSS Custom Properties
+# Chapter 20 — Styling, Theming, and CSS Custom Properties
+
+> **What you'll build in this chapter:** Create ShopBoard's CSS design-token system in `tokens.css`, make all components consume them via custom properties, add a dark mode toggle — completing Project 2.
 
 One of the first surprises developers encounter with Web Components is that their carefully crafted global stylesheet suddenly has no effect inside a component. Shadow DOM's style encapsulation is a feature, not a bug — but it means you need a deliberate system for sharing design decisions across component boundaries. In this chapter you will build that system for Taskflow using CSS custom properties as design tokens, establish a dark mode strategy, and learn when each styling tool applies.
 
@@ -297,14 +299,7 @@ Each instance owns its own `--card-border-color` scoped to the host element. No 
 
 ---
 
-## Apply This Chapter to Project 2 — ShopBoard ✅ Checkpoint
-
-> **Project:** ShopBoard — E-commerce Analytics Dashboard  
-> **Feature:** Apply the ShopBoard design tokens and implement a dark mode toggle.
-
-Create `src/styles/tokens.css` with ShopBoard's color palette, spacing scale, and typography tokens. Update all `<product-card>` and `<product-grid>` styles to use CSS custom properties. Add a dark mode toggle button to the header that writes `data-theme="dark"` to the `<html>` element. Deploy ShopBoard to a public URL.
-
-### Done Criteria
+## Done Criteria
 
 - [ ] `src/styles/tokens.css` defines the complete ShopBoard design token set.
 - [ ] All custom components and `nc-*` components consume tokens via CSS custom properties (no hardcoded color values).

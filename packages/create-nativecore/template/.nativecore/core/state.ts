@@ -22,6 +22,20 @@ export interface ComputedState<T> {
 export type EffectCleanup = void | (() => void);
 export type EffectCallback = () => EffectCleanup;
 
+export interface EffectOptions {
+    /**
+     * Maximum number of times an effect may run in a single notification flush.
+     * Use 0 to disable the guard intentionally.
+     */
+    maxRunsPerFlush?: number;
+}
+
+export interface EffectLoopGuardDetail {
+    threshold: number;
+    runs: number;
+    ts: number;
+}
+
 interface Watchable<T = any> {
     watch(callback: (value: T) => void): () => void;
 }
@@ -34,10 +48,37 @@ type Unsubscribe = () => void;
 
 // Global tracker for dependency collection
 let currentTracker: Tracker | null = null;
+const DEFAULT_EFFECT_MAX_RUNS_PER_FLUSH = 1000;
+const EFFECT_LOOP_GUARD_EVENT = 'nativecore:effect-loop-guard';
 
 // ─── Batch support ───────────────────────────────────────────────────────────
 let batchDepth = 0;
 const pendingNotifications = new Set<() => void>();
+let currentFlushId = 0;
+let notificationDepth = 0;
+
+function runNotificationFlush(fn: () => void): void {
+    const isRootFlush = notificationDepth === 0;
+    if (isRootFlush) currentFlushId++;
+    notificationDepth++;
+    try {
+        fn();
+    } finally {
+        notificationDepth--;
+    }
+}
+
+function reportEffectLoopGuard(detail: EffectLoopGuardDetail): void {
+    console.warn(
+        `[NativeCore] effect loop guard tripped after ${detail.runs} runs in a single update cycle (threshold: ${detail.threshold}). Effect disposed.`
+    );
+
+    if (typeof window !== 'undefined') {
+        window.dispatchEvent(new CustomEvent<EffectLoopGuardDetail>(EFFECT_LOOP_GUARD_EVENT, {
+            detail,
+        }));
+    }
+}
 
 /**
  * Execute `fn` and defer all state-change notifications until it returns.
@@ -59,7 +100,9 @@ export function batch(fn: () => void): void {
         if (batchDepth === 0) {
             const notifications = Array.from(pendingNotifications);
             pendingNotifications.clear();
-            notifications.forEach(notify => notify());
+            runNotificationFlush(() => {
+                notifications.forEach(notify => notify());
+            });
         }
     }
 }
@@ -133,7 +176,9 @@ function createState<T>(initialValue: T): State<T> {
         if (batchDepth > 0) {
             subscribers.forEach(fn => pendingNotifications.add(fn));
         } else {
-            subscribers.forEach(fn => fn());
+            runNotificationFlush(() => {
+                subscribers.forEach(fn => fn());
+            });
         }
     }
 
@@ -264,7 +309,7 @@ export function computed<T>(computeFn: () => T): ComputedState<T> {
  * @param effectFn Effect callback that can optionally return a cleanup function.
  * @returns A disposer that unsubscribes all tracked dependencies and runs the latest cleanup.
  */
-export function effect(effectFn: EffectCallback): () => void {
+export function effect(effectFn: EffectCallback, options: EffectOptions = {}): () => void {
     const trackedDeps = new Set<Watchable<any>>();
     const depUnsubscribers = new Map<Watchable<any>, () => void>();
     const tracker: Tracker = {
@@ -272,10 +317,15 @@ export function effect(effectFn: EffectCallback): () => void {
     };
     let cleanup: EffectCleanup;
     let isRunning = false;
-
-    runEffect();
+    let isDisposed = false;
+    let lastFlushId = -1;
+    let runsThisFlush = 0;
+    const maxRunsPerFlush = options.maxRunsPerFlush ?? DEFAULT_EFFECT_MAX_RUNS_PER_FLUSH;
 
     const disposer = () => {
+        if (isDisposed) return;
+        isDisposed = true;
+
         if (typeof cleanup === 'function') {
             cleanup();
         }
@@ -285,11 +335,31 @@ export function effect(effectFn: EffectCallback): () => void {
         trackedDeps.clear();
     };
 
+    runEffect();
+
     registerPageCleanup(disposer);
     return disposer;
 
     function runEffect(): void {
-        if (isRunning) return;
+        if (isDisposed || isRunning) return;
+
+        const flushId = currentFlushId;
+        if (flushId !== lastFlushId) {
+            lastFlushId = flushId;
+            runsThisFlush = 0;
+        }
+
+        runsThisFlush++;
+        if (maxRunsPerFlush > 0 && runsThisFlush > maxRunsPerFlush) {
+            reportEffectLoopGuard({
+                threshold: maxRunsPerFlush,
+                runs: runsThisFlush,
+                ts: Date.now(),
+            });
+            disposer();
+            return;
+        }
+
         isRunning = true;
 
         tracker.accessed.clear();

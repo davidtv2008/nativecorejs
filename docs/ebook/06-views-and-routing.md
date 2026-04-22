@@ -1,4 +1,6 @@
-# Chapter 05 — Views and Routing
+# Chapter 06 — Views and Routing
+
+> **What you'll build in this chapter:** Map Taskflow's URL structure in `routes.ts`, learn the `data-view` / `data-hook` / `data-action` conventions that tie views to controllers, and confirm all three Taskflow routes load correctly — including a `/404` wildcard fallback.
 
 ## What Is a View?
 
@@ -79,6 +81,18 @@ lazyController(() => import('../controllers/tasks.controller.ts'))
 
 `lazyController()` wraps a dynamic import in a way the router understands. The controller module is not loaded until the user first navigates to the route. This keeps the initial JS bundle small. The returned module must export a default function that matches the controller signature.
 
+> **Apply to Taskflow — add the `/404` not-found view**
+> The routes.ts example above registers `/404`, and `router.start({ fallback: '/404' })` uses it as the catch-all. Create the view if it doesn't already exist:
+>
+> ```bash
+> npm run make:view not-found
+> # Should this route require login? n
+> # Route path (/not-found): /404
+> # Create a controller for this view? n
+> ```
+>
+> Open `src/routes/routes.ts` and confirm the new route appears. Then navigate to any invalid URL in the browser (e.g. `/does-not-exist`) and confirm the not-found page loads.
+
 ---
 
 ## `data-view`, `data-hook`, and `data-action`
@@ -103,7 +117,7 @@ Every view HTML file wraps its content in a root element with `data-view`:
 </div>
 ```
 
-`data-view` is the controller's root scope. The `dom.data('tasks')` helper (Chapter 06) targets this element and scopes all subsequent queries within it.
+`data-view` is the controller's root scope. The `dom.view('tasks')` helper (Chapter 06) targets this element and scopes all subsequent queries within it.
 
 ### `data-hook="name"`
 
@@ -127,7 +141,7 @@ router.register(
 );
 ```
 
-The `id` segment is extracted and passed to the controller. You will see how to read it in Chapter 06.
+The `id` segment is extracted and passed to the controller. You will see how to read it in Chapter 07.
 
 ---
 
@@ -254,14 +268,7 @@ Keys must be **unique within their parent container** and **stable** across re-r
 
 ---
 
-## Apply This Chapter to Project 1 — Taskflow
-
-> **Project:** Taskflow — Personal Task Manager  
-> **Feature:** Verify Taskflow's routing structure and confirm views load correctly.
-
-Review `src/routes/routes.ts` and confirm all three Taskflow routes (`/login`, `/tasks`, `/dashboard`) are registered with the correct HTML files and controller references. Add a `/404` wildcard route pointing to a `not-found.html` view. Navigate to each route in the browser and confirm the correct content loads.
-
-### Done Criteria
+## Done Criteria
 
 - [ ] Navigating to `/tasks` loads `src/views/protected/tasks.html`.
 - [ ] Navigating to `/dashboard` loads `src/views/protected/dashboard.html`.

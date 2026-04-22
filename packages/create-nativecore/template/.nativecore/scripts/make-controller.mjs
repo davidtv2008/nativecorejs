@@ -67,8 +67,10 @@ export async function ${camelName}Controller(params: Record<string, string> = {}
     const disposers: Array<() => void> = [];
 
     // -- DOM refs ------------------------------------------------------------
-    const titleEl   = dom.$<HTMLElement>('[data-hook="title"]');
-    const summaryEl = dom.$<HTMLElement>('[data-hook="summary"]');
+    // dom.view() scopes all queries to [data-view="${kebabName}"] — nothing leaks outside.
+    const view      = dom.view('${kebabName}');
+    const titleEl   = view.hook<HTMLElement>('title');
+    const summaryEl = view.hook<HTMLElement>('summary');
 
     // -- State & computed ----------------------------------------------------
     const userState   = useState(auth.getUser());
@@ -92,7 +94,7 @@ export async function ${camelName}Controller(params: Record<string, string> = {}
 
     // -- Events --------------------------------------------------------------
     // events.onClick is shorthand for click; use events.on for any other event type.
-    events.onClick('[data-action="primary"]', () => {
+    events.onClick(view.actionSelector('primary'), () => {
         userState.value = auth.getUser();
     });
 

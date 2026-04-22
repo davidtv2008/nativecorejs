@@ -5,6 +5,7 @@
 
 import { effect } from './state.js';
 import type { State, ComputedState } from './state.js';
+import dom from '../utils/dom.js';
 
 // Types
 export interface ComponentState {
@@ -219,7 +220,20 @@ export class Component extends HTMLElement {
             ? this.shadowRoot.querySelectorAll<E>(selector) 
             : this.querySelectorAll<E>(selector);
     }
-    
+
+    /**
+     * Create a scoped accessor for [data-view] / [data-hook] / [data-action] elements
+     * within this component's shadow root. Mirrors dom.view() but scoped to the
+     * component's own shadow DOM instead of document.
+     *
+     * @example this.shadow('task-card').hook('title')    // [data-hook="title"]
+     * @example this.shadow('task-card').action('primary') // [data-action="primary"]
+     * @example this.shadow('task-card').query('.my-class') // arbitrary selector
+     */
+    shadow(viewName: string) {
+        return dom.view(viewName, this.shadowRoot ?? this);
+    }
+
     /**
      * Helper: Add event listener with auto cleanup
      */

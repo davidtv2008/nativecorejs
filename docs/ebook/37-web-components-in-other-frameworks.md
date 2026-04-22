@@ -1,5 +1,7 @@
 # Chapter 37 — Using NativeCoreJS Components in Other Frameworks
 
+> **What you'll build in this chapter:** Publish EnterpriseKit's shared components as an npm package, verify they render in a React sandbox without wrappers — completing Project 4.
+
 One of NativeCoreJS's core architectural decisions is that every component you build is a real **Web Component** — a standards-compliant Custom Element registered on the browser's element registry via `customElements.define()`. This is not an implementation detail. It is the foundation.
 
 The practical consequence: any `nc-*` built-in or custom component you write in NativeCoreJS can be used unchanged in React, Vue 3, Svelte, Angular, plain HTML — or any other environment that runs in a browser. No wrappers, no adapters, no build plugins required.
@@ -441,14 +443,7 @@ Because NativeCoreJS components are real Web Components, you can:
 
 ---
 
-## Apply This Chapter to Project 4 — EnterpriseKit ✅ Checkpoint
-
-> **Project:** EnterpriseKit — Internal Tools Platform  
-> **Feature:** Publish the EnterpriseKit shared component library to npm.
-
-Create a `packages/ui/` directory in the EnterpriseKit repo. Move at least three shared components into it. Add a `package.json` with `"name": "@enterprise-kit/ui"`, `"main"`, and `"exports"` fields. Build with `tsc`. Test the package in a minimal React sandbox (create-react-app or Vite) by importing and rendering one component. Publish to npm (or an `npm pack` dry-run if you prefer not to publish publicly).
-
-### Done Criteria
+## Done Criteria
 
 - [ ] `packages/ui/` contains at least three NativeCoreJS components with correct `defineComponent` registrations.
 - [ ] The `packages/ui/package.json` has valid `main` and `exports` fields pointing to compiled JS.

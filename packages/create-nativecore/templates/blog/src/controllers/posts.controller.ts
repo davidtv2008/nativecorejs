@@ -18,7 +18,7 @@ export async function postsController(): Promise<() => void> {
     const events = trackEvents();
     const disposers: Array<() => void> = [];
 
-    const scope = dom.data('posts');
+    const scope = dom.view('posts');
     const postList = scope.hook('post-list');
     const searchInput = scope.hook('search') as any;
     const pagination = scope.hook('pagination') as any;

@@ -1,4 +1,6 @@
-# Chapter 17 — Global Stores and Cross-Route State
+# Chapter 18 — Global Stores and Cross-Route State
+
+> **What you'll build in this chapter:** Build `cartStore` and `wishlistStore` for ShopBoard — `cartStore` drives the header badge reactively, `wishlistStore` persists to `localStorage`, and both survive multi-route navigation.
 
 Every controller you have written so far creates its state locally — `useState()` inside the controller function. When the controller is cleaned up (because the user navigated away), that state is released. The tasks you fetched are gone. The next time the user visits the same route, the controller runs again and fetches the tasks again.
 
@@ -181,7 +183,7 @@ export async function tasksController(
 ): Promise<() => void> {
     const events = trackEvents();
     const disposers: Array<() => void> = [];
-    const scope = dom.data('tasks');
+    const scope = dom.view('tasks');
 
     // Load tasks — if they are already in the store from a previous visit,
     // the stale-while-revalidate fetch happens in the background
@@ -239,7 +241,7 @@ export async function dashboardController(
 ): Promise<() => void> {
     const events = trackEvents();
     const disposers: Array<() => void> = [];
-    const scope = dom.data('dashboard');
+    const scope = dom.view('dashboard');
 
     await loadTasks();
 
@@ -395,14 +397,7 @@ The auth service calls the API to log in. The user store holds the current user 
 
 ---
 
-## Apply This Chapter to Project 2 — ShopBoard
-
-> **Project:** ShopBoard — E-commerce Analytics Dashboard  
-> **Feature:** Build `cartStore` and `wishlistStore` with cross-route reactivity.
-
-Create `src/stores/cart.store.ts` exporting `items: State<CartItem[]>` and the actions `addItem`, `removeItem`, and `clearCart`. Create `src/stores/wishlist.store.ts` that persists to `localStorage` on every write using `state.watch()`. Wire the cart item count badge in `app-header` to `cartStore.items.value.length`. Navigate between the catalog and cart several times and confirm cart state is never lost.
-
-### Done Criteria
+## Done Criteria
 
 - [ ] `cartStore` holds `items: CartItem[]` and exposes `addItem`, `removeItem`, and `clearCart` actions.
 - [ ] The cart badge in the header reactively reflects `cartStore.items.value.length`.

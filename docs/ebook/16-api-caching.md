@@ -1,6 +1,8 @@
-# Chapter 15 — API Data Caching and Invalidation
+# Chapter 16 — API Data Caching and Invalidation
 
-Chapter 14 covered the router's HTML cache — the mechanism that stores view template files in memory so back-navigation doesn't hit the network. This chapter covers something different: the **API data cache**, which stores the JSON responses from your backend so that repeated data fetches don't hit the network either.
+> **What you'll build in this chapter:** Cache ShopBoard's product API responses with `api.getCached()`, use tag-based invalidation, and verify that a simulated purchase clears the product list cache and triggers a re-fetch.
+
+Chapter 15 covered the router's HTML cache — the mechanism that stores view template files in memory so back-navigation doesn't hit the network. This chapter covers something different: the **API data cache**, which stores the JSON responses from your backend so that repeated data fetches don't hit the network either.
 
 The two caches work at different layers and serve different purposes. A route cache miss costs one HTML fetch. An API cache miss costs one JSON fetch for every piece of data on the page. Getting the API cache right pays much larger dividends.
 
@@ -226,7 +228,7 @@ export async function taskDetailController(
     disposers.push(effect(() => {
         const t = task.value;
         if (!t) return;
-        const statusEl = dom.data('task-detail').hook('status');
+        const statusEl = dom.view('task-detail').hook('status');
         if (statusEl) {
             statusEl.textContent = t.status;
             statusEl.dataset.status = t.status;
@@ -280,14 +282,7 @@ Keep this map updated as Taskflow grows. A missing entry means stale data will l
 
 ---
 
-## Apply This Chapter to Project 2 — ShopBoard
-
-> **Project:** ShopBoard — E-commerce Analytics Dashboard  
-> **Feature:** Cache product API data with tag-based invalidation.
-
-Update the products controller to call `api.getCached('/products', { ttl: 60_000, tags: ['products'] })`. Use `['product', params.id]` as the `queryKey` for product detail pages. After a simulated "purchase" action, call `api.invalidateTags(['products'])` and verify in the console that the next catalog visit re-fetches data from the network.
-
-### Done Criteria
+## Done Criteria
 
 - [ ] The product list controller uses `getCached('/products', { ttl: 60_000, tags: ['products'] })`.
 - [ ] Each product detail controller uses `queryKey: ['product', params.id]`.

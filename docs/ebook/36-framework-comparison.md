@@ -1,5 +1,7 @@
 # Chapter 36 — Framework Comparison
 
+> **What you'll build in this chapter:** Write an Architecture Decision Record (ADR) for EnterpriseKit that documents the NativeCoreJS choice with at least three comparison-table references, a considered-alternatives section, and an honest trade-off analysis.
+
 This chapter provides an honest, pattern-by-pattern comparison between NativeCoreJS and four mainstream frameworks: React, Vue 3, Svelte, and Lit. For each of the 10 most common SPA patterns, you will find equivalent code in all five frameworks. Numbers of lines of code are approximate and focus on the functional surface — imports are collapsed for readability.
 
 ---
@@ -458,14 +460,7 @@ The cases where a mainstream framework is clearly preferable:
 
 ---
 
-## Apply This Chapter to Project 4 — EnterpriseKit
-
-> **Project:** EnterpriseKit — Internal Tools Platform  
-> **Feature:** Write an Architecture Decision Record (ADR) documenting the framework choice for EnterpriseKit.
-
-Create `docs/adr/001-framework-choice.md` in the EnterpriseKit project. Write a brief ADR that references at least three patterns from this chapter's comparison table, acknowledges one area where a mainstream framework would have been preferable, and records the decision with a rationale and trade-off analysis.
-
-### Done Criteria
+## Done Criteria
 
 - [ ] `docs/adr/001-framework-choice.md` exists in the EnterpriseKit project.
 - [ ] The ADR references at least three comparison patterns (e.g. reactive state, routing, global state).

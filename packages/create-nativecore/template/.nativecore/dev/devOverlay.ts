@@ -11,6 +11,7 @@
  *   - ROUTE            last navigation duration + history
  *   - NET              pending fetches + last 5 API calls
  *   - ERRORS           unhandled rejections + console errors/warns
+ *   - LOOP GUARD       effect loop-guard trips (auto-disposed effects)
  *   - COMPONENTS       mounted Web Component count + list
  *   - SEO              on-page SEO score (scan on route load) + detail modal with apply-to-source
  *   - CONNECTION       navigator.connection info
@@ -59,6 +60,12 @@ interface ConsoleEntry {
     ts: number;
 }
 
+interface EffectGuardEntry {
+    threshold: number;
+    runs: number;
+    ts: number;
+}
+
 interface SeoCheckItem {
     id: string;
     label: string;
@@ -97,6 +104,7 @@ const MAX_API_LOG       = 20;
 const MAX_LONG_TASK_LOG = 50;
 const MAX_CONSOLE_LOG   = 50;
 const MAX_ROUTE_LOG     = 20;
+const MAX_EFFECT_GUARD_LOG = 20;
 const FPS_HISTORY_LEN   = 60; // last 60 half-second samples = 30s
 
 // ─── Observers / loops ───────────────────────────────────────────────────────
@@ -151,6 +159,8 @@ const state = {
     consoleWarns: 0,
     unhandledRejections: 0,
     consoleLog: [] as ConsoleEntry[],
+    effectGuardTrips: 0,
+    effectGuardLog: [] as EffectGuardEntry[],
 
     // Components
     componentCount: 0,
@@ -921,6 +931,16 @@ function observeRejections(): void {
     });
 }
 
+function observeEffectLoopGuards(): void {
+    window.addEventListener('nativecore:effect-loop-guard', (e: Event) => {
+        const detail = (e as CustomEvent<EffectGuardEntry>).detail;
+        if (!detail) return;
+        state.effectGuardTrips++;
+        state.effectGuardLog.unshift(detail);
+        if (state.effectGuardLog.length > MAX_EFFECT_GUARD_LOG) state.effectGuardLog.pop();
+    });
+}
+
 // ─── Fetch intercept ─────────────────────────────────────────────────────────
 
 function patchFetch(): void {
@@ -1068,6 +1088,7 @@ function renderOverlayHTML(): string {
     const totalErrors = state.consoleErrors + state.unhandledRejections;
     const errorCls = totalErrors > 0 ? 'nc-warn' : 'nc-muted';
     const warnCls  = state.consoleWarns > 0 ? 'nc-caution' : 'nc-muted';
+    const effectGuardCls = state.effectGuardTrips > 0 ? 'nc-warn' : 'nc-muted';
 
     const domDeltaStr = state.domDelta !== 0
         ? ` <span class="${state.domDelta > 100 ? 'nc-warn' : state.domDelta > 20 ? 'nc-caution' : 'nc-muted'}">(${state.domDelta > 0 ? '+' : ''}${state.domDelta})</span>`
@@ -1114,6 +1135,7 @@ function renderOverlayHTML(): string {
     html += `<hr class="nc-div">`;
     html += row('NET', netVal, 'net');
     html += row('ERRORS', `<span class="${errorCls}">${totalErrors}</span> <span class="${warnCls}">/ ${state.consoleWarns}w</span>`, 'errors');
+    html += row('LOOP GUARD', `<span class="${effectGuardCls}">${state.effectGuardTrips}</span>`, 'effectguards');
 
     const conn = navigator.connection;
     if (conn) {
@@ -1202,6 +1224,7 @@ function renderModalContent(section: string): string {
         case 'longtasks':  return modalLongTasks();
         case 'net':        return modalNet();
         case 'errors':     return modalErrors();
+        case 'effectguards': return modalEffectGuards();
         case 'conn':       return modalConn();
         case 'seo':        return modalSeo();
         default:           return `<div class="nc-m-title"><span>Dev</span><span class="nc-m-close">&#x2715;</span></div><p class="nc-m-empty">No data.</p>`;
@@ -1371,6 +1394,31 @@ function modalErrors(): string {
             kv('Unhandled rejections', state.unhandledRejections > 0 ? `<span class="nc-warn">${state.unhandledRejections}</span>` : '<span class="nc-muted">0</span>') +
             kv('Console warnings', state.consoleWarns > 0 ? `<span class="nc-caution">${state.consoleWarns}</span>` : '<span class="nc-muted">0</span>')) +
         sect(`Log (last ${state.consoleLog.length})`, rows);
+}
+
+function modalEffectGuards(): string {
+    const rows = state.effectGuardLog.length
+        ? state.effectGuardLog.map(entry =>
+            `<div class="nc-m-log-row" style="grid-template-columns:1fr auto auto">
+                <span>threshold ${entry.threshold}</span>
+                <span class="nc-warn">${entry.runs} runs</span>
+                <span class="nc-m-ts">${formatTime(entry.ts)}</span>
+            </div>`).join('')
+        : '<span class="nc-m-empty">no effect loop-guard trips</span>';
+
+    return modalHeader('Effect Loop Guard') +
+        sect('Summary',
+            kv('Trips', state.effectGuardTrips > 0 ? `<span class="nc-warn">${state.effectGuardTrips}</span>` : '<span class="nc-muted">0</span>') +
+            kv('Behavior', state.effectGuardTrips > 0
+                ? '<span class="nc-warn">effect was auto-disposed</span>'
+                : '<span class="nc-muted">no trips recorded</span>')) +
+        sect('What it means',
+            '<div style="color:rgba(0,255,136,0.45);font-size:10px;line-height:1.8">' +
+            'An effect exceeded its max-runs-per-flush threshold and was disposed.<br>' +
+            'This usually means the effect writes to state it also depends on,<br>' +
+            'or two effects are ping-ponging values back and forth.' +
+            '</div>') +
+        sect(`Trips (last ${state.effectGuardLog.length})`, rows);
 }
 
 // Connection modal
@@ -1563,6 +1611,7 @@ export function initDevOverlay(): void {
         patchConsole();
         patchFetch();
         observeRejections();
+        observeEffectLoopGuards();
         observePaintMetrics();
         observeRouteChanges();
 

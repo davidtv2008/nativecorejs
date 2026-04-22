@@ -1,5 +1,7 @@
 # Chapter 02 — First Component
 
+> **What you'll build in this chapter:** Generate `<task-card>` with the component generator, then evolve the scaffold into a real status-aware card that Taskflow uses to display each task — complete with `bind()` wiring, a status badge, and a named `actions` slot.
+
 ## The Component Base Class
 
 Every NativeCoreJS component is a native Web Component — a class that extends `HTMLElement` and is registered with `customElements.define()`. The framework provides a `Component` base class that adds the reactive bindings API, lifecycle helpers, and Shadow DOM setup on top of the standard Web Component spec.
@@ -55,56 +57,80 @@ The `template()` method returns the HTML string that is stamped into the shadow 
 ```typescript
 import { Component, defineComponent } from '@core/component.js';
 import { html } from '@core-utils/templates.js';
-// import { useState, computed } from '@core/state.js';
-// import type { State } from '@core/state.js';
+import { useState, computed } from '@core/state.js';
+import type { State } from '@core/state.js';
+import '@components/core/nc-button.js';
 
 export class TaskCard extends Component {
     static useShadowDOM = true;
 
+  // Attributes listed here appear in the dev tools sidebar and trigger onAttributeChange.
+  static observedAttributes = ['title', 'description'];
+
+  // Internal state (not reflected as attributes) can be defined like this:
+  titleState: State<string> = useState('');
+  descriptionState: State<string> = useState('');
+  titleDescComputed = computed(() => `${this.titleState.value} - ${this.descriptionState.value}`);
+
     constructor() {
         super();
-        // this.titleState = useState('');
-        // this.myComputed = computed(() => this.titleState?.value);
     }
 
     template() {
         return html`
             <style>
                 :host { display: block; }
-                .task-card { border: 1px solid #e2e8f0; border-radius: 8px; padding: 1rem; }
-                .task-card__header { display: flex; align-items: center; gap: 0.5rem; }
-                .task-card__title { margin: 0; font-size: 1rem; }
-                .task-card__description { color: #64748b; font-size: 0.875rem; margin-top: 0.5rem; }
-                .task-card__status[data-status="done"] { color: #16a34a; }
-                .task-card__status[data-status="pending"] { color: #d97706; }
+        .task-card {}
+        .task-card__header {}
+        .task-card__title {}
+        .task-card__description {}
             </style>
             <div class="task-card" data-view="task-card">
                 <header class="task-card__header">
-                    <span class="task-card__status" data-hook="status"></span>
                     <h3 class="task-card__title" data-hook="title"></h3>
                 </header>
                 <p class="task-card__description" data-hook="description"></p>
+        <p class="task-card__title-desc" data-hook="title-desc"></p> <!-- example of using a computed state -->
+        <nc-button class="task-card__action" variant="outline" data-action="primary">Action</nc-button>
+        <slot></slot>
             </div>
         `;
     }
 
-    onMount() {
-        this.on('click', '[data-action]', (e) => {
-            const action = (e.target as HTMLElement).getAttribute('data-action');
-            // handle actions here, or emit upward:
-            // this.emitEvent('task-action', { action });
-        });
+  attributeChangedCallback(name: string, oldValue: string | null, newValue: string | null): void {
+    if (oldValue === newValue || !this._mounted) return;
+    if (name === 'title') this.titleState.value = newValue ?? '';
+    if (name === 'description') this.descriptionState.value = newValue ?? '';
+  }
 
-        // this.bind(this.title, '[data-hook="title"]');
+    onMount() {
+    // Seed state from initial HTML attributes.
+    this.titleState.value = this.getAttribute('title') ?? '';
+    this.descriptionState.value = this.getAttribute('description') ?? '';
+
+    // Wire up events and reactive bindings here.
+    // nc-button emits 'nc-button-click' on itself — e.target is the <nc-button> element.
+    this.on('nc-button-click', (e) => {
+      const action = (e.target as HTMLElement).getAttribute('data-action');
+      if (action) this.emitEvent('task-card-action', { action });
+    });
+
+    this.bind(this.titleState, '[data-hook="title"]'); // surgically updates the element's textContent when state changes — no full re-render
+    this.bind(this.descriptionState, '[data-hook="description"]'); // surgically updates the element's textContent when state changes — no full re-render
+    this.bind(this.titleDescComputed, '[data-hook="title-desc"]'); // example of binding a computed state
     }
 
     onUnmount() {
-        // this.title?.dispose();
+    // Clean up after yourself — dispose any computed() instances here.
+    // useState() is cleaned up automatically when this.bind() unsubscribes.
+    this.titleDescComputed?.dispose();
     }
 }
 
 defineComponent('task-card', TaskCard);
 ```
+
+This is the exact shape the generator starts from (including `nc-button`, `slot`, and the initial `title`/`description` attributes). In the rest of this chapter, we evolve it into the richer `status`-aware version used by Taskflow.
 
 `template()` is called by `render()`, which the framework invokes on first mount and again whenever an observed attribute changes (unless you override `attributeChangedCallback` directly, which suppresses the automatic re-render). For high-frequency updates driven by reactive state, use the `bind()` API (Chapter 04) to surgically update individual DOM nodes without triggering a full re-render.
 
@@ -136,26 +162,17 @@ Web Components receive data from the outside world through HTML attributes. Decl
 ```typescript
 static observedAttributes = ['title', 'description', 'status'];
 
-attributeChangedCallback(name: string, _old: string | null, value: string | null): void {
-  if (name === 'title') {
-    const el = this.shadowRoot?.querySelector('.task-card__title');
-    if (el) el.textContent = value ?? '';
-  }
-  if (name === 'description') {
-    const el = this.shadowRoot?.querySelector('.task-card__description');
-    if (el) el.textContent = value ?? '';
-  }
-  if (name === 'status') {
-    const el = this.shadowRoot?.querySelector('.task-card__status');
-    if (el) {
-      el.textContent = value === 'done' ? '✓ Done' : '● Pending';
-      el.setAttribute('data-status', value ?? 'pending');
-    }
-  }
+statusState: State<string> = useState('');
+
+attributeChangedCallback(name: string, oldValue: string | null, newValue: string | null): void {
+  if (oldValue === newValue || !this._mounted) return;
+  if (name === 'title') this.titleState.value = newValue ?? '';
+  if (name === 'description') this.descriptionState.value = newValue ?? '';
+  if (name === 'status') this.statusState.value = newValue ?? '';
 }
 ```
 
-> **Note:** `attributeChangedCallback` fires for the initial attribute values when the element is first parsed, so you do not need a separate "initial render" pass — just set the attribute and the callback handles both the initial value and future updates.
+> **Note:** The browser does fire `attributeChangedCallback` for initial attributes, but the scaffold uses `if (oldValue === newValue || !this._mounted) return;` to ignore pre-mount calls. That is why the generated file seeds state from `getAttribute(...)` in `onMount()`, then relies on `attributeChangedCallback` for post-mount updates.
 
 ---
 
@@ -286,7 +303,7 @@ this.dispatchEvent(new CustomEvent<{ taskId: string; status: string }>(
 
 `bubbles: true` lets the event travel up the DOM tree. `composed: true` lets it cross the shadow boundary so a controller listening on `document` can receive it. Both are set automatically by `this.emitEvent()`.
 
-Listen for the event in a controller (the `trackEvents` helper is covered in Chapter 06, but the plain form works today):
+Listen for the event in a controller (the `trackEvents` helper is covered in Chapter 07, but the plain form works today):
 
 ```typescript
 document.addEventListener('task-status-changed', (e: Event) => {
@@ -331,18 +348,38 @@ template(): string {
 
 ## The Complete `<task-card>` Component
 
-Here is the full file with everything assembled:
+Here is the full file with everything assembled. Starting from the scaffold, we:
+
+- Add `status` to `observedAttributes` and seed its badge in `onMount()`
+- Handle `status` changes with a direct `this.$()` update in `attributeChangedCallback()` — appropriate here because status needs a label map, not just text binding
+- Keep `bind()` for `title` and `description` — they map directly to text content
+- Remove the `titleDescComputed` example from the scaffold (it was illustrative noise for this use-case)
+- Swap the default `<slot>` for a named `slot name="actions"` to separate action buttons from body content
 
 ```typescript
 // src/components/ui/task-card.ts
 import { Component, defineComponent } from '@core/component.js';
 import { html } from '@core-utils/templates.js';
+import { useState } from '@core/state.js';
+import type { State } from '@core/state.js';
+import '@components/core/nc-button.js';
 
 export class TaskCard extends Component {
   static useShadowDOM = true;
 
-  // Attributes listed here appear in the dev tools sidebar and trigger onAttributeChange.
   static observedAttributes = ['title', 'description', 'status'];
+
+  static attributeOptions = {
+    status: ['pending', 'in-progress', 'done'],
+  };
+
+  titleState: State<string> = useState('');
+  descriptionState: State<string> = useState('');
+  statusState: State<string> = useState('');
+
+  constructor() {
+    super();
+  }
 
   template() {
     return html`
@@ -381,10 +418,10 @@ export class TaskCard extends Component {
     `;
   }
 
-  attributeChangedCallback(name: string, oldValue: string | null, value: string | null): void {
-    if (oldValue === value || !this._mounted) return;
-    if (name === 'title') this.titleState.value = value ?? '';
-    if (name === 'description') this.descriptionState.value = value ?? '';
+  attributeChangedCallback(name: string, oldValue: string | null, newValue: string | null): void {
+    if (oldValue === newValue || !this._mounted) return;
+    if (name === 'title') this.titleState.value = newValue ?? '';
+    if (name === 'description') this.descriptionState.value = newValue ?? '';
     if (name === 'status') {
       const el = this.$<HTMLElement>('[data-hook="status"]');
       if (!el) return;
@@ -393,26 +430,51 @@ export class TaskCard extends Component {
         'in-progress': '↻ In Progress',
         'pending':     '● Pending',
       };
-      el.textContent = labels[value ?? 'pending'] ?? '● Pending';
-      el.setAttribute('data-status', value ?? 'pending');
+      el.textContent = labels[newValue ?? 'pending'] ?? '● Pending';
+      el.setAttribute('data-status', newValue ?? 'pending');
     }
   }
 
   onMount() {
-    this.on('click', '[data-action]', (e) => {
+    // Seed state from initial HTML attributes.
+    this.titleState.value = this.getAttribute('title') ?? '';
+    this.descriptionState.value = this.getAttribute('description') ?? '';
+
+    // Seed the status badge — attributeChangedCallback only fires for
+    // post-mount changes, so initial attribute values must be applied here.
+    const initialStatus = this.getAttribute('status') ?? 'pending';
+    const statusEl = this.$<HTMLElement>('[data-hook="status"]');
+    if (statusEl) {
+      const labels: Record<string, string> = {
+        'done':        '✓ Done',
+        'in-progress': '↻ In Progress',
+        'pending':     '● Pending',
+      };
+      statusEl.textContent = labels[initialStatus] ?? '● Pending';
+      statusEl.setAttribute('data-status', initialStatus);
+    }
+
+    // nc-button emits 'nc-button-click' on itself (composed: true).
+    // e.target is the <nc-button> element — read data-action directly from it.
+    this.on('nc-button-click', (e) => {
       const action = (e.target as HTMLElement).getAttribute('data-action');
-      this.emitEvent('task-card-action', { action });
+      if (action) this.emitEvent('task-card-action', { action });
     });
+
+    this.bind(this.titleState, '[data-hook="title"]');
+    this.bind(this.descriptionState, '[data-hook="description"]');
   }
 
   onUnmount() {
-    // Clean up after yourself — dispose any computed() instances here.
-    // useState() is cleaned up automatically when this.bind() unsubscribes.
+    // bind() subscriptions are auto-disposed — nothing to clean up here.
   }
 }
 
 defineComponent('task-card', TaskCard);
 ```
+
+> **Why `this.$()` for status but `bind()` for title/description?**
+> `bind()` maps a reactive state directly to an element's `textContent`. That is a perfect fit for `title` and `description` — change the state, the text updates. `status` is different: you need to map three possible string values to human-readable labels **and** set a `data-status` attribute for CSS targeting. A direct `this.$()` update in `attributeChangedCallback` and `onMount()` is cleaner and more explicit than building a computed just to handle two attributes at once.
 
 ---
 
@@ -481,13 +543,19 @@ The rule is simple:
 
 ```typescript
 onMount() {
-    this.on('nc-button-click', '[data-action="primary"]', (e) => {
-        this.emitEvent('task-card-action', { originalEvent: e });
+    // nc-button emits 'nc-button-click' on itself (composed: true), so
+    // e.target is the <nc-button> element — read data-action from it directly.
+    this.on('nc-button-click', (e) => {
+        const action = (e.target as HTMLElement).getAttribute('data-action');
+        if (action) this.emitEvent('task-card-action', { action });
     });
 }
 ```
 
 The chain keeps each layer decoupled: `nc-button` → `nc-button-click` → caught by `task-card` → re-emitted as `task-card-action` → handled by the controller.
+
+> **Why not use `this.on('nc-button-click', '[data-action]', handler)`?**
+> The selector overload of `this.on()` does event delegation — it checks `e.target.matches(selector)`. Because `nc-button-click` is emitted by the `<nc-button>` element itself (`composed: true`), `e.target` is the `<nc-button>` element. Since `data-action` is placed directly on `<nc-button>`, `getAttribute('data-action')` on the target is both correct and simpler.
 
 ### Dev Tools: Inspecting Nested Components
 
@@ -499,16 +567,9 @@ Because nested custom elements live inside a shadow root, the dev tools overlay 
 
 ---
 
-## Apply This Chapter to Project 1 — Taskflow
+## Done Criteria
 
-> **Project:** Taskflow — Personal Task Manager  
-> **Feature:** Build the `<task-card>` component and render two static cards in the tasks view.
-
-Generate `task-card` with `npm run make:component task-card`, implement `template()`, `static observedAttributes`, and `attributeChangedCallback()`, then drop two hardcoded `<task-card>` elements into `src/views/protected/tasks.html` and verify they render in the browser.
-
-### Done Criteria
-
-- [ ] `src/components/ui/task-card.ts` exists and is registered in `src/components/registry.ts`.
+- [ ] `src/components/ui/task-card.ts` exists and is registered in `src/components/appRegistry.ts`.
 - [ ] The component renders with `title`, `description`, and `status` attributes set from HTML.
 - [ ] Two static task cards appear in `src/views/protected/tasks.html`.
 - [ ] Each status badge shows the correct color (`done` = green, `in-progress` = blue, `pending` = amber).

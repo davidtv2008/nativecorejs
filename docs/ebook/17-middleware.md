@@ -1,4 +1,6 @@
-# Chapter 16 — Router Middleware and Navigation Guards
+# Chapter 17 — Router Middleware and Navigation Guards
+
+> **What you'll build in this chapter:** Add a cart auth guard so unauthenticated users are redirected away from `/cart` and `/checkout`, and a "save-on-navigate" guard that prevents leaving `/checkout` while the cart is non-empty.
 
 Controllers run *after* navigation completes. Sometimes you need code that runs *before* — to check permissions, log the event, or ask the user if they're sure they want to leave. That's middleware.
 
@@ -108,7 +110,7 @@ export async function loginController(
 ): Promise<() => void> {
     const events = trackEvents();
     const disposers: Array<() => void> = [];
-    const scope = dom.data('login');
+    const scope = dom.view('login');
 
     const errorMsg = useState('');
 
@@ -308,14 +310,7 @@ State is also available in controllers (as a second argument after `params`), an
 
 ---
 
-## Apply This Chapter to Project 2 — ShopBoard
-
-> **Project:** ShopBoard — E-commerce Analytics Dashboard  
-> **Feature:** Add a cart auth guard and a checkout "save-on-navigate" guard.
-
-Register a middleware that redirects unauthenticated users away from `/cart` and `/checkout`. Add a second middleware that checks `cartStore.items.value.length > 0` and returns `false` (cancelling navigation) with a confirmation message when the user tries to leave `/checkout` with items in their cart.
-
-### Done Criteria
+## Done Criteria
 
 - [ ] Navigating to `/cart` or `/checkout` without a token redirects to `/login` using `router.replace()`.
 - [ ] The "save-on-navigate" guard prevents leaving `/checkout` when the cart is non-empty (verify by clicking the back button mid-checkout).

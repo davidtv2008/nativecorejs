@@ -1,4 +1,6 @@
-# Chapter 13 — Dynamic Routes, URL Parameters, and Wildcards
+# Chapter 14 — Dynamic Routes, URL Parameters, and Wildcards
+
+> **What you'll build in this chapter:** Scaffold ShopBoard (Project 2), add the `/products` catalog view and a `/products/:id` product detail page, and handle unknown product URLs with a wildcard 404 fallback.
 
 So far, Taskflow's routes have been static strings: `/dashboard`, `/tasks`, `/login`. But a real task management app needs pages that are *parameterized* — a task detail page that knows *which* task to show, a project page that can load any project by its ID. That's exactly what dynamic routes provide.
 
@@ -107,7 +109,7 @@ export async function taskDetailController(
     const events = trackEvents();
     const disposers: Array<() => void> = [];
 
-    const scope = dom.data('task-detail');
+    const scope = dom.view('task-detail');
     const taskId = params.id;
 
     const task = useState<Task | null>(null);
@@ -259,7 +261,7 @@ export async function notFoundController(
     const events = trackEvents();
     const disposers: Array<() => void> = [];
 
-    const scope = dom.data('not-found');
+    const scope = dom.view('not-found');
     const attempted = params.wildcard ?? '/';
 
     disposers.push(effect(() => {
@@ -386,14 +388,7 @@ If no route matches and you haven't registered a `/*` wildcard, the router simpl
 
 ---
 
-## Apply This Chapter to Project 2 — ShopBoard
-
-> **Project:** ShopBoard — E-commerce Analytics Dashboard  
-> **Feature:** Scaffold ShopBoard and add a `/products/:id` product detail page.
-
-Run `npx create-nativecore shopboard` to scaffold the new project. Use `npm run make:view` to create `/products` (the catalog) and `/products/:id` (the product detail page with a controller that reads `params.id`). Add a `/products/*` wildcard as a 404 fallback for unknown product URLs.
-
-### Done Criteria
+## Done Criteria
 
 - [ ] `npx create-nativecore shopboard` scaffolds the ShopBoard project.
 - [ ] `/products` and `/products/:id` are registered in `src/routes/routes.ts`.

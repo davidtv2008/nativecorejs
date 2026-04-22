@@ -1,4 +1,6 @@
-# Chapter 30 — Framework API Quick Reference
+# Chapter 31 — Framework API Quick Reference
+
+> **What you'll build in this chapter:** Use this reference to verify every API used across Projects 1–4 is documented here, and flag any gaps as documentation contributions.
 
 Use this chapter as a fast lookup for NativeCoreJS framework APIs. Each entry includes a short signature, a one-line purpose, and a link to the chapter that explains it in depth.
 
@@ -41,7 +43,7 @@ Use this chapter as a fast lookup for NativeCoreJS framework APIs. Each entry in
 | `createStore` | `createStore<T>(name: string, initial: T): State<T>` | Creates (or retrieves) a named global store registered in `globalThis.__NC_STORES__` | [17 — Global Stores](./18-global-stores.md) |
 | `getStore` | `getStore<T>(name: string): State<T> \| undefined` | Retrieves a named store by key; `undefined` if not yet created | [17 — Global Stores](./18-global-stores.md) |
 | `computed` | `computed<T>(computeFn: () => T): ComputedState<T>` | Creates derived reactive values | [03 — Reactive State](./03-reactive-state.md) |
-| `effect` | `effect(effectFn: () => void \| (() => void)): () => void` | Runs side effects with auto dependency tracking | [06 — Controllers](./06-controllers.md) |
+| `effect` | `effect(effectFn: () => void \| (() => void), options?: { maxRunsPerFlush?: number }): () => void` | Runs side effects with auto dependency tracking; default loop guard is `1000` runs/flush (`0` disables) | [06 — Controllers](./06-controllers.md) |
 | `batch` | `batch(fn: () => void): void` | Coalesces multiple state writes into one notification flush | [11 — Advanced Patterns](./11-advanced-patterns.md) |
 
 ---
@@ -157,14 +159,7 @@ For built-in `nc-*` components and their attributes/events, use:
 
 ---
 
-## Apply This Chapter to Project 4 — EnterpriseKit
-
-> **Project:** EnterpriseKit — Internal Tools Platform  
-> **Feature:** Validate that every API used in Projects 1–4 is covered by this reference.
-
-Scan every controller, component, and store file you have written across all four projects. For each framework API call, locate its entry in this reference and verify the signature you used matches. Note any APIs you used but cannot find here — these are candidates for documentation contributions.
-
-### Done Criteria
+## Done Criteria
 
 - [ ] All NativeCoreJS APIs used in Projects 1–4 are found in this reference chapter.
 - [ ] Any undocumented helpers are listed in a `// TODO: document` comment in your project's README.

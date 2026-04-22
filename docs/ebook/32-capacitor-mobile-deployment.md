@@ -1,5 +1,7 @@
 # Chapter 32 — Capacitor: Packaging for Android and iOS
 
+> **What you'll build in this chapter:** Package Taskflow from Project 1 as a native Android app using Capacitor, run it in the Android Emulator, produce a signed APK — and, on macOS, complete the same flow for iOS.
+
 NativeCoreJS is a web application framework. Its output is a `dist/` folder of HTML, CSS, and JavaScript that runs in any browser. [Capacitor](https://capacitorjs.com/) is the bridge that takes that `dist/` folder and packages it as a native Android APK or iOS app — without touching your source code.
 
 This chapter explains the full workflow, what you can accomplish on any OS, what requires macOS, and what Capacitor genuinely cannot do.
@@ -304,14 +306,7 @@ Write tests for business logic in Vitest (they run against `happy-dom`, no nativ
 
 ---
 
-## Apply This Chapter to Bonus Project — Taskflow Mobile ★ Checkpoint
-
-> **Project:** Taskflow Mobile — Native Android & iOS  
-> **Feature:** Package the Taskflow app from Project 1 as a native Android and iOS app using Capacitor.
-
-Run `npx create-nativecore taskflow-mobile --capacitor` (or add Capacitor to your existing Taskflow project). Add the Android platform, sync, and run in the Android Emulator. Produce a signed APK from Android Studio. If on macOS, add the iOS platform, sync, and run in the iOS Simulator.
-
-### Done Criteria
+## Done Criteria
 
 - [ ] `npx create-nativecore taskflow-mobile --capacitor` scaffolds the project with `capacitor.config.ts` and `cap:*` scripts.
 - [ ] `npm run cap:add:android` generates the `android/` native project without errors.

@@ -1,5 +1,7 @@
 # Chapter 33 — SSG and Static Deployment
 
+> **What you'll build in this chapter:** Pre-render EnterpriseKit's marketing pages with `npm run build:ssg`, verify the generated sitemap, and deploy the static output to Cloudflare Pages while keeping protected dashboard routes intact.
+
 NativeCoreJS applications are Single-Page Apps (SPAs) by default: the browser loads `index.html`, downloads the JavaScript bundle, and renders the page on the client. That works well for authenticated applications, but public-facing marketing pages need every route to return real HTML immediately — for SEO, for social-media link previews, and for users on slow connections.
 
 This chapter explains two strategies for producing that HTML, helps you choose the right one, and walks through deployment to Cloudflare Pages and S3 + CloudFront.
@@ -282,14 +284,7 @@ To exclude a route from the sitemap while still pre-rendering it (for example, a
 
 ---
 
-## Apply This Chapter to Project 4 — EnterpriseKit
-
-> **Project:** EnterpriseKit — Internal Tools Platform  
-> **Feature:** Pre-render the EnterpriseKit marketing pages and deploy to Cloudflare Pages.
-
-Add a `/`, `/about`, `/pricing`, and `/docs` public route to EnterpriseKit. Run `npm run build:ssg` and confirm `_deploy/` contains pre-rendered HTML for each. Verify the routes in `_deploy/sitemap.xml`. Deploy the `_deploy/` output to Cloudflare Pages and confirm the protected dashboard routes still work after hydration.
-
-### Done Criteria
+## Done Criteria
 
 - [ ] `/`, `/about`, `/pricing`, and `/docs` are pre-rendered to `_deploy/<route>/index.html`.
 - [ ] `_deploy/sitemap.xml` is generated and lists all four public routes with correct canonical URLs.

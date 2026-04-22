@@ -76,13 +76,13 @@ You do not need prior experience with any other JavaScript framework. If you hav
 
 ---
 
-## Apply This Chapter to All Five Projects
+## Before You Start
 
 > **This is the overview chapter.** There is no code to write yet — but there is something specific to do before moving on.
 
 Review the [Project Roadmap in the README](./README.md#the-five-project-path) and write down one sentence for each project describing what *you* personally want to build in it. The projects in this book are templates — you will follow the guided features, but you should already be thinking about how you might extend them.
 
-### Done Criteria
+## Done Criteria
 
 - [ ] You have read the five project summaries and understand which chapters belong to each project.
 - [ ] You have Node.js 20+ installed and `node --version` prints `v20.x.x` or higher.

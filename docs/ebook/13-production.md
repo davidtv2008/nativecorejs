@@ -1,4 +1,6 @@
-# Chapter 12 — Going to Production
+# Chapter 13 — Going to Production
+
+> **What you'll build in this chapter:** Run `npm run build`, verify the compiled `dist/` output, and deploy Taskflow to a public URL — completing Project 1.
 
 The Taskflow app is feature-complete. This chapter covers everything between a working local project and a live URL: the build pipeline, environment variables, static hosting, progressive web app basics, and performance patterns that keep the app snappy as it grows.
 
@@ -239,14 +241,7 @@ Project 1 is complete. In the next chapters you will start Project 2 — ShopBoa
 
 ---
 
-## Apply This Chapter to Project 1 — Taskflow ✅ Checkpoint
-
-> **Project:** Taskflow — Personal Task Manager  
-> **Feature:** Build and deploy Taskflow to a public URL.
-
-Run `npm run build`, serve `dist/` locally with `node server.js`, and confirm the app works from the compiled output. Then deploy to Netlify, Vercel, or Cloudflare Pages using the `dist/` folder as the publish directory.
-
-### Done Criteria
+## Done Criteria
 
 - [ ] `npm run build` completes without TypeScript errors.
 - [ ] The compiled `dist/` folder contains `app.js` and all view HTML files.
