@@ -109,6 +109,10 @@ export class TaskCard extends Component {
     this.descriptionState.value = this.getAttribute('description') ?? '';
 
     // Wire up events and reactive bindings here.
+    // this.component scopes element access to this component's shadow root:
+    //   this.component.hook('title')    // [data-hook="title"]
+    //   this.component.action('primary') // [data-action="primary"]
+    //   this.component.view('nested').hook('row') // re-scope to a nested [data-view]
     // nc-button emits 'nc-button-click' on itself — e.target is the <nc-button> element.
     this.on('nc-button-click', (e) => {
       const action = (e.target as HTMLElement).getAttribute('data-action');
@@ -152,6 +156,29 @@ This is the exact shape the generator starts from (including `nc-button`, `slot`
 > ```
 >
 > Rule: static structure (tags, class names) in `template()` is safe. User-supplied values (API responses, attribute values from external sources) belong in `textContent` assignments or are auto-escaped by the `html` tag. Use `trusted()` only for HTML you construct yourself in component code — never pass user input through `trusted()`.
+
+---
+
+## `this.component` — Scoped DOM Access
+
+Every component gets a built-in `this.component` getter. It returns a scoped accessor pre-bound to the component's own tag name, so you never have to repeat the name yourself. All queries are scoped inside the component's shadow root.
+
+```typescript
+// All of these query within [data-view="task-card"] inside this shadow root:
+this.component.hook('title')            // → [data-hook="title"]
+this.component.action('primary')        // → [data-action="primary"]
+this.component.query('.task-card__footer') // → arbitrary CSS selector
+this.component.input('search')          // → [data-hook="search"] typed as HTMLInputElement
+this.component.button('submit')         // → [data-action="submit"] typed as HTMLButtonElement
+this.component.form('checkout')         // → [data-hook="checkout"] typed as HTMLFormElement
+
+// Re-scope to a nested [data-view] within the same shadow root:
+this.component.view('nested-panel').hook('row')
+```
+
+Use `this.component` any time you need a direct DOM reference in `onMount()`, `attributeChangedCallback()`, or event handlers. It is equivalent to the controller's `dom.view()` pattern — the same ergonomics, scoped to your shadow DOM.
+
+> **Tip:** `this.component` is a getter, not a cached property, so it always reflects the live DOM. You do not need to store it.
 
 ---
 
@@ -324,7 +351,7 @@ Shadow DOM's `<slot>` element lets consumers project light-DOM children into spe
 template(): string {
   return html`
     <style>
-      :host { display: block; }
+      :host { display: block; margin-bottom: 1rem; }
       .task-card { border: 1px solid #e2e8f0; border-radius: 8px; padding: 1rem; }
       .task-card__header { display: flex; align-items: center; gap: 0.5rem; }
       .task-card__title { margin: 0; font-size: 1rem; }
@@ -384,7 +411,7 @@ export class TaskCard extends Component {
   template() {
     return html`
       <style>
-        :host { display: block; }
+        :host { display: block; margin-bottom: 1rem; }
         .task-card {
           border: 1px solid #e2e8f0;
           border-radius: 8px;
@@ -423,7 +450,7 @@ export class TaskCard extends Component {
     if (name === 'title') this.titleState.value = newValue ?? '';
     if (name === 'description') this.descriptionState.value = newValue ?? '';
     if (name === 'status') {
-      const el = this.$<HTMLElement>('[data-hook="status"]');
+      const el = this.component.hook('status');
       if (!el) return;
       const labels: Record<string, string> = {
         'done':        '✓ Done',
@@ -443,7 +470,7 @@ export class TaskCard extends Component {
     // Seed the status badge — attributeChangedCallback only fires for
     // post-mount changes, so initial attribute values must be applied here.
     const initialStatus = this.getAttribute('status') ?? 'pending';
-    const statusEl = this.$<HTMLElement>('[data-hook="status"]');
+    const statusEl = this.component.hook('status');
     if (statusEl) {
       const labels: Record<string, string> = {
         'done':        '✓ Done',
@@ -473,8 +500,8 @@ export class TaskCard extends Component {
 defineComponent('task-card', TaskCard);
 ```
 
-> **Why `this.$()` for status but `bind()` for title/description?**
-> `bind()` maps a reactive state directly to an element's `textContent`. That is a perfect fit for `title` and `description` — change the state, the text updates. `status` is different: you need to map three possible string values to human-readable labels **and** set a `data-status` attribute for CSS targeting. A direct `this.$()` update in `attributeChangedCallback` and `onMount()` is cleaner and more explicit than building a computed just to handle two attributes at once.
+> **Why `this.component.hook()` for status but `bind()` for title/description?**
+> `bind()` maps a reactive state directly to an element's `textContent`. That is a perfect fit for `title` and `description` — change the state, the text updates. `status` is different: you need to map three possible string values to human-readable labels **and** set a `data-status` attribute for CSS targeting. `this.component.hook('status')` retrieves the element by name so you can perform both updates explicitly — cleaner and more readable than building a computed just to handle two concerns at once.
 
 ---
 
@@ -492,7 +519,7 @@ With the component registered, you can drop it into any HTML view. Open `src/vie
     status="done"
   >
     <div slot="actions">
-      <button data-action="delete-task">Delete</button>
+      <nc-button variant="outline" data-action="delete-task">Delete</nc-button>
     </div>
   </task-card>
 

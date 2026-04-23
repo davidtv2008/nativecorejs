@@ -1,3 +1,58 @@
+type QueryRoot = Document | Element | ShadowRoot;
+
+function resolveRoot(root?: Element | ShadowRoot | string | null): QueryRoot {
+    if (!root) return document;
+    if (typeof root === 'string') {
+        return document.querySelector(root) ?? document;
+    }
+    return root;
+}
+
+function createDataScope(viewName: string, rootOverride?: Element | ShadowRoot | string | null) {
+    const rootSelector = `[data-view="${viewName}"]`;
+
+    const root = () => {
+        if (rootOverride) {
+            const resolvedRoot = resolveRoot(rootOverride);
+            if (resolvedRoot instanceof Element || resolvedRoot instanceof ShadowRoot) {
+                return resolvedRoot.querySelector<HTMLElement>(rootSelector);
+            }
+        }
+        return document.querySelector<HTMLElement>(rootSelector);
+    };
+
+    const query = <T extends Element = HTMLElement>(selector: string): T | null =>
+        root()?.querySelector<T>(selector) ?? null;
+
+    const queryAll = <T extends Element = HTMLElement>(selector: string): NodeListOf<T> | T[] =>
+        root()?.querySelectorAll<T>(selector) ?? ([] as T[]);
+
+    const hookSelector = (name: string): string => `${rootSelector} [data-hook="${name}"]`;
+    const actionSelector = (name: string): string => `${rootSelector} [data-action="${name}"]`;
+
+    return {
+        root,
+        query,
+        queryAll,
+        hookSelector,
+        actionSelector,
+        hook: <T extends HTMLElement = HTMLElement>(name: string): T | null =>
+            query<T>(`[data-hook="${name}"]`),
+        action: <T extends HTMLElement = HTMLElement>(name: string): T | null =>
+            query<T>(`[data-action="${name}"]`),
+        text: (name: string): HTMLElement | null =>
+            query<HTMLElement>(`[data-hook="${name}"]`),
+        button: (name: string): HTMLButtonElement | null =>
+            query<HTMLButtonElement>(`[data-action="${name}"]`),
+        input: (name: string): HTMLInputElement | null =>
+            query<HTMLInputElement>(`[data-hook="${name}"]`),
+        form: (name: string): HTMLFormElement | null =>
+            query<HTMLFormElement>(`[data-hook="${name}"]`),
+        /** Re-scope to a named [data-view] within the same shadow root. */
+        view: (nestedViewName: string) => createDataScope(nestedViewName, rootOverride),
+    };
+}
+
 export const dom = {
     query: <T extends Element = Element>(selector: string): T | null =>
         document.querySelector<T>(selector),
@@ -89,7 +144,18 @@ export const dom = {
         }
 
         return () => {};
-    }
+    },
+
+    /**
+     * Create a scoped accessor for [data-view="..."] containers. Use in controllers
+     * to scope queries to a specific view, or in components via `this.component`.
+     *
+     * @example dom.view('tasks').hook('list')     // [data-hook="list"] inside [data-view="tasks"]
+     * @example dom.view('tasks').action('add')    // [data-action="add"]
+     * @example dom.view('tasks').query('.badge')  // arbitrary selector
+     */
+    view: (viewName: string, root?: Element | ShadowRoot | string | null) =>
+        createDataScope(viewName, root),
 };
 
 if (typeof window !== 'undefined') {

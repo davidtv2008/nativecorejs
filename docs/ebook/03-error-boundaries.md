@@ -57,11 +57,11 @@ When an error is caught in dev mode, the boundary renders a dark terminal-style 
 │                                                       │
 │  Cannot read properties of undefined (reading 'map') │
 │                                                       │
-│  component  sales-chart                               │
-│  route      /dashboard                                │
-│  url        /dashboard                                │
+│  component  task-card                                 │
+│  route      /tasks                                    │
+│  url        /tasks                                    │
 │                                                       │
-│  at SalesChart.onMount (sales-chart.ts:42)            │
+│  at TaskCard.onMount (task-card.ts:42)                │
 │  at Component.connectedCallback (component.ts:41)     │
 │  ...                                                  │
 │                                                       │
@@ -126,7 +126,10 @@ Listen to `nc-error` to forward errors to a monitoring service:
 
 ```typescript
 // In a controller or app shell setup
-document.querySelector('nc-error-boundary')?.addEventListener('nc-error', (e: Event) => {
+import { trackEvents } from '@core-utils/events.js';
+
+const events = trackEvents();
+events.on('nc-error-boundary', 'nc-error', (e: Event) => {
     const detail = (e as CustomEvent<NcErrorDetail>).detail;
     monitoring.captureException(detail.error, {
         tags: { source: detail.source, route: detail.route }
@@ -143,8 +146,10 @@ The boundary renders a **"Try again"** button in both modes. Clicking it calls `
 You can also call `reset()` from a controller:
 
 ```typescript
-const boundary = document.querySelector('nc-error-boundary') as any;
-boundary.reset();
+import { dom } from '@core-utils/dom.js';
+
+const boundary = dom.query<HTMLElement & { reset(): void }>('nc-error-boundary');
+boundary?.reset();
 ```
 
 ---
@@ -156,27 +161,24 @@ Components can proactively report errors to the nearest boundary — useful for 
 > **Apply to Taskflow — trigger a test error**
 > Open `src/components/ui/task-card.ts` and temporarily add `throw new Error('test boundary')` as the first line of `onMount()`. Save, and navigate to a route that renders `<task-card>`. You should see the dev panel appear with the error message and component name. Remove the throw when you're done — this is just a smoke test to confirm your boundaries are wired correctly.
 
+If `task-card` were loading its own data asynchronously (e.g. fetching task details by `task-id` attribute), you would catch async failures and forward them to the boundary manually, since `async onMount()` rejections are not caught automatically:
+
 ```typescript
-// src/components/ui/live-feed.ts
-export class LiveFeed extends Component {
-    static useShadowDOM = true;
-
-    async onMount(): Promise<void> {
-        try {
-            const data = await fetch('/api/feed').then(r => r.json());
-            this.setState({ items: data });
-        } catch (err) {
-            this.closest('nc-error-boundary')?.catchError(err, {
-                component: 'live-feed',
-                source: 'component',
-            });
-        }
+// src/components/ui/task-card.ts
+async onMount(): Promise<void> {
+    const taskId = this.getAttribute('task-id');
+    try {
+        const task = await api.get(`/tasks/${taskId}`);
+        this.titleState.value = task.title;
+        this.descriptionState.value = task.description;
+        this.statusState.value = task.status;
+    } catch (err) {
+        this.closest('nc-error-boundary')?.catchError(err, {
+            component: 'task-card',
+            source: 'component',
+        });
     }
-
-    template(): string { return `<div class="feed">...</div>`; }
 }
-
-defineComponent('live-feed', LiveFeed);
 ```
 
 `catchError(error, meta?)` accepts an optional second argument that merges into the `NcErrorDetail` shown in the dev panel.
@@ -185,32 +187,47 @@ defineComponent('live-feed', LiveFeed);
 
 ## Nested Boundaries
 
-The root boundary is the catch-all. You can add nested boundaries to isolate individual widgets — a failure in `<sales-chart>` will be caught by the nearest boundary and will not propagate up to the root:
+The root boundary is the catch-all. You can add nested boundaries to isolate individual sections — a failure in one `<task-card>` will be caught by the nearest boundary and will not propagate up to the root:
 
 ```html
-<div class="dashboard-grid">
-    <nc-error-boundary mode="dev" fallback="Chart unavailable">
-        <sales-chart></sales-chart>
+<!-- src/views/protected/tasks.html -->
+<div class="tasks-page" data-view="tasks">
+    <h1>My Tasks</h1>
+
+    <nc-error-boundary mode="dev" fallback="Task could not be loaded">
+        <task-card
+            title="Set up NativeCoreJS project"
+            description="Scaffold the Taskflow app using the CLI."
+            status="done"
+        >
+            <div slot="actions">
+                <nc-button variant="outline" data-action="delete-task">Delete</nc-button>
+            </div>
+        </task-card>
     </nc-error-boundary>
 
-    <nc-error-boundary mode="dev" fallback="Tasks could not be loaded">
-        <task-list></task-list>
+    <nc-error-boundary mode="dev" fallback="Task could not be loaded">
+        <task-card
+            title="Build task-card component"
+            description="Implement the component with Shadow DOM and attributes."
+            status="in-progress"
+        ></task-card>
     </nc-error-boundary>
 </div>
 ```
 
 > Nested boundaries only receive `nativecore:component-error` events that bubble up through the DOM. Only the root boundary (direct child of `<body>` or outermost boundary) also hooks `window.onerror` and `window.unhandledrejection`.
 
-> **Apply to Taskflow — add a nested boundary in `dashboard.html`**
-> Open `src/views/protected/dashboard.html`. Wrap the section that will hold `<task-stats>` (or whatever widget area you have) in a nested boundary:
+> **Apply to Taskflow — add a nested boundary in `tasks.html`**
+> Open `src/views/protected/tasks.html`. Wrap each `<task-card>` in its own boundary so a failure in one card doesn't take down the entire task list:
 >
 > ```html
-> <nc-error-boundary mode="dev" fallback="Stats could not be loaded">
->   <task-stats id="stats" total="0" completed="0"></task-stats>
+> <nc-error-boundary mode="dev" fallback="Task could not be loaded">
+>   <task-card title="..." description="..." status="..."></task-card>
 > </nc-error-boundary>
 > ```
 >
-> This isolates the stats widget — if it throws, the rest of the dashboard continues working normally.
+> This isolates each card — if one throws, the others continue rendering normally.
 
 ---
 
@@ -242,7 +259,7 @@ You never need to manually change the attribute — just leave `mode="dev"` in y
 ## Done Criteria
 
 - [ ] `<nc-error-boundary mode="dev">` wraps `#main-content` in `index.html`.
-- [ ] A nested boundary wraps the `<task-stats>` area in `dashboard.html`.
+- [ ] Nested boundaries wrap each `<task-card>` in `tasks.html`.
 - [ ] Adding `throw new Error('test')` in `<task-card>.onMount()` shows the debug panel.
 - [ ] `npm run build` swaps `mode="dev"` to `mode="production"` in the compiled HTML output.
 

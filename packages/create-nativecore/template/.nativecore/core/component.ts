@@ -222,16 +222,16 @@ export class Component extends HTMLElement {
     }
 
     /**
-     * Create a scoped accessor for [data-view] / [data-hook] / [data-action] elements
-     * within this component's shadow root. Mirrors dom.view() but scoped to the
-     * component's own shadow DOM instead of document.
+     * Scoped accessor for [data-view] / [data-hook] / [data-action] elements
+     * within this component's shadow root, pre-bound to this component's tag name.
      *
-     * @example this.shadow('task-card').hook('title')    // [data-hook="title"]
-     * @example this.shadow('task-card').action('primary') // [data-action="primary"]
-     * @example this.shadow('task-card').query('.my-class') // arbitrary selector
+     * @example this.component.hook('title')              // [data-hook="title"]
+     * @example this.component.action('primary')          // [data-action="primary"]
+     * @example this.component.query('.badge')            // arbitrary selector
+     * @example this.component.view('nested').hook('row') // re-scope to a nested [data-view]
      */
-    shadow(viewName: string) {
-        return dom.view(viewName, this.shadowRoot ?? this);
+    get component() {
+        return dom.view(this.tagName.toLowerCase(), this.shadowRoot ?? this);
     }
 
     /**

@@ -56,6 +56,8 @@ function createDataScope(viewName: string, rootOverride?: Element | ShadowRoot |
             query<HTMLFormElement>(`[data-hook="${name}"]`),
         component: <T extends HTMLElement = HTMLElement>(name: string): T | null =>
             query<T>(`[data-hook="${name}"]`),
+        /** Re-scope to a named [data-view] within the same shadow root. */
+        view: (nestedViewName: string) => createDataScope(nestedViewName, rootOverride),
     };
 }
 

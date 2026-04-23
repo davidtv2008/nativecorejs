@@ -122,9 +122,10 @@ export class ${className} extends Component {
         this.descriptionState.value = this.getAttribute('description') ?? '';
 
         // Wire up events and reactive bindings here.
-        // this.shadow() scopes element access to this component's shadow root:
-        //   this.shadow('${componentName}').hook('title')    // [data-hook="title"]
-        //   this.shadow('${componentName}').action('primary') // [data-action="primary"]
+        // this.component scopes element access to this component's shadow root:
+        //   this.component.hook('title')    // [data-hook="title"]
+        //   this.component.action('primary') // [data-action="primary"]
+        //   this.component.view('nested').hook('row') // re-scope to a nested [data-view]
         // nc-button emits 'nc-button-click' on itself (composed: true), so e.target
         // is the <nc-button> element — read data-action directly from it.
         this.on('nc-button-click', (e) => {

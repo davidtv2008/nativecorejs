@@ -283,7 +283,7 @@ npm run make:controller pricing
    In controllers, prefer helpers like `dom`, `trackEvents()`, and `trackSubscriptions()` so behavior is consistent and cleanup is automatic.
 
 5. **Prefer framework patterns over raw document-wide imperative code.**
-   Inside components use `this.$()` / `this.shadowRoot`, and inside controllers prefer `dom.query()` plus tracked events.
+   Inside components use `this.component` (pre-scoped to the component's own shadow root) or `this.$()` for direct queries; inside controllers prefer `dom.view()` plus tracked events. `this.component` provides the same `.hook()`, `.action()`, `.query()`, and `.view()` helpers as `dom.view()` — no need to repeat the tag name.
 
 ### Using `dom`, `trackEvents`, and `trackSubscriptions`
 
