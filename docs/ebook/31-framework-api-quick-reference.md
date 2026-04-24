@@ -38,10 +38,6 @@ Use this chapter as a fast lookup for NativeCoreJS framework APIs. Each entry in
 | API | Signature | Purpose | Deep dive |
 |---|---|---|---|
 | `useState` | `useState<T>(initialValue: T): State<T>` | Creates reactive state object (`.value`, `.set`, `.watch`) | [03 — Reactive State](./03-reactive-state.md) |
-| `useSignal` | `useSignal<T>(initialValue: T): [() => T, (value: T \| ((prev: T) => T)) => void]` | Tuple-style getter/setter state | [03 — Reactive State](./03-reactive-state.md) |
-| `createStates` | `createStates<T extends Record<string, any>>(initialStates: T): { [K in keyof T]: State<T[K]> }` | Creates multiple states from one object | [03 — Reactive State](./03-reactive-state.md) |
-| `createStore` | `createStore<T>(name: string, initial: T): State<T>` | Creates (or retrieves) a named global store registered in `globalThis.__NC_STORES__` | [17 — Global Stores](./18-global-stores.md) |
-| `getStore` | `getStore<T>(name: string): State<T> \| undefined` | Retrieves a named store by key; `undefined` if not yet created | [17 — Global Stores](./18-global-stores.md) |
 | `computed` | `computed<T>(computeFn: () => T): ComputedState<T>` | Creates derived reactive values | [03 — Reactive State](./03-reactive-state.md) |
 | `effect` | `effect(effectFn: () => void \| (() => void), options?: { maxRunsPerFlush?: number }): () => void` | Runs side effects with auto dependency tracking; default loop guard is `1000` runs/flush (`0` disables) | [06 — Controllers](./06-controllers.md) |
 | `batch` | `batch(fn: () => void): void` | Coalesces multiple state writes into one notification flush | [11 — Advanced Patterns](./11-advanced-patterns.md) |

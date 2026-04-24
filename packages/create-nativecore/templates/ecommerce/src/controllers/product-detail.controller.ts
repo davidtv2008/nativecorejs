@@ -1,6 +1,7 @@
 import { dom } from '@core-utils/dom.js';
 import { trackEvents } from '@core-utils/events.js';
-import { getStore } from '@core/state.js';
+import { cartStore } from '@stores/cart.store.js';
+import type { CartItem } from '@stores/cart.store.js';
 import { http } from '@core/http.js';
 import router from '@core/router.js';
 
@@ -57,16 +58,13 @@ export async function productDetailController(params: Record<string, string>): P
     if (btnAddCart) {
         events.add(btnAddCart, 'click', () => {
             const qty = Number(quantityEl?.getAttribute('value') ?? 1);
-            const cartStore = getStore<{ items: Array<{ id: string; name: string; price: number; qty: number }> }>('cart');
-            if (cartStore) {
-                const items = cartStore.get().items;
-                const existing = items.find(i => i.id === product.id);
-                if (existing) {
-                    existing.qty += qty;
-                    cartStore.set({ items: [...items] });
-                } else {
-                    cartStore.set({ items: [...items, { id: product.id, name: product.name, price: product.price, qty }] });
-                }
+            const items = cartStore.value.items;
+            const existing = items.find((i: CartItem) => i.id === product.id);
+            if (existing) {
+                existing.qty += qty;
+                cartStore.value = { items: [...items] };
+            } else {
+                cartStore.value = { items: [...items, { id: product.id, name: product.name, price: product.price, qty }] };
             }
             if (snackbar) {
                 snackbar.setAttribute('message', `${product.name} added to cart`);

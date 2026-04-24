@@ -90,7 +90,7 @@ npm run make:store <name>        # global reactive store with actions
    `<nc-error-boundary>`, root and nested boundaries, fallback UI, the `nc-error` event, and build-time mode swapping.
 
 4. **[04 — Reactive State](./04-reactive-state.md)**
-   `useState()`, `computed()`, `useSignal()`, `batch()`, and building the `<task-stats>` component with live counters.
+   `useState()`, `computed()`, `effect()`, `batch()`, and building the `<task-stats>` component with live counters.
 
 5. **[05 — The Bind API](./05-bind-api.md)**
    Fine-grained DOM patching with `bind()`, `bindAttr()`, `bindAll()`, and scoped event delegation with `on()`.

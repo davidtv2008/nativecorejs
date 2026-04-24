@@ -1,7 +1,7 @@
 /**
  * NativeCoreJS Reactive State Benchmarks
  *
- * Measures the throughput of useState, computed, effect, useSignal, and
+ * Measures the throughput of useState, computed, effect, and
  * watch across a range of scenarios.
  *
  * Run: node --experimental-strip-types benchmarks/state.bench.ts
@@ -11,7 +11,6 @@ import {
     useState,
     computed,
     effect,
-    useSignal,
 } from '../packages/create-nativecore/template/.nativecore/core/state.ts';
 
 // ─── Benchmark harness ────────────────────────────────────────────────────────
@@ -88,28 +87,6 @@ results.push(bench('set + get 100k pairs', N, () => {
         s.value = i;
         const _ = s.value;
     }
-}));
-
-// ─── useSignal ────────────────────────────────────────────────────────────────
-
-printSection('useSignal');
-
-results.push(bench('create 100k signals', N, () => {
-    for (let i = 0; i < N; i++) useSignal(i);
-}));
-
-results.push(bench('set + get 100k pairs via signal', N, () => {
-    const [get, set] = useSignal(0);
-    for (let i = 0; i < N; i++) {
-        set(i);
-        const _ = get();
-    }
-}));
-
-results.push(bench('updater function 100k times', N, () => {
-    const [get, set] = useSignal(0);
-    for (let i = 0; i < N; i++) set(n => n + 1);
-    if (get() === -1) throw new Error('unreachable');
 }));
 
 // ─── computed ─────────────────────────────────────────────────────────────────

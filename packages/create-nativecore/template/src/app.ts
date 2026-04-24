@@ -18,6 +18,7 @@ import router from '@core/router.js';
 import auth from '@services/auth.service.js';
 import type { User } from '@services/auth.service.js';
 import api from '@services/api.service.js';
+import { createMiddleware } from '@core/createMiddleware.js';
 import { authMiddleware } from '@middleware/auth.middleware.js';
 import { registerRoutes, protectedRoutes } from '@routes/routes.js';
 import { initSidebar } from '@utils/sidebar.js';
@@ -97,9 +98,8 @@ async function init(){
         configurable: false,
     });
     
-    // Auth middleware runs before every route — it redirects to /login if the
-    // target route is in protectedRoutes and the user is not authenticated.
-    router.use(authMiddleware);
+    // @middleware — registered middleware (auto-updated by make:middleware)
+    router.use(createMiddleware('auth', authMiddleware));
 
     // Register all app routes (defined in routes/routes.ts)
     registerRoutes(router);

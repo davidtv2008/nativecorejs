@@ -1,54 +1,62 @@
 # Chapter 05 — The Bind API
 
-> **What you'll build in this chapter:** Refactor `<task-stats>` to replace its manual `render()` method with `bind()` calls, and update `<task-card>` to use `bindAttr()` so the CSS status badge is driven purely by reactive state. works, but it has a significant flaw: it re-queries and re-writes *every* stat node every time *any* attribute changes. If `total` changes, we still re-write the `completed` and `percentage` nodes even though their state is unchanged. In a component with dozens of bindings, this waste adds up — and it makes the update logic tangled with DOM queries.
+> **What you'll build in this chapter:** Refactor `<task-stats>` to replace its manual `render()` call with `bind()`, and update `<task-card>` to use `bindAttr()` so the CSS status badge is driven purely by reactive state.
 
-The `bind()` API decouples state from DOM. You declare, once, which DOM node each piece of state drives. After that, when state changes, only the node tied to that state is touched. The framework wires up and tears down the subscription automatically.
+The `render()` approach from Chapter 04 works, but it has one limitation: it re-evaluates `template()` and re-writes *every* node every time *any* state changes. If `total` changes, the `completed` and `percentage` nodes are still rewritten even though their values didn't change. In a simple component like `<task-stats>` this is negligible — but it also means update logic stays tangled with DOM queries, and calling `this.render()` manually in `attributeChangedCallback` is something you have to remember every time.
+
+The `bind()` API solves this cleanly. You declare once which DOM node each piece of state drives. After that, when a state changes only the node tied to *that* state is touched — nothing else. The framework wires up and tears down the subscription automatically.
 
 ---
 
-## `this.bind(state, '.selector')`
+## `this.bind(state, selector)`
 
-`bind()` subscribes a selector to a `State<T>` (or `ComputedState<T>`) and updates the matched element's `textContent` whenever the state changes:
+`bind()` subscribes a selector (or element reference) to a `State<T>` (or `ComputedState<T>`) and updates the matched element's `textContent` whenever the state changes:
 
 ```typescript
-// basic bind — writes String(state.value) to textContent
+// selector string — scoped to this component's shadow root
 this.bind(this.total, '.stats__total');
 
-// with optional formatter — transforms the value before writing
-this.bind(this.percentage, '.stats__percentage', v => `${v}%`);
+// element reference — when you already have the element from this.component.hook()
+const titleEl = this.component.hook('title');
+this.bind(this.titleState, titleEl);
+
+// optional third argument — a DOM property name (default is 'textContent')
+this.bind(this.isVisible, '.panel', 'hidden');
+this.bind(this.inputValue, 'input.search', 'value');
 ```
 
-- The selector is scoped to `this.shadowRoot` (or `this` if Shadow DOM is off).
-- When `this.total.value` changes, `.stats__total` gets `textContent = String(newValue)`.
-- The optional **third argument** is a formatter function — a pure function that transforms the raw state value into the string written to `textContent`. Here `v => \`${v}%\`` appends a percent sign without requiring a separate computed.
-- The subscription is **automatically disposed** when the component is unmounted. You do not need to call anything in `onUnmount()`.
+- When a selector string is passed, it is scoped to `this.shadowRoot` (or `this` if Shadow DOM is off).
+- When an `Element` reference is passed, it is used directly — useful when you already have the element from `this.component.hook()` and want to avoid a second DOM lookup.
+- The optional **third argument** is a DOM property name. It defaults to `'textContent'`. Pass `'value'` to drive an input, `'hidden'` to drive visibility, etc.
+- The subscription is **automatically disposed** when the component is unmounted. You do not need to call anything in `onUnmount()` for `bind()` subscriptions.
 
-You must call `bind()` from `onMount()`, after the shadow root has been stamped:
+When you need to **format** a value before writing it — for example, appending a `%` sign — create a `computed()` that produces the display string and bind that instead:
 
 ```typescript
-onMount(): void {
-  this.percentage = computed(() => {
-    const t = this.total.value;
-    const c = this.completed.value;
-    return t === 0 ? 0 : Math.round((c / t) * 100);
-  });
+const pctDisplay = computed(() => `${this.percentage.value}%`);
+this.bind(pctDisplay, '.stats__percentage');
+```
 
-  this.bind(this.total,      '.stats__total');
-  this.bind(this.completed,  '.stats__completed');
-  this.bind(this.percentage, '.stats__percentage', v => `${v}%`);
-}
+You must call `bind()` from `onMount()`, after the shadow root has been stamped.
 
 ---
 
-## `this.bindAttr(state, '.selector', 'attr-name')`
+## `this.bindAttr(state, selector, 'attr-name')`
 
-`bindAttr()` works like `bind()`, but instead of updating `textContent` it updates an HTML attribute:
+`bindAttr()` works like `bind()`, but instead of updating a DOM property it calls `setAttribute()` on the target element. It accepts either a selector string or an element reference:
 
 ```typescript
-this.bindAttr(this.status, '.task-card__status', 'data-status');
+// selector string
+this.bindAttr(this.statusState, '.task-card__status', 'data-status');
+
+// element reference
+const statusEl = this.component.hook('status');
+this.bindAttr(this.statusState, statusEl, 'data-status');
 ```
 
-Whenever `this.status.value` changes, the element matching `.task-card__status` gets `setAttribute('data-status', newValue)`. Combined with CSS attribute selectors (`[data-status="done"] { color: green; }`), this is a clean, zero-JS way to drive visual state.
+Whenever `this.statusState.value` changes, the target element gets `setAttribute('data-status', newValue)`. Combined with CSS attribute selectors (`[data-status="done"] { color: green; }`), this is a clean way to drive visual state.
+
+> **Tip:** `bindAttr()` is best suited for attributes that map 1-to-1 with a state value — like `data-status`, `aria-disabled`, or `aria-expanded`. When changing an attribute also requires changing `textContent` (like a status label), it is cleaner to handle both in `attributeChangedCallback` together, as `<task-card>` does.
 
 > **Tip:** `bindAttr()` is the right tool whenever a CSS attribute selector or ARIA attribute (`aria-disabled`, `aria-expanded`, etc.) needs to reflect a piece of state.
 
@@ -65,7 +73,7 @@ this.bindAll({
 });
 ```
 
-Each key is a selector; each value is a state or computed. All subscriptions are auto-disposed together on unmount. `bindAll()` does not support formatter functions — use individual `bind()` calls when you need formatting.
+Each key is a **selector string**; each value is a state or computed. All subscriptions are auto-disposed together on unmount. `bindAll()` only accepts selector strings — use individual `bind()` calls when you need element references or formatter functions.
 
 ---
 
@@ -88,146 +96,147 @@ Like `bind()`, the listener registered by `on()` is **automatically removed** wh
 
 ## Updating `<task-stats>`: Before and After
 
-### Before — Manual `render()`
+### Before — Chapter 04 state
+
+At the end of Chapter 04, `<task-stats>` calls `this.render()` in both `onMount()` and `attributeChangedCallback`. Every time any attribute changes, `template()` re-runs and the DOM patcher rewrites all three stat nodes:
 
 ```typescript
-// ❌ Queries and writes all nodes on every attribute change
-private render(): void {
-  const root = this.shadowRoot;
-  if (!root) return;
+onMount() {
+    this.total.value     = Number(this.getAttribute('total') ?? 0);
+    this.completed.value = Number(this.getAttribute('completed') ?? 0);
 
-  const total     = root.querySelector('.stats__total');
-  const completed = root.querySelector('.stats__completed');
-  const pct       = root.querySelector('.stats__percentage');
+    this.percentage = computed(() => {
+        if (this.total.value === 0) return 0;
+        return Math.round((this.completed.value / this.total.value) * 100);
+    });
 
-  if (total)     total.textContent     = String(this.total.value);
-  if (completed) completed.textContent = String(this.completed.value);
-  if (pct)       pct.textContent       = `${this.percentage?.value ?? 0}%`;
+    this.render(); // renders all three nodes
+}
+
+attributeChangedCallback(name, oldValue, newValue) {
+    if (oldValue === newValue || !this._mounted) return;
+    const n = Number(newValue ?? 0);
+    if (name === 'total')     this.total.value     = isNaN(n) ? 0 : n;
+    if (name === 'completed') this.completed.value = isNaN(n) ? 0 : n;
+    this.render(); // re-renders all three nodes every time
 }
 ```
 
-Every call to `render()` runs three `querySelector` calls and writes three `textContent` assignments, regardless of what changed.
+Every `render()` call re-evaluates `template()` and runs the DOM patcher across all nodes — even those whose state didn't change.
 
 ### After — `bind()` API
 
 ```typescript
 // ✅ Each node is updated only when its own state changes
-onMount(): void {
-  this.percentage = computed(() => {
-    const t = this.total.value;
-    const c = this.completed.value;
-    return t === 0 ? 0 : Math.round((c / t) * 100);
-  });
+onMount() {
+    this.total.value     = Number(this.getAttribute('total') ?? 0);
+    this.completed.value = Number(this.getAttribute('completed') ?? 0);
 
-  this.bind(this.total,      '.stats__total');
-  this.bind(this.completed,  '.stats__completed');
-  this.bind(this.percentage, '.stats__percentage', v => `${v}%`);
+    this.percentage = computed(() => {
+        if (this.total.value === 0) return 0;
+        return Math.round((this.completed.value / this.total.value) * 100);
+    });
 
-  this.on('click', '.stats__reset', () => {
-    this.total.value     = 0;
-    this.completed.value = 0;
-  });
+    // A display computed that formats the number with a % sign.
+    const pctDisplay = computed(() => `${this.percentage.value}%`);
+
+    this.bind(this.total,     '.stats__total');
+    this.bind(this.completed, '.stats__completed');
+    this.bind(pctDisplay,     '.stats__percentage');
+}
+
+attributeChangedCallback(name: string, oldValue: string | null, newValue: string | null): void {
+    if (oldValue === newValue || !this._mounted) return;
+    const n = Number(newValue ?? 0);
+    if (name === 'total')     this.total.value     = isNaN(n) ? 0 : n;
+    if (name === 'completed') this.completed.value = isNaN(n) ? 0 : n;
+    // No render() call needed — bindings fire automatically.
 }
 ```
 
-If `completed.value` changes, only `.stats__completed` and `.stats__percentage` are updated (because `percentage` depends on `completed`). `.stats__total` is not touched.
-
-`attributeChangedCallback` is now simpler too — it just writes to state and lets the bindings do the rest:
-
-```typescript
-attributeChangedCallback(name: string, _old: string | null, value: string | null): void {
-  const n = Number(value ?? 0);
-  if (name === 'total')     this.total.value     = isNaN(n) ? 0 : n;
-  if (name === 'completed') this.completed.value = isNaN(n) ? 0 : n;
-  // No render() call needed. Bindings fire automatically.
-}
-```
+If `completed.value` changes, only `.stats__completed` and `.stats__percentage` are updated (because `pctDisplay` depends on `percentage` which depends on `completed`). `.stats__total` is not touched.
 
 ---
 
 ## The Complete Refactored `<task-stats>`
 
 ```typescript
-// src/components/ui/task-stats.ts
-import { Component } from '@core/component.js';
-import { defineComponent } from '@core/define.js';
+import { Component, defineComponent } from '@core/component.js';
+import { html } from '@core-utils/templates.js';
 import { useState, computed } from '@core/state.js';
-import type { ComputedState } from '@core/state.js';
+import type { State, ComputedState } from '@core/state.js';
+import '@components/core/nc-button.js';
 
 export class TaskStats extends Component {
-  static useShadowDOM = true;
-  static observedAttributes = ['total', 'completed'];
+    static useShadowDOM = true;
+    static observedAttributes = ['total', 'completed'];
 
-  private total     = useState(0);
-  private completed = useState(0);
-  private percentage!: ComputedState<number>;
+    total: State<number> = useState(0);
+    completed: State<number> = useState(0);
+    percentage: ComputedState<number>;
 
-  template(): string {
-    return `
-      <div class="stats">
-        <div class="stats__item">
-          <span class="stats__label">Total</span>
-          <span class="stats__value stats__total">0</span>
+    template() {
+        return html`
+        <style>
+            :host { display: block; }
+            .stats {
+            display: flex; gap: 1.5rem; padding: 1rem;
+            background: #f8fafc; border-radius: 8px;
+            }
+            .stats__item { display: flex; flex-direction: column; align-items: center; }
+            .stats__label { font-size: 0.75rem; color: #64748b; text-transform: uppercase; }
+            .stats__value { font-size: 1.5rem; font-weight: 700; color: #1e293b; }
+        </style>
+        <div class="stats">
+            <div class="stats__item">
+            <span class="stats__label">Total</span>
+            <span class="stats__value stats__total">0</span>
+            </div>
+            <div class="stats__item">
+            <span class="stats__label">Done</span>
+            <span class="stats__value stats__completed">0</span>
+            </div>
+            <div class="stats__item">
+            <span class="stats__label">Progress</span>
+            <span class="stats__value stats__percentage">0%</span>
+            </div>
         </div>
-        <div class="stats__item">
-          <span class="stats__label">Done</span>
-          <span class="stats__value stats__completed">0</span>
-        </div>
-        <div class="stats__item">
-          <span class="stats__label">Progress</span>
-          <span class="stats__value stats__percentage">0%</span>
-        </div>
-        <button class="stats__reset">Reset</button>
-      </div>
-      <style>
-        :host { display: block; }
-        .stats {
-          display: flex; align-items: center; gap: 1.5rem;
-          padding: 1rem; background: #f8fafc; border-radius: 8px;
-        }
-        .stats__item { display: flex; flex-direction: column; align-items: center; }
-        .stats__label { font-size: 0.75rem; color: #64748b; text-transform: uppercase; }
-        .stats__value { font-size: 1.5rem; font-weight: 700; color: #1e293b; }
-        .stats__reset {
-          margin-left: auto; padding: 0.25rem 0.75rem;
-          border: 1px solid #e2e8f0; border-radius: 6px;
-          background: #fff; cursor: pointer; font-size: 0.875rem;
-        }
-        .stats__reset:hover { background: #f1f5f9; }
-      </style>
-    `;
-  }
+        `;
+    }
 
-  onMount(): void {
-    this.percentage = computed(() => {
-      const t = this.total.value;
-      const c = this.completed.value;
-      return t === 0 ? 0 : Math.round((c / t) * 100);
-    });
+    attributeChangedCallback(name: string, oldValue: string | null, newValue: string | null): void {
+        if (oldValue === newValue || !this._mounted) return;
+        const n = Number(newValue ?? 0);
+        if (name === 'total')     this.total.value     = isNaN(n) ? 0 : n;
+        if (name === 'completed') this.completed.value = isNaN(n) ? 0 : n;
+        // No render() call — bindings update automatically.
+    }
 
-    this.bind(this.total,      '.stats__total');
-    this.bind(this.completed,  '.stats__completed');
-    this.bind(this.percentage, '.stats__percentage', v => `${v}%`);
+    onMount() {
+        this.total.value     = Number(this.getAttribute('total') ?? 0);
+        this.completed.value = Number(this.getAttribute('completed') ?? 0);
 
-    this.on('click', '.stats__reset', () => {
-      this.total.value     = 0;
-      this.completed.value = 0;
-    });
-  }
+        this.percentage = computed(() => {
+            if (this.total.value === 0) return 0;
+            return Math.round((this.completed.value / this.total.value) * 100);
+        });
 
-  onUnmount(): void {
-    this.percentage.dispose();
-  }
+        const pctDisplay = computed(() => `${this.percentage.value}%`);
 
-  attributeChangedCallback(name: string, _old: string | null, value: string | null): void {
-    const n = Number(value ?? 0);
-    if (name === 'total')     this.total.value     = isNaN(n) ? 0 : n;
-    if (name === 'completed') this.completed.value = isNaN(n) ? 0 : n;
-  }
+        this.bind(this.total,     '.stats__total');
+        this.bind(this.completed, '.stats__completed');
+        this.bind(pctDisplay,     '.stats__percentage');
+    }
+
+    onUnmount() {
+        this.percentage?.dispose();
+    }
 }
 
 defineComponent('task-stats', TaskStats);
 ```
+
+Notice the template now has static `0` / `0%` placeholders — `bind()` overwrites them immediately in `onMount()`. The `template()` method itself is no longer responsible for reading state values; it only defines the structure.
 
 ---
 
@@ -292,8 +301,8 @@ The rule is simple: if you call it on `this` (bind/on), the framework disposes i
 ## Done Criteria
 
 - [ ] `this.bind()` drives `.stats__total`, `.stats__completed`, and `.stats__percentage` in `task-stats.ts`.
-- [ ] The `private render()` helper is removed from `task-stats.ts`.
-- [ ] `this.bindAttr()` drives `data-status` on the status badge in `task-card.ts`.
+- [ ] `this.render()` is removed from `attributeChangedCallback` in `task-stats.ts` — bindings fire automatically.
+- [ ] The `template()` method in `task-stats.ts` has static `0` / `0%` placeholders instead of `${this.total.value}` expressions.
 - [ ] Opening DevTools Elements panel shows only the changed node updating when a single attribute changes.
 
 ---

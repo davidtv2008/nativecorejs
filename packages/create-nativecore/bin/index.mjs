@@ -147,8 +147,8 @@ function packageJsonTemplate(config) {
         'build:client': 'node .nativecore/scripts/inject-version.mjs && npm run compile:prod && node .nativecore/scripts/minify.mjs && node .nativecore/scripts/prepare-static-assets.mjs',
         'build:ssg': 'node .nativecore/scripts/ssg.mjs --yes',
         'build:full': 'npm run build && npm run build:ssg',
-        compile: 'tsc && tsc-alias',
-        'compile:prod': 'tsc -p tsconfig.build.json && tsc-alias -p tsconfig.build.json && node .nativecore/scripts/remove-dev.mjs',
+        compile: 'node .nativecore/scripts/watch-compile.mjs --once',
+        'compile:prod': 'node .nativecore/scripts/watch-compile.mjs --once && node .nativecore/scripts/remove-dev.mjs',
         typecheck: 'tsc --noEmit',
         'make:component': 'node .nativecore/scripts/make-component.mjs',
         'make:core-component': 'node .nativecore/scripts/make-core-component.mjs',
@@ -158,6 +158,7 @@ function packageJsonTemplate(config) {
         'remove:core-component': 'node .nativecore/scripts/remove-core-component.mjs',
         'make:view': 'node .nativecore/scripts/make-view.mjs',
         'make:page': 'node .nativecore/scripts/make-view.mjs',
+        'make:middleware': 'node .nativecore/scripts/make-middleware.mjs',
         'remove:view': 'node .nativecore/scripts/remove-view.mjs',
         test: 'vitest',
         'test:ui': 'vitest --ui',
@@ -177,6 +178,7 @@ function packageJsonTemplate(config) {
     }
 
     const devDependencies = {
+        'esbuild': '^0.25.0',
         '@eslint/js': '^9.39.2',
         '@types/node': '^20.11.0',
         'concurrently': '^9.2.1',
@@ -187,7 +189,6 @@ function packageJsonTemplate(config) {
         'puppeteer': '^24.36.0',
         'terser': '^5.46.0',
         'ts-lit-plugin': '^2.0.2',
-        'tsc-alias': '^1.8.16',
         'typescript': '^5.3.3',
         'typescript-eslint': '^8.53.1',
         'vitest': '^4.1.4',
@@ -253,55 +254,61 @@ function nativecoreConfigTemplate(config) {
 
 function routesTemplate(config) {
     const loginRoute = config.includeAuth
-        ? "        .register('/login', 'src/views/public/login.html', lazyController('loginController', '../controllers/login.controller.js'))\n"
+        ? `        r.register('/login', 'src/views/public/login.html', lazyController('loginController', '../controllers/login.controller.js'));\n`
         : '';
+
+    // Default template protected routes
     const dashboardRoute = config.includeDashboard
-        ? "        .register('/dashboard', 'src/views/protected/dashboard.html', lazyController('dashboardController', '../controllers/dashboard.controller.js'));\n"
-        : ';\n';
-    const protectedRoutes = config.includeAuth && config.includeDashboard ? "export const protectedRoutes = ['/dashboard'];\n" : "export const protectedRoutes = [];\n";
+        ? `        r.register('/dashboard', 'src/views/protected/dashboard.html', lazyController('dashboardController', '../controllers/dashboard.controller.js'))\n         .cache({ ttl: 30, revalidate: true });\n`
+        : '';
 
     // Extra routes injected by starter templates
-    const templateRoutes = {
-        dashboard: `        .register('/dashboard', 'src/views/protected/dashboard.html', lazyController('dashboardController', '../controllers/dashboard.controller.js'));\n`,
-        blog: `        .register('/posts', 'src/views/public/posts.html', lazyController('postsController', '../controllers/posts.controller.js'))\n` +
-              `        .register('/posts/:slug', 'src/views/public/post-detail.html', lazyController('postDetailController', '../controllers/post-detail.controller.js'));\n`,
-        ecommerce: `        .register('/shop', 'src/views/public/shop.html', lazyController('shopController', '../controllers/shop.controller.js'))\n` +
-                   `        .register('/products/:id', 'src/views/public/product-detail.html', lazyController('productDetailController', '../controllers/product-detail.controller.js'))\n` +
-                   `        .register('/cart', 'src/views/public/cart.html', lazyController('cartController', '../controllers/cart.controller.js'));\n`,
+    const templatePublicRoutes = {
+        blog: `        r.register('/posts', 'src/views/public/posts.html', lazyController('postsController', '../controllers/posts.controller.js'));\n` +
+              `        r.register('/posts/:slug', 'src/views/public/post-detail.html', lazyController('postDetailController', '../controllers/post-detail.controller.js'));\n`,
+        ecommerce: `        r.register('/shop', 'src/views/public/shop.html', lazyController('shopController', '../controllers/shop.controller.js'));\n` +
+                   `        r.register('/products/:id', 'src/views/public/product-detail.html', lazyController('productDetailController', '../controllers/product-detail.controller.js'));\n` +
+                   `        r.register('/cart', 'src/views/public/cart.html', lazyController('cartController', '../controllers/cart.controller.js'));\n`,
     };
 
-    // For non-default templates, ignore the old includeDashboard path — the template owns its routes.
-    const extraRoutes = config.template !== 'default'
-        ? (templateRoutes[config.template] ?? ';\n')
+    const extraPublicRoutes = config.template !== 'default'
+        ? (templatePublicRoutes[config.template] ?? '')
+        : '';
+
+    const protectedGroupRoutes = config.template !== 'default'
+        ? dashboardRoute
         : dashboardRoute;
 
-    const closing = config.template !== 'default' ? '' : '';
+    const hasProtectedRoutes = dashboardRoute || protectedGroupRoutes;
+
+    const protectedGroup = hasProtectedRoutes
+        ? `\n    // @group:protected\n    r.group({ middleware: ['auth'] }, (r) => {\n${protectedGroupRoutes}    });\n`
+        : '';
 
     return `/**
  * Route Configuration
  */
-import { bustCache } from '@core-utils/cacheBuster.js';
-import type { ControllerFunction, Router } from '@core/router.js';
+import { createLazyController } from '@core/lazyController.js';
+import router from '@core/router.js';
+import type { Router } from '@core/router.js';
 
-function lazyController(controllerName: string, controllerPath: string): ControllerFunction {
-    return async (...args: any[]) => {
-        const module = await import(bustCache(controllerPath));
-        return module[controllerName](...args);
-    };
-}
+const lazyController = createLazyController(import.meta.url);
 
-export function registerRoutes(router: Router): void {
-    router
-        .register('/', 'src/views/public/home.html', lazyController('homeController', '../controllers/home.controller.js'))
-        .cache({ ttl: 300, revalidate: true })
-${loginRoute}${extraRoutes}}
+export function registerRoutes(r: Router): void {
+    // @group:public
+    r.group({}, (r) => {
+        r.register('/', 'src/views/public/home.html', lazyController('homeController', '../controllers/home.controller.js'))
+         .cache({ ttl: 300, revalidate: true });
+${loginRoute}${extraPublicRoutes}    });
+${protectedGroup}}
 
-${protectedRoutes}`;
+export const protectedRoutes = router.getPathsForMiddleware('auth');
+`;
 }
 
 function appTsTemplate(config) {
     const authImports = config.includeAuth
-        ? "import auth from '@services/auth.service.js';\nimport type { User } from '@services/auth.service.js';\nimport api from '@services/api.service.js';\nimport { authMiddleware } from '@middleware/auth.middleware.js';\n"
+        ? "import auth from '@services/auth.service.js';\nimport type { User } from '@services/auth.service.js';\nimport api from '@services/api.service.js';\nimport { createMiddleware } from '@core/createMiddleware.js';\nimport { authMiddleware } from '@middleware/auth.middleware.js';\n"
         : "";
     const authVerify = config.includeAuth
         ? `async function verifyExistingSession(): Promise<void> {
@@ -324,7 +331,7 @@ function appTsTemplate(config) {
 
 `
         : '';
-    const authMiddlewareSetup = config.includeAuth ? '    router.use(authMiddleware);\n' : '';
+    const authMiddlewareSetup = config.includeAuth ? '    // @middleware — registered middleware (auto-updated by make:middleware)\n    router.use(createMiddleware(\'auth\', authMiddleware));\n' : '';
     const authChangeHandler = config.includeAuth ? `    window.addEventListener('auth-change', () => {
         const isAuth = auth.isAuthenticated();
         if (!isAuth) {
@@ -827,9 +834,9 @@ async function main() {
     if (config.shouldInstall) {
         console.log('\nInstalling dev dependencies...');
         console.log('These are development and build tools only — none ship to production:\n');
-        console.log('  typescript        — TypeScript compiler');
-        console.log('  tsc-alias         — resolves path aliases (@core/*, @services/*, etc.) after compile');
-        console.log('  concurrently      — runs the dev server and TypeScript watcher in parallel');
+        console.log('  esbuild           — compiles TypeScript and resolves path aliases (@core/*, @services/*, etc.) in one fast pass');
+        console.log('  typescript        — TypeScript compiler (used for type-checking only during dev; tsc --noEmit)');
+        console.log('  concurrently      — runs the dev server and esbuild watcher in parallel');
         console.log('  ws                — WebSocket server used by the HMR dev server');
         console.log('  terser            — minifies JS output for production builds');
         console.log('  vitest            — unit test runner');

@@ -82,9 +82,9 @@ defineComponent('task-card', TaskCard);
 **State** is explicit and reactive.
 
 ```typescript
-const [count, setCount] = useState(0);
+const count = useState(0);
 effect(() => console.log('count is', count.value));
-setCount(1); // logs "count is 1"
+count.value = 1; // logs "count is 1"
 ```
 
 **Controllers** are async functions that return a cleanup function.

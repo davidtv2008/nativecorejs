@@ -1,29 +1,17 @@
-# Chapter 17 — Router Middleware and Navigation Guards
+﻿# Chapter 17 — Router Middleware and Navigation Guards
 
-> **What you'll build in this chapter:** Add a cart auth guard so unauthenticated users are redirected away from `/cart` and `/checkout`, and a "save-on-navigate" guard that prevents leaving `/checkout` while the cart is non-empty.
+> **What you'll build in this chapter:** Wire up a tag-based middleware system, add a second middleware with `make:middleware`, and build a "save-on-navigate" guard that prevents leaving a form with unsaved changes.
 
-Controllers run *after* navigation completes. Sometimes you need code that runs *before* — to check permissions, log the event, or ask the user if they're sure they want to leave. That's middleware.
+Controllers run *after* navigation completes. Sometimes you need code that runs *before* — to check permissions, log analytics, or ask the user if they're sure they want to leave. That's middleware.
 
 NativeCoreJS middleware is a chain of functions the router invokes before every navigation. Each function can allow the navigation to proceed, redirect the user somewhere else, or cancel entirely.
-
----
-
-## What Middleware Is
-
-You register middleware with `router.use()`:
-
-```typescript
-router.use(middlewareFn);
-```
-
-Every registered middleware runs sequentially before the router loads the target view. If any middleware returns `false`, the navigation is cancelled and the current view stays on screen.
 
 ---
 
 ## The Middleware Signature
 
 ```typescript
-type Middleware = (
+type MiddlewareFunction = (
     route: RouteMatch,
     state?: unknown
 ) => Promise<boolean> | boolean;
@@ -39,248 +27,198 @@ type RouteMatch = {
 };
 ```
 
-Use `route.path` to check which route is being navigated to, and `route.params` to inspect dynamic segments. Return `true` (or just don't return `false`) to allow navigation. Return `false` to cancel it.
-
-Middleware can be async — return a `Promise<boolean>` if you need to call an API or check something asynchronous before deciding.
+Return `true` to allow navigation. Return `false` to cancel it. Middleware can be async — return a `Promise<boolean>` if you need to call an API before deciding.
 
 ---
 
-## Building an Auth Guard for Taskflow
+## `createMiddleware` — Tag-Based Dispatch
 
-Authentication is the most common middleware use case. The goal: redirect unauthenticated users to `/login` if they try to access a protected route, and preserve the URL they were trying to reach so you can send them there after login.
+Rather than checking which route is protected inside every middleware function, NativeCoreJS uses a tag dispatch pattern. Routes declare which middleware tags apply to them in `routes.ts`:
+
+```typescript
+r.group({ middleware: ['auth'] }, (r) => {
+    r.register('/dashboard', ...);
+    r.register('/tasks', ...);
+});
+```
+
+And in `app.ts`, each middleware function is wrapped with `createMiddleware(tag, fn)`:
+
+```typescript
+// @middleware — registered middleware (auto-updated by make:middleware)
+router.use(createMiddleware('auth', authMiddleware));
+```
+
+`createMiddleware('auth', authMiddleware)` returns a new `MiddlewareFunction` that:
+1. Calls `router.getTagsForPath(route.path)` to get the tags on the target route
+2. If `'auth'` is not in those tags — returns `true` immediately (not this middleware's concern)
+3. If `'auth'` is present — calls `authMiddleware(route, state)` and returns its result
+
+This means `authMiddleware` itself doesn't need to know which routes require auth. It just implements the logic:
 
 ```typescript
 // src/middleware/auth.middleware.ts
-import { router } from '@core/router.js';
-import { auth } from '@services/auth.service.js';
+import auth from '@services/auth.service.js';
+import router from '@core/router.js';
+import type { RouteMatch } from '@core/router.js';
 
-const protectedRoutes = [
-    '/dashboard',
-    '/tasks',
-    '/tasks/:id',
-    '/projects',
-    '/projects/:id/tasks/:taskId?',
-    '/settings',
-];
-
-export function authMiddleware(route: RouteMatch): boolean {
-    const isProtected = protectedRoutes.includes(route.path);
-
-    if (isProtected && !auth.isAuthenticated()) {
-        // Redirect to login, pass the intended destination as state
+export async function authMiddleware(route: RouteMatch): Promise<boolean> {
+    if (!auth.isAuthenticated()) {
         router.replace('/login', { redirect: route.path });
         return false;
     }
-
     return true;
 }
 ```
 
-Register it once in your app entry point, before any route configuration:
+> **Tip:** `router.replace()` is right for auth redirects, not `router.navigate()`. `replace()` swaps the current history entry so the user doesn't see `/login` in their back stack when they reach the dashboard.
 
-```typescript
-// src/main.ts
-import { router } from '@core/router.js';
-import { authMiddleware } from './middleware/auth.middleware.js';
+---
 
-router.use(authMiddleware);
+## `npm run make:middleware`
 
-// ... register routes ...
+To add a new middleware, use the generator:
+
+```bash
+npm run make:middleware verified
 ```
 
-> **Tip:** `router.replace()` is the right call inside an auth redirect, not `router.navigate()`. `replace()` swaps the current history entry rather than pushing a new one, so the user doesn't see `/login` in their back stack when they eventually reach the dashboard.
+This:
+1. Creates `src/middleware/verified.middleware.ts` with the correct signature
+2. Adds the import to `src/app.ts`
+3. Inserts `router.use(createMiddleware('verified', verifiedMiddleware))` after the `// @middleware` sentinel in `app.ts`
+
+```
+✔ Created: src/middleware/verified.middleware.ts
+✔ Added import to src/app.ts
+✔ Added router.use(createMiddleware('verified', verifiedMiddleware)) to src/app.ts
+```
+
+Then apply the tag in `routes.ts`:
+
+```typescript
+r.group({ middleware: ['verified'] }, (r) => {
+    r.register('/settings/billing', ...);
+});
+```
+
+Or combine multiple tags on one group:
+
+```typescript
+r.group({ middleware: ['auth', 'verified'] }, (r) => {
+    r.register('/settings/billing', ...);
+});
+```
+
+Both `authMiddleware` and `verifiedMiddleware` will run for that route — in registration order.
 
 ---
 
 ## Completing the Loop — Redirecting After Login
 
-The auth middleware stores the originally-intended path as navigation state. Read it in the login controller to redirect the user to the right place after a successful login:
+The auth middleware stores the intended path in navigation state. The login controller reads it after a successful login:
 
 ```typescript
 // src/controllers/login.controller.ts
-import { useState, effect } from '@core/state.js';
-import { dom } from '@core-utils/dom.js';
-import { trackEvents } from '@core-utils/events.js';
-import { auth } from '@services/auth.service.js';
-import { router } from '@core/router.js';
-
 export async function loginController(
     params: Record<string, string> = {},
     state?: { redirect?: string }
 ): Promise<() => void> {
-    const events = trackEvents();
-    const disposers: Array<() => void> = [];
-    const scope = dom.view('login');
-
-    const errorMsg = useState('');
-
-    disposers.push(effect(() => {
-        const el = scope.hook('error');
-        if (el) el.textContent = errorMsg.value;
-    }));
-
+    // ...
     events.onClick('submit', async () => {
-        const form = scope.hook('form') as HTMLFormElement;
-        const data = new FormData(form);
-
-        try {
-            await auth.login(
-                data.get('email') as string,
-                data.get('password') as string
-            );
-
-            // Go where the user originally wanted to go, or fall back to dashboard
-            const destination = state?.redirect ?? '/dashboard';
-            router.navigate(destination);
-        } catch (err) {
-            errorMsg.value = 'Invalid email or password.';
-        }
+        await auth.login(email, password);
+        router.navigate(state?.redirect ?? '/dashboard');
     });
-
-    return () => {
-        events.cleanup();
-        disposers.forEach(d => d());
-    };
+    // ...
 }
 ```
 
-The `state` parameter is passed by the router automatically when you used `router.replace('/login', { redirect: route.path })` in the middleware. No query string manipulation needed.
-
----
-
-## `router.replace()` vs `router.navigate()`
-
-| Method | History effect | Use for |
-|---|---|---|
-| `router.navigate(path, state?)` | Pushes a new entry | User-initiated navigation, links |
-| `router.replace(path, state?)` | Replaces current entry | Redirects, login flows, correcting URLs |
-| `router.back()` | Goes to previous entry | Back buttons |
-
-When you are *redirecting* the user (not responding to a click), use `router.replace()`. This ensures that pressing the browser's back button doesn't loop the user back through the redirect.
-
----
-
-## Building a Logging Middleware
-
-A logging middleware is invaluable during development. It logs every navigation event to the console with the route, params, and any state:
-
-```typescript
-// src/middleware/logging.middleware.ts
-export function loggingMiddleware(
-    route: RouteMatch,
-    state?: unknown
-): boolean {
-    console.log('[Router]', route.path, {
-        params: route.params,
-        state,
-    });
-    return true;   // always allow navigation
-}
-```
-
-Register it after the auth guard:
-
-```typescript
-router.use(authMiddleware);
-router.use(loggingMiddleware);
-```
-
----
-
-## Building an Analytics Middleware
-
-Report page views to a hypothetical analytics endpoint without touching any controller:
-
-```typescript
-// src/middleware/analytics.middleware.ts
-import { api } from '@services/api.service.js';
-
-export async function analyticsMiddleware(
-    route: RouteMatch
-): Promise<boolean> {
-    // Fire-and-forget — don't await, don't block navigation
-    api.post('/analytics/pageview', {
-        path: route.path,
-        params: route.params,
-        timestamp: Date.now(),
-    }).catch(() => {
-        // Analytics failures must never break navigation
-    });
-
-    return true;
-}
-```
-
-Because the `api.post()` promise is not awaited, navigation is never delayed by the analytics call. The fire-and-forget pattern is appropriate here — a failed analytics event should not prevent the user from reaching their destination.
+The `state` parameter is passed by the router automatically — no query string manipulation needed.
 
 ---
 
 ## Middleware Ordering
 
-Middleware runs in **registration order**. This ordering is significant:
+Middleware runs in **registration order**:
 
 ```typescript
-router.use(authMiddleware);      // 1st — check auth before anything else
-router.use(analyticsMiddleware); // 2nd — only fires for navigations that pass auth
-router.use(loggingMiddleware);   // 3rd — logs what actually happens
+// @middleware — registered middleware (auto-updated by make:middleware)
+router.use(createMiddleware('auth',      authMiddleware));
+router.use(createMiddleware('analytics', analyticsMiddleware));
+router.use(createMiddleware('logging',   loggingMiddleware));
 ```
 
-If `authMiddleware` returns `false`, neither `analyticsMiddleware` nor `loggingMiddleware` will run for that navigation. This is usually what you want — don't log or report navigations that were blocked.
+If `authMiddleware` returns `false`, neither `analyticsMiddleware` nor `loggingMiddleware` will run. This is usually what you want — don't log or report navigations that were blocked.
 
-> **Warning:** A slow async middleware will delay every navigation. Keep async middleware lightweight. For operations like analytics that don't need to block, fire-and-forget and return `true` immediately.
+> **Warning:** A slow async middleware delays every navigation it matches. Keep async middleware lightweight. For analytics that don't need to block, fire-and-forget and return `true` immediately.
+
+---
+
+## Building a Logging Middleware
+
+```typescript
+// src/middleware/logging.middleware.ts
+import type { RouteMatch } from '@core/router.js';
+
+export function loggingMiddleware(route: RouteMatch, state?: unknown): boolean {
+    console.log('[Router]', route.path, { params: route.params, state });
+    return true;
+}
+```
+
+Logging middleware doesn't need a tag — it should run on every route. Register it without `createMiddleware`:
+
+```typescript
+router.use(loggingMiddleware); // no tag — runs on every navigation
+```
 
 ---
 
 ## Building a "Save on Navigate" Guard
 
-If a user has unsaved changes in a form, you want to warn them before navigating away. Middleware is the right place for this guard.
-
-In the controller, expose a shared flag indicating whether there are unsaved changes:
+Prevent users from accidentally leaving a form with unsaved changes:
 
 ```typescript
 // src/stores/form-dirty.store.ts
 import { useState } from '@core/state.js';
-
 export const formDirty = useState(false);
 ```
-
-In the middleware, check the flag and ask the user:
 
 ```typescript
 // src/middleware/unsaved-changes.middleware.ts
 import { formDirty } from '../stores/form-dirty.store.js';
+import type { RouteMatch } from '@core/router.js';
 
 export function unsavedChangesMiddleware(route: RouteMatch): boolean {
     if (!formDirty.value) return true;
 
-    const confirmed = window.confirm(
-        'You have unsaved changes. Leave anyway?'
-    );
-
+    const confirmed = window.confirm('You have unsaved changes. Leave anyway?');
     if (confirmed) {
-        formDirty.value = false;   // reset for the next page
+        formDirty.value = false;
         return true;
     }
-
-    return false;   // cancel navigation
+    return false;
 }
 ```
 
-In the form controller, set `formDirty.value = true` when the user starts editing, and `false` when they save or cancel:
+Apply it to any form route by tagging it:
 
 ```typescript
-events.onInput('task-form', () => {
-    formDirty.value = true;
+r.group({ middleware: ['unsaved-changes'] }, (r) => {
+    r.register('/tasks/:id/edit', ...);
 });
+```
 
+And in the controller set the flag:
+
+```typescript
+events.onInput('task-form', () => { formDirty.value = true; });
 events.onClick('save', async () => {
     await handleSave();
     formDirty.value = false;
     router.navigate('/tasks');
 });
 ```
-
-Register this middleware selectively or globally depending on how many forms need the protection. Because it reads from a module-level store, it works across all routes without any per-route configuration.
 
 ---
 
@@ -289,35 +227,21 @@ Register this middleware selectively or globally depending on how many forms nee
 Navigation state flows through the entire middleware chain. When you call:
 
 ```typescript
-router.navigate('/tasks', { from: 'dashboard', filter: 'overdue' });
+router.navigate('/tasks', { filter: 'overdue' });
 ```
 
-Every middleware receives that state object as its second argument:
-
-```typescript
-export function analyticsMiddleware(
-    route: RouteMatch,
-    state?: { from?: string; filter?: string }
-): boolean {
-    if (state?.from) {
-        console.log(`Navigated to ${route.path} from ${state.from}`);
-    }
-    return true;
-}
-```
-
-State is also available in controllers (as a second argument after `params`), and it persists through `router.replace()` calls — so the auth redirect pattern that stores `{ redirect: '/dashboard' }` in state survives the login middleware chain intact.
+Every middleware receives that state as its second argument, and it's also available in the controller. State persists through `router.replace()` calls — so the auth redirect pattern that stores `{ redirect: '/dashboard' }` survives the login middleware chain intact.
 
 ---
 
 ## Done Criteria
 
-- [ ] Navigating to `/cart` or `/checkout` without a token redirects to `/login` using `router.replace()`.
-- [ ] The "save-on-navigate" guard prevents leaving `/checkout` when the cart is non-empty (verify by clicking the back button mid-checkout).
-- [ ] Logging in from the auth redirect restores the user to `/cart`.
-- [ ] The middleware analytics logger calls `console.log(route.path)` on every navigation (confirm in the console).
+- [ ] `npm run make:middleware verified` creates the file and wires app.ts correctly.
+- [ ] Navigating to a route tagged `['auth']` without a token redirects to `/login`.
+- [ ] The "save-on-navigate" guard fires a `confirm()` when `formDirty` is true.
+- [ ] Auth redirect restores the user to the originally-intended path after login.
 
 ---
 
-**Back:** [Chapter 16 — API Data Caching and Invalidation](./16-api-caching.md)  
+**Back:** [Chapter 16 — API Data Caching and Invalidation](./16-api-caching.md)
 **Next:** [Chapter 18 — Global Stores and Cross-Route State](./18-global-stores.md)

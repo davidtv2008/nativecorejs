@@ -276,34 +276,32 @@ async function generateView() {
     const routesPath = path.resolve(__dirname, '../..', 'src', 'routes', 'routes.ts');
     if (fs.existsSync(routesPath)) {
       let routesContent = fs.readFileSync(routesPath, 'utf8');
+
       const routeRegistration = createController
-        ? `        .register('${routePath}', '${viewFileRelative}', lazyController('${controllerName}Controller', '../controllers/${flatName}.controller.js'))`
-        : `        .register('${routePath}', '${viewFileRelative}')`;
+        ? `        r.register('${routePath}', '${viewFileRelative}', lazyController('${controllerName}Controller', '../controllers/${flatName}.controller.js'));`
+        : `        r.register('${routePath}', '${viewFileRelative}');`;
 
-      const registerBlockPattern = /(export function registerRoutes\(router: Router\): void \{\s*router\s*)([\s\S]*?)(\n\})/;
-      const registerMatch = routesContent.match(registerBlockPattern);
+      const groupMarker = isProtected ? '// @group:protected' : '// @group:public';
+      const markerIndex = routesContent.indexOf(groupMarker);
 
-      if (registerMatch) {
-        const existingChain = registerMatch[2].trimEnd();
-        const normalizedChain = existingChain.replace(/;\s*$/, '');
-        const updatedChain = normalizedChain
-          ? `${normalizedChain}\n${routeRegistration};`
-          : `\n${routeRegistration};`;
-        routesContent = routesContent.replace(registerBlockPattern, `$1${updatedChain}$3`);
-        console.log('Added route registration to src/routes/routes.ts');
-      }
+      if (markerIndex !== -1) {
+        // Find the closing '});' of this group block and insert before it
+        const blockStart = markerIndex;
+        const searchFrom = blockStart;
+        // Find the matching closing }); for this group — look for '    });' after the marker
+        const closingPattern = /\n    \}\);/g;
+        closingPattern.lastIndex = searchFrom;
+        const closingMatch = closingPattern.exec(routesContent);
 
-      if (isProtected) {
-        const protectedRoutesRegex = /export const protectedRoutes = \[(.*?)\];/s;
-        const match = routesContent.match(protectedRoutesRegex);
-        if (match) {
-          const routesList = match[1].trim();
-          if (!routesList.includes(`'${routePath}'`)) {
-            const newRoutes = routesList ? `${routesList}, '${routePath}'` : `'${routePath}'`;
-            routesContent = routesContent.replace(protectedRoutesRegex, `export const protectedRoutes = [${newRoutes}];`);
-            console.log(`Added '${routePath}' to protected routes array`);
-          }
+        if (closingMatch) {
+          routesContent =
+            routesContent.slice(0, closingMatch.index) +
+            '\n' + routeRegistration +
+            routesContent.slice(closingMatch.index);
+          console.log('Added route registration to src/routes/routes.ts');
         }
+      } else {
+        console.log(`Warning: Could not find "${groupMarker}" in routes.ts — add the route manually.`);
       }
 
       fs.writeFileSync(routesPath, routesContent);

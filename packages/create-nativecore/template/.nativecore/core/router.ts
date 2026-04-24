@@ -49,6 +49,9 @@ export class Router {
     private navigationController: AbortController | null = null;
     private isNavigating = false;
     private renderedLayoutPath: string | null = null;
+    private _groupMiddlewares: string[] = [];
+    private _groupPrefix: string = '';
+    private _routeMiddlewares: Map<string, string[]> = new Map();
     
     constructor() {
         if ('scrollRestoration' in window.history) {
@@ -100,7 +103,11 @@ export class Router {
         controller: ControllerFunction | null = null,
         options: Partial<RouteConfig> = {}
     ): this {
-        this.routes[path] = { htmlFile, controller, ...options };
+        const fullPath = this._groupPrefix ? `${this._groupPrefix}${path}` : path;
+        this.routes[fullPath] = { htmlFile, controller, ...options };
+        if (this._groupMiddlewares.length > 0) {
+            this._routeMiddlewares.set(fullPath, [...this._groupMiddlewares]);
+        }
         return this;
     }
 
@@ -169,6 +176,59 @@ export class Router {
     use(middleware: MiddlewareFunction): this {
         this.middlewares.push(middleware);
         return this;
+    }
+
+    /**
+     * Group routes under shared options (middleware names, path prefix).
+     * Routes registered inside the callback inherit the group's middleware tags
+     * and prefix. Groups can be nested.
+     *
+     * @example
+     * router.group({ middleware: ['auth'] }, (r) => {
+     *     // @group:protected
+     *     r.register('/dashboard', 'src/views/protected/dashboard.html', lazyController(...));
+     *     r.register('/tasks',     'src/views/protected/tasks.html',     lazyController(...));
+     * });
+     */
+    group(options: { middleware?: string[]; prefix?: string }, callback: (router: this) => void): this {
+        const prevMiddlewares = this._groupMiddlewares;
+        const prevPrefix = this._groupPrefix;
+
+        this._groupMiddlewares = [...prevMiddlewares, ...(options.middleware ?? [])];
+        this._groupPrefix = prevPrefix + (options.prefix ?? '');
+
+        callback(this);
+
+        this._groupMiddlewares = prevMiddlewares;
+        this._groupPrefix = prevPrefix;
+
+        return this;
+    }
+
+    /**
+     * Returns all middleware tags registered on a specific path.
+     * Use this inside middleware functions to check whether a tag applies.
+     *
+     * @example
+     * const tags = router.getTagsForPath(route.path);
+     * if (tags.includes('auth')) { ... }
+     */
+    getTagsForPath(path: string): string[] {
+        return this._routeMiddlewares.get(path) ?? [];
+    }
+
+    /**
+     * Returns all route paths that carry the given middleware tag.
+     * Use this to derive protectedRoutes (or any middleware-gated set) without
+     * maintaining a separate array.
+     *
+     * @example
+     * export const protectedRoutes = router.getPathsForMiddleware('auth');
+     */
+    getPathsForMiddleware(middlewareName: string): string[] {
+        return Array.from(this._routeMiddlewares.entries())
+            .filter(([, tags]) => tags.includes(middlewareName))
+            .map(([path]) => path);
     }
     
     /**

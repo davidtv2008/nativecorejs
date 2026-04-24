@@ -1,6 +1,6 @@
-# Chapter 06 — Views and Routing
+﻿# Chapter 06 — Views and Routing
 
-> **What you'll build in this chapter:** Map Taskflow's URL structure in `routes.ts`, learn the `data-view` / `data-hook` / `data-action` conventions that tie views to controllers, and confirm all three Taskflow routes load correctly — including a `/404` wildcard fallback.
+> **What you'll build in this chapter:** Understand how Taskflow's URL structure is declared in `routes.ts`, how `registerRoutes()` wires everything together in `app.ts`, and how the `data-view` / `data-hook` / `data-action` conventions connect your HTML views to controllers.
 
 ## What Is a View?
 
@@ -17,81 +17,132 @@ Views live in one of two directories:
 ```
 src/views/
 ├── public/       ← accessible without authentication
-│   ├── login.html
-│   └── not-found.html
+│   ├── home.html
+│   └── login.html
 └── protected/    ← require the user to be signed in
     ├── dashboard.html
     └── tasks.html
 ```
 
-The `public/` and `protected/` directories are a **convention** that your `routes.ts` enforces. The router does not automatically protect views in `protected/` — it is your `protectedRoutes` array (and the auth check in `router.start()`) that determines what requires authentication. The directory names exist to keep your file tree clear at a glance.
+The `public/` and `protected/` directories are a **convention** that your `routes.ts` enforces. The router does not automatically protect views in `protected/` — it is your `protectedRoutes` array (and the `authMiddleware` registered in `app.ts`) that determines what requires authentication. The directory names exist to keep your file tree clear at a glance.
 
 ---
 
 ## The `routes.ts` File
 
-All routing configuration lives in `src/routes/routes.ts`. Here is the full pattern:
+All routing configuration lives in `src/routes/routes.ts`. The scaffold generates this pattern:
 
 ```typescript
-import { router } from '@core/router.js';
-import { lazyController } from '@core/lazy.js';
+import { createLazyController } from '@core/lazyController.js';
+import router from '@core/router.js';
+import type { Router } from '@core/router.js';
 
-// Public routes
-router.register('/login', 'src/views/public/login.html');
+const lazyController = createLazyController(import.meta.url);
 
-router.register('/404', 'src/views/public/not-found.html');
+export function registerRoutes(r: Router): void {
+    // @group:public
+    r.group({}, (r) => {
+        r.register('/', 'src/views/public/home.html', lazyController('homeController', '../controllers/home.controller.js'))
+         .cache({ ttl: 300, revalidate: true });
 
-// Protected routes
-router.register(
-  '/',
-  'src/views/protected/dashboard.html',
-  lazyController(() => import('../controllers/dashboard.controller.ts'))
-).cache();
+        r.register('/login', 'src/views/public/login.html', lazyController('loginController', '../controllers/login.controller.js'));
+    });
 
-router.register(
-  '/tasks',
-  'src/views/protected/tasks.html',
-  lazyController(() => import('../controllers/tasks.controller.ts'))
-).cache();
+    // @group:protected
+    r.group({ middleware: ['auth'] }, (r) => {
+        r.register('/dashboard', 'src/views/protected/dashboard.html', lazyController('dashboardController', '../controllers/dashboard.controller.js'))
+         .cache({ ttl: 30, revalidate: true });
 
-export const protectedRoutes = ['/', '/tasks'];
+        r.register('/tasks', 'src/views/protected/tasks.html', lazyController('tasksController', '../controllers/tasks.controller.js'));
+    });
+}
 
-router.start({ fallback: '/404' });
+export const protectedRoutes = router.getPathsForMiddleware('auth');
 ```
 
-### `router.register(path, htmlFile, controller?)`
+### `lazyController(controllerName, controllerPath)`
 
-| Argument    | Description                                                                          |
-|-------------|--------------------------------------------------------------------------------------|
-| `path`      | The URL path. Supports params: `'/tasks/:id'`                                        |
-| `htmlFile`  | Path to the view HTML file, relative to the project root                             |
-| `controller`| Optional. An async controller function (or a `lazyController()` wrapper)             |
-
-`register()` returns a route builder object. You can chain methods on it.
-
-### `.cache()`
-
-`.cache()` instructs the router to keep the parsed HTML document in memory after the first load. Subsequent navigations to this route reuse the cached DOM fragment — no network fetch, no HTML parse. Use this on all routes the user visits frequently (dashboards, list views). Avoid it on routes where the HTML structure itself changes (unusual).
-
-### `lazyController(fn)`
+`lazyController` lives in `.nativecore/core/lazyController.ts`. Because browser dynamic `import()` resolves paths relative to the module containing the call, moving this helper to `@core/` would break relative paths. The factory pattern solves this: `createLazyController(import.meta.url)` captures `routes.ts`'s own URL as the base, so `'../controllers/home.controller.js'` always resolves correctly regardless of where the helper lives:
 
 ```typescript
-lazyController(() => import('../controllers/tasks.controller.ts'))
+// .nativecore/core/lazyController.ts
+import { bustCache } from '../utils/cacheBuster.js';
+import type { ControllerFunction } from '@core/router.js';
+
+export function createLazyController(base: string) {
+    return function lazyController(controllerName: string, controllerPath: string): ControllerFunction {
+        return async (...args: any[]) => {
+            const resolved = new URL(controllerPath, base).href;
+            const module = await import(bustCache(resolved));
+            return module[controllerName](...args);
+        };
+    };
+}
 ```
 
-`lazyController()` wraps a dynamic import in a way the router understands. The controller module is not loaded until the user first navigates to the route. This keeps the initial JS bundle small. The returned module must export a default function that matches the controller signature.
+| Argument         | Description                                                              |
+|------------------|--------------------------------------------------------------------------|
+| `controllerName` | The named export in the controller module (e.g. `'tasksController'`)     |
+| `controllerPath` | Path to the compiled `.js` file relative to `dist/src/routes/routes.js` |
 
-> **Apply to Taskflow — add the `/404` not-found view**
-> The routes.ts example above registers `/404`, and `router.start({ fallback: '/404' })` uses it as the catch-all. Create the view if it doesn't already exist:
->
-> ```bash
-> npm run make:view not-found
-> # Should this route require login? n
-> # Route path (/not-found): /404
-> # Create a controller for this view? n
-> ```
->
-> Open `src/routes/routes.ts` and confirm the new route appears. Then navigate to any invalid URL in the browser (e.g. `/does-not-exist`) and confirm the not-found page loads.
+Note the path is `'../controllers/tasks.controller.js'` — a relative path from `dist/src/routes/` to `dist/src/controllers/`. Always use `.js` extensions even though the source files are `.ts`.
+
+### `registerRoutes(r)`
+
+Routes are registered inside a function called from `app.ts`. Routes are organized into groups using `r.group()` — each group carries shared options like middleware tags. The `// @group:public` and `// @group:protected` comments are sentinel markers the `make:view` generator uses to find the right block to insert new routes into.
+
+### `r.group(options, callback)`
+
+```typescript
+r.group({ middleware: ['auth'] }, (r) => {
+    r.register('/dashboard', ...);
+    r.register('/tasks', ...);
+});
+```
+
+| Option       | Description                                                         |
+|--------------|---------------------------------------------------------------------|
+| `middleware` | Array of middleware name tags stamped onto every route in the group |
+| `prefix`     | Optional path prefix prepended to every route path in the group     |
+
+Groups can be nested. The innermost group inherits all ancestor middleware tags.
+
+### `protectedRoutes` — derived, not manual
+
+```typescript
+export const protectedRoutes = router.getPathsForMiddleware('auth');
+```
+
+Rather than maintaining a separate array that must be kept in sync with `register()` calls, `protectedRoutes` is **derived** from the router itself. Any route registered inside a `group({ middleware: ['auth'] })` block is automatically included. When you run `make:view` and answer "protected", the route is inserted into the `// @group:protected` block and picked up here without any further changes.
+
+### `.cache(options?)`
+
+`.cache()` instructs the router to keep the parsed HTML document in memory after the first load. Subsequent navigations reuse the cached fragment — no network fetch, no HTML parse.
+
+```typescript
+.cache({ ttl: 300, revalidate: true })  // cache for 300 seconds, revalidate in background
+.cache()                                 // cache indefinitely
+```
+
+Use it on routes the user visits frequently. Avoid it on routes where the HTML structure itself changes dynamically.
+
+---
+
+## How `app.ts` Wires It Together
+
+`registerRoutes()` is called from `app.ts` during the boot sequence:
+
+```typescript
+// src/app.ts (simplified)
+// @middleware — registered middleware (auto-updated by make:middleware)
+router.use(createMiddleware('auth', authMiddleware));  // only runs on 'auth'-tagged routes
+registerRoutes(router);                                // all routes registered
+router.start();                                        // begin listening, render first view
+```
+
+`router.start()` is called **exactly once**, at the end of `init()` in `app.ts`. Never call it inside a controller or component.
+
+Each `router.use(createMiddleware(...))` call wraps a middleware function so it **only fires when the navigated route carries that tag**. `authMiddleware` doesn't need to know which routes require auth — `createMiddleware('auth', ...)` handles that check automatically using `router.getTagsForPath()`.
 
 ---
 
@@ -101,23 +152,15 @@ HTML views use three `data-*` attribute conventions that allow controllers to qu
 
 ### `data-view="name"`
 
-Every view HTML file wraps its content in a root element with `data-view`:
+Every protected view wraps its content in a root element with `data-view`:
 
 ```html
-<!-- src/views/protected/tasks.html -->
-<div data-view="tasks">
-  <header class="tasks__header">
-    <h1>Tasks</h1>
-    <button data-action="new-task">+ New Task</button>
-  </header>
-
-  <task-stats data-hook="stats"></task-stats>
-
-  <ul class="task-list" data-hook="task-list"></ul>
+<div class="tasks-page" data-view="tasks">
+  ...
 </div>
 ```
 
-`data-view` is the controller's root scope. The `dom.view('tasks')` helper (Chapter 06) targets this element and scopes all subsequent queries within it.
+`data-view` is the controller's root scope. The `dom.view('tasks')` helper (Chapter 07) targets this element and scopes all subsequent queries within it.
 
 ### `data-hook="name"`
 
@@ -129,40 +172,71 @@ Every view HTML file wraps its content in a root element with `data-view`:
 
 ---
 
+## The Taskflow `tasks` View
+
+Here is the current state of `tasks.html` after the previous chapters. It has hardcoded task cards to demonstrate the components we built — the controller will replace this with dynamic data in Chapter 07:
+
+```html
+<!-- src/views/protected/tasks.html -->
+<div class="tasks-page" data-view="tasks">
+    <h1>My Tasks</h1>
+
+    <task-stats id="stats" total="10" completed="4"></task-stats>
+
+    <nc-error-boundary mode="dev" fallback="Task could not be loaded">
+        <task-card
+            title="Set up NativeCoreJS project"
+            description="Scaffold the Taskflow app using the CLI."
+            status="done"
+        >
+            <div slot="actions">
+                <nc-button variant="outline" data-action="delete-task">Delete</nc-button>
+            </div>
+        </task-card>
+    </nc-error-boundary>
+
+    <nc-error-boundary mode="dev" fallback="Task could not be loaded">
+        <task-card
+            title="Build task-card component"
+            description="Implement the component with Shadow DOM and attributes."
+            status="in-progress"
+        ></task-card>
+    </nc-error-boundary>
+</div>
+```
+
+The `<task-stats>` component is already wired up with `total` and `completed` attributes — those will be driven by controller state once we wire in the API in Chapter 07. For now, they are hardcoded to verify the component renders correctly.
+
+---
+
 ## Route Parameters
 
 Register a parameterised route with a colon prefix:
 
 ```typescript
-router.register(
-  '/tasks/:id',
-  'src/views/protected/task-detail.html',
-  lazyController(() => import('../controllers/task-detail.controller.ts'))
-);
+.register(
+    '/tasks/:id',
+    'src/views/protected/task-detail.html',
+    lazyController('taskDetailController', '../controllers/task-detail.controller.js')
+)
 ```
 
-The `id` segment is extracted and passed to the controller. You will see how to read it in Chapter 07.
-
----
-
-## Nested Routes
-
-NativeCoreJS supports a flat route list. "Nesting" is achieved by composing views: your parent view includes a named outlet element, and the child controller renders into it. This is intentionally explicit — there is no hidden routing hierarchy to debug.
+The `id` segment is extracted and passed to the controller as `params.id`. You will see how to read it in Chapter 07.
 
 ---
 
 ## Using `npm run make:view`
 
-The generator asks a few questions and writes both the HTML file and the controller:
+The generator asks a few questions and writes both the HTML file and the controller, then updates `routes.ts` automatically:
 
 ```bash
 npm run make:view task-detail
 ```
 
 ```
-? Create a controller for this view? Yes
 ? Route path: /tasks/:id
 ? Public or protected? protected
+? Create a controller for this view? Yes
 ? Cache this route? No
 
 ✔ Created src/views/protected/task-detail.html
@@ -172,108 +246,17 @@ npm run make:view task-detail
 
 ---
 
-## The Taskflow `tasks` View
-
-Let's flesh out the tasks view we created in Chapter 01:
-
-```html
-<!-- src/views/protected/tasks.html -->
-<div data-view="tasks">
-  <header class="tasks-header">
-    <div class="tasks-header__left">
-      <h1 class="tasks-header__title">Tasks</h1>
-      <span class="tasks-header__count" data-hook="task-count">0</span>
-    </div>
-    <button class="btn btn--primary" data-action="new-task">+ New Task</button>
-  </header>
-
-  <nav class="tasks-filters" aria-label="Filter tasks">
-    <button class="filter-btn filter-btn--active" data-action="filter" data-filter="all">All</button>
-    <button class="filter-btn" data-action="filter" data-filter="pending">Pending</button>
-    <button class="filter-btn" data-action="filter" data-filter="in-progress">In Progress</button>
-    <button class="filter-btn" data-action="filter" data-filter="done">Done</button>
-  </nav>
-
-  <task-stats data-hook="stats" total="0" completed="0"></task-stats>
-
-  <section class="task-list-section">
-    <ul class="task-list" data-hook="task-list" aria-label="Task list">
-      <!-- Tasks are rendered here by the controller -->
-    </ul>
-    <p class="task-list__empty" data-hook="empty-state" hidden>
-      No tasks yet. Click <strong>+ New Task</strong> to get started.
-    </p>
-  </section>
-</div>
-```
-
-And update `routes.ts` to make the tasks route explicit with caching:
-
-```typescript
-router.register(
-  '/tasks',
-  'src/views/protected/tasks.html',
-  lazyController(() => import('../controllers/tasks.controller.ts'))
-).cache();
-```
-
----
-
 > **Tip:** Keep views as semantic and layout-focused as possible. Avoid JavaScript logic in `data-*` attributes. The view's job is to declare structure; the controller's job is to bring it to life.
-
----
-
-## Keyed List Reconciliation (`key=`)
-
-When a controller re-renders a list — for example updating `innerHTML` of a `<ul>` — NativeCore's default reconciler matches DOM nodes **positionally** (first new item → first existing node, etc.). This is efficient for most cases, but can cause subtle bugs when items are reordered, inserted, or removed from the middle: a node might retain event handlers or state from a previous item.
-
-Add a `key=` attribute to every child element in a repeated list, and NativeCore will switch to **keyed reconciliation**: it identifies each node by its key, reuses existing nodes when the key matches, and only creates/removes the nodes that actually changed.
-
-```html
-<!-- Without keys: positional matching (fine for simple, append-only lists) -->
-<ul id="tasks">
-  <li>Task A</li>
-  <li>Task B</li>
-</ul>
-
-<!-- With keys: stable node identity across re-renders -->
-<ul id="tasks">
-  <li key="task-1">Task A</li>
-  <li key="task-2">Task B</li>
-</ul>
-```
-
-### Generating keyed markup in a controller
-
-```typescript
-function renderTasks(tasks: Task[]) {
-    const list = dom.$('#tasks')!;
-    list.innerHTML = tasks
-        .map(t => `<li key="${t.id}" class="task-item">${escapeHTML(t.title)}</li>`)
-        .join('');
-}
-```
-
-### When to use keys
-
-| Situation | Use keys? |
-|-----------|-----------|
-| Simple append-only list | Optional |
-| Items can be reordered | **Yes** |
-| Items have interactive state (checkbox, input) | **Yes** |
-| Items are added/removed from the middle | **Yes** |
-| Static, never-updated list | No |
-
-Keys must be **unique within their parent container** and **stable** across re-renders (a database ID is ideal; avoid array indices when the list can be reordered).
 
 ---
 
 ## Done Criteria
 
-- [ ] Navigating to `/tasks` loads `src/views/protected/tasks.html`.
+- [ ] Navigating to `/tasks` loads `src/views/protected/tasks.html` with the hardcoded task cards visible.
 - [ ] Navigating to `/dashboard` loads `src/views/protected/dashboard.html`.
-- [ ] Navigating to `/nonexistent` shows the 404 view (wildcard route is registered).
+- [ ] `registerRoutes()` is called once from `app.ts`.
 - [ ] `router.start()` is called exactly once, in `src/app.ts`.
+- [ ] `<task-stats>` is visible on the tasks view showing 10 total / 4 completed.
 
 ---
 

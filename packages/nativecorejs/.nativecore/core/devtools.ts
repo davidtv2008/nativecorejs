@@ -206,7 +206,7 @@ export function mountDevTools(options: DevToolsOptions = {}): DevToolsHandle {
         body.innerHTML = '';
         const registry = getStoreRegistry();
         if (registry.size === 0) {
-            body.innerHTML = `<div class="empty">No stores registered. Call <code>createStore(name, value)</code> to populate this view.</div>`;
+            body.innerHTML = `<div class="empty">No stores registered.</div>`;
             return;
         }
         for (const [name, store] of registry.entries()) {

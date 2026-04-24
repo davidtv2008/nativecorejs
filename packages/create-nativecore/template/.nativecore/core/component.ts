@@ -118,11 +118,11 @@ export class Component extends HTMLElement {
      * whenever the state changes — no full re-render needed.
      *
      * @param state   A reactive State or ComputedState to watch
-     * @param selector  CSS selector for the target element
+     * @param selector  CSS selector string or an Element reference
      * @param property  DOM property to update (default: 'textContent')
      */
-    bind<T>(state: Readable<T>, selector: string, property: string = 'textContent'): void {
-        const el = this.$(selector);
+    bind<T>(state: Readable<T>, selector: string | Element, property: string = 'textContent'): void {
+        const el = typeof selector === 'string' ? this.$(selector) : selector;
         if (!el) {
             console.warn(`[${this.tagName.toLowerCase()}] bind(): no element found for selector "${selector}"`);
             return;
@@ -137,11 +137,11 @@ export class Component extends HTMLElement {
      * Bind a reactive state to a DOM element's attribute.
      *
      * @param state   A reactive State or ComputedState to watch
-     * @param selector  CSS selector for the target element
+     * @param selector  CSS selector string or an Element reference
      * @param attributeName  HTML attribute to update
      */
-    bindAttr<T>(state: Readable<T>, selector: string, attributeName: string): void {
-        const el = this.$(selector);
+    bindAttr<T>(state: Readable<T>, selector: string | Element, attributeName: string): void {
+        const el = typeof selector === 'string' ? this.$(selector) : selector;
         if (!el) {
             console.warn(`[${this.tagName.toLowerCase()}] bindAttr(): no element found for selector "${selector}"`);
             return;

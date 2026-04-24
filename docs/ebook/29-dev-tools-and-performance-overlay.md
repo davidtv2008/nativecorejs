@@ -4,7 +4,7 @@
 
 NativeCoreJS ships with a built-in developer tooling layer that is only ever active on `localhost` and is completely stripped from production builds. This chapter covers everything it provides: the component inspector, the outline panel, HMR, and — the focus of this chapter — the **Performance Overlay**, a live terminal-style HUD that helps you catch memory leaks, slow routes, long-running tasks, and API failures before they reach users.
 
-In addition to the dev-overlay, the framework now ships a small **in-page DevTools panel** (`mountDevTools()`) that runs without any browser extension. It adds a floating panel with three tabs — **Stores**, **Components**, and **Router** — lets you inspect and mutate any `createStore()` value live, highlights mounted `nc-*` elements when you hover over them, and shows the current route/query. Because it lives inside a closed Shadow Root it never clashes with your app's styles, and because it is opt-in you decide when and how to load it.
+In addition to the dev-overlay, the framework now ships a small **in-page DevTools panel** (`mountDevTools()`) that runs without any browser extension. It adds a floating panel with three tabs — **Stores**, **Components**, and **Router** — lets you inspect and mutate any exported store value live, highlights mounted `nc-*` elements when you hover over them, and shows the current route/query. Because it lives inside a closed Shadow Root it never clashes with your app's styles, and because it is opt-in you decide when and how to load it.
 
 ```typescript
 // src/app.ts — only during local development

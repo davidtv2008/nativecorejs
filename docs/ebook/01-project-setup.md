@@ -297,13 +297,13 @@ The `protectedRoutes` export is the authoritative list of paths that require aut
 npm run dev
 ```
 
-This compiles TypeScript, resolves path aliases, and starts `server.js`. The terminal prints:
+This compiles TypeScript (via esbuild), resolves path aliases, and starts `server.js`. The terminal prints:
 
 ```
 Server running at http://localhost:8000/
 ```
 
-The dev server runs on port **8000**. It serves the compiled `dist/` files, handles SPA fallback routing, serves the mock API under `/api/`, and opens a WebSocket connection on port 8001 for HMR. When you save a `.ts` or `.html` file the TypeScript watcher recompiles it and the browser reloads the affected module automatically.
+The dev server runs on port **8000**. It serves the compiled `dist/` files, handles SPA fallback routing, serves the mock API under `/api/`, and opens a WebSocket connection on port 8001 for HMR. When you save a `.ts` file, esbuild recompiles it and resolves path aliases in one pass, then the browser reloads the affected module automatically. Type errors appear in the terminal without blocking the reload.
 
 ---
 

@@ -740,7 +740,7 @@ NativeCore (formerly NFBS) is a TypeScript-based SPA framework using:
 - **TypeScript** (100% migrated, compiles to dist/)
 - **Zero runtime dependencies** (~15-20KB framework core)
 - **Built-in**: Router, Auth, State Management, 40+ UI components
-- **Path aliases** with tsc-alias (`@core/`, `@components/`, etc.)
+- **Path aliases** resolved by esbuild at compile time (`@core/`, `@components/`, etc.)
 - **Bot-optimized SEO** (pre-rendered HTML without SSR)
 
 ## Critical Information for AI Assistants

@@ -1,25 +1,23 @@
 /**
  * Authentication Middleware
- * Enforces access control for protected routes in the single-shell SPA
+ * Enforces access control for routes tagged with the 'auth' middleware group.
+ *
+ * This function is wrapped by createMiddleware('auth', ...) in app.ts, so it
+ * only runs when the navigated route carries the 'auth' tag. No need to
+ * consult protectedRoutes manually — the tag is the source of truth.
  */
 import auth from '../services/auth.service.js';
 import router from '@core/router.js';
-import { protectedRoutes } from '../routes/routes.js';
 import type { RouteMatch } from '@core/router.js';
 
 export async function authMiddleware(route: RouteMatch): Promise<boolean> {
-    const isProtected = protectedRoutes.some(path => route.path.startsWith(path));
     const isAuthenticated = auth.isAuthenticated();
-    
-    // Protected route accessed without authentication
-    // Redirect to login page
-    if (isProtected && !isAuthenticated) {
+
+    if (!isAuthenticated) {
         router.replace('/login');
         return false;
     }
-    
-    // Note: Shell switching is now handled by the router before middleware runs
+
     return true;
 }
-
 

@@ -245,9 +245,9 @@ document.addEventListener('task-selected', (e: Event) => {
 
 ---
 
-## 20.10 Generic Store Pattern
+## 20.10 Generic Store Factory Pattern
 
-When several stores share the same shape (list of items, loading flag, error), extract a generic factory:
+When several stores share the same shape (list of items, loading flag, error), extract a generic factory function in your own `src/stores/` folder:
 
 ```typescript
 // src/stores/create-store.ts

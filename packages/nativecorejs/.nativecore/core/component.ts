@@ -83,8 +83,8 @@ export class Component extends HTMLElement {
         this.state = { ...this.state, ...newState };
     }
 
-    bind<T>(state: Readable<T>, selector: string, property: string = 'textContent'): void {
-        const el = this.$(selector);
+    bind<T>(state: Readable<T>, selector: string | Element, property: string = 'textContent'): void {
+        const el = typeof selector === 'string' ? this.$(selector) : selector;
         if (!el) {
             console.warn(`[${this.tagName.toLowerCase()}] bind(): no element found for selector "${selector}"`);
             return;
@@ -95,8 +95,8 @@ export class Component extends HTMLElement {
         this._bindings.push(dispose);
     }
 
-    bindAttr<T>(state: Readable<T>, selector: string, attributeName: string): void {
-        const el = this.$(selector);
+    bindAttr<T>(state: Readable<T>, selector: string | Element, attributeName: string): void {
+        const el = typeof selector === 'string' ? this.$(selector) : selector;
         if (!el) {
             console.warn(`[${this.tagName.toLowerCase()}] bindAttr(): no element found for selector "${selector}"`);
             return;

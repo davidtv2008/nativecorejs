@@ -16,7 +16,7 @@ Zero-dependency TypeScript SPA framework built on native browser APIs:
 | Components      | Native Custom Elements + Shadow DOM             |
 | State           | Signals pattern (useState, computed, effect)    |
 | Router          | History API + middleware chain + HTML caching   |
-| Build           | tsc + tsc-alias for path aliases                |
+| Build           | esbuild (compile + alias resolution) + tsc --noEmit (type-check) |
 | Dev Server      | Node.js with HMR                                |
 | Testing         | Vitest + nativecorejs/testing utilities         |
 | SEO             | Puppeteer headless pre-render to dist/bot/      |
@@ -530,10 +530,10 @@ so the correct shell loads. Within a shell, navigation is SPA.
 ## TypeScript Compilation
 
 ```
-src/**/*.ts  -->  tsc + tsc-alias  -->  dist/**/*.js
+src/**/*.ts  -->  esbuild  -->  dist/**/*.js
 ```
 
-Path aliases (`@core/`, `@services/`, etc.) are resolved at compile time by tsc-alias.
+Path aliases (`@core/`, `@services/`, etc.) are resolved by esbuild in the same pass as compilation.
 The browser always loads `.js` files from `dist/`. Imports in source must use `.js` extension.
 
 ## SEO / Bot Pre-rendering
@@ -562,7 +562,7 @@ Build a modern SPA framework using TypeScript with:
 - **Components**: Web Components (Custom Elements + Shadow DOM)
 - **State**: Signals pattern (useState, computed)
 - **Router**: History API-based SPA router with middleware
-- **Build**: TypeScript compiler (tsc) + tsc-alias
+- **Build**: esbuild (compile + path alias resolution) + tsc --noEmit (type-checking)
 - **Dev Server**: Node.js with HMR
 - **Testing**: Vitest
 - **SEO**: Puppeteer for pre-rendering bot HTML

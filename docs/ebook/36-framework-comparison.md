@@ -282,9 +282,14 @@ const { register, handleSubmit } = useForm<FormValues>();
 
 ### NativeCoreJS (built-in)
 ```typescript
-const store = createStore('cart', { items: [], total: 0 });
-store.set({ items: [...store.get().items, newItem] });
-store.watch(state => updateCartBadge(state.items.length));
+// src/stores/cart.store.ts
+import { useState } from 'nativecorejs';
+export const cartStore = useState({ items: [], total: 0 });
+
+// In a controller:
+import { cartStore } from '@stores/cart.store.js';
+cartStore.value = { ...cartStore.value, items: [...cartStore.value.items, newItem] };
+cartStore.watch(state => updateCartBadge(state.items.length));
 ```
 
 ### React (Zustand — popular third-party)

@@ -7,13 +7,13 @@ A single-page reference for the 20 most common patterns.
 ## Reactive State
 
 ```typescript
-import { useState, computed, effect, batch, useSignal } from 'nativecorejs';
+import { useState, computed, effect, batch } from 'nativecorejs';
 
 // Primitive state
-const [count, setCount] = useState(0);
+const count = useState(0);
 count.value;                       // read
-setCount(5);                       // set by value
-setCount(prev => prev + 1);        // set by updater
+count.value = 5;                   // set by assignment
+count.set(prev => prev + 1);       // set by updater
 
 // Derived state (recomputes when dependencies change)
 const doubled = computed(() => count.value * 2);
@@ -26,14 +26,9 @@ stop(); // dispose
 
 // Batch multiple state writes → single notification pass
 batch(() => {
-    count.set(10);
-    doubled; // reads are also fine inside batch
+    count.value = 10;
+    // other state writes…
 });
-
-// Signal (alias for useState, sugar for single-value)
-const signal = useSignal('hello');
-signal.value;
-signal.set('world');
 ```
 
 ---
@@ -47,10 +42,10 @@ export async function pageController(params, state, loaderData) {
     const disposers: Array<() => void> = [];
     const events = trackEvents();
 
-    const [items, setItems] = useState([]);
+    const items = useState([]);
     disposers.push(effect(() => render(items.value)));
 
-    events.on(document, 'click', '#btn', () => setItems([]));
+    events.on(document, 'click', '#btn', () => { items.value = []; });
 
     return () => {
         disposers.forEach(d => d());
@@ -123,7 +118,7 @@ class MyCard extends Component {
         this.on('click', '.card', () => this.emitEvent('nc-click'));
     }
 
-    onAttributeChange(name: string, _old: string | null, value: string | null): void {
+    onAttributeChange(name: string, oldValue: string | null, newValue: string | null): void {
         if (name === 'title') this.render();
     }
 
@@ -141,8 +136,8 @@ defineComponent('my-card', MyCard);
 
 ```typescript
 // In a Component subclass:
-const [loading, setLoading] = useState(false);
-const [label, setLabel] = useState('Submit');
+const loading = useState(false);
+const label = useState('Submit');
 
 this.bind(loading, '#spinner', 'hidden');   // elem.hidden = loading.value
 this.bind(label, '#btn');                   // elem.textContent = label.value
@@ -154,19 +149,20 @@ this.bindAttr(loading, '#btn', 'disabled'); // elem.setAttribute('disabled', ...
 ## Global Stores
 
 ```typescript
-import { createStore, getStore } from 'nativecorejs';
+// src/stores/task.store.ts
+import { useState } from 'nativecorejs';
 
-// Define (module-level, runs once)
-export const taskStore = createStore('tasks', {
+export const taskStore = useState({
     items: [] as Task[],
     filter: 'all' as 'all' | 'open' | 'done'
 });
 
-// Consume anywhere
-const store = getStore<typeof taskStore extends ReturnType<typeof createStore<infer T>> ? T : never>('tasks');
-store.get().items;          // read all
-store.set({ filter: 'open' });  // partial update
-store.watch(state => render(state.items));
+// In any controller or component:
+import { taskStore } from '@stores/task.store.js';
+
+taskStore.value.items;                                    // read
+taskStore.value = { ...taskStore.value, filter: 'open' }; // write
+taskStore.watch(state => render(state.items));             // subscribe
 ```
 
 ---

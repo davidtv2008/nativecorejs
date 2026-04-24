@@ -69,11 +69,7 @@ npm run create:sample
 To work on the runtime while testing changes in a sample app:
 
 ```bash
-# In terminal 1 — watch-compile the runtime
-cd packages/nativecorejs
-# (run your local TypeScript watch command)
-
-# In terminal 2 — run the sample app
+# In terminal 1 — run the sample app (esbuild watch + dev server start automatically)
 cd sample-nativecore
 npm run dev
 ```

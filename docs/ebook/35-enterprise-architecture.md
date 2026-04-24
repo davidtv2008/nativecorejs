@@ -129,11 +129,11 @@ export const protectedRoutes = ['/dashboard', '/tasks'];
 
 ## Shared Global Stores
 
-Use `createStore` for state that crosses feature boundaries (user session, notification queue, UI preferences):
+Use module-level `useState` exports for state that crosses feature boundaries (user session, notification queue, UI preferences):
 
 ```typescript
 // src/shared/stores/user.store.ts
-import { createStore } from 'nativecorejs';
+import { useState } from 'nativecorejs';
 
 export interface UserState {
     user: User | null;
@@ -141,7 +141,7 @@ export interface UserState {
     preferences: UserPreferences;
 }
 
-export const userStore = createStore<UserState>('user', {
+export const userStore = useState<UserState>({
     user: null,
     role: 'guest',
     preferences: { theme: 'system', locale: 'en' }
@@ -151,14 +151,10 @@ export const userStore = createStore<UserState>('user', {
 Consuming in any controller:
 
 ```typescript
-import { getStore } from 'nativecorejs';
-import type { UserState } from '../shared/stores/user.store.js';
+import { userStore } from '../shared/stores/user.store.js';
 
-const user = getStore<UserState>('user');
-const { role } = user.get();
+const { role } = userStore.value;
 ```
-
-All stores in `globalThis.__NC_STORES__` are visible in the dev-tools overlay.
 
 ---
 
@@ -194,28 +190,28 @@ export const auditLogMiddleware: MiddlewareFunction = async (route) => {
 
 ---
 
-## Dependency Injection via the Global Store
+## Dependency Injection via Exported Singletons
 
-NativeCoreJS does not have a DI container. The global store serves this role for shared configuration objects:
+NativeCoreJS does not have a DI container. Exported module-level singletons serve this role for shared configuration objects:
 
 ```typescript
-// Bootstrap once in app.ts
+// src/services/services.ts
 // ApiClient and EventBus are illustrative placeholders — implement or import
 // them according to your project's needs (e.g. a fetch wrapper or an event emitter).
-import { createStore } from 'nativecorejs';
-import { ApiClient } from './services/api-client.js';
-import { EventBus } from './services/event-bus.js';
+import { ApiClient } from './api-client.js';
+import { EventBus } from './event-bus.js';
 
-createStore('services', {
-    api: new ApiClient({ baseUrl: '/api' }),
-    eventBus: new EventBus(),
-});
-
-// Use anywhere
-const { api, eventBus } = getStore('services').get();
+export const api = new ApiClient({ baseUrl: '/api' });
+export const eventBus = new EventBus();
 ```
 
-This pattern keeps service instances singletons, testable (you can swap implementations in test setup), and introspectable via dev-tools.
+Use anywhere:
+
+```typescript
+import { api, eventBus } from '../services/services.js';
+```
+
+This pattern keeps service instances as singletons via the module cache, testable (you can swap implementations in test setup), and straightforward to trace.
 
 ---
 

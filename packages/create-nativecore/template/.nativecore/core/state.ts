@@ -211,37 +211,6 @@ export function useState<T>(initialValue: T): State<T> {
 }
 
 /**
- * Create multiple states at once
- */
-export function createStates<T extends Record<string, any>>(
-    initialStates: T
-): { [K in keyof T]: State<T[K]> } {
-    const states: any = {};
-    for (const [key, value] of Object.entries(initialStates)) {
-        states[key] = useState(value);
-    }
-    return states;
-}
-
-/**
- * Tuple-style reactive state (SolidJS / React Hooks pattern).
- * Returns `[getter, setter]` backed by a tracked `State<T>`.
- *
- * @example
- * const [count, setCount] = useSignal(0);
- * count();        // read
- * setCount(5);    // write
- * setCount(n => n + 1); // updater
- */
-export function useSignal<T>(initialValue: T): [() => T, (value: T | ((prev: T) => T)) => void] {
-    const state = useState(initialValue);
-    return [
-        () => state.value,
-        (valueOrUpdater: T | ((prev: T) => T)) => state.set(valueOrUpdater)
-    ];
-}
-
-/**
  * Create a computed/derived state from other states
  * Automatically tracks dependencies and recalculates when they change
  */
@@ -400,43 +369,4 @@ function syncTrackedDependencies(
             depUnsubscribers.set(dep, dep.watch(() => onDependencyChange()));
         }
     });
-}
-
-// ─── Global Store Registry ───────────────────────────────────────────────────
-
-if (!(globalThis as Record<string, unknown>).__NC_STORES__) {
-    (globalThis as Record<string, unknown>).__NC_STORES__ = new Map<string, State<unknown>>();
-}
-
-const storeRegistry: Map<string, State<unknown>> = (globalThis as Record<string, unknown>).__NC_STORES__ as Map<string, State<unknown>>;
-
-/**
- * Create (or retrieve) a named app-level reactive store.
- *
- * Registers itself in `globalThis.__NC_STORES__` so dev-tools and
- * MetricsPanel can enumerate live stores.  Calling `createStore` with the
- * same name a second time returns the existing store unchanged.
- *
- * @example
- * // Define once (e.g. in src/stores/cart.store.ts)
- * export const cart = createStore('cart', { items: [] });
- *
- * // Read anywhere
- * const cartStore = getStore<CartState>('cart');
- */
-export function createStore<T>(name: string, initial: T): State<T> {
-    if (storeRegistry.has(name)) {
-        return storeRegistry.get(name) as State<T>;
-    }
-    const store = useState<T>(initial);
-    storeRegistry.set(name, store as State<unknown>);
-    return store;
-}
-
-/**
- * Retrieve a previously created store by name.
- * Returns `undefined` if the store has not been created yet.
- */
-export function getStore<T>(name: string): State<T> | undefined {
-    return storeRegistry.get(name) as State<T> | undefined;
 }

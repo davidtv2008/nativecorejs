@@ -4,10 +4,10 @@
 
 Plain JavaScript variables are invisible to the framework. Assign a new value to `let count = 0` and nothing in the DOM knows it changed. Reactive state solves this by wrapping a value in a container that can notify subscribers when it is written to.
 
-NativeCoreJS provides three state primitives: `useState()`, `computed()`, and `useSignal()`. They all live in the same module:
+NativeCoreJS provides three state primitives: `useState()`, `computed()`, and `effect()`. They all live in the same module:
 
 ```typescript
-import { useState, computed, useSignal } from '@core/state.js';
+import { useState, computed, effect } from '@core/state.js';
 ```
 
 ---
@@ -66,81 +66,23 @@ console.log(percentage.value); // 80
 
 Unlike `useState()`, a `computed()` holds a subscription to its upstream state. When you create a `computed()` inside a **controller**, you do not need to do anything — the framework's Page Cleanup Registry automatically calls `.dispose()` on every computed when the router navigates away from the current page (see Chapter 07 for details).
 
-When you create a `computed()` inside a **component**, dispose it manually in `onUnmount()` because components can live across multiple page navigations:
+When you create a `computed()` inside a **component**, dispose it in `onUnmount()` because components can live across multiple page navigations:
 
 ```typescript
-private pctState!: ComputedState<number>;
+percentage: ComputedState<number>;
 
 onMount(): void {
-  this.pctState = computed(() => /* ... */);
+    this.percentage = computed(() => /* ... */);
+    this.render();
 }
 
 onUnmount(): void {
-  this.pctState.dispose();
+    this.percentage?.dispose();
 }
-}
+```
 ```
 
 > **Tip:** In controllers, the Page Cleanup Registry makes forgetting to dispose impossible — every `computed()` call auto-registers its disposal. In components, always pair `computed()` with a `dispose()` in `onUnmount()`, because components live independently of page navigation.
-
----
-
-## `createStates<T>(record)` — Batch State Creation
-
-When a component or store needs several independent state values, `createStates<T>()` lets you declare them all in one call and get back a typed object:
-
-```typescript
-import { createStates } from '@core/state.js';
-
-const { title, priority, loading, error } = createStates({
-    title:    '',
-    priority: 'medium' as 'low' | 'medium' | 'high',
-    loading:  false,
-    error:    null as string | null,
-});
-
-// Each property is a full State<T> with .value, .watch(), .set()
-title.value = 'Write tests';
-loading.value = true;
-```
-
-This is purely a convenience wrapper — each returned value is the same `State<T>` object you get from calling `useState()` individually. The advantage is readability: a store module's entire state structure is visible at a glance in a single object literal.
-
-```typescript
-// src/stores/task.store.ts
-import { createStates, computed } from '@core/state.js';
-
-export const taskStore = (() => {
-    const { tasks, loading, error } = createStates({
-        tasks:   [] as Task[],
-        loading: false,
-        error:   null as string | null,
-    });
-
-    const taskCount   = computed(() => tasks.value.length);
-    const doneTasks   = computed(() => tasks.value.filter(t => t.status === 'done'));
-
-    return { tasks, loading, error, taskCount, doneTasks };
-})();
-```
-
-> **Tip:** `createStates` does not add any runtime behaviour — it is entirely equivalent to multiple `useState()` calls. Use it whenever you have three or more related state values to keep your code tidy.
-
----
-
-## `useSignal(initialValue)` — Tuple API
-
-`useSignal()` is a convenience wrapper over `useState()` that returns a two-element tuple: a getter function and a setter function. This style will feel familiar if you have used React hooks:
-
-```typescript
-const [getCount, setCount] = useSignal(0);
-
-console.log(getCount()); // 0
-setCount(1);
-console.log(getCount()); // 1
-```
-
-The underlying `State<T>` object is the same; `useSignal()` is purely a style preference. Both `useState()` and `useSignal()` produce state containers that the bind API and `computed()` can subscribe to. In components, `useState()` is more common because you often need to pass the state object to `bind()`. In controllers, `useSignal()` is sometimes preferred for its conciseness.
 
 ---
 
@@ -157,54 +99,49 @@ Open `src/components/ui/task-stats.ts`.
 ### State and Computed Values
 
 ```typescript
-import { Component } from '@core/component.js';
-import { defineComponent } from '@core/define.js';
+import { Component, defineComponent } from '@core/component.js';
+import { html } from '@core-utils/templates.js';
 import { useState, computed } from '@core/state.js';
-import type { ComputedState } from '@core/state.js';
+import type { State, ComputedState } from '@core/state.js';
 
 export class TaskStats extends Component {
-  static useShadowDOM = true;
+    static useShadowDOM = true;
 
-  static observedAttributes = ['total', 'completed'];
+    static observedAttributes = ['total', 'completed'];
 
-  private total     = useState(0);
-  private completed = useState(0);
-  private percentage!: ComputedState<number>;
+    total: State<number> = useState(0);
+    completed: State<number> = useState(0);
+    percentage: ComputedState<number>;
 
-  onMount(): void {
-    this.percentage = computed(() => {
-      const t = this.total.value;
-      const c = this.completed.value;
-      return t === 0 ? 0 : Math.round((c / t) * 100);
-    });
-  }
+    onMount(): void {
+        // Seed state from initial HTML attributes.
+        this.total.value = Number(this.getAttribute('total') ?? 0);
+        this.completed.value = Number(this.getAttribute('completed') ?? 0);
 
-  onUnmount(): void {
-    this.percentage.dispose();
-  }
+        // Create a computed state that derives from other states.
+        this.percentage = computed(() => {
+            if (this.total.value === 0) return 0;
+            return Math.round((this.completed.value / this.total.value) * 100);
+        });
+
+        // Re-render now that state is seeded and computed is ready.
+        this.render();
+    }
+
+    onUnmount(): void {
+        this.percentage?.dispose();
+    }
 ```
 
-We declare `total` and `completed` as `useState()` on the class. When an attribute is set on the element (`<task-stats total="10" completed="4">`), `attributeChangedCallback` writes the parsed value into the appropriate state container.
+We declare `total` and `completed` as typed `State<number>` properties, initialized to `useState(0)`. No constructor is needed. `onMount()` seeds their values from HTML attributes and creates the `computed()` — then calls `this.render()` to update the DOM with the correct values. This ordering matters: the base class calls `render()` then `onMount()`, so the first automatic render shows zeros; the explicit `this.render()` at the end of `onMount()` corrects that once state is properly seeded.
 
 ### Template
 
+The `template()` method reads from state directly. When `this.render()` is called it re-evaluates `template()` and patches only the changed nodes:
+
 ```typescript
-  template(): string {
-    return `
-      <div class="stats">
-        <div class="stats__item">
-          <span class="stats__label">Total</span>
-          <span class="stats__value stats__total"></span>
-        </div>
-        <div class="stats__item">
-          <span class="stats__label">Done</span>
-          <span class="stats__value stats__completed"></span>
-        </div>
-        <div class="stats__item">
-          <span class="stats__label">Progress</span>
-          <span class="stats__value stats__percentage"></span>
-        </div>
-      </div>
+  template() {
+    return html`
       <style>
         :host { display: block; }
         .stats {
@@ -215,6 +152,20 @@ We declare `total` and `completed` as `useState()` on the class. When an attribu
         .stats__label { font-size: 0.75rem; color: #64748b; text-transform: uppercase; }
         .stats__value { font-size: 1.5rem; font-weight: 700; color: #1e293b; }
       </style>
+      <div class="stats">
+        <div class="stats__item">
+          <span class="stats__label">Total</span>
+          <span class="stats__value stats__total">${this.total.value}</span>
+        </div>
+        <div class="stats__item">
+          <span class="stats__label">Done</span>
+          <span class="stats__value stats__completed">${this.completed.value}</span>
+        </div>
+        <div class="stats__item">
+          <span class="stats__label">Progress</span>
+          <span class="stats__value stats__percentage">${this.percentage?.value ?? 0}%</span>
+        </div>
+      </div>
     `;
   }
 ```
@@ -222,35 +173,21 @@ We declare `total` and `completed` as `useState()` on the class. When an attribu
 ### Attribute Changes Drive State
 
 ```typescript
-  attributeChangedCallback(name: string, _old: string | null, value: string | null): void {
-    const n = Number(value ?? 0);
-    if (name === 'total')     this.total.value     = isNaN(n) ? 0 : n;
-    if (name === 'completed') this.completed.value = isNaN(n) ? 0 : n;
-    this.render();
-  }
-```
+    attributeChangedCallback(name: string, oldValue: string | null, newValue: string | null): void {
+        if (oldValue === newValue || !this._mounted) return;
 
-### A Simple `render()` Method
+        const n = Number(newValue ?? 0);
+        if (name === 'total')     this.total.value     = isNaN(n) ? 0 : n;
+        if (name === 'completed') this.completed.value = isNaN(n) ? 0 : n;
 
-For now we write a manual `render()` helper. In the next chapter we will replace this with the `bind()` API, which is more efficient and removes the need for manual renders entirely:
-
-```typescript
-  private render(): void {
-    const root = this.shadowRoot;
-    if (!root) return;
-
-    const total     = root.querySelector('.stats__total');
-    const completed = root.querySelector('.stats__completed');
-    const pct       = root.querySelector('.stats__percentage');
-
-    if (total)     total.textContent     = String(this.total.value);
-    if (completed) completed.textContent = String(this.completed.value);
-    if (pct)       pct.textContent       = `${this.percentage?.value ?? 0}%`;
-  }
+        this.render();
+    }
 }
 
 defineComponent('task-stats', TaskStats);
 ```
+
+The `if (oldValue === newValue || !this._mounted) return;` guard prevents unnecessary work — the base class `attributeChangedCallback` fires this before the element is connected, so `!this._mounted` skips the call until `onMount()` has run. Writing to `this.total.value` or `this.completed.value` updates the state, and `this.render()` re-evaluates `template()` and patches only the changed nodes. In the next chapter we replace this call with the `bind()` API, which removes the need to call `this.render()` at all.
 
 ---
 
@@ -269,27 +206,31 @@ el.setAttribute('completed', '8');
 // → stats update to 8 / 10 = 80%
 ```
 
-The `attributeChangedCallback` fires, writes the new value into `this.completed`, which causes `this.percentage` to recompute, and then `render()` updates the text nodes.
+The `attributeChangedCallback` fires, writes the new value into `this.completed`, which causes `this.percentage` to recompute, and then `this.render()` re-evaluates `template()` and patches the updated text nodes.
 
 ---
 
 ## `batch(fn)` — Coalesced State Updates
 
-By default, every write to a state immediately notifies all subscribers synchronously. For simple cases this is ideal. But when you need to update several states at once — say, setting `items`, `loading`, and `error` all in a single API response handler — each write would trigger a separate round of DOM updates. `batch()` defers all notifications until the function completes, so subscribers are called at most once per state, once the batch exits.
+By default, every write to a state immediately notifies all subscribers synchronously. For simple cases this is ideal. But when you need to update several states at once — say, setting `total`, `completed`, and an `error` flag all in a single API response handler — each write would trigger a separate round of DOM updates. `batch()` defers all notifications until the function completes, so subscribers are called at most once per state, once the batch exits.
 
 ```typescript
 import { batch } from '@core/state.js';
 
+const total     = useState(0);
+const completed = useState(0);
+const error     = useState<string | null>(null);
+
 // Without batch: three separate re-renders
-user.value    = fetchedUser;
-loading.value = false;
-error.value   = null;
+total.value     = 12;
+completed.value = 5;
+error.value     = null;
 
 // With batch: a single re-render
 batch(() => {
-    user.value    = fetchedUser;
-    loading.value = false;
-    error.value   = null;
+    total.value     = 12;
+    completed.value = 5;
+    error.value     = null;
 });
 ```
 
@@ -300,18 +241,31 @@ batch(() => {
 - **Optimistic UI rollbacks**: when reverting a failed mutation, batch the rollback writes so the UI jumps back atomically.
 
 ```typescript
-// Store action — batch the success and failure paths
-export async function loadTasks(): Promise<void> {
+// tasks.controller.ts — batch the success and failure paths
+// (You'll build this controller fully in Chapter 07 — this snippet shows
+// where batch() fits inside a real controller's data-loading section.)
+export async function tasksController(): Promise<() => void> {
+    const total     = useState(0);
+    const completed = useState(0);
+    const loading   = useState(true);
+    const error     = useState<string | null>(null);
+
     batch(() => { loading.value = true; error.value = null; });
     try {
-        const data = await api.getCached('/tasks', { ttl: 60_000 });
-        batch(() => { items.value = data as Task[]; loading.value = false; });
+        const data = await api.getCached<Task[]>('/api/tasks', { ttl: 60_000 });
+        batch(() => {
+            total.value     = data.length;
+            completed.value = data.filter(t => t.status === 'done').length;
+            loading.value   = false;
+        });
     } catch (err) {
         batch(() => {
-            error.value   = err instanceof Error ? err.message : 'Failed';
+            error.value   = err instanceof Error ? err.message : 'Failed to load tasks';
             loading.value = false;
         });
     }
+
+    return () => { /* cleanup */ };
 }
 ```
 
@@ -336,7 +290,7 @@ batch(() => {
 - [ ] `src/components/ui/task-stats.ts` exists and shows total, completed, and percentage.
 - [ ] Setting the `total` and `completed` attributes from the browser console updates all three stats.
 - [ ] `batch()` is used whenever two or more state values are set together (e.g. in the data loader).
-- [ ] `this.percentage.dispose()` is called in `onUnmount()` to release the computed subscription.
+- [ ] `this.percentage?.dispose()` is called in `onUnmount()` to release the computed subscription.
 
 ---
 

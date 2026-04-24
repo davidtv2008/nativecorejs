@@ -13,7 +13,6 @@ import {
     computed,
     effect,
     batch,
-    useSignal,
 } from '../../.nativecore/core/state.js';
 
 // ─── useState ────────────────────────────────────────────────────────────────
@@ -248,19 +247,3 @@ describe('effect', () => {
     });
 });
 
-// ─── useSignal ───────────────────────────────────────────────────────────────
-
-describe('useSignal', () => {
-    it('returns a getter/setter tuple', () => {
-        const [count, setCount] = useSignal(0);
-        expect(count()).toBe(0);
-        setCount(5);
-        expect(count()).toBe(5);
-    });
-
-    it('supports updater function', () => {
-        const [n, setN] = useSignal(10);
-        setN(v => v + 1);
-        expect(n()).toBe(11);
-    });
-});

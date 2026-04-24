@@ -1,14 +1,9 @@
 import { dom } from '@core-utils/dom.js';
 import { trackEvents } from '@core-utils/events.js';
-import { createStore, effect } from '@core/state.js';
+import { effect } from '@core/state.js';
+import { cartStore } from '@stores/cart.store.js';
+import type { CartItem } from '@stores/cart.store.js';
 import router from '@core/router.js';
-
-interface CartItem {
-    id: string;
-    name: string;
-    price: number;
-    qty: number;
-}
 
 export async function cartController(): Promise<() => void> {
     const events = trackEvents();
@@ -25,11 +20,9 @@ export async function cartController(): Promise<() => void> {
     const btnCheckout = scope.hook('btn-checkout');
     const snackbar = scope.hook('snackbar') as any;
 
-    // Use (or create) the shared cart store
-    const cartStore = createStore<{ items: CartItem[] }>('cart', { items: [] });
-
+    // Use the shared cart store
     const render = () => {
-        const items = cartStore.get().items;
+        const items = cartStore.value.items;
 
         if (items.length === 0) {
             empty?.removeAttribute('hidden');

@@ -1309,21 +1309,18 @@ console.log(`🔥 HMR enabled on ws://localhost:${HMR_PORT}`);
 
 // ── File Watchers ─────────────────────────────────────────────────────────────
 //
-// Strategy: the server NEVER calls tsc. Instead:
-//   - dist/ is watched for .js output written by the external `tsc --watch` process
+// Strategy: the server NEVER calls the compiler. Instead:
+//   - dist/ is watched for .js output written by the external esbuild watch process
 //   - src/ is watched for .css and .html changes (no compilation needed)
 //   - index.html in root is watched directly
 //
-// To get fast HMR, run the TypeScript compiler in watch mode in a separate
-// terminal alongside the server:
+// `npm run dev` starts both this server and the esbuild watcher in parallel via
+// concurrently. esbuild compiles TypeScript and resolves all path aliases
+// (@core/*, @services/*, etc.) in one pass, then writes the .hmr-ready sentinel
+// so the server fires exactly one browser reload per save.
 //
-//   Terminal 1:  npm start           (this server)
-//   Terminal 2:  npx tsc --watch     (incremental compiler)
-//   Terminal 3 (optional): npx tsc-alias --watch
-//
-// The compiler picks up a save, incrementally rebuilds in ~100-400ms, writes
-// the .js file to dist/, and the server immediately fires the HMR WebSocket
-// message — no cold tsc spawn, no npx overhead.
+// Type checking (tsc --noEmit) runs alongside esbuild in the background and
+// prints errors to the terminal without blocking browser reloads.
 
 const distDir  = path.join(ROOT_DIR, 'dist');
 const srcDir   = path.join(ROOT_DIR, 'src');
@@ -1373,23 +1370,38 @@ function safeWatch(target, options, listener, label = target) {
     return () => { try { watcher?.close(); } catch { /* ignore */ } };
 }
 
-// Watch dist/ — fires after tsc --watch writes compiled .js output.
-// tsc writes several files per compile (foo.js, foo.js.map, foo.d.ts).
+// Watch dist/ — fires after esbuild writes compiled .js output.
+// esbuild writes all changed files near-simultaneously and then the
+// watch-compile.mjs script writes the .hmr-ready sentinel.
 // We track the last .js file seen in the debounce window so the callback
 // always fires with a real JS filename even if the final fs event was a
-// .map or .d.ts file.
+// .map file.
+//
+// Double-reload prevention: when the .hmr-ready sentinel arrives we cancel
+// the 800ms fallback timer and mark sentinelFired so the fallback can never
+// also fire for the same compile cycle.
 let pendingJsFile = null;
 let distDebounceTimer = null;
+let sentinelFired = false;
+
+// Make-command suppression: when make:* creates new .ts files tsc does a
+// full recompile that writes many dist files in a burst. We suppress the
+// dist watcher for a short window so the browser isn't reloaded while the
+// app is still mid-init from the previous page load.
+let makeSuppressUntil = 0;
 
 safeWatch(distDir, { recursive: true }, (eventType, filename) => {
     if (!filename) return;
+    if (Date.now() < makeSuppressUntil) return;
     const norm = filename.replace(/\\/g, '/');
 
-    // Sentinel written by watch-compile.mjs after tsc-alias finishes.
+    // Sentinel written by watch-compile.mjs after esbuild finishes.
     // Firing HMR here ensures @core/* aliases are resolved before reload.
     if (norm === '.hmr-ready') {
         clearTimeout(distDebounceTimer);
-        if (pendingJsFile) {
+        distDebounceTimer = null;
+        if (pendingJsFile && !sentinelFired) {
+            sentinelFired = true;
             console.log(`[HMR] compile ready: ${pendingJsFile}`);
             notifyFile(pendingJsFile);
             pendingJsFile = null;
@@ -1399,10 +1411,12 @@ safeWatch(distDir, { recursive: true }, (eventType, filename) => {
 
     if (norm.endsWith('.js') && !norm.endsWith('.d.ts')) {
         pendingJsFile = norm;
+        sentinelFired = false;
     }
     clearTimeout(distDebounceTimer);
     distDebounceTimer = setTimeout(() => {
-        if (pendingJsFile) {
+        distDebounceTimer = null;
+        if (pendingJsFile && !sentinelFired) {
             console.log(`[HMR] dist changed: ${pendingJsFile}`);
             notifyFile(pendingJsFile);
             pendingJsFile = null;
@@ -1420,6 +1434,12 @@ let srcDebounceTimer = null;
 safeWatch(srcDir, { recursive: true }, (eventType, filename) => {
     if (!filename) return;
     const norm = filename.replace(/\\/g, '/');
+    // A new .ts file means make:* just ran. Suppress dist HMR for 5 s so the
+    // browser isn't reloaded mid-init while esbuild recompiles.
+    if (norm.endsWith('.ts') && eventType === 'rename') {
+        makeSuppressUntil = Date.now() + 5000;
+        console.log('[HMR] new .ts file detected — suppressing dist HMR for 5s');
+    }
     if (norm.endsWith('.css') || norm.endsWith('.html')) {
         pendingSrcFile = norm;
     }
@@ -1443,7 +1463,7 @@ for (const shellFile of ['index.html']) {
 
 console.log('[HMR] Watching dist/ for compiled JS output');
 console.log('[HMR] Watching src/ for CSS and HTML changes');
-console.log('[HMR] NOTE: Run "npx tsc --watch" in a separate terminal for instant TS recompilation');
+console.log('[HMR] esbuild watcher running — type errors appear in the terminal without blocking reloads');
 
 // Last line of defence: if anything in the dev server throws asynchronously
 // (e.g. a stray watcher event after teardown), log it instead of letting the

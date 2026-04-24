@@ -54,7 +54,7 @@ API_BASE_URL=https://api.taskflow.app
 APP_NAME=Taskflow
 ```
 
-NativeCoreJS does not use Vite. The template's build step is pure `tsc` (TypeScript compiler). Environment variables are read at server start from `.env` via `process.env` in `server.js`, or injected into `window` by your hosting provider's build pipeline. A simple pattern used in the template is:
+NativeCoreJS does not use Vite. The dev pipeline uses **esbuild** for fast TypeScript compilation and path alias resolution, with `tsc --noEmit` running in parallel for type-checking. The production build (`npm run build`) uses the same esbuild pipeline. Environment variables are read at server start from `.env` via `process.env` in `server.js`, or injected into `window` by your hosting provider's build pipeline. A simple pattern used in the template is:
 
 ```typescript
 // src/constants/env.ts
