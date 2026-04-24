@@ -213,7 +213,7 @@ async function startEsbuild() {
 // and restart the esbuild context so it picks up the new entry point.
 
 function watchForNewFiles() {
-    const fileExtPattern = useTypeScript ? /\.ts$/ : /\.(ts|js)$/;
+    const fileExtPattern = useTypeScript ? /\.ts$/ : /\.js$/;
     let restartTimer = null;
 
     fs.watch(path.join(ROOT, 'src'), { recursive: true }, (eventType, filename) => {
