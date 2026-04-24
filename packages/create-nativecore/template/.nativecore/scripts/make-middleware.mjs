@@ -18,6 +18,15 @@ import { fileURLToPath } from 'url';
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
+// ─── Detect project language mode ───────────────────────────────────────────
+const ROOT = path.resolve(__dirname, '../..');
+let useTypeScript = true;
+try {
+    const ncConfig = JSON.parse(fs.readFileSync(path.join(ROOT, 'nativecore.config.json'), 'utf8'));
+    if (ncConfig.useTypeScript === false) useTypeScript = false;
+} catch { /* default to TypeScript */ }
+const ext = useTypeScript ? 'ts' : 'js';
+
 const rawName = process.argv[2];
 
 if (!rawName) {
@@ -53,25 +62,25 @@ const kebabName = toKebab(rawName);
 const camelName = toCamel(kebabName);
 const titleName = toTitle(kebabName);
 
-const middlewareDir  = path.resolve(__dirname, '../..', 'src', 'middleware');
-const middlewareFile = path.join(middlewareDir, `${kebabName}.middleware.ts`);
-const appTsPath      = path.resolve(__dirname, '../..', 'src', 'app.ts');
+const middlewareDir  = path.resolve(ROOT, 'src', 'middleware');
+const middlewareFile = path.join(middlewareDir, `${kebabName}.middleware.${ext}`);
+const appEntryPath   = path.resolve(ROOT, 'src', `app.${ext}`);
 
 if (fs.existsSync(middlewareFile)) {
-  console.error(`Error: src/middleware/${kebabName}.middleware.ts already exists`);
+  console.error(`Error: src/middleware/${kebabName}.middleware.${ext} already exists`);
   process.exit(1);
 }
 
 // ── Create middleware file ────────────────────────────────────────────────────
 
-const middlewareTemplate = `/**
+const tsMiddlewareTemplate = `/**
  * ${titleName} Middleware
  * Runs on every route tagged with the '${kebabName}' middleware group.
  *
- * Register it in app.ts:
+ * Register it in app.${ext}:
  *   router.use(createMiddleware('${kebabName}', ${camelName}Middleware));
  *
- * Apply it to routes in routes.ts:
+ * Apply it to routes in routes.${ext}:
  *   r.group({ middleware: ['${kebabName}'] }, (r) => { ... });
  */
 import router from '@core/router.js';
@@ -86,64 +95,85 @@ export async function ${camelName}Middleware(route: RouteMatch): Promise<boolean
 }
 `;
 
+const jsMiddlewareTemplate = `/**
+ * ${titleName} Middleware
+ * Runs on every route tagged with the '${kebabName}' middleware group.
+ *
+ * Register it in app.${ext}:
+ *   router.use(createMiddleware('${kebabName}', ${camelName}Middleware));
+ *
+ * Apply it to routes in routes.${ext}:
+ *   r.group({ middleware: ['${kebabName}'] }, (r) => { ... });
+ */
+import router from '@core/router.js';
+
+export async function ${camelName}Middleware(route) {
+    // TODO: implement your middleware logic here.
+    // Return true  → allow navigation to proceed.
+    // Return false → navigation is blocked (redirect inside this function).
+
+    return true;
+}
+`;
+
+const middlewareTemplate = useTypeScript ? tsMiddlewareTemplate : jsMiddlewareTemplate;
+
 fs.mkdirSync(middlewareDir, { recursive: true });
 fs.writeFileSync(middlewareFile, middlewareTemplate);
-console.log(`Created: src/middleware/${kebabName}.middleware.ts`);
+console.log(`Created: src/middleware/${kebabName}.middleware.${ext}`);
 
-// ── Wire into app.ts ──────────────────────────────────────────────────────────
+// ── Wire into app entry file ──────────────────────────────────────────────────
 
-if (!fs.existsSync(appTsPath)) {
-  console.log('Note: src/app.ts not found — add the import and router.use() manually.');
+if (!fs.existsSync(appEntryPath)) {
+  console.log(`Note: src/app.${ext} not found — add the import and router.use() manually.`);
   process.exit(0);
 }
 
-let appContent = fs.readFileSync(appTsPath, 'utf8');
+let appContent = fs.readFileSync(appEntryPath, 'utf8');
 
-// Add import after the last @middleware import line, or after createMiddleware import
 const importLine = `import { ${camelName}Middleware } from '@middleware/${kebabName}.middleware.js';`;
 
 if (appContent.includes(importLine)) {
-  console.log('Note: Import already exists in app.ts');
+  console.log(`Note: Import already exists in app.${ext}`);
 } else {
-  // Insert after the createMiddleware import line
   appContent = appContent.replace(
     /import \{ createMiddleware \} from '@core\/createMiddleware\.js';/,
     `import { createMiddleware } from '@core/createMiddleware.js';\n${importLine}`
   );
-  console.log(`Added import to src/app.ts`);
+  console.log(`Added import to src/app.${ext}`);
 }
 
-// Insert router.use() after the @middleware sentinel comment block
 const useStatement = `    router.use(createMiddleware('${kebabName}', ${camelName}Middleware));`;
 
 if (appContent.includes(useStatement)) {
-  console.log('Note: router.use() already exists in app.ts');
+  console.log(`Note: router.use() already exists in app.${ext}`);
 } else {
-  // Find the @middleware sentinel and insert after the last router.use() in that block
   const sentinelPattern = /(    \/\/ @middleware[^\n]*\n(?:    router\.use\([^\n]+\n)*)/;
   const match = appContent.match(sentinelPattern);
 
   if (match) {
     const block = match[1];
     appContent = appContent.replace(block, `${block}    router.use(createMiddleware('${kebabName}', ${camelName}Middleware));\n`);
-    console.log(`Added router.use(createMiddleware('${kebabName}', ${camelName}Middleware)) to src/app.ts`);
+    console.log(`Added router.use(createMiddleware('${kebabName}', ${camelName}Middleware)) to src/app.${ext}`);
   } else {
-    console.log(`Warning: Could not find // @middleware sentinel in app.ts — add manually:\n    ${useStatement}`);
+    console.log(`Warning: Could not find // @middleware sentinel in app.${ext} — add manually:\n    ${useStatement}`);
   }
 }
 
-fs.writeFileSync(appTsPath, appContent);
+fs.writeFileSync(appEntryPath, appContent);
 
 // ── Summary ───────────────────────────────────────────────────────────────────
 
 console.log(`
 Done!
 
-  Middleware:  src/middleware/${kebabName}.middleware.ts
+  Middleware:  src/middleware/${kebabName}.middleware.${ext}
   Tag name:    '${kebabName}'
 
-Apply to routes in routes.ts:
+Apply to routes in routes.${ext}:
   r.group({ middleware: ['${kebabName}'] }, (r) => {
       r.register('/your-path', ...);
   });
 `);
+
+

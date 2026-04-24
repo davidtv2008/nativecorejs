@@ -6,6 +6,7 @@ import path from 'path';
 import { fileURLToPath } from 'url';
 import { createInterface } from 'readline/promises';
 import { stdin as input, stdout as output } from 'process';
+import esbuild from 'esbuild';
 
 const cliArgs = process.argv.slice(2);
 const rl = createInterface({ input, output });
@@ -114,6 +115,48 @@ async function replaceInFile(filePath, transform) {
     await fs.writeFile(filePath, transform(existing), 'utf8');
 }
 
+/**
+ * Use esbuild to strip TypeScript syntax from a .ts source string.
+ * Returns plain JavaScript with all type annotations removed.
+ */
+async function stripTypeScript(source) {
+    const result = await esbuild.transform(source, {
+        loader: 'ts',
+        target: 'esnext',
+        format: 'esm',
+        sourcemap: false,
+    });
+    return result.code;
+}
+
+/**
+ * Walk targetDir, strip every .ts file → .js, remove every .d.ts file.
+ * Skips node_modules and dist directories.
+ */
+async function stripAllTypeScript(targetDir) {
+    async function walk(dir) {
+        const entries = await fs.readdir(dir, { withFileTypes: true });
+        for (const entry of entries) {
+            const fullPath = path.join(dir, entry.name);
+            if (entry.isDirectory()) {
+                if (entry.name === 'node_modules' || entry.name === 'dist') continue;
+                await walk(fullPath);
+            } else if (entry.isFile()) {
+                if (entry.name.endsWith('.d.ts')) {
+                    await fs.rm(fullPath);
+                } else if (entry.name.endsWith('.ts')) {
+                    const source = await fs.readFile(fullPath, 'utf8');
+                    const stripped = await stripTypeScript(source);
+                    const jsPath = fullPath.slice(0, -3) + '.js';
+                    await fs.writeFile(jsPath, stripped, 'utf8');
+                    await fs.rm(fullPath);
+                }
+            }
+        }
+    }
+    await walk(targetDir);
+}
+
 async function installDependencies(targetDir) {
     await new Promise((resolve, reject) => {
         const child = spawn('npm', ['install'], {
@@ -138,18 +181,21 @@ function packageJsonTemplate(config) {
     const scripts = {
         prestart: 'npm run compile && node .nativecore/scripts/inject-version.mjs',
         start: 'node server.js',
-        validate: 'npm run typecheck && npm run build:client && npm run test -- --run',
+        validate: config.useTypeScript
+            ? 'npm run typecheck && npm run build:client && npm run test -- --run'
+            : 'npm run build:client && npm run test -- --run',
         dev: 'npm run compile && node .nativecore/scripts/inject-version.mjs && concurrently --kill-others --names "watch,server" -c "blue,green" "node .nativecore/scripts/watch-compile.mjs" "node server.js"',
         'dev:watch': 'node .nativecore/scripts/watch-compile.mjs',
         clean: 'node -e "const fs=require(\'fs\'); fs.rmSync(\'dist\',{recursive:true,force:true}); fs.rmSync(\'_deploy\',{recursive:true,force:true})"',
-        prebuild: 'npm run clean && npm run lint && npm run typecheck',
+        prebuild: config.useTypeScript
+            ? 'npm run clean && npm run lint && npm run typecheck'
+            : 'npm run clean && npm run lint',
         build: 'node .nativecore/scripts/inject-version.mjs && npm run compile:prod && node .nativecore/scripts/minify.mjs && node .nativecore/scripts/prepare-static-assets.mjs && node .nativecore/scripts/strip-dev-blocks.mjs && node .nativecore/scripts/remove-dev.mjs',
         'build:client': 'node .nativecore/scripts/inject-version.mjs && npm run compile:prod && node .nativecore/scripts/minify.mjs && node .nativecore/scripts/prepare-static-assets.mjs',
         'build:ssg': 'node .nativecore/scripts/ssg.mjs --yes',
         'build:full': 'npm run build && npm run build:ssg',
         compile: 'node .nativecore/scripts/watch-compile.mjs --once',
         'compile:prod': 'node .nativecore/scripts/watch-compile.mjs --once && node .nativecore/scripts/remove-dev.mjs',
-        typecheck: 'tsc --noEmit',
         'make:component': 'node .nativecore/scripts/make-component.mjs',
         'make:core-component': 'node .nativecore/scripts/make-core-component.mjs',
         'make:controller': 'node .nativecore/scripts/make-controller.mjs',
@@ -163,9 +209,17 @@ function packageJsonTemplate(config) {
         test: 'vitest',
         'test:ui': 'vitest --ui',
         'test:coverage': 'vitest --coverage',
-        lint: 'eslint src/**/*.ts && htmlhint "**/*.html" --config .htmlhintrc',
-        'lint:fix': 'eslint src/**/*.ts --fix'
+        lint: config.useTypeScript
+            ? 'eslint src/**/*.ts && htmlhint "**/*.html" --config .htmlhintrc'
+            : 'eslint "src/**/*.js" && htmlhint "**/*.html" --config .htmlhintrc',
+        'lint:fix': config.useTypeScript
+            ? 'eslint src/**/*.ts --fix'
+            : 'eslint "src/**/*.js" --fix',
     };
+
+    if (config.useTypeScript) {
+        scripts['typecheck'] = 'tsc --noEmit';
+    }
 
     if (config.includeCapacitor) {
         scripts['cap:sync'] = 'npm run build:client && npx cap sync';
@@ -180,7 +234,6 @@ function packageJsonTemplate(config) {
     const devDependencies = {
         'esbuild': '^0.25.0',
         '@eslint/js': '^9.39.2',
-        '@types/node': '^20.11.0',
         'concurrently': '^9.2.1',
         'eslint': '^9.39.2',
         'globals': '^17.0.0',
@@ -188,12 +241,16 @@ function packageJsonTemplate(config) {
         'htmlhint': '^1.1.4',
         'puppeteer': '^24.36.0',
         'terser': '^5.46.0',
-        'ts-lit-plugin': '^2.0.2',
-        'typescript': '^5.3.3',
-        'typescript-eslint': '^8.53.1',
         'vitest': '^4.1.4',
         'ws': '^8.19.0'
     };
+
+    if (config.useTypeScript) {
+        devDependencies['@types/node'] = '^20.11.0';
+        devDependencies['ts-lit-plugin'] = '^2.0.2';
+        devDependencies['typescript'] = '^5.3.3';
+        devDependencies['typescript-eslint'] = '^8.53.1';
+    }
 
     const result = {
         name: config.projectName,
@@ -202,7 +259,7 @@ function packageJsonTemplate(config) {
         type: 'module',
         main: 'server.js',
         scripts,
-        keywords: ['nativecore', 'spa', 'web-components', 'typescript'],
+        keywords: ['nativecore', 'spa', 'web-components', config.useTypeScript ? 'typescript' : 'javascript'],
         license: 'MIT',
         devDependencies
     };
@@ -221,9 +278,23 @@ function packageJsonTemplate(config) {
 
 function capacitorConfigTemplate(config) {
     const appId = `com.example.${config.projectName.replace(/-/g, '')}`;
-    return `import type { CapacitorConfig } from '@capacitor/cli';
+    if (config.useTypeScript) {
+        return `import type { CapacitorConfig } from '@capacitor/cli';
 
 const config: CapacitorConfig = {
+    appId: '${appId}',
+    appName: '${config.projectTitle}',
+    webDir: 'dist',
+    server: {
+        androidScheme: 'https'
+    }
+};
+
+export default config;
+`;
+    }
+    return `/** @type {import('@capacitor/cli').CapacitorConfig} */
+const config = {
     appId: '${appId}',
     appName: '${config.projectTitle}',
     webDir: 'dist',
@@ -240,7 +311,7 @@ function nativecoreConfigTemplate(config) {
     return JSON.stringify({
         appName: config.projectTitle,
         packageManager: 'npm',
-        useTypeScript: true,
+        useTypeScript: config.useTypeScript,
         features: {
             auth: config.includeAuth,
             dashboard: config.includeDashboard,
@@ -290,11 +361,10 @@ function routesTemplate(config) {
  */
 import { createLazyController } from '@core/lazyController.js';
 import router from '@core/router.js';
-import type { Router } from '@core/router.js';
-
+${config.useTypeScript ? "import type { Router } from '@core/router.js';\n" : ''}
 const lazyController = createLazyController(import.meta.url);
 
-export function registerRoutes(r: Router): void {
+export function registerRoutes(r${config.useTypeScript ? ': Router' : ''})${config.useTypeScript ? ': void' : ''} {
     // @group:public
     r.group({}, (r) => {
         r.register('/', 'src/views/public/home.html', lazyController('homeController', '../controllers/home.controller.js'))
@@ -307,11 +377,17 @@ export const protectedRoutes = router.getPathsForMiddleware('auth');
 }
 
 function appTsTemplate(config) {
+    const isTs = config.useTypeScript;
+
     const authImports = config.includeAuth
-        ? "import auth from '@services/auth.service.js';\nimport type { User } from '@services/auth.service.js';\nimport api from '@services/api.service.js';\nimport { createMiddleware } from '@core/createMiddleware.js';\nimport { authMiddleware } from '@middleware/auth.middleware.js';\n"
+        ? isTs
+            ? "import auth from '@services/auth.service.js';\nimport type { User } from '@services/auth.service.js';\nimport api from '@services/api.service.js';\nimport { createMiddleware } from '@core/createMiddleware.js';\nimport { authMiddleware } from '@middleware/auth.middleware.js';\n"
+            : "import auth from '@services/auth.service.js';\nimport api from '@services/api.service.js';\nimport { createMiddleware } from '@core/createMiddleware.js';\nimport { authMiddleware } from '@middleware/auth.middleware.js';\n"
         : "";
+
     const authVerify = config.includeAuth
-        ? `async function verifyExistingSession(): Promise<void> {
+        ? isTs
+            ? `async function verifyExistingSession(): Promise<void> {
     if (!auth.getToken()) {
         return;
     }
@@ -330,7 +406,27 @@ function appTsTemplate(config) {
 }
 
 `
+            : `async function verifyExistingSession() {
+    if (!auth.getToken()) {
+        return;
+    }
+
+    try {
+        const response = await api.get('/auth/verify');
+        if (!response?.authenticated || !response.user) {
+            auth.logout();
+            return;
+        }
+
+        auth.setUser(response.user);
+    } catch {
+        auth.logout();
+    }
+}
+
+`
         : '';
+
     const authMiddlewareSetup = config.includeAuth ? '    // @middleware — registered middleware (auto-updated by make:middleware)\n    router.use(createMiddleware(\'auth\', authMiddleware));\n' : '';
     const authChangeHandler = config.includeAuth ? `    window.addEventListener('auth-change', () => {
         const isAuth = auth.isAuthenticated();
@@ -352,21 +448,24 @@ function appTsTemplate(config) {
 ` : '';
     const authVerificationCall = config.includeAuth ? '    await verifyExistingSession();\n' : '';
 
+    const registryComment = isTs ? 'components/registry.ts' : 'components/registry.js';
+    const routesComment = isTs ? 'routes/routes.ts' : 'routes/routes.js';
+
     return `/**
  * Main Application Entry Point
  *
  * Boot order:
  *   1. Verify any existing JWT session with the server (keeps users logged in on refresh)
- *   2. Lazy-load Web Components registered in components/registry.ts
+ *   2. Lazy-load Web Components registered in ${registryComment}
  *   3. Expose a frozen router API on window for use inside component templates
  *   4. Register the auth middleware (redirects unauthenticated users away from protected routes)
- *   5. Register all routes from routes/routes.ts
+ *   5. Register all routes from ${routesComment}
  *   6. Start the router (begins listening for navigation events and renders the first view)
  *   7. Initialize sidebar state
  *   8. Load dev tools (localhost only — never ships to production)
  *
  * Keep this file minimal. Business logic belongs in controllers and services.
- * Routes belong in routes/routes.ts. Components belong in components/registry.ts.
+ * Routes belong in ${routesComment}. Components belong in ${registryComment}.
  */
 import router from '@core/router.js';
 ${authImports}import { registerRoutes, protectedRoutes } from '@routes/routes.js';
@@ -376,7 +475,7 @@ import { dom } from '@core-utils/dom.js';
 import { pausePageCleanupCollection, resumePageCleanupCollection } from '@core/pageCleanupRegistry.js';
 import '@components/registry.js';
 
-function isLocalhost(): boolean {
+function isLocalhost()${isTs ? ': boolean' : ''} {
     const hostname = window.location.hostname;
     return hostname === 'localhost' ||
         hostname === '127.0.0.1' ||
@@ -429,7 +528,7 @@ ${authChangeHandler}    window.addEventListener('pageloaded', () => {
     initDevTools();
 }
 
-function initDevTools(): void {
+function initDevTools()${isTs ? ': void' : ''} {
     if (!isLocalhost()) {
         return;
     }
@@ -460,6 +559,7 @@ function homeControllerTemplate(config) {
         : config.includeDashboard
             ? 'Open Dashboard'
             : 'Get Started';
+    const isTs = config.useTypeScript;
 
     return `/**
  * Home Controller
@@ -469,11 +569,11 @@ import { trackEvents, trackSubscriptions } from '@core-utils/events.js';
 import { dom } from '@core-utils/dom.js';
 import auth from '@services/auth.service.js';
 
-export async function homeController(): Promise<() => void> {
+export async function homeController()${isTs ? ': Promise<() => void>' : ''} {
     const events = trackEvents();
     const subs = trackSubscriptions();
 
-    const getStartedBtn = dom.$<HTMLAnchorElement>('#get-started-btn');
+    const getStartedBtn = dom.$${isTs ? '<HTMLAnchorElement>' : ''}('#get-started-btn');
 
     if (getStartedBtn) {
         if (auth.isAuthenticated()) {
@@ -496,17 +596,25 @@ export async function homeController(): Promise<() => void> {
 function homeViewTemplate(config) {
     const primaryHref = config.includeAuth ? '/login' : config.includeDashboard ? '/dashboard' : '/';
     const primaryLabel = config.includeAuth ? 'Sign In' : config.includeDashboard ? 'Open Dashboard' : 'Get Started';
+    const badge = config.useTypeScript
+        ? 'TypeScript-first. Web Components. Dev tools included.'
+        : 'JavaScript. Web Components. Dev tools included.';
+    const tagline = config.useTypeScript
+        ? `Build modern applications with a browser-native architecture that leans on web standards,
+            not proprietary runtimes. NativeCoreJS keeps you close to the platform with Web Components,
+            TypeScript, reactive state, and high-performance patterns that stay durable as the web evolves.`
+        : `Build modern applications with a browser-native architecture that leans on web standards,
+            not proprietary runtimes. NativeCoreJS keeps you close to the platform with Web Components,
+            reactive state, and high-performance patterns that stay durable as the web evolves.`;
 
     return `<section class="hero">
     <div class="hero-inner">
-        <div class="hero-badge">TypeScript-first. Web Components. Dev tools included.</div>
+        <div class="hero-badge">${badge}</div>
 
         <h1>NativeCoreJS</h1>
 
         <p class="hero-tagline">
-            Build modern applications with a browser-native architecture that leans on web standards,
-            not proprietary runtimes. NativeCoreJS keeps you close to the platform with Web Components,
-            TypeScript, reactive state, and high-performance patterns that stay durable as the web evolves.
+            ${tagline}
         </p>
 
         <div class="hero-actions">
@@ -636,6 +744,102 @@ function loginViewTemplate() {
 `;
 }
 
+function eslintConfigJsTemplate() {
+    return `import js from '@eslint/js';
+import globals from 'globals';
+
+export default [
+    js.configs.recommended,
+    {
+        languageOptions: {
+            ecmaVersion: 'latest',
+            sourceType: 'module',
+            globals: {
+                ...globals.browser,
+                ...globals.node,
+                ...globals.es2021
+            }
+        },
+        rules: {
+            'no-console': 'off',
+            'no-debugger': 'error',
+            'no-var': 'error',
+            'prefer-const': 'error',
+            'prefer-arrow-callback': 'warn',
+            'no-unused-vars': ['error', { argsIgnorePattern: '^_' }],
+
+            'no-restricted-globals': [
+                'error',
+                {
+                    name: 'event',
+                    message: "Use local event parameter instead of global 'event'"
+                }
+            ],
+
+            'no-restricted-syntax': [
+                'error',
+                {
+                    selector: "CallExpression[callee.object.name='document'][callee.property.name='querySelector']",
+                    message: "Use dom.query() in controllers or this.$() in components instead of document.querySelector()"
+                },
+                {
+                    selector: "CallExpression[callee.object.name='document'][callee.property.name='querySelectorAll']",
+                    message: "Use dom.queryAll() in controllers or this.$$() in components instead of document.querySelectorAll()"
+                },
+                {
+                    selector: "CallExpression[callee.object.name='document'][callee.property.name='getElementById']",
+                    message: "Use dom.query() in controllers or this.$() in components instead of document.getElementById()"
+                },
+                {
+                    selector: "CallExpression[callee.object.name='document'][callee.property.name='getElementsByClassName']",
+                    message: "Use dom.queryAll() in controllers or this.$$() in components instead of document.getElementsByClassName()"
+                },
+                {
+                    selector: "CallExpression[callee.object.name='document'][callee.property.name='getElementsByTagName']",
+                    message: "Use dom.queryAll() in controllers or this.$$() in components instead of document.getElementsByTagName()"
+                },
+                {
+                    selector: "MemberExpression[object.name='element'][property.name='innerHTML']",
+                    message: 'Avoid innerHTML for security. Use textContent or render() method instead'
+                }
+            ],
+
+            'no-eval': 'error',
+            'no-implied-eval': 'error',
+            'no-new-func': 'error'
+        }
+    },
+    {
+        // Controllers and router - allow document.querySelector since they're not components
+        files: ['src/controllers/**/*.js', '.nativecore/core/router.js', 'src/app.js', 'src/utils/**/*.js'],
+        rules: {
+            'no-restricted-syntax': 'off'
+        }
+    },
+    {
+        // Dev tools - need direct DOM access at framework level
+        files: ['.nativecore/**/*.js'],
+        rules: {
+            'no-restricted-syntax': 'off'
+        }
+    },
+    {
+        // Scripts and test files - relaxed rules
+        files: ['scripts/**/*.{js,mjs}', '*.test.js', '*.spec.js', 'tests/**/*.js'],
+        rules: {
+            'no-restricted-syntax': 'off',
+            'no-console': 'off'
+        }
+    },
+    {
+        // Ignore patterns
+        ignores: ['node_modules/**', 'dist/**', 'build/**']
+    }
+];
+`;
+}
+
+
 function controllersIndexTemplate(config) {
     const lines = [
         '/**',
@@ -693,16 +897,18 @@ async function overlayTemplate(targetDir, templateName) {
 }
 
 async function customizeProject(targetDir, config) {
+    const ext = config.useTypeScript ? 'ts' : 'js';
+
     await writeFile(path.join(targetDir, 'package.json'), packageJsonTemplate(config));
     await writeFile(path.join(targetDir, 'nativecore.config.json'), nativecoreConfigTemplate(config));
-    await writeFile(path.join(targetDir, 'src/app.ts'), appTsTemplate(config));
-    await writeFile(path.join(targetDir, 'src/routes/routes.ts'), routesTemplate(config));
-    await writeFile(path.join(targetDir, 'src/controllers/index.ts'), controllersIndexTemplate(config));
+    await writeFile(path.join(targetDir, `src/app.${ext}`), appTsTemplate(config));
+    await writeFile(path.join(targetDir, `src/routes/routes.${ext}`), routesTemplate(config));
+    await writeFile(path.join(targetDir, `src/controllers/index.${ext}`), controllersIndexTemplate(config));
 
     // For non-default templates the overlay already provides home + template
     // specific views/controllers, so only generate them for the default template.
     if (config.template === 'default') {
-        await writeFile(path.join(targetDir, 'src/controllers/home.controller.ts'), homeControllerTemplate(config));
+        await writeFile(path.join(targetDir, `src/controllers/home.controller.${ext}`), homeControllerTemplate(config));
         await writeFile(path.join(targetDir, 'src/views/public/home.html'), homeViewTemplate(config));
     }
 
@@ -712,18 +918,18 @@ async function customizeProject(targetDir, config) {
     if (config.includeAuth) {
         await writeFile(path.join(targetDir, 'src/views/public/login.html'), loginViewTemplate());
     } else {
-        await removeIfExists(path.join(targetDir, 'src/controllers/login.controller.ts'));
+        await removeIfExists(path.join(targetDir, `src/controllers/login.controller.${ext}`));
         await removeIfExists(path.join(targetDir, 'src/views/public/login.html'));
     }
 
     if (!config.includeDashboard) {
-        await removeIfExists(path.join(targetDir, 'src/controllers/dashboard.controller.ts'));
+        await removeIfExists(path.join(targetDir, `src/controllers/dashboard.controller.${ext}`));
         await removeIfExists(path.join(targetDir, 'src/views/protected/dashboard.html'));
     }
 
-    await replaceInFile(path.join(targetDir, 'src/services/api.service.ts'), content => content.replace("        return 'https://api.nativecorejs.com';", "        return '/api';"));
+    await replaceInFile(path.join(targetDir, `src/services/api.service.${ext}`), content => content.replace("        return 'https://api.nativecorejs.com';", "        return '/api';"));
 
-    await replaceInFile(path.join(targetDir, 'src/components/core/app-header.ts'), content => content
+    await replaceInFile(path.join(targetDir, `src/components/core/app-header.${ext}`), content => content
         .replace(/<a href="\/docs" data-link class="nanc-link">Docs<\/a>\s*/g, '')
         .replace(/<a href="\/components" data-link class="nanc-link">Components<\/a>\s*/g, '')
         .replace(/<a href="\/docs" data-link class="login-form__utility-link">Review the docs<\/a>/g, '<a href="/" data-link class="login-form__utility-link">Return home</a>'));
@@ -747,7 +953,20 @@ async function customizeProject(targetDir, config) {
     await replaceInFile(path.join(targetDir, '.env.example'), content => content.replace('APP_NAME=MyApp', `APP_NAME=${config.projectTitle}`));
 
     if (config.includeCapacitor) {
-        await writeFile(path.join(targetDir, 'capacitor.config.ts'), capacitorConfigTemplate(config));
+        const capExt = config.useTypeScript ? 'ts' : 'js';
+        // Remove the opposite extension if it exists (from template stripping)
+        if (!config.useTypeScript) {
+            await removeIfExists(path.join(targetDir, 'capacitor.config.ts'));
+        }
+        await writeFile(path.join(targetDir, `capacitor.config.${capExt}`), capacitorConfigTemplate(config));
+    }
+
+    if (!config.useTypeScript) {
+        // Replace TypeScript-aware ESLint config with a plain JS one
+        await writeFile(path.join(targetDir, 'eslint.config.js'), eslintConfigJsTemplate());
+        // TypeScript config files are not needed in a JS project
+        await removeIfExists(path.join(targetDir, 'tsconfig.json'));
+        await removeIfExists(path.join(targetDir, 'tsconfig.build.json'));
     }
 }
 
@@ -763,6 +982,13 @@ async function buildProject(config) {
 
     await ensureDir(targetDir);
     await copyTemplate(targetDir);
+
+    // In JS mode: strip TypeScript from all copied template files before
+    // customizeProject writes mode-aware generated files on top.
+    if (!config.useTypeScript) {
+        await stripAllTypeScript(targetDir);
+    }
+
     await customizeProject(targetDir, config);
 
     return targetDir;
@@ -793,6 +1019,11 @@ async function main() {
         console.log('');
     }
 
+    const useTypeScript = hasFlag('--js')
+        ? false
+        : hasFlag('--ts') || useDefaults
+            ? true
+            : await askYesNo('Use TypeScript?', true);
     const includeAuth = hasFlag('--no-auth')
         ? false
         : useDefaults
@@ -819,6 +1050,7 @@ async function main() {
     const config = {
         projectName,
         projectTitle,
+        useTypeScript,
         includeAuth,
         includeDashboard,
         includeCapacitor,
@@ -834,8 +1066,10 @@ async function main() {
     if (config.shouldInstall) {
         console.log('\nInstalling dev dependencies...');
         console.log('These are development and build tools only — none ship to production:\n');
-        console.log('  esbuild           — compiles TypeScript and resolves path aliases (@core/*, @services/*, etc.) in one fast pass');
-        console.log('  typescript        — TypeScript compiler (used for type-checking only during dev; tsc --noEmit)');
+        console.log('  esbuild           — compiles source files and resolves path aliases (@core/*, @services/*, etc.) in one fast pass');
+        if (config.useTypeScript) {
+            console.log('  typescript        — TypeScript compiler (used for type-checking only during dev; tsc --noEmit)');
+        }
         console.log('  concurrently      — runs the dev server and esbuild watcher in parallel');
         console.log('  ws                — WebSocket server used by the HMR dev server');
         console.log('  terser            — minifies JS output for production builds');
@@ -843,10 +1077,14 @@ async function main() {
         console.log('  happy-dom         — lightweight DOM environment for unit tests');
         console.log('  puppeteer         — headless browser used for bot pre-rendering (npm run build:bots)');
         console.log('  eslint            — linter');
-        console.log('  typescript-eslint — TypeScript-aware ESLint rules');
+        if (config.useTypeScript) {
+            console.log('  typescript-eslint — TypeScript-aware ESLint rules');
+        }
         console.log('  @eslint/js        — ESLint core rules');
         console.log('  globals           — browser/node global definitions for ESLint');
-        console.log('  @types/node       — TypeScript types for Node.js (scripts and build tools only)');
+        if (config.useTypeScript) {
+            console.log('  @types/node       — TypeScript types for Node.js (scripts and build tools only)');
+        }
         console.log('  htmlhint          — HTML linter for view files');
         if (config.includeCapacitor) {
             console.log('  @capacitor/core   — Capacitor runtime (ships to native app)');
@@ -867,6 +1105,8 @@ async function main() {
     console.log('\nProject ready.');
     console.log(`\n  cd ${config.projectName}`);
 
+    const capConfigFile = `capacitor.config.${config.useTypeScript ? 'ts' : 'js'}`;
+
     if (config.shouldInstall && installSucceeded) {
         console.log('  npm run dev\n');
         if (config.includeCapacitor) {
@@ -876,7 +1116,7 @@ async function main() {
             console.log('  npm run cap:sync          — build and sync web assets to native projects');
             console.log('  npm run cap:android       — build, sync, and open in Android Studio');
             console.log('  npm run cap:ios           — build, sync, and open in Xcode (macOS only)');
-            console.log('\nUpdate capacitor.config.ts with your real app ID before adding platforms.\n');
+            console.log(`\nUpdate ${capConfigFile} with your real app ID before adding platforms.\n`);
         } else {
             console.log('Your project has no runtime dependencies — only the dev tools listed above.');
         }
@@ -884,13 +1124,14 @@ async function main() {
         console.log('  npm install');
         console.log('  npm run dev\n');
         if (config.includeCapacitor) {
-            console.log('After installing, see capacitor.config.ts and run:');
+            console.log(`After installing, see ${capConfigFile} and run:`);
             console.log('  npm run cap:add:android   — add Android platform');
             console.log('  npm run cap:add:ios       — add iOS platform (macOS only)\n');
         }
     }
 
     if (config.template !== 'default') {
+        const storeExt = config.useTypeScript ? 'ts' : 'js';
         const templateHints = {
             dashboard: [
                 'Template: dashboard',
@@ -907,7 +1148,7 @@ async function main() {
             ecommerce: [
                 'Template: ecommerce',
                 '  • Your app includes a product listing, cart store, and checkout route.',
-                '  • Open src/stores/cart.store.ts to connect your payment provider.',
+                `  • Open src/stores/cart.store.${storeExt} to connect your payment provider.`,
                 '  • Run `npm run build:full` for a Cloudflare Pages-ready deployment.',
             ],
         };
