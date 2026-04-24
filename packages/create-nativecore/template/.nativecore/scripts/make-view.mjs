@@ -18,6 +18,16 @@ import { generateRouteRedirects } from './generate-route-redirects.mjs';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
+
+// ─── Detect project language mode ───────────────────────────────────────────
+const ROOT = path.resolve(__dirname, '../..');
+let useTypeScript = true;
+try {
+    const ncConfig = JSON.parse(fs.readFileSync(path.join(ROOT, 'nativecore.config.json'), 'utf8'));
+    if (ncConfig.useTypeScript === false) useTypeScript = false;
+} catch { /* default to TypeScript */ }
+const ext = useTypeScript ? 'ts' : 'js';
+
 const rawViewPath = process.argv[2];
 
 if (!rawViewPath) {
@@ -148,7 +158,8 @@ function createViewTemplate({ accessLabel, flatName, viewTitle, withController }
 }
 
 function createControllerTemplate({ flatName, viewTitle, controllerName }) {
-  return `/**
+  if (useTypeScript) {
+    return `/**
  * ${viewTitle} Controller
  * Handles dynamic behavior for the ${viewTitle.toLowerCase()} page.
  */
@@ -165,7 +176,6 @@ export async function ${controllerName}Controller(params: Record<string, string>
     const disposers: Array<() => void> = [];
 
     // -- DOM refs ------------------------------------------------------------
-    // dom.view() scopes all queries to [data-view="${flatName}"] — nothing leaks outside.
     const view    = dom.view('${flatName}');
     const titleEl = view.hook('title');
 
@@ -178,15 +188,58 @@ export async function ${controllerName}Controller(params: Record<string, string>
     void params;
 
     // -- Reactive bindings ---------------------------------------------------
-    // effect() auto-tracks every state it reads and re-runs on any change.
-    // Collect the returned disposer — call it in the cleanup below.
-    // No manual .watch() subscriptions or syncView() helpers needed.
     disposers.push(effect(() => {
         if (titleEl) titleEl.textContent = titleText.value;
     }));
 
     // -- Events --------------------------------------------------------------
-    // events.onClick is shorthand for click; use events.on for any other event type.
+    events.onClick(view.actionSelector('primary'), () => {
+        userState.value = auth.getUser();
+    });
+
+    // -- Cleanup -------------------------------------------------------------
+    return () => {
+        titleText.dispose();
+        events.cleanup();
+        disposers.forEach(d => d());
+    };
+}
+`;
+  }
+  return `/**
+ * ${viewTitle} Controller
+ * Handles dynamic behavior for the ${viewTitle.toLowerCase()} page.
+ */
+import { trackEvents } from '@core-utils/events.js';
+import { dom } from '@core-utils/dom.js';
+import { useState, computed, effect } from '@core/state.js';
+import auth from '@services/auth.service.js';
+import api from '@services/api.service.js';
+
+export async function ${controllerName}Controller(params = {}) {
+
+    // -- Setup ---------------------------------------------------------------
+    const events    = trackEvents();
+    const disposers = [];
+
+    // -- DOM refs ------------------------------------------------------------
+    const view    = dom.view('${flatName}');
+    const titleEl = view.hook('title');
+
+    // -- State & computed ----------------------------------------------------
+    const userState = useState(auth.getUser());
+    const titleText = computed(() => userState.value?.name
+        ? '${viewTitle} \u2014 ' + userState.value.name
+        : '${viewTitle}');
+
+    void params;
+
+    // -- Reactive bindings ---------------------------------------------------
+    disposers.push(effect(() => {
+        if (titleEl) titleEl.textContent = titleText.value;
+    }));
+
+    // -- Events --------------------------------------------------------------
     events.onClick(view.actionSelector('primary'), () => {
         userState.value = auth.getUser();
     });
@@ -237,7 +290,7 @@ async function generateView() {
 
     const accessFolder = isProtected ? 'protected' : 'public';
     const accessLabel = isProtected ? 'Protected Route' : 'Public Route';
-    const viewsRootDir = path.resolve(__dirname, '../..', 'src', 'views', accessFolder);
+    const viewsRootDir = path.resolve(ROOT, 'src', 'views', accessFolder);
     const viewFile = path.join(viewsRootDir, `${normalizedViewPath}.html`);
     const viewFileRelative = `src/views/${accessFolder}/${normalizedViewPath}.html`;
 
@@ -251,15 +304,15 @@ async function generateView() {
     console.log(`Created view: ${viewFileRelative}`);
 
     if (createController) {
-      const controllersDir = path.resolve(__dirname, '../..', 'src', 'controllers');
-      const controllerFile = path.join(controllersDir, `${flatName}.controller.ts`);
-      const indexFile = path.join(controllersDir, 'index.ts');
+      const controllersDir = path.resolve(ROOT, 'src', 'controllers');
+      const controllerFile = path.join(controllersDir, `${flatName}.controller.${ext}`);
+      const indexFile = path.join(controllersDir, `index.${ext}`);
 
       if (fs.existsSync(controllerFile)) {
-        console.error(`Warning: Controller "${flatName}.controller.ts" already exists`);
+        console.error(`Warning: Controller "${flatName}.controller.${ext}" already exists`);
       } else {
         fs.writeFileSync(controllerFile, createControllerTemplate({ flatName, viewTitle, controllerName }));
-        console.log(`Created controller: src/controllers/${flatName}.controller.ts`);
+        console.log(`Created controller: src/controllers/${flatName}.controller.${ext}`);
 
         if (fs.existsSync(indexFile)) {
           let indexContent = fs.readFileSync(indexFile, 'utf8');
@@ -267,13 +320,14 @@ async function generateView() {
           if (!indexContent.includes(`${flatName}.controller.js`)) {
             indexContent += exportStatement;
             fs.writeFileSync(indexFile, indexContent);
-            console.log('Updated: src/controllers/index.ts');
+            console.log(`Updated: src/controllers/index.${ext}`);
           }
         }
       }
     }
 
-    const routesPath = path.resolve(__dirname, '../..', 'src', 'routes', 'routes.ts');
+    const routesFile = `routes.${ext}`;
+    const routesPath = path.resolve(ROOT, 'src', 'routes', routesFile);
     if (fs.existsSync(routesPath)) {
       let routesContent = fs.readFileSync(routesPath, 'utf8');
 
@@ -285,12 +339,8 @@ async function generateView() {
       const markerIndex = routesContent.indexOf(groupMarker);
 
       if (markerIndex !== -1) {
-        // Find the closing '});' of this group block and insert before it
-        const blockStart = markerIndex;
-        const searchFrom = blockStart;
-        // Find the matching closing }); for this group — look for '    });' after the marker
         const closingPattern = /\n    \}\);/g;
-        closingPattern.lastIndex = searchFrom;
+        closingPattern.lastIndex = markerIndex;
         const closingMatch = closingPattern.exec(routesContent);
 
         if (closingMatch) {
@@ -298,10 +348,10 @@ async function generateView() {
             routesContent.slice(0, closingMatch.index) +
             '\n' + routeRegistration +
             routesContent.slice(closingMatch.index);
-          console.log('Added route registration to src/routes/routes.ts');
+          console.log(`Added route registration to src/routes/${routesFile}`);
         }
       } else {
-        console.log(`Warning: Could not find "${groupMarker}" in routes.ts — add the route manually.`);
+        console.log(`Warning: Could not find "${groupMarker}" in ${routesFile} — add the route manually.`);
       }
 
       fs.writeFileSync(routesPath, routesContent);
@@ -313,7 +363,7 @@ async function generateView() {
 
     if (isSimpleNavigationCandidate) {
       try {
-        const indexPath = path.resolve(__dirname, '../..', 'index.html');
+        const indexPath = path.resolve(ROOT, 'index.html');
         let indexContent = fs.readFileSync(indexPath, 'utf-8');
 
         if (isProtected) {
@@ -357,7 +407,7 @@ async function generateView() {
     console.log(`- route: ${routePath}`);
     console.log(`- view: ${viewFileRelative}`);
     if (createController) {
-      console.log(`- controller: src/controllers/${flatName}.controller.ts`);
+      console.log(`- controller: src/controllers/${flatName}.controller.${ext}`);
     }
 
     console.log('\nDone!\n');

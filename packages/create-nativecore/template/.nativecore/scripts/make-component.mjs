@@ -17,6 +17,15 @@ import readline from 'readline';
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
+// ─── Detect project language mode ───────────────────────────────────────────
+const ROOT = path.resolve(__dirname, '../..');
+let useTypeScript = true;
+try {
+    const ncConfig = JSON.parse(fs.readFileSync(path.join(ROOT, 'nativecore.config.json'), 'utf8'));
+    if (ncConfig.useTypeScript === false) useTypeScript = false;
+} catch { /* default to TypeScript */ }
+const ext = useTypeScript ? 'ts' : 'js';
+
 // Get component name from command line
 const componentName = process.argv[2];
 const withTests = process.argv.includes('--with-tests');
@@ -51,10 +60,10 @@ const className = componentName
   .join('');
 
 // Component file path (in components/ui folder by default)
-const componentsDir = path.resolve(__dirname, '../..', 'src', 'components');
+const componentsDir = path.resolve(ROOT, 'src', 'components');
 const uiDir = path.join(componentsDir, 'ui');
-const componentFile = path.join(uiDir, `${componentName}.ts`);
-const registryFile = path.join(componentsDir, 'appRegistry.ts');
+const componentFile = path.join(uiDir, `${componentName}.${ext}`);
+const registryFile = path.join(componentsDir, `appRegistry.${ext}`);
 
 // Ensure ui directory exists
 if (!fs.existsSync(uiDir)) {
@@ -63,12 +72,12 @@ if (!fs.existsSync(uiDir)) {
 
 // Check if component already exists
 if (fs.existsSync(componentFile)) {
-  console.error(`Error: Component "${componentName}.ts" already exists`);
+  console.error(`Error: Component "${componentName}.${ext}" already exists`);
   process.exit(1);
 }
 
-// Template files
-const jsTemplate = `import { Component, defineComponent } from '@core/component.js';
+// ─── TypeScript template ────────────────────────────────────────────────────
+const tsTemplate = `import { Component, defineComponent } from '@core/component.js';
 import { html } from '@core-utils/templates.js';
 import { useState, computed } from '@core/state.js';
 import type { State } from '@core/state.js';
@@ -149,6 +158,79 @@ export class ${className} extends Component {
 defineComponent('${componentName}', ${className});
 `;
 
+// ─── JavaScript template ────────────────────────────────────────────────────
+const jsTemplate = `import { Component, defineComponent } from '@core/component.js';
+import { html } from '@core-utils/templates.js';
+import { useState, computed } from '@core/state.js';
+import '@components/core/nc-button.js';
+
+export class ${className} extends Component {
+    static useShadowDOM = true;
+
+    // Attributes listed here appear in the dev tools sidebar and trigger onAttributeChange.
+    static observedAttributes = ['title', 'description'];
+
+    constructor() {
+        super();
+        // Internal state (not reflected as attributes):
+        this.titleState = useState('');
+        this.descriptionState = useState('');
+        this.titleDescComputed = computed(() => \`\${this.titleState.value} - \${this.descriptionState.value}\`);
+    }
+
+    template() {
+        return html\`
+            <style>
+                :host { display: block; }
+                .${componentName} {}
+                .${componentName}__header {}
+                .${componentName}__title {}
+                .${componentName}__description {}
+            </style>
+            <div class="${componentName}" data-view="${componentName}">
+                <header class="${componentName}__header">
+                    <h3 class="${componentName}__title" data-hook="title"></h3>
+                </header>
+                <p class="${componentName}__description" data-hook="description"></p>
+                <p class="${componentName}__title-desc" data-hook="title-desc"></p> <!-- example of using a computed state -->
+                <nc-button class="${componentName}__action" variant="outline" data-action="primary">Action</nc-button>
+                <slot></slot>
+            </div>
+        \`;
+    }
+
+    attributeChangedCallback(name, oldValue, newValue) {
+        if (oldValue === newValue || !this._mounted) return;
+        if (name === 'title') this.titleState.value = newValue ?? '';
+        if (name === 'description') this.descriptionState.value = newValue ?? '';
+    }
+
+    onMount() {
+        // Seed state from initial HTML attributes.
+        this.titleState.value = this.getAttribute('title') ?? '';
+        this.descriptionState.value = this.getAttribute('description') ?? '';
+
+        // Wire up events and reactive bindings here.
+        this.on('nc-button-click', (e) => {
+            const action = e.target.getAttribute('data-action');
+            if (action) this.emitEvent('${componentName}-action', { action });
+        });
+
+        this.bind(this.titleState, '[data-hook="title"]');
+        this.bind(this.descriptionState, '[data-hook="description"]');
+        this.bind(this.titleDescComputed, '[data-hook="title-desc"]');
+    }
+
+    onUnmount() {
+        this.titleDescComputed?.dispose();
+    }
+}
+
+defineComponent('${componentName}', ${className});
+`;
+
+const componentTemplate = useTypeScript ? tsTemplate : jsTemplate;
+
 const readmeTemplate = `# ${className}
 
 Custom element: \`<${componentName}>\`
@@ -185,7 +267,7 @@ Custom element: \`<${componentName}>\`
 `;
 
 // Write component file
-fs.writeFileSync(componentFile, jsTemplate.trim());
+fs.writeFileSync(componentFile, componentTemplate.trim());
 
 // Prompt for prefetch
 const rl = readline.createInterface({
@@ -201,8 +283,8 @@ rl.question('Would you like to prefetch this component? (y/N): ', (answer) => {
   const shouldPreload = answer.toLowerCase() === 'y' || answer.toLowerCase() === 'yes';
   
   if (shouldPreload) {
-    // Add import to preloadRegistry.ts
-    const preloadFile = path.resolve(__dirname, '../..', 'src', 'components', 'preloadRegistry.ts');
+    // Add import to preloadRegistry
+    const preloadFile = path.resolve(ROOT, 'src', 'components', `preloadRegistry.${ext}`);
     
     if (fs.existsSync(preloadFile)) {
       let preloadContent = fs.readFileSync(preloadFile, 'utf-8');
@@ -226,16 +308,16 @@ rl.question('Would you like to prefetch this component? (y/N): ', (answer) => {
         
         preloadContent = lines.join('\n');
         fs.writeFileSync(preloadFile, preloadContent);
-        console.log('Component will be preloaded (added to preloadRegistry.ts)\n');
+        console.log(`Component will be preloaded (added to preloadRegistry.${ext})\n`);
       }
     } else {
-      console.warn('preloadRegistry.ts not found - component will still be lazy-loaded\n');
+      console.warn(`preloadRegistry.${ext} not found - component will still be lazy-loaded\n`);
     }
   } else {
     console.log('Component will be lazy-loaded (default behavior)\n');
   }
 
-  // Add to registry.ts for lazy loading registration
+  // Add to registry for lazy loading registration
   if (fs.existsSync(registryFile)) {
     let registryContent = fs.readFileSync(registryFile, 'utf-8');
   const registrationStatement = `componentRegistry.register('${componentName}', './ui/${componentName}.js');`;
@@ -256,20 +338,20 @@ rl.question('Would you like to prefetch this component? (y/N): ', (answer) => {
     }
     
     fs.writeFileSync(registryFile, registryContent);
-    console.log('Component registered in component registry\n');
+    console.log(`Component registered in component registry\n`);
     }
   } else {
-    console.log('Note: src/components/registry.ts not found. Manual registration required.\n');
+    console.log(`Note: src/components/appRegistry.${ext} not found. Manual registration required.\n`);
   }
 
   // Success message
-  console.log(`Location: src/components/ui/${componentName}.ts`);
-  console.log(`Registered in: src/components/appRegistry.ts`);
+  console.log(`Location: src/components/ui/${componentName}.${ext}`);
+  console.log(`Registered in: src/components/appRegistry.${ext}`);
   if (shouldPreload) {
-    console.log(`Preloaded in: src/components/preloadRegistry.ts`);
+    console.log(`Preloaded in: src/components/preloadRegistry.${ext}`);
   }
   console.log('\nNext steps:');
-  console.log(`   1. Edit src/components/ui/${componentName}.ts`);
+  console.log(`   1. Edit src/components/ui/${componentName}.${ext}`);
   console.log(`   2. Use in your HTML: <${componentName}></${componentName}>`);
   console.log('\nComponent class:', className);
   console.log('Custom element:', `<${componentName}>`);
@@ -280,9 +362,10 @@ rl.question('Would you like to prefetch this component? (y/N): ', (answer) => {
     if (!fs.existsSync(testsDir)) {
       fs.mkdirSync(testsDir, { recursive: true });
     }
-    const testFile = path.join(testsDir, `${componentName}.test.ts`);
+    const testFile = path.join(testsDir, `${componentName}.test.${ext}`);
     if (!fs.existsSync(testFile)) {
-      const testTemplate = `import { describe, it, expect, beforeEach } from 'vitest';
+      const testTemplate = useTypeScript
+        ? `import { describe, it, expect, beforeEach } from 'vitest';
 import { mountComponent, waitFor } from 'nativecorejs/testing';
 
 describe('${componentName}', () => {
@@ -310,13 +393,40 @@ describe('${componentName}', () => {
         expect(result.element.shadowRoot).not.toBeNull();
     });
 });
+`
+        : `import { describe, it, expect, beforeEach, afterEach } from 'vitest';
+import { mountComponent, waitFor } from 'nativecorejs/testing';
+
+describe('${componentName}', () => {
+    let cleanup;
+
+    beforeEach(() => {
+        cleanup = () => {};
+    });
+
+    afterEach(() => {
+        cleanup();
+    });
+
+    it('mounts without errors', async () => {
+        const result = mountComponent('${componentName}');
+        cleanup = result.cleanup;
+        expect(result.element).toBeDefined();
+        expect(result.element.tagName.toLowerCase()).toBe('${componentName}');
+    });
+
+    it('renders expected content', async () => {
+        const result = mountComponent('${componentName}');
+        cleanup = result.cleanup;
+        await waitFor(() => result.element.shadowRoot !== null, 2000);
+        expect(result.element.shadowRoot).not.toBeNull();
+    });
+});
 `;
       fs.writeFileSync(testFile, testTemplate);
-      console.log(`✓ Created test: src/components/ui/__tests__/${componentName}.test.ts`);
+      console.log(`✓ Created test: src/components/ui/__tests__/${componentName}.test.${ext}`);
     }
   }
 
   rl.close();
 });
-
-

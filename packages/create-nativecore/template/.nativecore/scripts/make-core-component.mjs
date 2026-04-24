@@ -17,6 +17,15 @@ import readline from 'readline';
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
+// ─── Detect project language mode ───────────────────────────────────────────
+const ROOT = path.resolve(__dirname, '../..');
+let useTypeScript = true;
+try {
+    const ncConfig = JSON.parse(fs.readFileSync(path.join(ROOT, 'nativecore.config.json'), 'utf8'));
+    if (ncConfig.useTypeScript === false) useTypeScript = false;
+} catch { /* default to TypeScript */ }
+const ext = useTypeScript ? 'ts' : 'js';
+
 // Get component name from command line
 const componentName = process.argv[2];
 
@@ -48,10 +57,10 @@ const className = tagName
   .join(''); // e.g., NcButton
 
 // Component file path (in components/core folder)
-const componentsDir = path.resolve(__dirname, '../..', 'src', 'components');
+const componentsDir = path.resolve(ROOT, 'src', 'components');
 const coreDir = path.join(componentsDir, 'core');
-const componentFile = path.join(coreDir, `${tagName}.ts`);
-const preloadRegistryFile = path.join(componentsDir, 'preloadRegistry.ts');
+const componentFile = path.join(coreDir, `${tagName}.${ext}`);
+const preloadRegistryFile = path.join(componentsDir, `preloadRegistry.${ext}`);
 
 // Ensure core directory exists
 if (!fs.existsSync(coreDir)) {
@@ -60,12 +69,12 @@ if (!fs.existsSync(coreDir)) {
 
 // Check if component already exists
 if (fs.existsSync(componentFile)) {
-  console.error(`Error: Component "${tagName}.ts" already exists`);
+  console.error(`Error: Component "${tagName}.${ext}" already exists`);
   process.exit(1);
 }
 
-// Template for core component
-const componentTemplate = `/**
+// ─── TypeScript template ────────────────────────────────────────────────────
+const tsComponentTemplate = `/**
  * ${className} Component
  * 
  * NativeCore Framework Core Component
@@ -217,16 +226,6 @@ export class ${className} extends Component {
     }
     
     onMount() {
-        // ========== Fine-Grained Reactive Bindings ==========
-        // For components with internal reactive state (useState), use bind() instead
-        // of the manual watch() + cleanup pattern. Bindings are automatically disposed
-        // in disconnectedCallback — no _unwatch fields or onUnmount cleanup needed.
-        //
-        // const count = useState(0);
-        // this.bind(count, '.counter-value');               // updates textContent
-        // this.bindAttr(count, '.track', 'aria-valuenow'); // updates an attribute
-        //
-        // ========== Event Handling ==========
         // this.on('click', '.btn', () => { ... });
     }
     
@@ -240,6 +239,80 @@ export class ${className} extends Component {
 
 defineComponent('${tagName}', ${className});
 `;
+
+// ─── JavaScript template ────────────────────────────────────────────────────
+const jsComponentTemplate = `/**
+ * ${className} Component
+ * 
+ * NativeCore Framework Core Component
+ * Generated on ${new Date().toLocaleDateString()}
+ * 
+ * Usage:
+ *   <${tagName} variant="primary"></${tagName}>
+ *   <${tagName} variant="secondary" size="lg"></${tagName}>
+ */
+
+import { Component, defineComponent } from '@core/component.js';
+import { html } from '@core-utils/templates.js';
+
+export class ${className} extends Component {
+    static useShadowDOM = true;
+    
+    static attributeOptions = {
+        variant: ['primary', 'secondary', 'success', 'danger'],
+        size: ['sm', 'md', 'lg']
+    };
+    
+    static get observedAttributes() {
+        return ['variant', 'size', 'disabled'];
+    }
+    
+    constructor() {
+        super();
+    }
+    
+    template() {
+        const variant = this.getAttribute('variant') || 'primary';
+        const size = this.getAttribute('size') || 'md';
+        const disabled = this.hasAttribute('disabled');
+        
+        return html\`
+            <style>
+                :host {
+                    display: inline-block;
+                    font-family: var(--nc-font-family);
+                    padding: var(--nc-spacing-md);
+                    border-radius: var(--nc-radius-md);
+                    transition: all var(--nc-transition-fast);
+                }
+                :host([variant="primary"]) { background: var(--nc-gradient-primary); color: var(--nc-white); }
+                :host([variant="secondary"]) { background: var(--nc-bg-secondary); color: var(--nc-text); border: 1px solid var(--nc-border); }
+                :host([variant="success"]) { background: var(--nc-gradient-success); color: var(--nc-white); }
+                :host([variant="danger"]) { background: var(--nc-gradient-danger); color: var(--nc-white); }
+                :host([size="sm"]) { padding: var(--nc-spacing-sm); font-size: var(--nc-font-size-sm); }
+                :host([size="md"]) { padding: var(--nc-spacing-md); font-size: var(--nc-font-size-base); }
+                :host([size="lg"]) { padding: var(--nc-spacing-lg); font-size: var(--nc-font-size-lg); }
+                :host([disabled]) { opacity: 0.5; pointer-events: none; }
+            </style>
+            <slot></slot>
+        \`;
+    }
+    
+    onMount() {
+        // this.on('click', '.btn', () => { ... });
+    }
+    
+    attributeChangedCallback(name, oldValue, newValue) {
+        if (oldValue !== newValue && this._mounted) {
+            this.render();
+        }
+    }
+}
+
+defineComponent('${tagName}', ${className});
+`;
+
+const componentTemplate = useTypeScript ? tsComponentTemplate : jsComponentTemplate;
 
 // Create readline interface for prompts
 const rl = readline.createInterface({
@@ -262,32 +335,37 @@ async function main() {
   
   // Create component file
   fs.writeFileSync(componentFile, componentTemplate);
-  console.log(`Created: src/components/core/${tagName}.ts`);
+  console.log(`Created: src/components/core/${tagName}.${ext}`);
   
   // Add to preloadRegistry if requested
   if (shouldPreload) {
-    let registryContent = fs.readFileSync(preloadRegistryFile, 'utf-8');
-    
-    // Find the import section for core components
-    const coreImportSection = registryContent.indexOf('// Core framework components');
-    
-    if (coreImportSection !== -1) {
-      // Find the next line after the comment
-      const insertPosition = registryContent.indexOf('\n', coreImportSection) + 1;
-      const importStatement = `import './core/${tagName}.js';\n`;
+    if (fs.existsSync(preloadRegistryFile)) {
+      let registryContent = fs.readFileSync(preloadRegistryFile, 'utf-8');
       
-      // Check if import already exists
-      if (!registryContent.includes(importStatement)) {
-        registryContent = registryContent.slice(0, insertPosition) + 
-                         importStatement + 
-                         registryContent.slice(insertPosition);
+      // Find the import section for core components
+      const coreImportSection = registryContent.indexOf('// Core framework components');
+      
+      if (coreImportSection !== -1) {
+        // Find the next line after the comment
+        const insertPosition = registryContent.indexOf('\n', coreImportSection) + 1;
+        const importStatement = `import './core/${tagName}.js';\n`;
         
-        fs.writeFileSync(preloadRegistryFile, registryContent);
-        console.log(`Added to: src/components/preloadRegistry.ts`);
+        // Check if import already exists
+        if (!registryContent.includes(importStatement)) {
+          registryContent = registryContent.slice(0, insertPosition) + 
+                           importStatement + 
+                           registryContent.slice(insertPosition);
+          
+          fs.writeFileSync(preloadRegistryFile, registryContent);
+          console.log(`Added to: src/components/preloadRegistry.${ext}`);
+        }
+      } else {
+        console.log(`Warning: Could not find core components section in preloadRegistry.${ext}`);
+        console.log(`   Please manually add: import './core/${tagName}.js';`);
       }
     } else {
-      console.log('Warning: Could not find core components section in preloadRegistry.ts');
-      console.log('   Please manually add: import \'./core/${tagName}.js\';');
+      console.log(`Warning: preloadRegistry.${ext} not found.`);
+      console.log(`   Please manually add: import './core/${tagName}.js';`);
     }
   }
   
@@ -301,8 +379,7 @@ async function main() {
   console.log('   • :host([size="..."]) patterns → Auto-detected dropdown');
   console.log('   • Boolean attrs (disabled, etc.) → Checkbox');
   console.log('   • attributeChangedCallback → Live preview updates');
-  console.log('\nComponent uses --nc- variables from core-variables.css');
-  console.log('Check the generated file for detailed integration comments.\n');
+  console.log('\nComponent uses --nc- variables from core-variables.css\n');
   
   rl.close();
 }
@@ -311,5 +388,3 @@ main().catch(error => {
   console.error('Error:', error.message);
   process.exit(1);
 });
-
-

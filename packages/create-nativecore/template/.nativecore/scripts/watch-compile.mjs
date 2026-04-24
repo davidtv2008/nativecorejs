@@ -2,12 +2,14 @@
  * watch-compile.mjs
  *
  * Replaces the old tsc --watch + tsc-alias two-step pipeline with a single
- * esbuild watch context. esbuild compiles TypeScript and resolves path
- * aliases (@core/*, @services/*, etc.) in one pass, then writes the
- * .hmr-ready sentinel so server.js fires exactly one browser reload.
+ * esbuild watch context. esbuild compiles TypeScript (or JavaScript) and
+ * resolves path aliases (@core/*, @services/*, etc.) in one pass, then
+ * writes the .hmr-ready sentinel so server.js fires exactly one browser reload.
  *
  * Type checking (tsc --noEmit) runs in a parallel child process and prints
  * errors to the terminal without blocking the browser reload.
+ * In JavaScript mode (useTypeScript: false in nativecore.config.json), the
+ * type-checker is skipped entirely.
  */
 
 import esbuild from 'esbuild';
@@ -22,6 +24,22 @@ const __dirname = path.dirname(__filename);
 const ROOT = path.resolve(__dirname, '..', '..');
 const SENTINEL_PATH = path.join(ROOT, 'dist', '.hmr-ready');
 
+// ─── Detect project language mode ────────────────────────────────────────────
+// Read nativecore.config.json to determine whether this is a TS or JS project.
+
+let useTypeScript = true;
+try {
+    const ncConfig = JSON.parse(fs.readFileSync(path.join(ROOT, 'nativecore.config.json'), 'utf8'));
+    if (ncConfig.useTypeScript === false) {
+        useTypeScript = false;
+    }
+} catch {
+    // Config not found or unreadable — fall back to TypeScript mode
+}
+
+const SOURCE_EXT_PATTERN = useTypeScript ? /\.(ts|tsx)$/ : /\.(ts|tsx|js|jsx)$/;
+const SOURCE_LOADER = useTypeScript ? 'ts' : 'js';
+
 // ─── Path-alias plugin ────────────────────────────────────────────────────────
 // With bundle:false, esbuild transpiles each file individually and leaves
 // import strings untouched — onResolve never fires for intra-file imports.
@@ -35,25 +53,54 @@ const SENTINEL_PATH = path.join(ROOT, 'dist', '.hmr-ready');
 // The relative path is calculated from the source file's directory, which
 // maps correctly to the mirrored dist/ structure produced by outbase: ROOT.
 
-const tsconfigPath = path.join(ROOT, 'tsconfig.json');
-const tsconfig = JSON.parse(fs.readFileSync(tsconfigPath, 'utf8'));
-const rawPaths = tsconfig.compilerOptions?.paths ?? {};
+// Read path aliases from tsconfig.json if present, otherwise use built-in defaults.
+// The defaults mirror the standard NativeCore project layout so JS projects
+// (which don't need tsconfig.json) still get correct alias resolution.
 
-// Build [ [prefix, absoluteTarget], ... ] sorted longest-first so "@core-utils"
-// matches before "@core".
-const aliasPairs = Object.entries(rawPaths)
-    .filter(([, targets]) => targets.length > 0)
-    .map(([pattern, targets]) => {
-        const prefix = pattern.replace(/\/\*$/, '');
-        const target = path.resolve(ROOT, targets[0].replace(/\/\*$/, ''));
-        return [prefix, target];
-    })
-    .sort((a, b) => b[0].length - a[0].length);
+const DEFAULT_ALIAS_PAIRS = [
+    ['@core-utils', path.join(ROOT, '.nativecore', 'utils')],
+    ['@core-types', path.join(ROOT, '.nativecore', 'types')],
+    ['@core', path.join(ROOT, '.nativecore', 'core')],
+    ['@dev', path.join(ROOT, '.nativecore', 'dev')],
+    ['@components', path.join(ROOT, 'src', 'components')],
+    ['@config', path.join(ROOT, 'src', 'config')],
+    ['@routes', path.join(ROOT, 'src', 'routes')],
+    ['@services', path.join(ROOT, 'src', 'services')],
+    ['@utils', path.join(ROOT, 'src', 'utils')],
+    ['@stores', path.join(ROOT, 'src', 'stores')],
+    ['@middleware', path.join(ROOT, 'src', 'middleware')],
+    ['@types', path.join(ROOT, 'src', 'types')],
+    ['@constants', path.join(ROOT, 'src', 'constants')],
+];
+
+let aliasPairs = DEFAULT_ALIAS_PAIRS;
+
+const tsconfigPath = path.join(ROOT, 'tsconfig.json');
+if (fs.existsSync(tsconfigPath)) {
+    try {
+        const tsconfig = JSON.parse(fs.readFileSync(tsconfigPath, 'utf8'));
+        const rawPaths = tsconfig.compilerOptions?.paths ?? {};
+        if (Object.keys(rawPaths).length > 0) {
+            // Build [ [prefix, absoluteTarget], ... ] sorted longest-first so "@core-utils"
+            // matches before "@core".
+            aliasPairs = Object.entries(rawPaths)
+                .filter(([, targets]) => targets.length > 0)
+                .map(([pattern, targets]) => {
+                    const prefix = pattern.replace(/\/\*$/, '');
+                    const target = path.resolve(ROOT, targets[0].replace(/\/\*$/, ''));
+                    return [prefix, target];
+                })
+                .sort((a, b) => b[0].length - a[0].length);
+        }
+    } catch {
+        // Malformed tsconfig — use defaults
+    }
+}
 
 const pathAliasPlugin = {
     name: 'path-alias',
     setup(build) {
-        build.onLoad({ filter: /\.(ts|tsx)$/ }, async (args) => {
+        build.onLoad({ filter: SOURCE_EXT_PATTERN }, async (args) => {
             const source = await fs.promises.readFile(args.path, 'utf8');
             const currentDir = path.dirname(args.path);
 
@@ -75,7 +122,7 @@ const pathAliasPlugin = {
                 }
             );
 
-            return { contents: transformed, loader: 'ts' };
+            return { contents: transformed, loader: SOURCE_LOADER };
         });
     },
 };
@@ -92,7 +139,10 @@ function collectEntries(dir, base = dir) {
         const full = path.join(dir, entry.name);
         if (entry.isDirectory()) {
             entries.push(...collectEntries(full, base));
-        } else if (entry.name.endsWith('.ts') && !entry.name.endsWith('.d.ts')) {
+        } else if (
+            (entry.name.endsWith('.ts') || (!useTypeScript && entry.name.endsWith('.js')))
+            && !entry.name.endsWith('.d.ts')
+        ) {
             entries.push(full);
         }
     }
@@ -157,17 +207,18 @@ async function startEsbuild() {
 }
 
 // ─── New-file watcher ─────────────────────────────────────────────────────────
-// When make:component / make:view / make:controller creates a new .ts file,
+// When make:component / make:view / make:controller creates a new source file,
 // esbuild's watch context doesn't know about it (entry points are fixed at
 // context creation). We watch src/ for 'rename' events (= new file / new dir)
 // and restart the esbuild context so it picks up the new entry point.
 
 function watchForNewFiles() {
+    const fileExtPattern = useTypeScript ? /\.ts$/ : /\.(ts|js)$/;
     let restartTimer = null;
 
     fs.watch(path.join(ROOT, 'src'), { recursive: true }, (eventType, filename) => {
         if (eventType !== 'rename') return;
-        if (!filename?.endsWith('.ts')) return;
+        if (!filename || !fileExtPattern.test(filename)) return;
         const fullPath = path.join(ROOT, 'src', filename);
         // Only restart if the file was just created (not deleted).
         if (!fs.existsSync(fullPath)) return;
@@ -183,8 +234,12 @@ function watchForNewFiles() {
 // ─── Background type-checker ──────────────────────────────────────────────────
 // Run tsc --noEmit --watch in the background. Errors print to the terminal
 // but never block or delay the browser reload.
+// Skipped in JavaScript mode (useTypeScript: false).
 
 function startTypeChecker() {
+    if (!useTypeScript) {
+        return null;
+    }
     const tsc = spawn('npx', ['tsc', '--noEmit', '--watch', '--preserveWatchOutput'], {
         stdio: 'inherit',
         shell: true,
@@ -231,6 +286,8 @@ if (isOnce) {
     const tscProcess = startTypeChecker();
     await startEsbuild();
     watchForNewFiles();
-    tscProcess.on('exit', () => process.exit(0));
+    if (tscProcess) {
+        tscProcess.on('exit', () => process.exit(0));
+    }
 }
 
