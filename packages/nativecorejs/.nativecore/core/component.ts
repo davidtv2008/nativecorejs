@@ -121,6 +121,90 @@ export class Component extends HTMLElement {
         }
     }
 
+    /**
+     * Two-way binding: keeps a writable State in sync with a form element.
+     * State → DOM (read) is driven by a reactive effect; DOM → State (write) is
+     * driven by an event listener. Both are auto-disposed on component unmount.
+     *
+     * @param state     A writable State<T> created with useState()
+     * @param selector  CSS selector string or an Element reference
+     * @param options   Optional overrides:
+     *                    event — DOM event to listen for (default: 'change' for
+     *                            checkboxes/radios, 'input' for everything else)
+     *                    prop  — DOM property to read/write (default: 'checked' for
+     *                            checkboxes/radios, 'value' for everything else)
+     *
+     * @example
+     * // In onMount() — explicit selector
+     * this.model(this.username, 'input[name="username"]');
+     *
+     * @example
+     * // Checkbox — auto-detected; uses 'checked' + 'change'
+     * this.model(this.agreed, 'input[type="checkbox"]');
+     *
+     * @example
+     * // Custom event/prop override
+     * this.model(this.rating, 'nc-rating', { event: 'nc-change', prop: 'value' });
+     */
+    model<T>(state: State<T>, selector: string | Element, options: { event?: string; prop?: string } = {}): void {
+        const el = typeof selector === 'string' ? this.$(selector) : selector;
+        if (!el) {
+            console.warn(`[${this.tagName.toLowerCase()}] model(): no element found for selector "${selector}"`);
+            return;
+        }
+        const isCheckable = el instanceof HTMLInputElement &&
+            (el.type === 'checkbox' || el.type === 'radio');
+        const eventName = options.event ?? (isCheckable ? 'change' : 'input');
+        const propName  = options.prop  ?? (isCheckable ? 'checked' : 'value');
+
+        // Read direction: state → DOM
+        const readDispose = effect(() => {
+            (el as any)[propName] = state.value;
+        });
+        this._bindings.push(readDispose);
+
+        // Write direction: DOM → state
+        const handler = (e: Event) => {
+            state.value = (e.target as any)[propName] as T;
+        };
+        el.addEventListener(eventName, handler);
+        this._bindings.push(() => el.removeEventListener(eventName, handler));
+    }
+
+    /**
+     * Livewire-style auto-wiring: scans the component's DOM for every element
+     * carrying an `nc-model="propName"` attribute and calls `model()` on it,
+     * mapping the attribute value to a same-named `useState()` property on `this`.
+     *
+     * Call once from `onMount()`. The reconciler reuses DOM nodes on re-render so
+     * the wired listeners remain valid — there is no need to call this again.
+     *
+     * @example
+     * // template
+     * `<input nc-model="username" />
+     *  <input nc-model="password" type="password" />`
+     *
+     * // class
+     * username = useState('');
+     * password = useState('');
+     * onMount() { this.wireModels(); }
+     */
+    wireModels(): void {
+        const root = this.shadowRoot ?? this;
+        root.querySelectorAll<Element>('[nc-model]').forEach(el => {
+            const stateName = el.getAttribute('nc-model')!;
+            const stateRef = (this as any)[stateName];
+            if (!stateRef || typeof stateRef.watch !== 'function' || typeof stateRef.set !== 'function') {
+                console.warn(
+                    `[${this.tagName.toLowerCase()}] wireModels(): no writable State found for ` +
+                    `nc-model="${stateName}". Make sure the property exists and was created with useState().`
+                );
+                return;
+            }
+            this.model(stateRef, el);
+        });
+    }
+
     render(): void {
         const html = this.template();
         const target = this.shadowRoot ?? this;

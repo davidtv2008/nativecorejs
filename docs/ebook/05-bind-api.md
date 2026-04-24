@@ -77,6 +77,101 @@ Each key is a **selector string**; each value is a state or computed. All subscr
 
 ---
 
+## `this.model(state, selector)` — two-way binding
+
+`model()` wires a **writable** `State<T>` to a form element in both directions at once:
+
+- **State → DOM** (read): a reactive `effect()` updates the element's property whenever the state changes.
+- **DOM → State** (write): an event listener writes the element's current value back to the state on every user interaction.
+
+Both directions are **auto-disposed** on component unmount — no cleanup needed in `onUnmount()`.
+
+```typescript
+// Text input — listens for 'input', reads/writes .value
+this.model(this.username, 'input[name="username"]');
+
+// Checkbox — auto-detected; listens for 'change', reads/writes .checked
+this.model(this.agreed, 'input[type="checkbox"]');
+
+// Element reference instead of a selector string
+const emailEl = this.component.hook('email');
+this.model(this.email, emailEl);
+
+// Custom event/prop for nc-* or third-party components
+this.model(this.rating, 'nc-rating', { event: 'nc-change', prop: 'value' });
+```
+
+NativeCoreJS auto-detects checkboxes and radios: when the target element is an `<input type="checkbox">` or `<input type="radio">`, `model()` defaults to the `change` event and the `checked` property. For every other element it defaults to the `input` event and the `value` property.
+
+You can override both defaults via the `options` argument:
+
+| Option  | Type     | Default (non-checkbox) | Default (checkbox / radio) |
+|---------|----------|------------------------|----------------------------|
+| `event` | `string` | `'input'`              | `'change'`                 |
+| `prop`  | `string` | `'value'`              | `'checked'`                |
+
+`model()` only accepts a **writable** `State<T>` (created with `useState()`). Passing a `computed()` value produces a runtime warning because computed values are read-only.
+
+---
+
+## `this.wireModels()` — Livewire-style auto-wiring
+
+`wireModels()` is a declarative shorthand built on top of `model()`. Instead of calling `model()` once per field, you annotate your template elements with an `nc-model` attribute and call `this.wireModels()` once from `onMount()`. The method scans the component tree for every `[nc-model]` element and automatically calls `model()` for each one, resolving the attribute value as a property name on `this`.
+
+### Usage
+
+```typescript
+class SignupForm extends Component {
+    static useShadowDOM = true;
+
+    // State properties — names must match the nc-model attribute values
+    username = useState('');
+    email    = useState('');
+    agreed   = useState(false);
+
+    template() {
+        return `
+            <input name="username" nc-model="username" placeholder="Username" />
+            <input name="email"    nc-model="email"    placeholder="Email" />
+            <input type="checkbox" nc-model="agreed" />
+            <label>I agree to the terms</label>
+            <p>Preview: <strong id="preview"></strong></p>
+        `;
+    }
+
+    onMount() {
+        this.wireModels();                          // one call wires all three fields
+        this.bind(this.username, '#preview');       // read-only preview still works
+    }
+}
+
+defineComponent('signup-form', SignupForm);
+```
+
+```html
+<signup-form></signup-form>
+```
+
+That is the complete component. As the user types in the username field, `this.username.value` updates automatically. The `#preview` paragraph updates via `bind()` because it reads the same state.
+
+### How it works
+
+1. `wireModels()` queries the shadow root (or component element) for `[nc-model]`.
+2. For each element it reads `el.getAttribute('nc-model')` to get the state property name.
+3. It looks up `this[propName]` and verifies it is a writable `State` (has both `.watch()` and `.set()`).
+4. It delegates to `model(this[propName], el)`, which sets up the effect and the event listener.
+
+The reconciler **reuses** existing DOM nodes across re-renders, so the wired listeners remain attached as long as the component is mounted. Call `wireModels()` **once** from `onMount()` — not from `attributeChangedCallback` or `render()`.
+
+### Rules
+
+- The `nc-model` value must exactly match a `useState()` property name on the component class.
+- Computed values cannot be wired — `wireModels()` skips them with a warning.
+- Call `wireModels()` from `onMount()` only.
+- Use `model()` directly (with `options`) for components that fire non-standard events (e.g., `nc-rating`, `nc-color-picker`).
+
+---
+
 ## `this.on('event', '.selector', handler)`
 
 `on()` registers an event listener via scoped event delegation. Instead of calling `addEventListener` on a specific node, `on()` attaches a single delegated listener to the shadow root (or the component element itself if Shadow DOM is off) and filters events by the provided selector:
@@ -285,14 +380,16 @@ With `key="${task.id}"`, when `tasks.value` is updated:
 
 ## Auto-Cleanup Summary
 
-| API                  | What it registers         | When it is cleaned up        |
-|----------------------|---------------------------|------------------------------|
-| `bind()`             | State subscription        | On component unmount         |
-| `bindAttr()`         | State subscription        | On component unmount         |
-| `bindAll()`          | Multiple subscriptions    | On component unmount         |
-| `on()`               | Delegated event listener  | On component unmount         |
-| `computed()`         | Upstream state listener   | Must call `.dispose()` manually |
-| `watch()` on `State` | Imperative callback       | Must call returned disposer manually |
+| API                  | What it registers              | When it is cleaned up           |
+|----------------------|--------------------------------|---------------------------------|
+| `bind()`             | State subscription             | On component unmount            |
+| `bindAttr()`         | State subscription             | On component unmount            |
+| `bindAll()`          | Multiple subscriptions         | On component unmount            |
+| `model()`            | Effect + event listener        | On component unmount            |
+| `wireModels()`       | Effect + event listener × N    | On component unmount            |
+| `on()`               | Delegated event listener       | On component unmount            |
+| `computed()`         | Upstream state listener        | Must call `.dispose()` manually |
+| `watch()` on `State` | Imperative callback            | Must call returned disposer manually |
 
 The rule is simple: if you call it on `this` (bind/on), the framework disposes it. If you hold the reference yourself (computed, watch), you dispose it.
 
