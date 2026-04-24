@@ -35,15 +35,26 @@ function replaceOrThrow(content, pattern, replacement, fileLabel) {
     return content.replace(pattern, replacement);
 }
 
-// Update cacheBuster.ts
-const cacheBusterPath = path.join(__dirname, '../utils/cacheBuster.ts');
+// Update cacheBuster — detect .ts or .js depending on project language
+const cacheBusterTs = path.join(__dirname, '../utils/cacheBuster.ts');
+const cacheBusterJs = path.join(__dirname, '../utils/cacheBuster.js');
+const cacheBusterPath = fs.existsSync(cacheBusterTs) ? cacheBusterTs : cacheBusterJs;
+const cacheBusterLabel = fs.existsSync(cacheBusterTs) ? '.nativecore/utils/cacheBuster.ts' : '.nativecore/utils/cacheBuster.js';
 let cacheBusterContent = fs.readFileSync(cacheBusterPath, 'utf-8');
+
+// Match both TS form:  export const cacheVersion = isDevelopment\n    ? ...\n    : '...';
+// and esbuild-stripped JS form:  const cacheVersion = isDevelopment ? ... : "...";
+const cacheBusterPattern = /(?:export )?const cacheVersion = isDevelopment[\s\S]*?;/;
+const isTs = cacheBusterPath.endsWith('.ts');
+const replacement = isTs
+    ? `export const cacheVersion = isDevelopment\n    ? Date.now()\n    : '${deployVersion}';`
+    : `const cacheVersion = isDevelopment ? Date.now() : '${deployVersion}';`;
 
 cacheBusterContent = replaceOrThrow(
     cacheBusterContent,
-    /export const cacheVersion = isDevelopment[\s\S]*?;/,
-    `export const cacheVersion = isDevelopment\n    ? Date.now()\n    : '${deployVersion}';`,
-    '.nativecore/utils/cacheBuster.ts'
+    cacheBusterPattern,
+    replacement,
+    cacheBusterLabel
 );
 
 fs.writeFileSync(cacheBusterPath, cacheBusterContent);

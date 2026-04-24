@@ -92,9 +92,11 @@ if (window.location.hostname === 'localhost' || window.location.hostname === '12
                     z-index: 999999;
                     opacity: 1;
                     transition: all 0.3s;
-                    box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+                    box-shadow: 0 2px 10px rgba(0,0,0,0.2);
                     pointer-events: none;
-                    line-height: 1.2;
+                    display: flex;
+                    align-items: center;
+                    gap: 6px;
                 `;
                 document.body.appendChild(indicator);
             }

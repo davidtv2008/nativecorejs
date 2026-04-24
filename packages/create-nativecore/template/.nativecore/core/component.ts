@@ -28,8 +28,6 @@ export class Component extends HTMLElement {
     state: ComponentState;
     protected _mounted: boolean;
     private _bindings: Array<() => void> = [];
-    shadowRoot!: ShadowRoot | null;
-    
     static useShadowDOM?: boolean;
     static observedAttributes?: string[];
     
@@ -232,21 +230,84 @@ export class Component extends HTMLElement {
      * // class
      * username = useState('');
      * password = useState('');
-     * onMount() { this.wireModels(); }
+     * onMount() { this.wireInputs(); }
      */
-    wireModels(): void {
+    wireInputs(): void {
         const root = this.shadowRoot ?? this;
-        root.querySelectorAll<Element>('[nc-model]').forEach(el => {
-            const stateName = el.getAttribute('nc-model')!;
+        root.querySelectorAll<Element>('[wire-input]').forEach(el => {
+            const stateName = el.getAttribute('wire-input')!;
             const stateRef = (this as any)[stateName];
             if (!stateRef || typeof stateRef.watch !== 'function' || typeof stateRef.set !== 'function') {
                 console.warn(
-                    `[${this.tagName.toLowerCase()}] wireModels(): no writable State found for ` +
-                    `nc-model="${stateName}". Make sure the property exists and was created with useState().`
+                    `[${this.tagName.toLowerCase()}] wireInputs(): no writable State found for ` +
+                    `wire-input="${stateName}". Make sure the property exists and was created with useState().`
                 );
                 return;
             }
             this.model(stateRef, el);
+        });
+    }
+
+    /**
+     * Declarative one-way text binding. Scans the component for every
+     * [wire-content="propName"] element and sets el.textContent = this[propName].value
+     * whenever the state changes. Call once from onMount().
+     *
+     * @example
+     * // template: <h1 wire-content="title">...</h1>
+     * title = useState('Hello');
+     * onMount() { this.wireContents(); }
+     */
+    wireContents(): void {
+        const root = this.shadowRoot ?? this;
+        root.querySelectorAll<Element>('[wire-content]').forEach(el => {
+            const stateName = el.getAttribute('wire-content')!;
+            const stateRef = (this as any)[stateName];
+            if (!stateRef || typeof stateRef.watch !== 'function') {
+                console.warn(
+                    `[${this.tagName.toLowerCase()}] wireContents(): no State found for ` +
+                    `wire-content="${stateName}". Make sure the property exists and was created with useState() or computed().`
+                );
+                return;
+            }
+            this.bind(stateRef, el);
+        });
+    }
+
+    /**
+     * Declarative one-way attribute binding. Scans the component for every
+     * [wire-attribute="propName:attr-name"] element and calls
+     * el.setAttribute(attr, this[propName].value) whenever the state changes.
+     * Call once from onMount().
+     *
+     * @example
+     * // template: <div wire-attribute="status:data-status"></div>
+     * status = useState('active');
+     * onMount() { this.wireAttributes(); }
+     */
+    wireAttributes(): void {
+        const root = this.shadowRoot ?? this;
+        root.querySelectorAll<Element>('[wire-attribute]').forEach(el => {
+            const raw = el.getAttribute('wire-attribute')!;
+            const colonIndex = raw.indexOf(':');
+            if (colonIndex === -1) {
+                console.warn(
+                    `[${this.tagName.toLowerCase()}] wireAttributes(): invalid wire-attribute value "${raw}" — ` +
+                    `expected format "propName:attribute-name" (e.g. "status:data-status")`
+                );
+                return;
+            }
+            const stateName = raw.slice(0, colonIndex).trim();
+            const attrName  = raw.slice(colonIndex + 1).trim();
+            const stateRef  = (this as any)[stateName];
+            if (!stateRef || typeof stateRef.watch !== 'function') {
+                console.warn(
+                    `[${this.tagName.toLowerCase()}] wireAttributes(): no State found for ` +
+                    `wire-attribute="${raw}". Make sure "${stateName}" exists and was created with useState() or computed().`
+                );
+                return;
+            }
+            this.bindAttr(stateRef, el, attrName);
         });
     }
 

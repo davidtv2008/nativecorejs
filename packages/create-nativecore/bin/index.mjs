@@ -325,21 +325,21 @@ function nativecoreConfigTemplate(config) {
 
 function routesTemplate(config) {
     const loginRoute = config.includeAuth
-        ? `        r.register('/login', 'src/views/public/login.html', lazyController('loginController', '../controllers/login.controller.js'));\n`
+        ? `        router.register('/login', 'src/views/public/login.html', lazyController('loginController', '../controllers/login.controller.js'));\n`
         : '';
 
     // Default template protected routes
     const dashboardRoute = config.includeDashboard
-        ? `        r.register('/dashboard', 'src/views/protected/dashboard.html', lazyController('dashboardController', '../controllers/dashboard.controller.js'))\n         .cache({ ttl: 30, revalidate: true });\n`
+        ? `        router.register('/dashboard', 'src/views/protected/dashboard.html', lazyController('dashboardController', '../controllers/dashboard.controller.js'))\n         .cache({ ttl: 30, revalidate: true });\n`
         : '';
 
     // Extra routes injected by starter templates
     const templatePublicRoutes = {
-        blog: `        r.register('/posts', 'src/views/public/posts.html', lazyController('postsController', '../controllers/posts.controller.js'));\n` +
-              `        r.register('/posts/:slug', 'src/views/public/post-detail.html', lazyController('postDetailController', '../controllers/post-detail.controller.js'));\n`,
-        ecommerce: `        r.register('/shop', 'src/views/public/shop.html', lazyController('shopController', '../controllers/shop.controller.js'));\n` +
-                   `        r.register('/products/:id', 'src/views/public/product-detail.html', lazyController('productDetailController', '../controllers/product-detail.controller.js'));\n` +
-                   `        r.register('/cart', 'src/views/public/cart.html', lazyController('cartController', '../controllers/cart.controller.js'));\n`,
+        blog: `        router.register('/posts', 'src/views/public/posts.html', lazyController('postsController', '../controllers/posts.controller.js'));\n` +
+              `        router.register('/posts/:slug', 'src/views/public/post-detail.html', lazyController('postDetailController', '../controllers/post-detail.controller.js'));\n`,
+        ecommerce: `        router.register('/shop', 'src/views/public/shop.html', lazyController('shopController', '../controllers/shop.controller.js'));\n` +
+                   `        router.register('/products/:id', 'src/views/public/product-detail.html', lazyController('productDetailController', '../controllers/product-detail.controller.js'));\n` +
+                   `        router.register('/cart', 'src/views/public/cart.html', lazyController('cartController', '../controllers/cart.controller.js'));\n`,
     };
 
     const extraPublicRoutes = config.template !== 'default'
@@ -353,7 +353,7 @@ function routesTemplate(config) {
     const hasProtectedRoutes = dashboardRoute || protectedGroupRoutes;
 
     const protectedGroup = hasProtectedRoutes
-        ? `\n    // @group:protected\n    r.group({ middleware: ['auth'] }, (r) => {\n${protectedGroupRoutes}    });\n`
+        ? `\n    // @group:protected\n    router.group({ middleware: ['auth'] }, (router) => {\n${protectedGroupRoutes}    });\n`
         : '';
 
     return `/**
@@ -364,10 +364,10 @@ import router from '@core/router.js';
 ${config.useTypeScript ? "import type { Router } from '@core/router.js';\n" : ''}
 const lazyController = createLazyController(import.meta.url);
 
-export function registerRoutes(r${config.useTypeScript ? ': Router' : ''})${config.useTypeScript ? ': void' : ''} {
+export function registerRoutes(router${config.useTypeScript ? ': Router' : ''})${config.useTypeScript ? ': void' : ''} {
     // @group:public
-    r.group({}, (r) => {
-        r.register('/', 'src/views/public/home.html', lazyController('homeController', '../controllers/home.controller.js'))
+    router.group({}, (router) => {
+        router.register('/', 'src/views/public/home.html', lazyController('homeController', '../controllers/home.controller.js'))
          .cache({ ttl: 300, revalidate: true });
 ${loginRoute}${extraPublicRoutes}    });
 ${protectedGroup}}

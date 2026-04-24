@@ -97,33 +97,34 @@ function createViewTemplate({ accessLabel, flatName, viewTitle, withController }
     <div class="scaffold-hero">
         <div class="scaffold-hero__inner">
             <span class="page-eyebrow">${accessLabel}</span>
-            <h1 class="scaffold-hero__title" data-hook="title">${viewTitle}</h1>
-            <p class="scaffold-hero__desc" data-hook="summary">Your controller is wired up and ready. Replace this markup with your real page structure.</p>
+            <h1 class="scaffold-hero__title" wire-content="title">${viewTitle}</h1>
+            <p class="scaffold-hero__desc" wire-content="summary">Your controller is wired up and ready.</p>
         </div>
     </div>
 
     <div class="scaffold-body container">
         <div class="card-grid">
-            <article class="card">
+            <article class="card" wire-attribute="cardStatus:data-status">
                 <div class="card__icon">&#9670;</div>
-                <h3 class="card__title">Structure lives here</h3>
-                <p class="card__body">Write your markup in this view. The controller targets stable <code>data-hook</code> and <code>data-action</code> attributes rather than fragile class names.</p>
+                <h3 class="card__title">Display via <code>wire-content</code></h3>
+                <p class="card__body">The heading and description above are driven by <code>wire-content</code>. Set <code>title.value</code> or <code>summary.value</code> in the controller to update them instantly.</p>
             </article>
             <article class="card">
                 <div class="card__icon">&#10022;</div>
-                <h3 class="card__title">Logic lives in the controller</h3>
-                <p class="card__body">Use <code>dom.view('${flatName}')</code>, <code>trackEvents</code>, and <code>trackSubscriptions</code> to wire behavior without touching the DOM directly.</p>
+                <h3 class="card__title">Attributes via <code>wire-attribute</code></h3>
+                <p class="card__body">The first card carries <code>wire-attribute="cardStatus:data-status"</code>. Set <code>cardStatus.value = 'active'</code> in the controller to toggle CSS state.</p>
             </article>
             <article class="card">
                 <div class="card__icon">&#9632;</div>
-                <h3 class="card__title">State stays reactive</h3>
-                <p class="card__body">Call <code>useState()</code> for local state and <code>computed()</code> for derived values. Watch them with <code>.watch()</code> and clean up on exit.</p>
+                <h3 class="card__title">Inputs via <code>wire-input</code></h3>
+                <p class="card__body">Use <code>wire-input</code> on <code>&lt;input&gt;</code>, <code>&lt;select&gt;</code>, and <code>&lt;textarea&gt;</code> for two-way binding. Call <code>wireInputs()</code> once in the controller.</p>
             </article>
         </div>
 
         <div class="page-actions">
             <nc-button data-action="primary-action" variant="primary">Primary Action</nc-button>
             <nc-button data-action="secondary-action" variant="outline">Learn More</nc-button>
+            <nc-input name="email" type="email" wire-input="email" placeholder="you@example.com"></nc-input>
         </div>
     </div>
 </div>
@@ -165,44 +166,42 @@ function createControllerTemplate({ flatName, viewTitle, controllerName }) {
  */
 import { trackEvents } from '@core-utils/events.js';
 import { dom } from '@core-utils/dom.js';
-import { useState, computed, effect } from '@core/state.js';
+import { wireContents, wireInputs, wireAttributes } from '@core-utils/wires.js';
 import auth from '@services/auth.service.js';
 import api from '@services/api.service.js';
 
-export async function ${controllerName}Controller(params: Record<string, string> = {}): Promise<() => void> {
+export async function ${controllerName}Controller(params: Record<string, string> = {}): Promise<void> {
 
     // -- Setup ---------------------------------------------------------------
-    const events    = trackEvents();
-    const disposers: Array<() => void> = [];
-
-    // -- DOM refs ------------------------------------------------------------
-    const view    = dom.view('${flatName}');
-    const titleEl = view.hook('title');
-
-    // -- State & computed ----------------------------------------------------
-    const userState = useState(auth.getUser());
-    const titleText = computed(() => userState.value?.name
-        ? '${viewTitle} \u2014 ' + userState.value.name
-        : '${viewTitle}');
-
+    const events = trackEvents();
     void params;
 
-    // -- Reactive bindings ---------------------------------------------------
-    disposers.push(effect(() => {
-        if (titleEl) titleEl.textContent = titleText.value;
-    }));
+    // -- Text bindings (wire-content) ---------------------------------------------
+    // wireContents() scans [wire-content] elements and wires state→textContent.
+    // Setting title.value updates the <h1> instantly. Auto-cleaned on nav.
+    const { title, summary } = wireContents();
+    title.value   = auth.getUser()?.name
+        ? '${viewTitle} \u2014 ' + auth.getUser()!.name
+        : '${viewTitle}';
+    summary.value = 'Your controller is wired up and ready.';
+
+    // -- Attribute bindings (wire-attribute) -----------------------------------
+    // wireAttributes() scans [wire-attribute="key:attr"] and wires state→setAttribute.
+    // Setting cardStatus.value updates data-status on the card. Auto-cleaned on nav.
+    const { cardStatus } = wireAttributes();
+    cardStatus.value = 'ready';
 
     // -- Events --------------------------------------------------------------
-    events.onClick(view.actionSelector('primary'), () => {
-        userState.value = auth.getUser();
+    events.onClick(dom.view('${flatName}').actionSelector('primary-action'), () => {
+        title.value      = auth.getUser()?.name ? '${viewTitle} \u2014 ' + auth.getUser()!.name : '${viewTitle}';
+        cardStatus.value = 'active';
     });
 
-    // -- Cleanup -------------------------------------------------------------
-    return () => {
-        titleText.dispose();
-        events.cleanup();
-        disposers.forEach(d => d());
-    };
+    // -- Model bindings (wire-input) -------------------------------------------
+    // wireInputs() scans [wire-input] elements and wires state⇄input.
+    // Setting email.value updates the input instantly. Auto-cleaned on nav.
+    const { email } = wireInputs();
+    email.value = '';
 }
 `;
   }
@@ -212,44 +211,42 @@ export async function ${controllerName}Controller(params: Record<string, string>
  */
 import { trackEvents } from '@core-utils/events.js';
 import { dom } from '@core-utils/dom.js';
-import { useState, computed, effect } from '@core/state.js';
+import { wireContents, wireInputs, wireAttributes } from '@core-utils/wires.js';
 import auth from '@services/auth.service.js';
 import api from '@services/api.service.js';
 
 export async function ${controllerName}Controller(params = {}) {
 
     // -- Setup ---------------------------------------------------------------
-    const events    = trackEvents();
-    const disposers = [];
-
-    // -- DOM refs ------------------------------------------------------------
-    const view    = dom.view('${flatName}');
-    const titleEl = view.hook('title');
-
-    // -- State & computed ----------------------------------------------------
-    const userState = useState(auth.getUser());
-    const titleText = computed(() => userState.value?.name
-        ? '${viewTitle} \u2014 ' + userState.value.name
-        : '${viewTitle}');
-
+    const events = trackEvents();
     void params;
 
-    // -- Reactive bindings ---------------------------------------------------
-    disposers.push(effect(() => {
-        if (titleEl) titleEl.textContent = titleText.value;
-    }));
+    // -- Text bindings (wire-content) ---------------------------------------------
+    // wireContents() scans [wire-content] elements and wires state→textContent.
+    // Setting title.value updates the <h1> instantly. Auto-cleaned on nav.
+    const { title, summary } = wireContents();
+    title.value   = auth.getUser()?.name
+        ? '${viewTitle} \u2014 ' + auth.getUser()?.name
+        : '${viewTitle}';
+    summary.value = 'Your controller is wired up and ready.';
+
+    // -- Attribute bindings (wire-attribute) -----------------------------------
+    // wireAttributes() scans [wire-attribute="key:attr"] and wires state→setAttribute.
+    // Setting cardStatus.value updates data-status on the card. Auto-cleaned on nav.
+    const { cardStatus } = wireAttributes();
+    cardStatus.value = 'ready';
 
     // -- Events --------------------------------------------------------------
-    events.onClick(view.actionSelector('primary'), () => {
-        userState.value = auth.getUser();
+    events.onClick(dom.view('${flatName}').actionSelector('primary-action'), () => {
+        title.value      = auth.getUser()?.name ? '${viewTitle} \u2014 ' + auth.getUser()?.name : '${viewTitle}';
+        cardStatus.value = 'active';
     });
 
-    // -- Cleanup -------------------------------------------------------------
-    return () => {
-        titleText.dispose();
-        events.cleanup();
-        disposers.forEach(d => d());
-    };
+    // -- Model bindings (wire-input) -------------------------------------------
+    // wireInputs() scans [wire-input] elements and wires state⇄input.
+    // Setting email.value updates the input instantly. Auto-cleaned on nav.
+    const { email } = wireInputs();
+    email.value = '';
 }
 `;
 }
@@ -332,8 +329,8 @@ async function generateView() {
       let routesContent = fs.readFileSync(routesPath, 'utf8');
 
       const routeRegistration = createController
-        ? `        r.register('${routePath}', '${viewFileRelative}', lazyController('${controllerName}Controller', '../controllers/${flatName}.controller.js'));`
-        : `        r.register('${routePath}', '${viewFileRelative}');`;
+        ? `        router.register('${routePath}', '${viewFileRelative}', lazyController('${controllerName}Controller', '../controllers/${flatName}.controller.js'));`
+        : `        router.register('${routePath}', '${viewFileRelative}');`;
 
       const groupMarker = isProtected ? '// @group:protected' : '// @group:public';
       const markerIndex = routesContent.indexOf(groupMarker);

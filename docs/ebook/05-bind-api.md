@@ -114,9 +114,9 @@ You can override both defaults via the `options` argument:
 
 ---
 
-## `this.wireModels()` — Livewire-style auto-wiring
+## `this.wireInputs()` — Livewire-style auto-wiring
 
-`wireModels()` is a declarative shorthand built on top of `model()`. Instead of calling `model()` once per field, you annotate your template elements with an `nc-model` attribute and call `this.wireModels()` once from `onMount()`. The method scans the component tree for every `[nc-model]` element and automatically calls `model()` for each one, resolving the attribute value as a property name on `this`.
+`wireInputs()` is a declarative shorthand built on top of `model()`. Instead of calling `model()` once per field, you annotate your template elements with an `wire-input` attribute and call `this.wireInputs()` once from `onMount()`. The method scans the component tree for every `[wire-input]` element and automatically calls `model()` for each one, resolving the attribute value as a property name on `this`.
 
 ### Usage
 
@@ -124,23 +124,23 @@ You can override both defaults via the `options` argument:
 class SignupForm extends Component {
     static useShadowDOM = true;
 
-    // State properties — names must match the nc-model attribute values
+    // State properties — names must match the wire-input attribute values
     username = useState('');
     email    = useState('');
     agreed   = useState(false);
 
     template() {
         return `
-            <input name="username" nc-model="username" placeholder="Username" />
-            <input name="email"    nc-model="email"    placeholder="Email" />
-            <input type="checkbox" nc-model="agreed" />
+            <input name="username" wire-input="username" placeholder="Username" />
+            <input name="email"    wire-input="email"    placeholder="Email" />
+            <input type="checkbox" wire-input="agreed" />
             <label>I agree to the terms</label>
             <p>Preview: <strong id="preview"></strong></p>
         `;
     }
 
     onMount() {
-        this.wireModels();                          // one call wires all three fields
+        this.wireInputs();                          // one call wires all three fields
         this.bind(this.username, '#preview');       // read-only preview still works
     }
 }
@@ -156,19 +156,203 @@ That is the complete component. As the user types in the username field, `this.u
 
 ### How it works
 
-1. `wireModels()` queries the shadow root (or component element) for `[nc-model]`.
-2. For each element it reads `el.getAttribute('nc-model')` to get the state property name.
+1. `wireInputs()` queries the shadow root (or component element) for `[wire-input]`.
+2. For each element it reads `el.getAttribute('wire-input')` to get the state property name.
 3. It looks up `this[propName]` and verifies it is a writable `State` (has both `.watch()` and `.set()`).
 4. It delegates to `model(this[propName], el)`, which sets up the effect and the event listener.
 
-The reconciler **reuses** existing DOM nodes across re-renders, so the wired listeners remain attached as long as the component is mounted. Call `wireModels()` **once** from `onMount()` — not from `attributeChangedCallback` or `render()`.
+The reconciler **reuses** existing DOM nodes across re-renders, so the wired listeners remain attached as long as the component is mounted. Call `wireInputs()` **once** from `onMount()` — not from `attributeChangedCallback` or `render()`.
 
 ### Rules
 
-- The `nc-model` value must exactly match a `useState()` property name on the component class.
-- Computed values cannot be wired — `wireModels()` skips them with a warning.
-- Call `wireModels()` from `onMount()` only.
+- The `wire-input` value must exactly match a `useState()` property name on the component class.
+- Computed values cannot be wired — `wireInputs()` skips them with a warning.
+- Call `wireInputs()` from `onMount()` only.
 - Use `model()` directly (with `options`) for components that fire non-standard events (e.g., `nc-rating`, `nc-color-picker`).
+
+---
+
+## `wireInputs()` in Controllers
+
+Controllers are plain functions — they don't have `this.wireInputs()`. Use the standalone `wireInputs` utility from `@core-utils/wireInputs.js` instead.
+
+It works the same way as the component version: **no arguments, no cleanup needed**. It scans the active `[data-view]`, creates a `useState()` for every `[wire-input]` element it finds, wires both directions, and auto-registers cleanup with the page cleanup registry so the router disposes everything on navigation:
+
+```typescript
+import { wireContents, wireInputs, wireAttributes } from '@core-utils/wires.js';
+
+export async function tasksController() {
+    const { title, priority, done } = wireInputs();
+    // That's it — no cleanup needed
+}
+```
+
+```html
+<!-- src/views/public/tasks.html -->
+<div data-view="tasks">
+    <input wire-input="title"    placeholder="Task title" />
+    <input wire-input="priority" />
+    <input wire-input="done" type="checkbox" />
+</div>
+```
+
+The states are live and two-way bound immediately. Use them anywhere in the controller:
+
+```typescript
+export async function tasksController() {
+    const { title, done } = wireInputs();
+
+    const events = trackEvents();
+
+    events.onClick('submit-btn', async () => {
+        await api.post('/tasks', { title: title.value, done: done.value });
+        title.value = '';   // clears the input automatically
+    });
+}
+```
+
+Initial values are inferred from the element type — no need to declare defaults in the controller:
+- `checkbox` / `radio` → `boolean` (`el.checked`)
+- `number` input → `number` (`el.value || 0`)
+- everything else → `string` (`el.value || ''`)
+
+Optional config for non-standard elements or an explicit root:
+
+```typescript
+// Custom event/prop for a third-party component
+const { rating } = wireInputs({
+    overrides: { rating: { event: 'nc-change', prop: 'value' } }
+});
+
+// Explicit root (defaults to the active [data-view])
+const { title } = wireInputs({
+    root: document.querySelector('[data-view="tasks"]')
+});
+```
+
+---
+
+## `wireContents()` — declarative text binding
+
+`wireContents()` is the display counterpart to `wireInputs()`. It scans the active `[data-view]` for every `[wire-content="key"]` element, creates a `useState<string>()` seeded from the element's current `textContent`, and wires an `effect()` that writes `state.value` back to `el.textContent` whenever it changes.
+
+Use it for **display-only elements**: headings, paragraphs, spans, badges, labels — anything the user reads but doesn't type into.
+
+### In a controller
+
+```typescript
+
+
+export async function tasksController() {
+    const { title, count } = wireContents();
+
+    title.value = 'My Tasks';   // → <h1 wire-content="title"> updates instantly
+    count.value = String(42);   // → <span wire-content="count"> updates instantly
+}
+```
+
+```html
+<h1  wire-content="title">Loading...</h1>
+<span wire-content="count">0</span>
+```
+
+Cleanup is auto-registered — no return value needed.
+
+### In a component
+
+```typescript
+class TaskHeader extends Component {
+    static useShadowDOM = true;
+
+    title = useState('Tasks');
+    count = computed(() => `${this.items.value.length} tasks`);
+
+    template() {
+        return `
+            <h1 wire-content="title">Tasks</h1>
+            <span wire-content="count">0 tasks</span>
+        `;
+    }
+
+    onMount() {
+        this.wireContents();   // wires all [wire-content] to same-named class properties
+    }
+}
+```
+
+`this.wireContents()` looks up `this["title"]` and `this["count"]` — same reflection pattern as `this.wireInputs()`.
+
+---
+
+## `wireAttributes()` — declarative attribute binding
+
+`wireAttributes()` scans for `[wire-attribute="key:attribute-name"]` elements and wires `state.value` → `el.setAttribute(attr, value)` via an `effect()`. Use it to drive CSS state attributes, ARIA attributes, `src`, `href`, `disabled`, or any other HTML attribute reactively.
+
+The format is always `wire-attribute="stateKey:html-attribute-name"`.
+
+### In a controller
+
+```typescript
+
+
+export async function tasksController() {
+    const { status, busy } = wireAttributes();
+
+    status.value = 'active';  // → setAttribute('data-status', 'active')
+    busy.value   = 'true';    // → setAttribute('aria-busy', 'true')
+}
+```
+
+```html
+<div    wire-attribute="status:data-status">...</div>
+<button wire-attribute="busy:aria-busy">Save</button>
+```
+
+Paired with CSS:
+```css
+[data-status="active"] { border-color: green; }
+[data-status="error"]  { border-color: red;   }
+```
+
+### In a component
+
+```typescript
+class TaskCard extends Component {
+    static useShadowDOM = true;
+
+    status = useState('pending');
+
+    template() {
+        return `<article wire-attribute="status:data-status">...</article>`;
+    }
+
+    onMount() {
+        this.wireAttributes();  // wires all [wire-attribute] to same-named class properties
+    }
+}
+```
+
+### Combining all three
+
+```html
+<div data-view="tasks">
+    <h1     wire-content="title">Tasks</h1>
+    <span   wire-content="count">0</span>
+    <div    wire-attribute="filter:data-filter">...</div>
+    <input  wire-input="search" placeholder="Search..." />
+</div>
+```
+
+```typescript
+const { title, count  } = wireContents();    // text display
+const { filter        } = wireAttributes();  // HTML attribute
+const { search        } = wireInputs();      // two-way input
+
+title.value  = 'My Tasks';
+count.value  = '42';
+filter.value = 'active';
+// search.value reflects whatever the user has typed, two-way
+```
 
 ---
 
@@ -386,7 +570,7 @@ With `key="${task.id}"`, when `tasks.value` is updated:
 | `bindAttr()`         | State subscription             | On component unmount            |
 | `bindAll()`          | Multiple subscriptions         | On component unmount            |
 | `model()`            | Effect + event listener        | On component unmount            |
-| `wireModels()`       | Effect + event listener × N    | On component unmount            |
+| `wireInputs()`       | Effect + event listener × N    | On component unmount            |
 | `on()`               | Delegated event listener       | On component unmount            |
 | `computed()`         | Upstream state listener        | Must call `.dispose()` manually |
 | `watch()` on `State` | Imperative callback            | Must call returned disposer manually |
