@@ -1,3 +1,4 @@
+<div data-view="home">
 <section class="hero">
     <div class="hero-inner">
         <div class="hero-badge">TypeScript-first. Web Components. Zero runtime production dependencies.</div>
@@ -11,7 +12,7 @@
         </p>
 
         <div class="hero-actions">
-            <nc-a variant="hero-primary" href="/docs" id="get-started-btn">Read the Docs</nc-a>
+            <nc-a variant="hero-primary" href="/docs" id="get-started-btn" wire-content="ctaText" wire-attribute="ctaHref:href">Read the Docs</nc-a>
             <nc-a variant="hero-ghost" href="/components">Explore Components</nc-a>
             <nc-a variant="hero-ghost" href="/login">Open Demo App</nc-a>
         </div>
@@ -148,3 +149,4 @@
         </div>
     </div>
 </section>
+</div>
