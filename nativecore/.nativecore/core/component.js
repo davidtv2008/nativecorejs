@@ -271,6 +271,27 @@ class Component extends HTMLElement {
     });
   }
   /**
+   * Convenience shorthand: wire all three declarative binding types in one call.
+   * Equivalent to calling `wireInputs(options)`, `wireContents()`, and
+   * `wireAttributes()` in sequence.
+   *
+   * Call once from `onMount()`.
+   *
+   * @param options.overrides  Per-key event/prop overrides forwarded to wireInputs().
+   *
+   * @example
+   * onMount() {
+   *     this.wires();
+   *     // or, with overrides for a custom element:
+   *     this.wires({ overrides: { rating: { event: 'nc-change', prop: 'value' } } });
+   * }
+   */
+  wires(options = {}) {
+    this.wireInputs(options);
+    this.wireContents();
+    this.wireAttributes();
+  }
+  /**
    * Render the component
    */
   render() {

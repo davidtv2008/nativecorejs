@@ -373,6 +373,50 @@ filter.value = 'active';
 
 ---
 
+## `this.wires()` — one-call shorthand for components
+
+When a component uses all three wire types, `this.wires()` is a single convenience call that runs `wireInputs()`, `wireContents()`, and `wireAttributes()` in sequence.
+
+```typescript
+class TaskForm extends Component {
+    static useShadowDOM = true;
+
+    title  = useState('');
+    done   = useState(false);
+    status = useState('pending');
+    count  = computed(() => `${this.items.value.length} tasks`);
+    rating = useState(0);
+
+    template() {
+        return `
+            <input  wire-input="title" />
+            <input  wire-input="done" type="checkbox" />
+            <nc-rating wire-input="rating"></nc-rating>
+            <span   wire-content="count">0 tasks</span>
+            <article wire-attribute="status:data-status">…</article>
+        `;
+    }
+
+    onMount() {
+        this.wires({
+            overrides: { rating: { event: 'nc-change', prop: 'value' } }
+        });
+    }
+}
+```
+
+Without any overrides it's simply:
+
+```typescript
+onMount() {
+    this.wires();
+}
+```
+
+`options.overrides` is passed through to `wireInputs()` — it behaves identically to calling each method separately. When you only need one or two of the three binding types, call the individual methods (`wireInputs()`, `wireContents()`, `wireAttributes()`) instead to keep it explicit.
+
+---
+
 ## `this.on('event', '.selector', handler)`
 
 `on()` registers an event listener via scoped event delegation. Instead of calling `addEventListener` on a specific node, `on()` attaches a single delegated listener to the shadow root (or the component element itself if Shadow DOM is off) and filters events by the provided selector:

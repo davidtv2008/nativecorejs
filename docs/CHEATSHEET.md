@@ -277,16 +277,18 @@ class TaskForm extends Component {
     }
 
     onMount() {
-        this.wireInputs({
-            overrides: { rating: { event: 'nc-change', prop: 'value' } }
-        });
-        this.wireContents();    // wires all [wire-content] to same-named state/computed props
-        this.wireAttributes();  // wires all [wire-attribute] to same-named state props
+        // Wire all three in one call:
+        this.wires({ overrides: { rating: { event: 'nc-change', prop: 'value' } } });
+
+        // Or call individually when you only need some:
+        // this.wireInputs();
+        // this.wireContents();
+        // this.wireAttributes();
     }
 }
 ```
 
-All subscriptions are auto-disposed on unmount. Call each `wire*()` method **once from `onMount()`** only.
+`this.wires(options?)` is a shorthand that calls `wireInputs(options)`, `wireContents()`, and `wireAttributes()` in one go. All subscriptions are auto-disposed on unmount. Call **once from `onMount()`** only.
 
 ---
 
