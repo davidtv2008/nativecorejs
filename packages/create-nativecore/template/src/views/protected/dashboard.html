@@ -1,10 +1,10 @@
-﻿<div class="dashboard-container">
+﻿<div class="dashboard-container" data-view="dashboard">
     <nc-animation name="fade-in" trigger="mount" duration="420">
         <nc-card variant="secondary" class="dashboard-hero">
             <div class="dashboard-hero__content">
                 <nc-chip variant="success" size="sm">Protected Product Demo</nc-chip>
                 <h1 class="dashboard-title">NativeCore workspace</h1>
-                <p id="welcome-message" class="dashboard-subtitle">A polished dashboard that proves routing, state, components, and motion can all coexist without framework sprawl.</p>
+                <p id="welcome-message" class="dashboard-subtitle" wire-content="welcomeMessage">A polished dashboard that proves routing, state, components, and motion can all coexist without framework sprawl.</p>
 
                 <div class="dashboard-hero__actions">
                     <nc-tooltip tip="Reload the authenticated dashboard metrics">
@@ -31,7 +31,7 @@
                             A derived score calculated from authenticated users, active sessions, and revenue readiness to explain the dashboard story in one number.
                         </div>
                     </nc-popover>
-                    <strong id="dashboard-overview-score" class="dashboard-spotlight-card__value">0%</strong>
+                    <strong id="dashboard-overview-score" class="dashboard-spotlight-card__value" wire-content="overviewScore">0%</strong>
                     <p class="dashboard-spotlight-card__copy">Derived from authenticated metrics, active sessions, and delivery readiness.</p>
                 </nc-card>
 
@@ -47,10 +47,10 @@
             <nc-card variant="secondary" class="dashboard-kpi-card">
                 <div>
                     <nc-chip variant="default" size="sm">Authenticated users</nc-chip>
-                    <strong id="stat-users" class="dashboard-kpi-card__value">0</strong>
+                    <strong id="stat-users" class="dashboard-kpi-card__value" wire-content="statUsers">0</strong>
                     <p class="dashboard-kpi-card__copy">Live payload returned through the API service after remote-auth login.</p>
                 </div>
-                <nc-progress-circular id="stat-users-ring" size="82" thickness="7" variant="success" show-value value="0"></nc-progress-circular>
+                <nc-progress-circular id="stat-users-ring" size="82" thickness="7" variant="success" show-value value="0" wire-attribute="usersRingValue:value"></nc-progress-circular>
             </nc-card>
         </nc-animation>
 
@@ -58,10 +58,10 @@
             <nc-card variant="secondary" class="dashboard-kpi-card">
                 <div>
                     <nc-chip variant="default" size="sm">Active sessions</nc-chip>
-                    <strong id="stat-sessions" class="dashboard-kpi-card__value">0</strong>
+                    <strong id="stat-sessions" class="dashboard-kpi-card__value" wire-content="statSessions">0</strong>
                     <p class="dashboard-kpi-card__copy">Shows protected-shell activity and validates post-login token usage.</p>
                 </div>
-                <nc-progress-circular id="stat-sessions-ring" size="82" thickness="7" variant="primary" show-value value="0"></nc-progress-circular>
+                <nc-progress-circular id="stat-sessions-ring" size="82" thickness="7" variant="primary" show-value value="0" wire-attribute="sessionsRingValue:value"></nc-progress-circular>
             </nc-card>
         </nc-animation>
 
@@ -69,10 +69,10 @@
             <nc-card variant="secondary" class="dashboard-kpi-card">
                 <div>
                     <nc-chip variant="default" size="sm">Revenue pipeline</nc-chip>
-                    <strong id="stat-revenue" class="dashboard-kpi-card__value">$0</strong>
+                    <strong id="stat-revenue" class="dashboard-kpi-card__value" wire-content="statRevenue">$0</strong>
                     <p class="dashboard-kpi-card__copy">Presented as business context instead of raw demo filler.</p>
                 </div>
-                <nc-progress-circular id="stat-revenue-ring" size="82" thickness="7" variant="warning" show-value value="0"></nc-progress-circular>
+                <nc-progress-circular id="stat-revenue-ring" size="82" thickness="7" variant="warning" show-value value="0" wire-attribute="revenueRingValue:value"></nc-progress-circular>
             </nc-card>
         </nc-animation>
 
@@ -80,10 +80,10 @@
             <nc-card variant="secondary" class="dashboard-kpi-card">
                 <div>
                     <nc-chip variant="default" size="sm">New today</nc-chip>
-                    <strong id="stat-new-today" class="dashboard-kpi-card__value">0</strong>
+                    <strong id="stat-new-today" class="dashboard-kpi-card__value" wire-content="statNewToday">0</strong>
                     <p class="dashboard-kpi-card__copy">Useful for real-time extensions, notifications, and activity surfaces.</p>
                 </div>
-                <nc-progress-circular id="stat-new-today-ring" size="82" thickness="7" variant="danger" show-value value="0"></nc-progress-circular>
+                <nc-progress-circular id="stat-new-today-ring" size="82" thickness="7" variant="danger" show-value value="0" wire-attribute="newTodayRingValue:value"></nc-progress-circular>
             </nc-card>
         </nc-animation>
     </section>
@@ -96,7 +96,7 @@
                         <nc-chip variant="success" size="sm">Operational Story</nc-chip>
                         <h2 class="dashboard-panel__title">A cleaner view of delivery health</h2>
                     </div>
-                    <nc-chip id="delivery-summary" variant="neutral" size="sm">Loading metrics...</nc-chip>
+                    <nc-chip id="delivery-summary" variant="neutral" size="sm" wire-content="deliverySummary">Loading metrics...</nc-chip>
                 </div>
 
                 <nc-divider></nc-divider>
@@ -107,7 +107,7 @@
                             <strong>Adoption confidence</strong>
                             <span>Measures authenticated usage against the current demo target.</span>
                         </div>
-                        <nc-progress id="health-adoption" size="md" variant="success" show-value></nc-progress>
+                        <nc-progress id="health-adoption" size="md" variant="success" show-value wire-attribute="adoptionValue:value"></nc-progress>
                     </div>
 
                     <div class="dashboard-health-row">
@@ -115,7 +115,7 @@
                             <strong>Session durability</strong>
                             <span>Shows whether protected route access stays active after sign-in and navigation.</span>
                         </div>
-                        <nc-progress id="health-sessions" size="md" variant="primary" striped animated show-value></nc-progress>
+                        <nc-progress id="health-sessions" size="md" variant="primary" striped animated show-value wire-attribute="sessionsHealthValue:value"></nc-progress>
                     </div>
 
                     <div class="dashboard-health-row">
@@ -123,7 +123,7 @@
                             <strong>Revenue instrumentation</strong>
                             <span>Turns business metrics into a presentable operations summary for demos.</span>
                         </div>
-                        <nc-progress id="health-revenue" size="md" variant="warning" show-value></nc-progress>
+                        <nc-progress id="health-revenue" size="md" variant="warning" show-value wire-attribute="revenueHealthValue:value"></nc-progress>
                     </div>
                 </div>
             </nc-card>
@@ -136,7 +136,7 @@
                         <nc-chip variant="primary" size="sm">Activity Timeline</nc-chip>
                         <h2 class="dashboard-panel__title">Recent protected-shell events</h2>
                     </div>
-                    <nc-badge count="3" id="activity-count-badge" variant="info">
+                    <nc-badge count="3" id="activity-count-badge" variant="info" wire-attribute="activityCount:count">
                         <nc-chip variant="neutral" size="sm">Recent events</nc-chip>
                     </nc-badge>
                 </div>

@@ -2,6 +2,7 @@
  * Dashboard Controller
  * Loads API metrics, drives the signal demo, and wires all dashboard interactions.
  */
+import { wireContents, wireAttributes } from '@core-utils/wires.js';
 import { trackEvents } from '@core-utils/events.js';
 import { dom } from '@core-utils/dom.js';
 import { html } from '@core-utils/templates.js';
@@ -15,31 +16,35 @@ export async function dashboardController(): Promise<() => void> {
     const events    = trackEvents();
     const disposers: Array<() => void> = [];
 
-    // -- DOM refs ------------------------------------------------------------
-    const welcomeMsg         = dom.$('#welcome-message');
-    const overviewScore      = dom.$('#dashboard-overview-score');
-    const deliverySummary    = dom.$('#delivery-summary');
-    const usersStat          = dom.$('#stat-users');
-    const sessionsStat       = dom.$('#stat-sessions');
-    const revenueStat        = dom.$('#stat-revenue');
-    const newTodayStat       = dom.$('#stat-new-today');
-    const usersRing          = dom.$('#stat-users-ring');
-    const sessionsRing       = dom.$('#stat-sessions-ring');
-    const revenueRing        = dom.$('#stat-revenue-ring');
-    const newTodayRing       = dom.$('#stat-new-today-ring');
-    const adoptionHealth     = dom.$('#health-adoption');
-    const sessionHealth      = dom.$('#health-sessions');
-    const revenueHealth      = dom.$('#health-revenue');
-    const activityTimeline   = dom.$('#dashboard-activity-timeline');
-    const activityCountBadge = dom.$('#activity-count-badge');
-    const metricsTable       = dom.$('#dashboard-metrics-table');
-    const signalCompleted    = dom.$('#signal-completed');
-    const signalRemaining    = dom.$('#signal-remaining');
-    const signalCompletion   = dom.$('#signal-completion');
-    const signalProgress     = dom.$('#signal-progress');
-    const signalStatus       = dom.$('#signal-status');
+    // -- Wires ---------------------------------------------------------------
+    // Text content bindings — state ↔ [wire-content] elements in the view
+    const {
+        welcomeMessage,
+        overviewScore,
+        deliverySummary,
+        statUsers,
+        statSessions,
+        statRevenue,
+        statNewToday,
+    } = wireContents();
 
-    // -- State & computed ----------------------------------------------------
+    // Attribute bindings — state ↔ [wire-attribute] elements in the view
+    const {
+        usersRingValue,
+        sessionsRingValue,
+        revenueRingValue,
+        newTodayRingValue,
+        adoptionValue,
+        sessionsHealthValue,
+        revenueHealthValue,
+        activityCount,
+    } = wireAttributes();
+
+    // -- DOM refs (elements that need complex / innerHTML rendering) ----------
+    const activityTimeline   = dom.$('#dashboard-activity-timeline');
+    const metricsTable       = dom.$('#dashboard-metrics-table');
+
+    // -- State & computed (signal lab) ---------------------------------------
     const completedState  = useState(14);
     const totalState      = useState(18);
 
@@ -55,10 +60,16 @@ export async function dashboardController(): Promise<() => void> {
         return                                  { title: 'Needs attention',  body: 'Completion dipped below the target threshold. Add or finish scope items to recover.',     variant: 'warning' };
     });
 
-    // -- Reactive bindings ---------------------------------------------------
+    // -- Reactive bindings (signal lab) --------------------------------------
     // effect() auto-tracks completedState, totalState, completionState, remainingState,
     // and statusState. It runs immediately on creation and re-runs whenever any of them
     // changes. No manual .watch() subscriptions or renderSignalDemo() call needed.
+    const signalCompleted  = dom.$('#signal-completed');
+    const signalRemaining  = dom.$('#signal-remaining');
+    const signalCompletion = dom.$('#signal-completion');
+    const signalProgress   = dom.$('#signal-progress');
+    const signalStatus     = dom.$('#signal-status');
+
     disposers.push(effect(() => {
         if (signalCompleted)  signalCompleted.textContent  = String(completedState.value);
         if (signalRemaining)  signalRemaining.textContent  = String(remainingState.value);
@@ -96,26 +107,26 @@ export async function dashboardController(): Promise<() => void> {
             const newTodayScore = Math.min(100, Math.round((newToday / 30)    * 100));
             const overview      = Math.round((userScore + sessionScore + revenueScore) / 3);
 
-            if (usersStat)    usersStat.textContent    = users.toLocaleString();
-            if (sessionsStat) sessionsStat.textContent = sessions.toLocaleString();
-            if (revenueStat)  revenueStat.textContent  = `$${revenue.toLocaleString()}`;
-            if (newTodayStat) newTodayStat.textContent = newToday.toLocaleString();
+            statUsers.value    = users.toLocaleString();
+            statSessions.value = sessions.toLocaleString();
+            statRevenue.value  = `$${revenue.toLocaleString()}`;
+            statNewToday.value = newToday.toLocaleString();
 
-            usersRing?.setAttribute('value',   String(userScore));
-            sessionsRing?.setAttribute('value', String(sessionScore));
-            revenueRing?.setAttribute('value',  String(revenueScore));
-            newTodayRing?.setAttribute('value', String(newTodayScore));
+            usersRingValue.value    = String(userScore);
+            sessionsRingValue.value = String(sessionScore);
+            revenueRingValue.value  = String(revenueScore);
+            newTodayRingValue.value = String(newTodayScore);
 
-            adoptionHealth?.setAttribute('value', String(userScore));
-            sessionHealth?.setAttribute('value',  String(sessionScore));
-            revenueHealth?.setAttribute('value',  String(revenueScore));
+            adoptionValue.value      = String(userScore);
+            sessionsHealthValue.value = String(sessionScore);
+            revenueHealthValue.value  = String(revenueScore);
 
-            if (overviewScore)   overviewScore.textContent   = `${overview}%`;
-            if (deliverySummary) deliverySummary.textContent = `${overview >= 80 ? 'Executive-ready' : 'Needs iteration'} overview`;
+            overviewScore.value   = `${overview}%`;
+            deliverySummary.value = `${overview >= 80 ? 'Executive-ready' : 'Needs iteration'} overview`;
 
             if (activityTimeline) {
                 const activities = Array.isArray(data.recentActivity) ? data.recentActivity : [];
-                activityCountBadge?.setAttribute('count', String(activities.length));
+                activityCount.value = String(activities.length);
                 activityTimeline.innerHTML = activities.map((item: { message?: string; time?: string }, index: number) => html`
                     <nc-timeline-item
                         title="${index === 0 ? 'Latest event' : 'Workflow update'}"
@@ -146,8 +157,8 @@ export async function dashboardController(): Promise<() => void> {
             console.error('Dashboard error:', error);
             const message = error instanceof Error ? error.message : 'Unknown error';
 
-            if (deliverySummary) deliverySummary.textContent = 'Data unavailable';
-            activityCountBadge?.setAttribute('count', '0');
+            deliverySummary.value = 'Data unavailable';
+            activityCount.value   = '0';
 
             if (activityTimeline) {
                 activityTimeline.innerHTML = html`
@@ -172,8 +183,8 @@ export async function dashboardController(): Promise<() => void> {
 
     // -- On load -------------------------------------------------------------
     const user = auth.getUser();
-    if (user && welcomeMsg) {
-        welcomeMsg.textContent = `Welcome back, ${user.name || 'User'}. This workspace demonstrates a cleaner executive layout with authenticated data, core components, and live state patterns.`;
+    if (user) {
+        welcomeMessage.value = `Welcome back, ${user.name || 'User'}. This workspace demonstrates a cleaner executive layout with authenticated data, core components, and live state patterns.`;
     }
 
     await loadData();
@@ -204,3 +215,4 @@ export async function dashboardController(): Promise<() => void> {
         disposers.forEach(d => d());
     };
 }
+

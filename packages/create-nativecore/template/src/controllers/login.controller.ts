@@ -2,6 +2,8 @@
  * Login Controller
  * Handles form submission, validation, and auth flow for the login page.
  */
+import { wireContents } from '@core-utils/wires.js';
+import { useState, effect } from '@core/state.js';
 import { trackEvents } from '@core-utils/events.js';
 import { dom } from '@core-utils/dom.js';
 import router from '@core/router.js';
@@ -12,39 +14,38 @@ export async function loginController(): Promise<() => void> {
 
     // -- Setup ---------------------------------------------------------------
     const events = trackEvents();
+    const disposers: Array<() => void> = [];
 
-    // -- DOM refs ------------------------------------------------------------
-    const form             = dom.$<HTMLElement & { getValues?: () => Record<string, string> }>('#loginForm');
-    const errorDiv         = dom.$<HTMLElement>('#login-error');
-    const loginBtn         = dom.$('#loginBtn');
+    // -- DOM refs (elements that need direct access for focus / attribute sync) --
+    const form               = dom.$<HTMLElement & { getValues?: () => Record<string, string> }>('#loginForm');
+    const errorDiv           = dom.$<HTMLElement>('#login-error');
+    const loginBtn           = dom.$('#loginBtn');
     const rememberMeCheckbox = dom.$('#rememberMe');
-    const emailField       = dom.$('#email');
-    const passwordField    = dom.$('#password');
+    const emailField         = dom.$('#email');
+    const passwordField      = dom.$('#password');
+
+    // -- Wires ---------------------------------------------------------------
+    // errorMessage drives the error div's text via the [wire-content] binding
+    // declared in login.html; the effect below also toggles its visibility.
+    const { errorMessage } = wireContents();
+
+    // -- State ---------------------------------------------------------------
+    const isLoading = useState(false);
+
+    // -- Reactive bindings ---------------------------------------------------
+    disposers.push(
+        effect(() => {
+            if (!loginBtn) return;
+            loginBtn.toggleAttribute('disabled', isLoading.value);
+            loginBtn.textContent = isLoading.value ? 'Signing In...' : 'Access Dashboard';
+        }),
+        effect(() => {
+            if (!errorDiv) return;
+            errorDiv.hidden = !errorMessage.value;
+        }),
+    );
 
     // -- Helpers -------------------------------------------------------------
-    const setButtonState = (isLoading: boolean) => {
-        if (!loginBtn) return;
-        if (isLoading) {
-            loginBtn.setAttribute('disabled', '');
-            loginBtn.textContent = 'Signing In...';
-            return;
-        }
-        loginBtn.removeAttribute('disabled');
-        loginBtn.textContent = 'Access Dashboard';
-    };
-
-    const setError = (message: string) => {
-        if (!errorDiv) return;
-        errorDiv.textContent = message;
-        errorDiv.hidden = false;
-    };
-
-    const clearError = () => {
-        if (!errorDiv) return;
-        errorDiv.hidden = true;
-        errorDiv.textContent = '';
-    };
-
     // nc-input wraps a native <input> inside its shadow root
     const getInputValue = (element: Element | null): string => {
         if (!element) return '';
@@ -56,6 +57,7 @@ export async function loginController(): Promise<() => void> {
         dom.within<HTMLInputElement>(element?.shadowRoot ?? element, 'input')?.focus();
     };
 
+    // -- Event handlers ------------------------------------------------------
     const handleSubmit = async (e: Event) => {
         e.preventDefault();
         e.stopPropagation();
@@ -68,15 +70,15 @@ export async function loginController(): Promise<() => void> {
         const password =  values.password ?? getInputValue(passwordField);
         const rememberMe = rememberMeCheckbox?.hasAttribute('checked') ?? false;
 
-        clearError();
+        errorMessage.value = '';
 
         if (!email || !password) {
-            setError('Email and password are required. Use the demo credentials shown above.');
+            errorMessage.value = 'Email and password are required. Use the demo credentials shown above.';
             focusInput(!email ? emailField : passwordField);
             return;
         }
 
-        setButtonState(true);
+        isLoading.value = true;
 
         try {
             const response = await api.post('/auth/login', { email, password });
@@ -93,13 +95,12 @@ export async function loginController(): Promise<() => void> {
 
         } catch (error: unknown) {
             console.error('Login error:', error);
-            const errorMessage = error instanceof Error ? error.message : 'Login failed. Please try again.';
-            setError(errorMessage);
+            errorMessage.value = error instanceof Error ? error.message : 'Login failed. Please try again.';
             emailField?.setAttribute('value', email);
             passwordField?.setAttribute('value', '');
             focusInput(passwordField);
         } finally {
-            setButtonState(false);
+            isLoading.value = false;
         }
     };
 
@@ -128,6 +129,7 @@ export async function loginController(): Promise<() => void> {
 
     // -- Cleanup -------------------------------------------------------------
     return () => {
+        disposers.forEach(d => d());
         events.cleanup();
     };
 }
