@@ -199,9 +199,8 @@ this.bindAll({
     '.stats__completed': this.completed,
 });
 
-// Two-way binding (State ↔ DOM) — auto-detects checkbox/radio
-this.model(this.username, 'input[name="username"]');        // input event + .value
-this.model(this.agreed, 'input[type="checkbox"]');          // change event + .checked
+// Two-way binding — explicit (for one-offs or dynamic selectors)
+this.model(this.username, 'input[name="username"]');
 this.model(this.rating, 'nc-rating', { event: 'nc-change', prop: 'value' }); // custom
 ```
 
@@ -264,19 +263,23 @@ class TaskForm extends Component {
     title  = useState('');
     done   = useState(false);
     status = useState('pending');
+    rating = useState(0);
     count  = computed(() => `${this.items.value.length} tasks`);
 
     template() {
         return `
             <input  wire-input="title" />
             <input  wire-input="done" type="checkbox" />
+            <nc-rating wire-input="rating"></nc-rating>
             <span   wire-content="count">0 tasks</span>
             <article wire-attribute="status:data-status">…</article>
         `;
     }
 
     onMount() {
-        this.wireInputs();      // wires all [wire-input] to same-named State<T> props
+        this.wireInputs({
+            overrides: { rating: { event: 'nc-change', prop: 'value' } }
+        });
         this.wireContents();    // wires all [wire-content] to same-named state/computed props
         this.wireAttributes();  // wires all [wire-attribute] to same-named state props
     }

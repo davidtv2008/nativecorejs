@@ -116,7 +116,7 @@ You can override both defaults via the `options` argument:
 
 ## `this.wireInputs()` — Livewire-style auto-wiring
 
-`wireInputs()` is a declarative shorthand built on top of `model()`. Instead of calling `model()` once per field, you annotate your template elements with an `wire-input` attribute and call `this.wireInputs()` once from `onMount()`. The method scans the component tree for every `[wire-input]` element and automatically calls `model()` for each one, resolving the attribute value as a property name on `this`.
+`wireInputs()` is a declarative shorthand built on top of `model()`. Instead of calling `model()` once per field, you annotate your template elements with a `wire-input` attribute and call `this.wireInputs()` once from `onMount()`. The method scans the component tree for every `[wire-input]` element and automatically calls `model()` for each one, resolving the attribute value as a property name on `this`.
 
 ### Usage
 
@@ -159,16 +159,33 @@ That is the complete component. As the user types in the username field, `this.u
 1. `wireInputs()` queries the shadow root (or component element) for `[wire-input]`.
 2. For each element it reads `el.getAttribute('wire-input')` to get the state property name.
 3. It looks up `this[propName]` and verifies it is a writable `State` (has both `.watch()` and `.set()`).
-4. It delegates to `model(this[propName], el)`, which sets up the effect and the event listener.
+4. It delegates to `model(this[propName], el, overrides?)`, which sets up the effect and the event listener.
 
 The reconciler **reuses** existing DOM nodes across re-renders, so the wired listeners remain attached as long as the component is mounted. Call `wireInputs()` **once** from `onMount()` — not from `attributeChangedCallback` or `render()`.
+
+### Overrides for non-standard elements
+
+For custom elements that fire non-standard events (e.g. `nc-rating`), pass an `overrides` map. This is the same option that the controller's `wireInputs()` accepts:
+
+```typescript
+rating = useState(0);
+
+onMount() {
+    this.wireInputs({
+        overrides: { rating: { event: 'nc-change', prop: 'value' } }
+    });
+}
+```
+
+```html
+<nc-rating wire-input="rating"></nc-rating>
+```
 
 ### Rules
 
 - The `wire-input` value must exactly match a `useState()` property name on the component class.
 - Computed values cannot be wired — `wireInputs()` skips them with a warning.
 - Call `wireInputs()` from `onMount()` only.
-- Use `model()` directly (with `options`) for components that fire non-standard events (e.g., `nc-rating`, `nc-color-picker`).
 
 ---
 
