@@ -106,10 +106,25 @@ export async function tasksController(): Promise<() => void> {
 **Routing** is code-based, not file-based.
 
 ```typescript
-router
-    .register('/', 'src/views/public/home.html', lazyController(...))
-    .register('/tasks', 'src/views/tasks.html', lazyController(...))
-    .register('/tasks/:id', 'src/views/task-detail.html', lazyController(...));
+// src/routes/routes.ts
+import { createLazyController } from '@core/lazyController.js';
+import router from '@core/router.js';
+import type { Router } from '@core/router.js';
+
+const lazyController = createLazyController(import.meta.url);
+
+export function registerRoutes(r: Router): void {
+    r.group({}, (r) => {
+        r.register('/', 'src/views/public/home.html',
+            lazyController('homeController', '../controllers/home.controller.js'));
+
+        r.register('/tasks', 'src/views/tasks.html',
+            lazyController('tasksController', '../controllers/tasks.controller.js'));
+
+        r.register('/tasks/:id', 'src/views/task-detail.html',
+            lazyController('taskController', '../controllers/task.controller.js'));
+    });
+}
 ```
 
 ---
