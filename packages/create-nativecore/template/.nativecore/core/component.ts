@@ -215,24 +215,35 @@ export class Component extends HTMLElement {
     }
 
     /**
-     * Livewire-style auto-wiring: scans the component's DOM for every element
-     * carrying an `nc-model="propName"` attribute and calls `model()` on it,
-     * mapping the attribute value to a same-named `useState()` property on `this`.
+     * Declarative two-way input binding. Scans the component for every
+     * `[wire-input="propName"]` element and calls `model()` for each one,
+     * resolving the attribute value as a property name on `this`.
+     *
+     * Matches the controller's `wireInputs()` API exactly — same attribute names,
+     * same `overrides` option for non-standard elements.
      *
      * Call once from `onMount()`. The reconciler reuses DOM nodes on re-render so
      * the wired listeners remain valid — there is no need to call this again.
      *
+     * @param options.overrides  Per-key event/prop overrides for non-standard elements.
+     *
      * @example
      * // template
-     * `<input nc-model="username" />
-     *  <input nc-model="password" type="password" />`
+     * `<input wire-input="username" />
+     *  <input wire-input="agreed" type="checkbox" />
+     *  <nc-rating wire-input="rating"></nc-rating>`
      *
      * // class
      * username = useState('');
-     * password = useState('');
-     * onMount() { this.wireInputs(); }
+     * agreed   = useState(false);
+     * rating   = useState(0);
+     * onMount() {
+     *     this.wireInputs({
+     *         overrides: { rating: { event: 'nc-change', prop: 'value' } }
+     *     });
+     * }
      */
-    wireInputs(): void {
+    wireInputs(options: { overrides?: Record<string, { event?: string; prop?: string }> } = {}): void {
         const root = this.shadowRoot ?? this;
         root.querySelectorAll<Element>('[wire-input]').forEach(el => {
             const stateName = el.getAttribute('wire-input')!;
@@ -244,7 +255,7 @@ export class Component extends HTMLElement {
                 );
                 return;
             }
-            this.model(stateRef, el);
+            this.model(stateRef, el, options.overrides?.[stateName] ?? {});
         });
     }
 
@@ -309,6 +320,28 @@ export class Component extends HTMLElement {
             }
             this.bindAttr(stateRef, el, attrName);
         });
+    }
+
+    /**
+     * Convenience shorthand: wire all three declarative binding types in one call.
+     * Equivalent to calling `wireInputs(options)`, `wireContents()`, and
+     * `wireAttributes()` in sequence.
+     *
+     * Call once from `onMount()`.
+     *
+     * @param options.overrides  Per-key event/prop overrides forwarded to wireInputs().
+     *
+     * @example
+     * onMount() {
+     *     this.wires();
+     *     // or, with overrides for a custom element:
+     *     this.wires({ overrides: { rating: { event: 'nc-change', prop: 'value' } } });
+     * }
+     */
+    wires(options: { overrides?: Record<string, { event?: string; prop?: string }> } = {}): void {
+        this.wireInputs(options);
+        this.wireContents();
+        this.wireAttributes();
     }
 
     /**

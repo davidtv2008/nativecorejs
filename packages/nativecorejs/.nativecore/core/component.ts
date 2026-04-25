@@ -172,37 +172,134 @@ export class Component extends HTMLElement {
     }
 
     /**
-     * Livewire-style auto-wiring: scans the component's DOM for every element
-     * carrying an `nc-model="propName"` attribute and calls `model()` on it,
-     * mapping the attribute value to a same-named `useState()` property on `this`.
+     * Declarative two-way input binding. Scans the component for every
+     * `[wire-input="propName"]` element and calls `model()` for each one,
+     * resolving the attribute value as a property name on `this`.
+     *
+     * Matches the controller's `wireInputs()` API exactly — same attribute names,
+     * same `overrides` option for non-standard elements.
      *
      * Call once from `onMount()`. The reconciler reuses DOM nodes on re-render so
      * the wired listeners remain valid — there is no need to call this again.
      *
+     * @param options.overrides  Per-key event/prop overrides for non-standard elements.
+     *
      * @example
      * // template
-     * `<input nc-model="username" />
-     *  <input nc-model="password" type="password" />`
+     * `<input wire-input="username" />
+     *  <input wire-input="agreed" type="checkbox" />
+     *  <nc-rating wire-input="rating"></nc-rating>`
      *
      * // class
      * username = useState('');
-     * password = useState('');
-     * onMount() { this.wireModels(); }
+     * agreed   = useState(false);
+     * rating   = useState(0);
+     * onMount() {
+     *     this.wireInputs({
+     *         overrides: { rating: { event: 'nc-change', prop: 'value' } }
+     *     });
+     * }
      */
-    wireModels(): void {
+    wireInputs(options: { overrides?: Record<string, { event?: string; prop?: string }> } = {}): void {
         const root = this.shadowRoot ?? this;
-        root.querySelectorAll<Element>('[nc-model]').forEach(el => {
-            const stateName = el.getAttribute('nc-model')!;
+        root.querySelectorAll<Element>('[wire-input]').forEach(el => {
+            const stateName = el.getAttribute('wire-input')!;
             const stateRef = (this as any)[stateName];
             if (!stateRef || typeof stateRef.watch !== 'function' || typeof stateRef.set !== 'function') {
                 console.warn(
-                    `[${this.tagName.toLowerCase()}] wireModels(): no writable State found for ` +
-                    `nc-model="${stateName}". Make sure the property exists and was created with useState().`
+                    `[${this.tagName.toLowerCase()}] wireInputs(): no writable State found for ` +
+                    `wire-input="${stateName}". Make sure the property exists and was created with useState().`
                 );
                 return;
             }
-            this.model(stateRef, el);
+            this.model(stateRef, el, options.overrides?.[stateName] ?? {});
         });
+    }
+
+    /**
+     * Declarative one-way text binding. Scans the component for every
+     * `[wire-content="propName"]` element and wires `el.textContent = this[propName].value`
+     * whenever the state changes. Accepts both `useState()` and `computed()` values.
+     * Call once from `onMount()`.
+     *
+     * @example
+     * // template: <h1 wire-content="title">...</h1>
+     * title = useState('Hello');
+     * onMount() { this.wireContents(); }
+     */
+    wireContents(): void {
+        const root = this.shadowRoot ?? this;
+        root.querySelectorAll<Element>('[wire-content]').forEach(el => {
+            const stateName = el.getAttribute('wire-content')!;
+            const stateRef = (this as any)[stateName];
+            if (!stateRef || typeof stateRef.watch !== 'function') {
+                console.warn(
+                    `[${this.tagName.toLowerCase()}] wireContents(): no State found for ` +
+                    `wire-content="${stateName}". Make sure the property exists and was created with useState() or computed().`
+                );
+                return;
+            }
+            this.bind(stateRef, el);
+        });
+    }
+
+    /**
+     * Declarative one-way attribute binding. Scans the component for every
+     * `[wire-attribute="propName:attr-name"]` element and calls
+     * `el.setAttribute(attr, this[propName].value)` whenever the state changes.
+     * Call once from `onMount()`.
+     *
+     * @example
+     * // template: <div wire-attribute="status:data-status"></div>
+     * status = useState('active');
+     * onMount() { this.wireAttributes(); }
+     */
+    wireAttributes(): void {
+        const root = this.shadowRoot ?? this;
+        root.querySelectorAll<Element>('[wire-attribute]').forEach(el => {
+            const raw = el.getAttribute('wire-attribute')!;
+            const colonIndex = raw.indexOf(':');
+            if (colonIndex === -1) {
+                console.warn(
+                    `[${this.tagName.toLowerCase()}] wireAttributes(): invalid wire-attribute value "${raw}" — ` +
+                    `expected format "propName:attribute-name" (e.g. "status:data-status")`
+                );
+                return;
+            }
+            const stateName = raw.slice(0, colonIndex).trim();
+            const attrName  = raw.slice(colonIndex + 1).trim();
+            const stateRef  = (this as any)[stateName];
+            if (!stateRef || typeof stateRef.watch !== 'function') {
+                console.warn(
+                    `[${this.tagName.toLowerCase()}] wireAttributes(): no State found for ` +
+                    `wire-attribute="${raw}". Make sure "${stateName}" exists and was created with useState() or computed().`
+                );
+                return;
+            }
+            this.bindAttr(stateRef, el, attrName);
+        });
+    }
+
+    /**
+     * Convenience shorthand: wire all three declarative binding types in one call.
+     * Equivalent to calling `wireInputs(options)`, `wireContents()`, and
+     * `wireAttributes()` in sequence.
+     *
+     * Call once from `onMount()`.
+     *
+     * @param options.overrides  Per-key event/prop overrides forwarded to wireInputs().
+     *
+     * @example
+     * onMount() {
+     *     this.wires();
+     *     // or, with overrides for a custom element:
+     *     this.wires({ overrides: { rating: { event: 'nc-change', prop: 'value' } } });
+     * }
+     */
+    wires(options: { overrides?: Record<string, { event?: string; prop?: string }> } = {}): void {
+        this.wireInputs(options);
+        this.wireContents();
+        this.wireAttributes();
     }
 
     render(): void {
