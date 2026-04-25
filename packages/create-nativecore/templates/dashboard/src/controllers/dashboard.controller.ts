@@ -1,7 +1,7 @@
 import { dom } from '@core-utils/dom.js';
 import { trackEvents } from '@core-utils/events.js';
 import { useState, effect } from '@core/state.js';
-import { http } from '@core/http.js';
+import http from '@core/http.js';
 
 interface DashboardStats {
     users: number;

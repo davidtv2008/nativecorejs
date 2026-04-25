@@ -1,5 +1,6 @@
 import { Component, defineComponent } from '../../.nativecore/core/component.js';
 import { html, raw, escapeHTML } from '../../.nativecore/utils/templates.js';
+import { useState } from '../../.nativecore/core/state.js';
 
 const EYE_OPEN = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" width="16" height="16"><path d="M1 10s3-6 9-6 9 6 9 6-3 6-9 6-9-6-9-6z"/><circle cx="10" cy="10" r="2.5"/></svg>`;
 const EYE_CLOSED = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" width="16" height="16"><path d="M2 2l16 16M7.5 7.5A3 3 0 0012.5 12.5M4.2 4.2C2.6 5.5 1 8 1 10s3 6 9 6c2 0 3.8-.5 5.3-1.3M8 4.3A8.7 8.7 0 0110 4c6 0 9 6 9 6s-.9 1.8-2.5 3.2"/></svg>`;
@@ -19,26 +20,22 @@ export class NcInput extends Component {
     }
 
     private currentValue = '';
-    private showPassword = false;
-    private validationError = '';
+    private showPassword = useState(false);
+    private validationError = useState('');
 
     private readonly handleInputEvent = (event: Event) => {
         const input = event.target as HTMLInputElement | null;
         if (!input || input.tagName !== 'INPUT') return;
 
         this.currentValue = input.value;
-        if (this.validationError) {
-            this.validationError = '';
+        if (this.validationError.value) {
+            this.validationError.value = '';
             this.render();
         } else {
             this.syncClearButton();
         }
 
-        this.dispatchEvent(new CustomEvent('input', {
-            bubbles: true,
-            composed: true,
-            detail: { value: input.value, name: this.getAttribute('name') || '' }
-        }));
+        this.emitEvent('input', { value: input.value, name: this.getAttribute('name') || '' });
     };
 
     private readonly handleChangeEvent = (event: Event) => {
@@ -46,14 +43,10 @@ export class NcInput extends Component {
         if (!input || input.tagName !== 'INPUT') return;
 
         this.currentValue = input.value;
-        this.validationError = '';
+        this.validationError.value = '';
         this.render();
 
-        this.dispatchEvent(new CustomEvent('change', {
-            bubbles: true,
-            composed: true,
-            detail: { value: input.value, name: this.getAttribute('name') || '' }
-        }));
+        this.emitEvent('change', { value: input.value, name: this.getAttribute('name') || '' });
     };
 
     private readonly handleClickEvent = (event: Event) => {
@@ -61,7 +54,7 @@ export class NcInput extends Component {
         if (!button) return;
 
         if (button.dataset.action === 'toggle-password') {
-            this.showPassword = !this.showPassword;
+            this.showPassword.value = !this.showPassword.value;
             this.render();
             this.$<HTMLInputElement>('input')?.focus();
         }
@@ -69,20 +62,12 @@ export class NcInput extends Component {
         if (button.dataset.action === 'clear') {
             const input = this.$<HTMLInputElement>('input');
             this.currentValue = '';
-            this.validationError = '';
+            this.validationError.value = '';
             if (input) input.value = '';
             this.render();
             this.$<HTMLInputElement>('input')?.focus();
-            this.dispatchEvent(new CustomEvent('clear', {
-                bubbles: true,
-                composed: true,
-                detail: { name: this.getAttribute('name') || '' }
-            }));
-            this.dispatchEvent(new CustomEvent('input', {
-                bubbles: true,
-                composed: true,
-                detail: { value: '', name: this.getAttribute('name') || '' }
-            }));
+            this.emitEvent('clear', { name: this.getAttribute('name') || '' });
+            this.emitEvent('input', { value: '', name: this.getAttribute('name') || '' });
         }
     };
 
@@ -92,7 +77,7 @@ export class NcInput extends Component {
 
     set value(nextValue: string) {
         this.currentValue = nextValue ?? '';
-        this.validationError = '';
+        this.validationError.value = '';
         if (this._mounted) {
             this.render();
         }
@@ -117,12 +102,12 @@ export class NcInput extends Component {
         const iconRight = this.getAttribute('icon-right') || '';
         const clearable = this.hasAttribute('clearable');
         const showToggle = this.hasAttribute('show-password-toggle') && type === 'password';
-        const error = this.getAttribute('error') || this.validationError;
+        const error = this.getAttribute('error') || this.validationError.value;
         const hint = this.getAttribute('hint') || '';
 
         const hasLeft = !!iconLeft;
         const hasRight = !!(iconRight || (clearable && this.currentValue) || showToggle);
-        const inputType = type === 'password' && this.showPassword ? 'text' : type;
+        const inputType = type === 'password' && this.showPassword.value ? 'text' : type;
 
         return html`
             <style>
@@ -206,8 +191,8 @@ export class NcInput extends Component {
                 ${hasRight ? `
                 <span class="icon icon--right">
                     ${raw(showToggle ? `
-                    <button class="action-btn" type="button" data-action="toggle-password" aria-label="${this.showPassword ? 'Hide password' : 'Show password'}">
-                        ${this.showPassword ? EYE_CLOSED : EYE_OPEN}
+                    <button class="action-btn" type="button" data-action="toggle-password" aria-label="${this.showPassword.value ? 'Hide password' : 'Show password'}">
+                        ${this.showPassword.value ? EYE_CLOSED : EYE_OPEN}
                     </button>` : '')}
                     ${raw(clearable && this.currentValue && !showToggle ? `
                     <button class="action-btn" type="button" data-action="clear" aria-label="Clear">
@@ -271,7 +256,7 @@ export class NcInput extends Component {
         if (explicitError) return explicitError;
 
         const input = this.getInput();
-        if (!input) return this.validationError;
+        if (!input) return this.validationError.value;
         return this.buildValidationMessage(input);
     }
 
@@ -283,7 +268,7 @@ export class NcInput extends Component {
 
     validate(): boolean {
         const isValid = this.checkValidity();
-        this.validationError = isValid ? '' : this.getValidationMessage();
+        this.validationError.value = isValid ? '' : this.getValidationMessage();
         if (this._mounted) this.render();
         return isValid;
     }
@@ -293,8 +278,8 @@ export class NcInput extends Component {
     }
 
     clearValidationError(): void {
-        if (!this.validationError) return;
-        this.validationError = '';
+        if (!this.validationError.value) return;
+        this.validationError.value = '';
         if (this._mounted) this.render();
     }
 
@@ -302,7 +287,7 @@ export class NcInput extends Component {
         if (oldValue === newValue) return;
         if (name === 'value' && this._mounted) {
             this.currentValue = newValue || '';
-            this.validationError = '';
+            this.validationError.value = '';
             const input = this.$<HTMLInputElement>('input');
             if (input) input.value = this.currentValue;
             this.syncClearButton();

@@ -137,10 +137,7 @@ export class NcNavItem extends Component {
     onMount() {
         this.shadowRoot!.addEventListener('click', (e) => {
             if (this.hasAttribute('disabled')) { e.preventDefault(); return; }
-            this.dispatchEvent(new CustomEvent('nav-click', {
-                detail: { href: this.getAttribute('href') },
-                bubbles: true, composed: true,
-            }));
+            this.emitEvent('nc-nav-item-click', { href: this.getAttribute('href') });
         });
     }
 

@@ -1,4 +1,5 @@
 import { Component, defineComponent } from '../../.nativecore/core/component.js';
+import { html, raw } from '../../.nativecore/utils/templates.js';
 
 export class NcCheckbox extends Component {
     static useShadowDOM = true;
@@ -182,15 +183,11 @@ export class NcCheckbox extends Component {
 
         this.setAttribute('aria-checked', String(this.hasAttribute('checked')));
 
-        this.dispatchEvent(new CustomEvent('change', {
-            bubbles: true,
-            composed: true,
-            detail: {
-                checked: this.hasAttribute('checked'),
-                value: this.getAttribute('value') || 'on',
-                name: this.getAttribute('name') || ''
-            }
-        }));
+        this.emitEvent('change', {
+            checked: this.hasAttribute('checked'),
+            value: this.getAttribute('value') || 'on',
+            name: this.getAttribute('name') || ''
+        });
     }
 
     attributeChangedCallback(name: string, oldValue: string, newValue: string) {

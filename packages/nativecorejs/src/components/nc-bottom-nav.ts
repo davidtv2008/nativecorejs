@@ -139,10 +139,7 @@ export class NcBottomNavItem extends Component {
     onMount() {
         this.shadowRoot!.addEventListener('click', () => {
             if (this.hasAttribute('disabled')) return;
-            this.dispatchEvent(new CustomEvent('_item-click', {
-                detail: { value: this.getAttribute('value') },
-                bubbles: true, composed: true,
-            }));
+            this.emitEvent('nc-bottom-nav-item-click', { value: this.getAttribute('value') });
         });
     }
 
@@ -183,13 +180,11 @@ export class NcBottomNav extends Component {
     }
 
     onMount() {
-        this.addEventListener('_item-click', (e: Event) => {
+        this.addEventListener('nc-bottom-nav-item-click', (e: Event) => {
             const ce = e as CustomEvent<{ value: string }>;
             const newValue = ce.detail.value;
             this._setActive(newValue);
-            this.dispatchEvent(new CustomEvent('change', {
-                detail: { value: newValue }, bubbles: true, composed: true,
-            }));
+            this.emitEvent('nc-bottom-nav-change', { value: newValue });
         });
 
         // Set initial active state

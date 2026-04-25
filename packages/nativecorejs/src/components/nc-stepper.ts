@@ -15,7 +15,7 @@
  *   - status: 'complete'|'error'|'' - force a status icon (auto-set by stepper normally)
  *
  * Events (on nc-stepper):
- *   - change: CustomEvent<{ step: number; prev: number }>
+ *   - nc-stepper-change: CustomEvent<{ step: number; prev: number }>
  *
  * Methods (call on the element):
  *   stepper.next()
@@ -231,10 +231,7 @@ export class NcStepper extends Component {
         const prev = Number(this.getAttribute('step') || 0);
         if (index === prev) return;
         this.setAttribute('step', String(index));
-        this.dispatchEvent(new CustomEvent('change', {
-            bubbles: true, composed: true,
-            detail: { step: index, prev }
-        }));
+        this.emitEvent('nc-stepper-change', { step: index, prev });
     }
 
     attributeChangedCallback(name: string, oldValue: string, newValue: string) {

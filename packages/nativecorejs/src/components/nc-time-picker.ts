@@ -23,6 +23,7 @@
  */
 
 import { Component, defineComponent } from '../../.nativecore/core/component.js';
+import { html, raw } from '../../.nativecore/utils/templates.js';
 
 function pad2(n: number) { return String(n).padStart(2, '0'); }
 
@@ -377,10 +378,7 @@ export class NcTimePicker extends Component {
         if (panel) panel.style.display = 'none';
         if (wrap) wrap.setAttribute('aria-expanded', 'false');
         this._updateDisplay();
-        this.dispatchEvent(new CustomEvent('change', {
-            bubbles: true, composed: true,
-            detail: { value, name: this.getAttribute('name') || '' }
-        }));
+        this.emitEvent('change', { value, name: this.getAttribute('name') || '' });
     }
 
     private _clear() {
@@ -393,10 +391,7 @@ export class NcTimePicker extends Component {
         this._updateDisplay();
         const wrap = this.$<HTMLElement>('.display');
         if (wrap) wrap.style.color = 'var(--nc-text-muted)';
-        this.dispatchEvent(new CustomEvent('change', {
-            bubbles: true, composed: true,
-            detail: { value: '', name: this.getAttribute('name') || '' }
-        }));
+        this.emitEvent('change', { value: '', name: this.getAttribute('name') || '' });
     }
 
     private _setNow() {

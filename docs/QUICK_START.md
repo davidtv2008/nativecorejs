@@ -73,11 +73,16 @@ npx serve _deploy
 // src/components/ui/task-card.ts
 class TaskCard extends Component {
     template() { return `<div class="card">${this.getAttribute('title')}</div>`; }
-    onMount() { /* event listeners, reactive bindings */ }
-    onUnmount() { /* cleanup */ }
+    onMount() {
+        // Emit a namespaced event — bubbles + composed are true by default
+        this.on('click', '.card', () => this.emitEvent('task-card-select', { title: this.getAttribute('title') }));
+    }
+    onUnmount() { /* listeners added via this.on() are auto-removed */ }
 }
 defineComponent('task-card', TaskCard);
 ```
+
+> Built-in framework components (`nc-modal`, `nc-table`, etc.) follow the `nc-{component}-{action}` convention. See [CHEATSHEET.md — Built-in Component Events](./CHEATSHEET.md) for the full event reference.
 
 **State** is explicit and reactive.
 

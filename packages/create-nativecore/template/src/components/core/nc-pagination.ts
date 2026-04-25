@@ -18,7 +18,7 @@
  */
 
 import { Component, defineComponent } from '@core/component.js';
-import { html } from '@core-utils/templates.js';
+import { html, trusted } from '@core-utils/templates.js';
 
 export class NcPagination extends Component {
     static useShadowDOM = true;
@@ -121,15 +121,15 @@ export class NcPagination extends Component {
                 }
             </style>
             <nav aria-label="Pagination" class="pagination">
-                ${showFirstLast ? navBtn('first', 'First page', atFirst) : ''}
-                ${navBtn('prev', 'Previous page', atFirst)}
-                ${pages.map(p =>
+                ${showFirstLast ? trusted(navBtn('first', 'First page', atFirst)) : ''}
+                ${trusted(navBtn('prev', 'Previous page', atFirst))}
+                ${trusted(pages.map(p =>
                     p === '...'
                         ? `<span class="ellipsis" aria-hidden="true">...</span>`
                         : `<button class="btn${p === current ? ' btn--active' : ''}" data-page="${p}" aria-label="Page ${p}" aria-current="${p === current ? 'page' : 'false'}">${p}</button>`
-                ).join('')}
-                ${navBtn('next', 'Next page', atLast)}
-                ${showFirstLast ? navBtn('last', 'Last page', atLast) : ''}
+                ).join(''))}
+                ${trusted(navBtn('next', 'Next page', atLast))}
+                ${showFirstLast ? trusted(navBtn('last', 'Last page', atLast)) : ''}
             </nav>
         `;
     }

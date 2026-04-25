@@ -245,7 +245,7 @@ export class Component extends HTMLElement {
      * @example this.component.query('.badge')            // arbitrary selector
      * @example this.component.view('nested').hook('row') // re-scope to a nested [data-view]
      */
-    get component() {
+    get component(): ReturnType<typeof dom.view> {
         return dom.view(this.tagName.toLowerCase(), this.shadowRoot ?? this);
     }
 

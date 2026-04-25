@@ -22,6 +22,7 @@
  */
 
 import { Component, defineComponent } from '../../.nativecore/core/component.js';
+import { html, raw } from '../../.nativecore/utils/templates.js';
 
 const MONTHS = ['January','February','March','April','May','June','July','August','September','October','November','December'];
 const DAYS_SUN = ['Su','Mo','Tu','We','Th','Fr','Sa'];
@@ -398,10 +399,7 @@ export class NcDatePicker extends Component {
 
         this.setAttribute('value', isoValue);
 
-        this.dispatchEvent(new CustomEvent('change', {
-            bubbles: true, composed: true,
-            detail: { value: isoValue, date, name: this.getAttribute('name') || '' }
-        }));
+        this.emitEvent('change', { value: isoValue, date, name: this.getAttribute('name') || '' });
     }
 
     private _refreshCalendar() {

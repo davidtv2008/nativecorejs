@@ -72,6 +72,7 @@
  */
 
 import { Component, defineComponent } from '../../.nativecore/core/component.js';
+import { html } from '../../.nativecore/utils/templates.js';
 import {
     animate,
     prepareForAnimation,
@@ -503,7 +504,7 @@ export class NcAnimation extends Component {
             cleanupAnimation(target);
             target.style.cssText = target.style.cssText.replace(/animation[^;]*;?/g, '');
         }
-        this.dispatchEvent(new CustomEvent('cancel', { bubbles: true, composed: true }));
+        this.emitEvent('nc-animation-cancel', {});
     }
 
     // -- Setup -----------------------------------------------------------------
@@ -588,7 +589,7 @@ export class NcAnimation extends Component {
             return;
         }
 
-        this.dispatchEvent(new CustomEvent('start', { bubbles: true, composed: true }));
+        this.emitEvent('nc-animation-start', {});
 
         switch (preset.path) {
             case 'waapi':    this._runWAAPI(preset); break;
@@ -620,7 +621,7 @@ export class NcAnimation extends Component {
         const before = target.getAnimations().length;
         preset.run(target, opts).then(() => {
             if (!noHint && opts.iterations === 1) cleanupAnimation(target);
-            this.dispatchEvent(new CustomEvent('finish', { bubbles: true, composed: true }));
+            this.emitEvent('nc-animation-finish', {});
         });
 
         // Grab the newest animation handle
@@ -663,7 +664,7 @@ export class NcAnimation extends Component {
         if (iterations !== 'infinite') {
             target.addEventListener('animationend', () => {
                 cleanupAnimation(target);
-                this.dispatchEvent(new CustomEvent('finish', { bubbles: true, composed: true }));
+                this.emitEvent('nc-animation-finish', {});
             }, { once: true });
         }
     }
@@ -716,7 +717,7 @@ export class NcAnimation extends Component {
         const duration = this._numAttr('duration', preset.duration);
         setTimeout(() => {
             this._stopParticles();
-            this.dispatchEvent(new CustomEvent('finish', { bubbles: true, composed: true }));
+            this.emitEvent('nc-animation-finish', {});
         }, duration);
     }
 

@@ -1,0 +1,11 @@
+{
+  "users": 1234,
+  "sessions": 56,
+  "revenue": 45678,
+  "newToday": 23,
+  "recentActivity": [
+    { "id": 1, "message": "New user registered", "time": "5 minutes ago" },
+    { "id": 2, "message": "Payment received", "time": "12 minutes ago" },
+    { "id": 3, "message": "System backup completed", "time": "1 hour ago" }
+  ]
+}

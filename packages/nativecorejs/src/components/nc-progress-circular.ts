@@ -1,4 +1,5 @@
 import { Component, defineComponent } from '../../.nativecore/core/component.js';
+import { html, raw } from '../../.nativecore/utils/templates.js';
 
 const VARIANT_COLORS: Record<string, string> = {
     primary: 'var(--nc-primary, #10b981)',

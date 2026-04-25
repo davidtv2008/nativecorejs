@@ -22,6 +22,7 @@ export default tseslint.config(
             'prefer-const': 'error',
             'prefer-arrow-callback': 'warn',
             '@typescript-eslint/no-unused-vars': ['error', { argsIgnorePattern: '^_' }],
+            'no-empty': ['error', { allowEmptyCatch: true }],
             '@typescript-eslint/no-explicit-any': 'off', // Framework code needs flexible typing
             
             'no-restricted-globals': [

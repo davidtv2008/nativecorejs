@@ -303,13 +303,10 @@ export class NcFileUpload extends Component {
         }
 
         if (oversized.length) {
-            this.dispatchEvent(new CustomEvent('error', {
-                bubbles: true, composed: true,
-                detail: {
-                    message: `${oversized.map(f => f.name).join(', ')} exceed${oversized.length === 1 ? 's' : ''} the ${maxSizeAttr} MB limit.`,
-                    files: oversized
-                }
-            }));
+            this.emitEvent('nc-file-upload-error', {
+                message: `${oversized.map(f => f.name).join(', ')} exceed${oversized.length === 1 ? 's' : ''} the ${maxSizeAttr} MB limit.`,
+                files: oversized
+            });
         }
 
         if (!valid.length) return;
@@ -318,10 +315,7 @@ export class NcFileUpload extends Component {
         this.render();
         this._bindEvents();
 
-        this.dispatchEvent(new CustomEvent('change', {
-            bubbles: true, composed: true,
-            detail: { files: this._files, name: this.getAttribute('name') || '' }
-        }));
+        this.emitEvent('change', { files: this._files, name: this.getAttribute('name') || '' });
     }
 
     private _removeFile(index: number) {

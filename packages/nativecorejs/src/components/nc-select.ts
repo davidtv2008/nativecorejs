@@ -29,6 +29,7 @@
 
 import { Component, defineComponent } from '../../.nativecore/core/component.js';
 import { html, raw, escapeHTML } from '../../.nativecore/utils/templates.js';
+import { useState } from '../../.nativecore/core/state.js';
 
 interface SelectOption {
     value: string;
@@ -48,7 +49,7 @@ export class NcSelect extends Component {
         return ['options', 'value', 'placeholder', 'name', 'disabled', 'size', 'variant', 'searchable'];
     }
 
-    private _open = false;
+    private _open = useState(false);
     private _filterText = '';
 
     constructor() {
@@ -268,14 +269,14 @@ export class NcSelect extends Component {
                 value="${value}"
             />
 
-            <div class="select-trigger${this._open ? ' open' : ''}" role="combobox" aria-expanded="${this._open}" aria-haspopup="listbox">
+            <div class="select-trigger${this._open.value ? ' open' : ''}" role="combobox" aria-expanded="${this._open.value}" aria-haspopup="listbox">
                 <span class="trigger-label">${selectedLabel}</span>
-                <svg class="chevron${this._open ? ' open' : ''}" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16" fill="none" width="16" height="16">
+                <svg class="chevron${this._open.value ? ' open' : ''}" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16" fill="none" width="16" height="16">
                     <path d="M4 6l4 4 4-4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
                 </svg>
             </div>
 
-            <div class="dropdown${this._open ? ' open' : ''}" role="listbox">
+            <div class="dropdown${this._open.value ? ' open' : ''}" role="listbox">
                 ${raw(searchable ? `
                 <div class="search-wrap">
                     <input class="search-input" type="text" placeholder="Search..." value="${this._filterText}" autocomplete="off" />
@@ -292,10 +293,8 @@ export class NcSelect extends Component {
             this.setAttribute('tabindex', '0');
         }
 
-        const sr = this.shadowRoot!;
-
-        // Single click listener - never re-added
-        sr.addEventListener('click', (e) => {
+        // All listeners via this.on() — auto-cleaned on unmount
+        this.on('click', (e: Event) => {
             if (this.hasAttribute('disabled')) return;
             const target = e.target as HTMLElement;
 
@@ -307,12 +306,11 @@ export class NcSelect extends Component {
             }
 
             if (target.closest('.select-trigger')) {
-                this._setOpen(!this._open);
+                this._setOpen(!this._open.value);
             }
         });
 
-        // Search filter
-        sr.addEventListener('input', (e) => {
+        this.on('input', (e: Event) => {
             const input = e.target as HTMLInputElement;
             if (input.classList.contains('search-input')) {
                 this._filterText = input.value;
@@ -320,21 +318,19 @@ export class NcSelect extends Component {
             }
         });
 
-        // Outside click - registered once, cleaned up in onUnmount
-        document.addEventListener('click', this._onOutsideClick);
-
-        // Keyboard
-        this.addEventListener('keydown', (e: KeyboardEvent) => {
+        this.on('keydown', (e: KeyboardEvent) => {
             if (e.key === 'Escape') { this._setOpen(false); return; }
             if (e.key === 'Enter' || e.key === ' ') {
                 e.preventDefault();
-                this._setOpen(!this._open);
+                this._setOpen(!this._open.value);
             }
             if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
                 e.preventDefault();
                 this._navigateOptions(e.key === 'ArrowDown' ? 1 : -1);
             }
         });
+
+        document.addEventListener('click', this._onOutsideClick);
     }
 
     private _onOutsideClick = (e: MouseEvent) => {
@@ -344,7 +340,7 @@ export class NcSelect extends Component {
     };
 
     private _setOpen(open: boolean) {
-        this._open = open;
+        this._open.value = open;
         if (!open) this._filterText = '';
 
         const sr = this.shadowRoot!;
@@ -360,7 +356,6 @@ export class NcSelect extends Component {
         if (dropdown) {
             dropdown.classList.toggle('open', open);
             if (!open) {
-                // Clear search when closing
                 const searchInput = dropdown.querySelector<HTMLInputElement>('.search-input');
                 if (searchInput) searchInput.value = '';
                 this._rerenderDropdown();
@@ -404,31 +399,23 @@ export class NcSelect extends Component {
         const opt = opts.find(o => o.value === value);
         if (!opt) return;
 
-        this._open = false;
+        this._open.value = false;
         this._filterText = '';
 
-        // Update trigger label and hidden input directly
         const sr = this.shadowRoot!;
         const label = sr.querySelector('.trigger-label');
         if (label) label.textContent = opt.label;
         const hidden = sr.querySelector<HTMLInputElement>('input[type="hidden"]');
         if (hidden) hidden.value = value;
 
-        // Close the dropdown
         this._setOpen(false);
-
-        // Re-render option list to show the new checkmark
         this.setAttribute('value', value);
 
-        this.dispatchEvent(new CustomEvent('change', {
-            bubbles: true,
-            composed: true,
-            detail: {
-                value,
-                label: opt.label,
-                name: this.getAttribute('name') || ''
-            }
-        }));
+        this.emitEvent('change', {
+            value,
+            label: opt.label,
+            name: this.getAttribute('name') || ''
+        });
     }
 
     private _navigateOptions(direction: number) {

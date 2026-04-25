@@ -24,6 +24,8 @@
  */
 
 import { Component, defineComponent } from '../../.nativecore/core/component.js';
+import { html, raw } from '../../.nativecore/utils/templates.js';
+import { useState } from '../../.nativecore/core/state.js';
 
 export class NcSlider extends Component {
     static useShadowDOM = true;
@@ -225,60 +227,54 @@ export class NcSlider extends Component {
     }
 
     onMount() {
-        this._bindEvents();
+        // Use this.on() delegation — auto-cleaned on unmount, no accumulation across re-renders
+        this.on('input', (event: Event) => {
+            const el = event.target as HTMLInputElement;
+            if (el.type !== 'range') return;
+            const val = Number(el.value);
+            this._updateLive(val);
+            this.emitEvent('input', { value: val, name: this.getAttribute('name') || '' });
+        });
+
+        this.on('change', (event: Event) => {
+            const el = event.target as HTMLInputElement;
+            if (el.type !== 'range') return;
+            const val = Number(el.value);
+            this._isDragging.value = false;
+            this.setAttribute('value', String(val));
+            this.emitEvent('change', { value: val, name: this.getAttribute('name') || '' });
+        });
+
+        this.on('mousedown', (event: Event) => {
+            if ((event.target as HTMLElement).closest('input[type="range"]')) {
+                this._isDragging.value = true;
+            }
+        });
+
+        this.on('touchstart', (event: Event) => {
+            if ((event.target as HTMLElement).closest('input[type="range"]')) {
+                this._isDragging.value = true;
+            }
+        });
     }
+
+    private _isDragging = useState(false);
 
     private _updateLive(val: number) {
         const min = this._getNum('min', 0);
         const max = this._getNum('max', 100);
         const pct = max === min ? 0 : ((val - min) / (max - min)) * 100;
 
-        // Update CSS var - drives both the track gradient and bubble position
         this.style.setProperty('--_fill-pct', `${pct}%`);
 
-        // Update bubble text without touching the shadow DOM structure
         const bubble = this.shadowRoot!.querySelector<HTMLElement>('.value-bubble');
         if (bubble) bubble.textContent = String(val);
     }
 
-    private _bindEvents() {
-        const input = this.shadowRoot!.querySelector<HTMLInputElement>('input[type="range"]');
-        if (!input) return;
-
-        input.addEventListener('input', () => {
-            const val = Number(input.value);
-            this._updateLive(val);
-            this.dispatchEvent(new CustomEvent('input', {
-                bubbles: true,
-                composed: true,
-                detail: { value: val, name: this.getAttribute('name') || '' }
-            }));
-        });
-
-        input.addEventListener('change', () => {
-            const val = Number(input.value);
-            // Safe to commit after drag is done - no longer mid-interaction
-            this._isDragging = false;
-            this.setAttribute('value', String(val));
-            this.dispatchEvent(new CustomEvent('change', {
-                bubbles: true,
-                composed: true,
-                detail: { value: val, name: this.getAttribute('name') || '' }
-            }));
-        });
-
-        input.addEventListener('mousedown', () => { this._isDragging = true; });
-        input.addEventListener('touchstart', () => { this._isDragging = true; });
-    }
-
-    private _isDragging = false;
-
     attributeChangedCallback(name: string, oldValue: string, newValue: string) {
         if (oldValue === newValue) return;
-        // Never re-render while dragging or on value-only changes (live updates handle those)
-        if (name === 'value' && this._isDragging) return;
-        this.render();
-        this._bindEvents();
+        if (name === 'value' && this._isDragging.value) return;
+        if (this._mounted) this.render();
     }
 }
 

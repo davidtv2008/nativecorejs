@@ -2,7 +2,7 @@ import { dom } from '@core-utils/dom.js';
 import { trackEvents } from '@core-utils/events.js';
 import { cartStore } from '@stores/cart.store.js';
 import type { CartItem } from '@stores/cart.store.js';
-import { http } from '@core/http.js';
+import http from '@core/http.js';
 import router from '@core/router.js';
 
 interface ProductDetail {

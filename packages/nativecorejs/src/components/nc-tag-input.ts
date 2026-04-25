@@ -30,6 +30,7 @@
  *   el.clear()            - remove all tags
  */
 import { Component, defineComponent } from '../../.nativecore/core/component.js';
+import { html, raw } from '../../.nativecore/utils/templates.js';
 
 export class NcTagInput extends Component {
     static useShadowDOM = true;
@@ -167,16 +168,11 @@ export class NcTagInput extends Component {
     }
 
     onMount() {
-        this._bindEvents();
-    }
-
-    private _bindEvents() {
-        const input = this.$<HTMLInputElement>('#input');
-        if (!input) return;
-
-        const delimiter = this.getAttribute('delimiter') ?? ',';
-
-        input.addEventListener('keydown', (e: KeyboardEvent) => {
+        // Use this.on() delegation — auto-cleaned on unmount, survives re-renders
+        this.on('keydown', (e: KeyboardEvent) => {
+            const input = e.target as HTMLInputElement;
+            if (!input.matches('#input')) return;
+            const delimiter = this.getAttribute('delimiter') ?? ',';
             if (e.key === 'Enter' || (delimiter && e.key === delimiter)) {
                 e.preventDefault();
                 const val = input.value.trim();
@@ -186,7 +182,9 @@ export class NcTagInput extends Component {
             }
         });
 
-        input.addEventListener('input', () => {
+        this.on('input', (e: Event) => {
+            const input = e.target as HTMLInputElement;
+            if (!input.matches('#input')) return;
             const val   = input.value;
             const delim = this.getAttribute('delimiter') ?? ',';
             if (delim && val.endsWith(delim)) {
@@ -195,17 +193,15 @@ export class NcTagInput extends Component {
             }
         });
 
-        // Clicking the field focuses the input
-        this.$<HTMLElement>('#field')?.addEventListener('click', (e) => {
-            if ((e.target as HTMLElement).closest('.tag-remove')) return;
-            input.focus();
-        });
-
-        this.shadowRoot!.addEventListener('click', (e) => {
-            const btn = (e.target as HTMLElement).closest<HTMLElement>('.tag-remove');
+        this.on('click', (e: Event) => {
+            const target = e.target as HTMLElement;
+            const btn = target.closest<HTMLElement>('.tag-remove');
             if (btn) {
                 const idx = parseInt(btn.dataset.index ?? '-1', 10);
-                if (idx >= 0) this.removeTag(idx);
+                if (idx >= 0) { this.removeTag(idx); return; }
+            }
+            if (target.closest('#field') && !btn) {
+                this.$<HTMLInputElement>('#input')?.focus();
             }
         });
     }
@@ -231,13 +227,13 @@ export class NcTagInput extends Component {
         if (maxLen && tag.length > parseInt(maxLen, 10)) return;
         if (!allowDup && this._tags.includes(tag)) return;
         if (maxAttr && this._tags.length >= parseInt(maxAttr, 10)) {
-            this.dispatchEvent(new CustomEvent('max-reached', { bubbles: true, composed: true }));
+            this.emitEvent('max-reached', {});
             return;
         }
 
         this._tags.push(tag);
         this.render();
-        this.dispatchEvent(new CustomEvent('add', { detail: { tag }, bubbles: true, composed: true }));
+        this.emitEvent('add', { tag });
         this._emit('change');
     }
 
@@ -246,7 +242,7 @@ export class NcTagInput extends Component {
         if (tag === undefined) return;
         this._tags.splice(index, 1);
         this.render();
-        this.dispatchEvent(new CustomEvent('remove', { detail: { tag, index }, bubbles: true, composed: true }));
+        this.emitEvent('remove', { tag, index });
         this._emit('change');
         this.$<HTMLInputElement>('#input')?.focus();
     }
@@ -254,9 +250,7 @@ export class NcTagInput extends Component {
     clear() { this.setTags([]); }
 
     private _emit(event: string) {
-        this.dispatchEvent(new CustomEvent(event, {
-            detail: { tags: [...this._tags] }, bubbles: true, composed: true,
-        }));
+        this.emitEvent(event, { tags: [...this._tags] });
     }
 
     private _escape(s: string) {

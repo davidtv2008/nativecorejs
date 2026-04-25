@@ -1,4 +1,5 @@
 import { Component, defineComponent } from '../../.nativecore/core/component.js';
+import { html } from '../../.nativecore/utils/templates.js';
 
 export class NcSwitch extends Component {
     static useShadowDOM = true;
@@ -159,12 +160,12 @@ export class NcSwitch extends Component {
         this.setAttribute('role', 'switch');
         this.setAttribute('aria-checked', String(this.hasAttribute('checked')));
 
-        this.addEventListener('click', () => {
+        this.on('click', () => {
             if (this.hasAttribute('disabled')) return;
             this.toggle();
         });
 
-        this.addEventListener('keydown', (event: KeyboardEvent) => {
+        this.on('keydown', (event: KeyboardEvent) => {
             if (event.key === ' ' || event.key === 'Enter') {
                 event.preventDefault();
                 if (!this.hasAttribute('disabled')) this.toggle();
@@ -181,15 +182,11 @@ export class NcSwitch extends Component {
 
         this.setAttribute('aria-checked', String(this.hasAttribute('checked')));
 
-        this.dispatchEvent(new CustomEvent('change', {
-            bubbles: true,
-            composed: true,
-            detail: {
-                checked: this.hasAttribute('checked'),
-                value: this.getAttribute('value') || 'on',
-                name: this.getAttribute('name') || ''
-            }
-        }));
+        this.emitEvent('change', {
+            checked: this.hasAttribute('checked'),
+            value: this.getAttribute('value') || 'on',
+            name: this.getAttribute('name') || ''
+        });
     }
 
     attributeChangedCallback(name: string, oldValue: string, newValue: string) {

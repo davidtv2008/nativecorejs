@@ -1,7 +1,7 @@
 import { dom } from '@core-utils/dom.js';
 import { trackEvents } from '@core-utils/events.js';
 import { useState, computed, effect } from '@core/state.js';
-import { http } from '@core/http.js';
+import http from '@core/http.js';
 import router from '@core/router.js';
 
 interface Product {
@@ -82,8 +82,9 @@ export async function shopController(): Promise<() => void> {
             }
 
             if (pagination) {
-                pagination.setAttribute('total', String(filtered.value.length));
-                pagination.setAttribute('current', String(page.value));
+                const totalPages = Math.max(1, Math.ceil(filtered.value.length / PAGE_SIZE));
+                pagination.setAttribute('total', String(totalPages));
+                pagination.setAttribute('page', String(page.value));
             }
         }),
     );
@@ -106,7 +107,7 @@ export async function shopController(): Promise<() => void> {
         });
     }
     if (pagination) {
-        events.add(pagination, 'nc-page-change', (e: CustomEvent) => { page.value = (e.detail as number) ?? 1; });
+        events.add(pagination, 'change', (e: CustomEvent) => { page.value = (e.detail as { page: number }).page ?? 1; });
     }
     if (grid) {
         events.add(grid, 'click', (e: Event) => {

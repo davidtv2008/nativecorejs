@@ -31,6 +31,7 @@
  */
 
 import { Component, defineComponent } from '../../.nativecore/core/component.js';
+import { html } from '../../.nativecore/utils/templates.js';
 
 export class NcDiv extends Component {
     static useShadowDOM = true;

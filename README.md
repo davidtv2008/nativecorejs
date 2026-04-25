@@ -48,6 +48,7 @@ The framework package already contains:
 - built-in component registration manifest for the reusable framework component set
 - the extracted component library from `nativecore/src/components/core`, including navigation, forms, pickers, overlays, data display, and utility `nc-*` elements
 - multi-element component modules such as accordion, bottom nav, form, stepper, and timeline
+- standardised component events — all `nc-*` elements emit `nc-{component}-{action}` events (e.g. `nc-modal-open`, `nc-table-row-click`); form inputs keep standard `change` / `input` names
 
 Components intentionally left in the app repo:
 

@@ -81,17 +81,9 @@ export class NcCopyButton extends Component {
                 this.copied = false;
                 this.render();
             }, timeout);
-            this.dispatchEvent(new CustomEvent('copy', {
-                detail: { value },
-                bubbles: true,
-                composed: true
-            }));
+            this.emitEvent('nc-copy-button-copy', { value });
         } catch (error) {
-            this.dispatchEvent(new CustomEvent('error', {
-                detail: { error },
-                bubbles: true,
-                composed: true
-            }));
+            this.emitEvent('nc-copy-button-error', { error });
         }
     }
 

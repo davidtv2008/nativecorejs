@@ -34,6 +34,7 @@
  *   document.querySelector('nc-error-boundary').reset();
  */
 import { Component, defineComponent } from '../../.nativecore/core/component.js';
+import { html, raw } from '../../.nativecore/utils/templates.js';
 
 export interface NcErrorDetail {
     error: unknown;

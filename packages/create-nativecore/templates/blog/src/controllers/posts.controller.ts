@@ -1,7 +1,7 @@
 import { dom } from '@core-utils/dom.js';
 import { trackEvents } from '@core-utils/events.js';
 import { useState, effect, computed } from '@core/state.js';
-import { http } from '@core/http.js';
+import http from '@core/http.js';
 import router from '@core/router.js';
 
 interface Post {
@@ -79,9 +79,9 @@ export async function postsController(): Promise<() => void> {
                 postList.appendChild(li);
             }
             if (pagination) {
-                pagination.setAttribute('total', String(filtered.value.length));
-                pagination.setAttribute('current', String(page.value));
-                pagination.setAttribute('page-size', String(PAGE_SIZE));
+                const totalPages = Math.max(1, Math.ceil(filtered.value.length / PAGE_SIZE));
+                pagination.setAttribute('total', String(totalPages));
+                pagination.setAttribute('page', String(page.value));
             }
         }),
     );
@@ -96,8 +96,8 @@ export async function postsController(): Promise<() => void> {
 
     // Pagination
     if (pagination) {
-        events.add(pagination, 'nc-page-change', (e: CustomEvent) => {
-            page.value = (e.detail as number) ?? 1;
+        events.add(pagination, 'change', (e: CustomEvent) => {
+            page.value = (e.detail as { page: number }).page ?? 1;
         });
     }
 

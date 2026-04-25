@@ -1,4 +1,6 @@
 import { Component, defineComponent } from '../../.nativecore/core/component.js';
+import { html } from '../../.nativecore/utils/templates.js';
+import { useState } from '../../.nativecore/core/state.js';
 
 const ICONS: Record<string, { filled: string; empty: string }> = {
     star: {
@@ -24,23 +26,23 @@ export class NcRating extends Component {
     };
 
     static get observedAttributes() {
-        return ['name', 'max', 'readonly', 'disabled', 'size', 'variant', 'allow-clear'];
+        return ['name', 'value', 'max', 'readonly', 'disabled', 'size', 'variant', 'allow-clear'];
     }
 
-    private valueState = 0;
-    private hovered = 0;
+    private valueState = useState(0);
+    private hovered = useState(0);
 
     private getMax() {
         return Number(this.getAttribute('max') || 5);
     }
 
     private getValue() {
-        return this.valueState;
+        return this.valueState.value;
     }
 
     template() {
         if (!this._mounted) {
-            this.valueState = Number(this.getAttribute('value') || 0);
+            this.valueState.value = Number(this.getAttribute('value') || 0);
         }
         const value = this.getValue();
         const max = this.getMax();
@@ -106,38 +108,31 @@ export class NcRating extends Component {
     }
 
     onMount() {
-        this.bindEvents();
-    }
-
-    private bindEvents() {
         if (this.hasAttribute('readonly') || this.hasAttribute('disabled')) return;
 
-        const container = this.$<HTMLElement>('.items');
-        if (!container) return;
-
-        container.addEventListener('mouseover', event => {
+        // Use this.on() for auto-cleanup on unmount, delegate from shadowRoot
+        this.on('mouseover', (event: Event) => {
             const item = (event.target as HTMLElement).closest<HTMLElement>('.item');
             if (!item) return;
-            this.hovered = Number(item.dataset.pos);
+            this.hovered.value = Number(item.dataset.pos);
             this.applyState();
         });
 
-        container.addEventListener('mouseleave', () => {
-            this.hovered = 0;
+        this.on('mouseleave', () => {
+            this.hovered.value = 0;
             this.applyState();
         });
 
-        container.addEventListener('click', event => {
+        this.on('click', (event: Event) => {
             const item = (event.target as HTMLElement).closest<HTMLElement>('.item');
             if (!item) return;
             const position = Number(item.dataset.pos);
             const next = this.hasAttribute('allow-clear') && position === this.getValue() ? 0 : position;
-            this.hovered = 0;
+            this.hovered.value = 0;
             this.commit(next);
         });
 
-        // Use event delegation on the container for keydown instead of per-item listeners
-        container.addEventListener('keydown', (event: KeyboardEvent) => {
+        this.on('keydown', (event: KeyboardEvent) => {
             const item = (event.target as HTMLElement).closest<HTMLElement>('.item');
             if (!item) return;
             if (event.key === 'Enter' || event.key === ' ') {
@@ -157,7 +152,7 @@ export class NcRating extends Component {
 
     private applyState() {
         const value = this.getValue();
-        const hovered = this.hovered;
+        const hovered = this.hovered.value;
 
         this.$$<HTMLElement>('.item').forEach(item => {
             const position = Number(item.dataset.pos);
@@ -177,7 +172,7 @@ export class NcRating extends Component {
     }
 
     private commit(value: number) {
-        this.valueState = value;
+        this.valueState.value = value;
         this.setAttribute('value', String(value));
 
         const hidden = this.$<HTMLInputElement>('input[type="hidden"]');
@@ -190,11 +185,7 @@ export class NcRating extends Component {
             item.classList.toggle('filled', Number(item.dataset.pos) <= value);
         });
 
-        this.dispatchEvent(new CustomEvent('change', {
-            bubbles: true,
-            composed: true,
-            detail: { value, name: this.getAttribute('name') || '' }
-        }));
+        this.emitEvent('change', { value, name: this.getAttribute('name') || '' });
     }
 
     attributeChangedCallback(name: string, oldValue: string, newValue: string) {

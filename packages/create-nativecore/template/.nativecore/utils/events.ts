@@ -167,6 +167,11 @@ export function trackEvents() {
         on<T = Event>(selectorOrElement: string | Element | null, eventName: string, handler: (event: T) => void): void {
             cleanupFunctions.push(on(selectorOrElement, eventName, handler));
         },
+
+        /** Alias for on() */
+        add<T = Event>(selectorOrElement: string | Element | null, eventName: string, handler: (event: T) => void): void {
+            cleanupFunctions.push(on(selectorOrElement, eventName, handler));
+        },
         
         onClick(selectorOrElement: string | Element | null, handler: (event: Event) => void): void {
             cleanupFunctions.push(onClick(selectorOrElement, handler));

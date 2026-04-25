@@ -11,13 +11,14 @@
  *   - variant: 'default'|'outline' (default: 'default')
  *
  * Events:
- *   - change: CustomEvent<{ page: number }>
+ *   - nc-pagination-change: CustomEvent<{ page: number }>
  *
  * Usage:
  *   <nc-pagination page="3" total="20"></nc-pagination>
  */
 
 import { Component, defineComponent } from '../../.nativecore/core/component.js';
+import { html } from '../../.nativecore/utils/templates.js';
 
 export class NcPagination extends Component {
     static useShadowDOM = true;
@@ -159,10 +160,7 @@ export class NcPagination extends Component {
 
             if (next !== current) {
                 this.setAttribute('page', String(next));
-                this.dispatchEvent(new CustomEvent('change', {
-                    bubbles: true, composed: true,
-                    detail: { page: next }
-                }));
+                this.emitEvent('nc-pagination-change', { page: next });
             }
         });
     }

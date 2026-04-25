@@ -15,6 +15,22 @@ Current exports:
 - controller event and subscription cleanup helpers
 - base framework CSS at `nativecorejs/styles/base.css`
 
+## Component event naming
+
+All built-in `nc-*` components emit custom events using the `nc-{component}-{action}` convention:
+
+```typescript
+// overlay / navigation events
+modal.addEventListener('nc-modal-open', () => { /* … */ });
+drawer.addEventListener('nc-drawer-close', () => { /* … */ });
+tabs.addEventListener('nc-tab-change', (e: CustomEvent<{ index: number }>) => { /* … */ });
+table.addEventListener('nc-table-row-click', (e: CustomEvent<{ row: object; index: number }>) => { /* … */ });
+```
+
+Form-input elements (`nc-input`, `nc-select`, `nc-checkbox`, etc.) keep the standard `change` and `input` event names so they integrate naturally with `<nc-form>` and browser form patterns.
+
+See the [full event reference in CHEATSHEET.md](../../docs/CHEATSHEET.md).
+
 Not extracted yet:
 
 - app-shell specific components: `app-header`, `app-sidebar`, and `app-footer`

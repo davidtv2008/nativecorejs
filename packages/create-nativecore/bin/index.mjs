@@ -225,10 +225,14 @@ function packageJsonTemplate(config) {
         scripts['cap:sync'] = 'npm run build:client && npx cap sync';
         scripts['cap:android'] = 'npm run cap:sync && npx cap open android';
         scripts['cap:ios'] = 'npm run cap:sync && npx cap open ios';
-        scripts['cap:add:android'] = 'npx cap add android';
+        scripts['cap:add:android'] = 'npx cap add android && node .nativecore/scripts/patch-android-assets.mjs';
         scripts['cap:add:ios'] = 'npx cap add ios';
         scripts['cap:run:android'] = 'npm run cap:sync && npx cap run android';
         scripts['cap:run:ios'] = 'npm run cap:sync && npx cap run ios';
+    } else {
+        // Even without --capacitor, expose a cap:init script so users can add Capacitor later
+        // without being tripped up by the interactive web-dir prompt defaulting to "www".
+        scripts['cap:init'] = `npx cap init "${config.projectTitle}" com.example.${config.projectName.replace(/-/g, '')} --web-dir _deploy`;
     }
 
     const devDependencies = {
@@ -284,7 +288,7 @@ function capacitorConfigTemplate(config) {
 const config: CapacitorConfig = {
     appId: '${appId}',
     appName: '${config.projectTitle}',
-    webDir: 'dist',
+    webDir: '_deploy',
     server: {
         androidScheme: 'https'
     }
@@ -297,13 +301,13 @@ export default config;
 const config = {
     appId: '${appId}',
     appName: '${config.projectTitle}',
-    webDir: 'dist',
+    webDir: '_deploy',
     server: {
         androidScheme: 'https'
     }
 };
 
-export default config;
+module.exports = config;
 `;
 }
 
@@ -767,6 +771,7 @@ export default [
             'prefer-const': 'error',
             'prefer-arrow-callback': 'warn',
             'no-unused-vars': ['error', { argsIgnorePattern: '^_' }],
+            'no-empty': ['error', { allowEmptyCatch: true }],
 
             'no-restricted-globals': [
                 'error',
@@ -953,10 +958,13 @@ async function customizeProject(targetDir, config) {
     await replaceInFile(path.join(targetDir, '.env.example'), content => content.replace('APP_NAME=MyApp', `APP_NAME=${config.projectTitle}`));
 
     if (config.includeCapacitor) {
-        const capExt = config.useTypeScript ? 'ts' : 'js';
+        // JS projects use .cjs because the project has "type":"module" and Capacitor CLI
+        // uses require() to load the config — module.exports is not valid in ESM .js files.
+        const capExt = config.useTypeScript ? 'ts' : 'cjs';
         // Remove the opposite extension if it exists (from template stripping)
         if (!config.useTypeScript) {
             await removeIfExists(path.join(targetDir, 'capacitor.config.ts'));
+            await removeIfExists(path.join(targetDir, 'capacitor.config.js'));
         }
         await writeFile(path.join(targetDir, `capacitor.config.${capExt}`), capacitorConfigTemplate(config));
     }
@@ -983,13 +991,19 @@ async function buildProject(config) {
     await ensureDir(targetDir);
     await copyTemplate(targetDir);
 
-    // In JS mode: strip TypeScript from all copied template files before
-    // customizeProject writes mode-aware generated files on top.
+    // First strip pass: convert base template .ts → .js so customizeProject
+    // can reference .js paths when patching existing files (api.service.js, etc.)
     if (!config.useTypeScript) {
         await stripAllTypeScript(targetDir);
     }
 
     await customizeProject(targetDir, config);
+
+    // Second strip pass: convert any .ts files added by the starter template
+    // overlay (blog, dashboard, ecommerce) that ran inside customizeProject.
+    if (!config.useTypeScript) {
+        await stripAllTypeScript(targetDir);
+    }
 
     return targetDir;
 }

@@ -16,6 +16,7 @@
  *   <nc-scroll-top></nc-scroll-top>
  */
 import { Component, defineComponent } from '../../.nativecore/core/component.js';
+import { html } from '../../.nativecore/utils/templates.js';
 import { addPassiveListener } from '../../.nativecore/core/gpu-animation.js';
 import { dom } from '../../.nativecore/utils/dom.js';
 

@@ -37,6 +37,7 @@
  *   </nc-popover>
  */
 import { Component, defineComponent } from '../../.nativecore/core/component.js';
+import { html } from '../../.nativecore/utils/templates.js';
 
 type Placement = 'top'|'top-start'|'top-end'|'bottom'|'bottom-start'|'bottom-end'|'left'|'left-start'|'left-end'|'right'|'right-start'|'right-end';
 
@@ -115,8 +116,8 @@ export class NcPopover extends Component {
 
     // -- Public API ----------------------------------------------------------
 
-    show()   { if (!this._open) { this._open = true;  this.render(); this._position(); this._setupOutside(); this.dispatchEvent(new CustomEvent('open',  { bubbles: true, composed: true })); } }
-    hide()   { if (this._open)  { this._open = false; this.render(); this._cleanupOutside(); this.dispatchEvent(new CustomEvent('close', { bubbles: true, composed: true })); } }
+    show()   { if (!this._open) { this._open = true;  this.render(); this._position(); this._setupOutside(); this.emitEvent('nc-popover-open', {}); } }
+    hide()   { if (this._open)  { this._open = false; this.render(); this._cleanupOutside(); this.emitEvent('nc-popover-close', {}); } }
     toggle() {
         if (this._open) this.hide();
         else this.show();

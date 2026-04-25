@@ -325,10 +325,7 @@ export class NcSplash extends Component {
             // Mark splash as shown in sessionStorage
             sessionStorage.setItem('splash-shown', 'true');
             
-            this.dispatchEvent(new CustomEvent('splash-complete', {
-                bubbles: true,
-                composed: true
-            }));
+            this.emitEvent('nc-splash-complete', {});
             
             // Hide the component but keep in DOM for dev tools
             setTimeout(() => this.style.display = 'none', 100);

@@ -11,7 +11,7 @@
  *   - disabled: boolean
  *
  * Events (on nc-accordion-item):
- *   - toggle: CustomEvent<{ open: boolean }>
+ *   - nc-accordion-toggle: CustomEvent<{ open: boolean }>
  *
  * Usage:
  *   <nc-accordion>
@@ -21,6 +21,7 @@
  */
 
 import { Component, defineComponent } from '../../.nativecore/core/component.js';
+import { html } from '../../.nativecore/utils/templates.js';
 
 // -- NcAccordionItem ----------------------------------------------------------
 
@@ -107,10 +108,7 @@ export class NcAccordionItem extends Component {
             } else {
                 this.removeAttribute('open');
             }
-            this.dispatchEvent(new CustomEvent('toggle', {
-                bubbles: true, composed: true,
-                detail: { open: nowOpen }
-            }));
+            this.emitEvent('nc-accordion-toggle', { open: nowOpen });
         });
     }
 

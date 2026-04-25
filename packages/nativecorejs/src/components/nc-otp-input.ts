@@ -207,13 +207,9 @@ export class NcOtpInput extends Component {
     private _emitChange() {
         const value    = this.value;
         const complete = value.length === this._length() && !value.includes('');
-        this.dispatchEvent(new CustomEvent('change', {
-            detail: { value, complete }, bubbles: true, composed: true,
-        }));
+        this.emitEvent('change', { value, complete });
         if (complete) {
-            this.dispatchEvent(new CustomEvent('complete', {
-                detail: { value }, bubbles: true, composed: true,
-            }));
+            this.emitEvent('complete', { value });
         }
     }
 

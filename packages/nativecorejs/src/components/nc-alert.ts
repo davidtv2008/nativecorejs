@@ -124,7 +124,7 @@ export class NcAlert extends Component {
             alertElement.classList.add('out');
             alertElement.addEventListener('animationend', () => {
                 alertElement.style.display = 'none';
-                this.dispatchEvent(new CustomEvent('dismiss', { bubbles: true, composed: true }));
+                this.emitEvent('nc-alert-dismiss', {});
             }, { once: true });
         }
     }

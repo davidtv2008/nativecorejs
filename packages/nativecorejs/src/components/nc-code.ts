@@ -26,6 +26,7 @@
  *   </nc-code>
  */
 import { Component, defineComponent } from '../../.nativecore/core/component.js';
+import { useState } from '../../.nativecore/core/state.js';
 import { html, raw } from '../../.nativecore/utils/templates.js';
 
 // -- Simple tokenizer ---------------------------------------------------------

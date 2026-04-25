@@ -1,4 +1,5 @@
 import { Component, defineComponent } from '../../.nativecore/core/component.js';
+import { html, raw } from '../../.nativecore/utils/templates.js';
 
 export class NcNumberInput extends Component {
     static useShadowDOM = true;
@@ -134,96 +135,54 @@ export class NcNumberInput extends Component {
     }
 
     onMount() {
-        this.bindEvents();
-    }
-
-    private bindEvents() {
-        const shadowRoot = this.shadowRoot;
-        if (!shadowRoot) return;
-        const input = shadowRoot.querySelector<HTMLInputElement>('input[type="number"]');
-        const decreaseButton = shadowRoot.querySelector<HTMLButtonElement>('.btn-dec');
-        const increaseButton = shadowRoot.querySelector<HTMLButtonElement>('.btn-inc');
-        if (!input || !decreaseButton || !increaseButton) return;
-
-        input.addEventListener('input', () => {
-            const value = this.clamp(Number(input.value));
+        // Use this.on() for delegation — auto-cleaned on unmount, no listener accumulation
+        this.on('input', (event: Event) => {
+            const el = event.target as HTMLInputElement;
+            if (el.type !== 'number') return;
+            const value = this.clamp(Number(el.value));
             this.updateButtons(value);
-            this.dispatchEvent(new CustomEvent('input', {
-                bubbles: true,
-                composed: true,
-                detail: { value, name: this.getAttribute('name') || '' }
-            }));
+            this.emitEvent('input', { value, name: this.getAttribute('name') || '' });
         });
 
-        input.addEventListener('change', () => {
-            const value = this.clamp(Number(input.value));
-            input.value = String(value);
+        this.on('change', (event: Event) => {
+            const el = event.target as HTMLInputElement;
+            if (el.type !== 'number') return;
+            const value = this.clamp(Number(el.value));
+            el.value = String(value);
             this.setAttribute('value', String(value));
             this.updateButtons(value);
-            this.dispatchEvent(new CustomEvent('change', {
-                bubbles: true,
-                composed: true,
-                detail: { value, name: this.getAttribute('name') || '' }
-            }));
+            this.emitEvent('change', { value, name: this.getAttribute('name') || '' });
         });
 
-        input.addEventListener('wheel', event => {
-            if (document.activeElement !== this && !this.shadowRoot?.activeElement) return;
-            event.preventDefault();
-            const delta = (event as WheelEvent).deltaY;
-            if (delta < 0) {
-                this.step(1);
-            } else {
-                this.step(-1);
-            }
-        }, { passive: false });
+        this.on('click', (event: Event) => {
+            const btn = (event.target as HTMLElement).closest<HTMLButtonElement>('.btn-dec, .btn-inc');
+            if (!btn) return;
+            if (btn.getAttribute('aria-disabled') === 'true') return;
+            this.step(btn.classList.contains('btn-dec') ? -1 : 1);
+        });
 
-        const setupHold = (button: HTMLButtonElement, direction: 1 | -1) => {
-            button.addEventListener('mousedown', event => {
-                if (event.button !== 0) return;
-                if (button.getAttribute('aria-disabled') === 'true') return;
-                this.step(direction);
-                this.holdTimer = setTimeout(() => {
-                    this.holdInterval = setInterval(() => this.step(direction), 80);
-                }, 400);
-            });
-        };
-
-        setupHold(decreaseButton, -1);
-        setupHold(increaseButton, 1);
+        this.on('mousedown', (event: MouseEvent) => {
+            const btn = (event.target as HTMLElement).closest<HTMLButtonElement>('.btn-dec, .btn-inc');
+            if (!btn || event.button !== 0 || btn.getAttribute('aria-disabled') === 'true') return;
+            const direction: 1 | -1 = btn.classList.contains('btn-dec') ? -1 : 1;
+            this.holdTimer = setTimeout(() => {
+                this.holdInterval = setInterval(() => this.step(direction), 80);
+            }, 400);
+        });
 
         const stopHold = () => {
-            if (this.holdTimer) {
-                clearTimeout(this.holdTimer);
-                this.holdTimer = null;
-            }
-            if (this.holdInterval) {
-                clearInterval(this.holdInterval);
-                this.holdInterval = null;
-            }
+            if (this.holdTimer) { clearTimeout(this.holdTimer); this.holdTimer = null; }
+            if (this.holdInterval) { clearInterval(this.holdInterval); this.holdInterval = null; }
         };
-
-        // Remove old mouseup listener before adding a new one to prevent accumulation
         if (this._stopHold) document.removeEventListener('mouseup', this._stopHold);
         this._stopHold = stopHold;
         document.addEventListener('mouseup', stopHold);
 
-        decreaseButton.addEventListener('click', () => {
-            if (decreaseButton.getAttribute('aria-disabled') !== 'true') this.step(-1);
-        });
-        increaseButton.addEventListener('click', () => {
-            if (increaseButton.getAttribute('aria-disabled') !== 'true') this.step(1);
-        });
-
-        input.addEventListener('keydown', (event: KeyboardEvent) => {
-            if (event.key === 'ArrowUp') {
-                event.preventDefault();
-                this.step(1);
-            }
-            if (event.key === 'ArrowDown') {
-                event.preventDefault();
-                this.step(-1);
-            }
+        this.on('keydown', (event: KeyboardEvent) => {
+            const el = event.target as HTMLElement;
+            if (!el.matches('input[type="number"]')) return;
+            if (event.key === 'ArrowUp') { event.preventDefault(); this.step(1); }
+            if (event.key === 'ArrowDown') { event.preventDefault(); this.step(-1); }
         });
     }
 
@@ -240,11 +199,7 @@ export class NcNumberInput extends Component {
         if (input) input.value = String(value);
         this.setAttribute('value', String(value));
         this.updateButtons(value);
-        this.dispatchEvent(new CustomEvent('change', {
-            bubbles: true,
-            composed: true,
-            detail: { value, name: this.getAttribute('name') || '' }
-        }));
+        this.emitEvent('change', { value, name: this.getAttribute('name') || '' });
     }
 
     private updateButtons(value: number) {
@@ -277,7 +232,6 @@ export class NcNumberInput extends Component {
         }
         if (this._mounted) {
             this.render();
-            this.bindEvents();
         }
     }
 }

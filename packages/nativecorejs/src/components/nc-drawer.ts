@@ -15,8 +15,8 @@
  *   - footer - drawer footer area
  *
  * Events:
- *   - open:  CustomEvent - after drawer opens
- *   - close: CustomEvent - after drawer closes
+ *   - nc-drawer-open:  CustomEvent - after drawer opens
+ *   - nc-drawer-close: CustomEvent - after drawer closes
  *
  * Usage:
  *   <nc-drawer id="nav-drawer" placement="left">
@@ -28,6 +28,7 @@
  */
 
 import { Component, defineComponent } from '../../.nativecore/core/component.js';
+import { html, raw } from '../../.nativecore/utils/templates.js';
 import { trapFocus } from '../a11y/index.js';
 
 export class NcDrawer extends Component {
@@ -186,7 +187,7 @@ export class NcDrawer extends Component {
 
     private _close() {
         this.removeAttribute('open');
-        this.dispatchEvent(new CustomEvent('close', { bubbles: true, composed: true }));
+        this.emitEvent('nc-drawer-close', {});
     }
 
     onUnmount() {
@@ -228,9 +229,7 @@ export class NcDrawer extends Component {
             // Lock body scroll while open
             document.body.style.overflow = open ? 'hidden' : '';
 
-            this.dispatchEvent(new CustomEvent(open ? 'open' : 'close', {
-                bubbles: true, composed: true
-            }));
+            this.emitEvent(open ? 'nc-drawer-open' : 'nc-drawer-close', {});
             return;
         }
         if (this._mounted) { this.render(); this._bindEvents(); }

@@ -122,7 +122,7 @@ export class NcImage extends Component {
             this.loaded = true;
             this.errored = false;
             this.render();
-            this.dispatchEvent(new CustomEvent('load', { bubbles: true, composed: true }));
+            this.emitEvent('load', {});
         }, { once: true });
 
         image.addEventListener('error', () => {
@@ -134,7 +134,7 @@ export class NcImage extends Component {
             this.errored = true;
             this.loaded = false;
             this.render();
-            this.dispatchEvent(new CustomEvent('error', { bubbles: true, composed: true }));
+            this.emitEvent('error', {});
         }, { once: true });
     }
 

@@ -17,7 +17,7 @@
  *
  * Events:
  *   - input:  CustomEvent<{ value: string; name: string }>
- *   - select: CustomEvent<{ value: string; name: string }>
+ *   - nc-autocomplete-select: CustomEvent<{ value: string; name: string }>
  *   - change: CustomEvent<{ value: string; name: string }>
  */
 
@@ -190,10 +190,7 @@ export class NcAutocomplete extends Component {
             this._activeIndex = -1;
             this._open = true;
             this._refreshDropdown();
-            this.dispatchEvent(new CustomEvent('input', {
-                bubbles: true, composed: true,
-                detail: { value: input.value, name: this.getAttribute('name') || '' }
-            }));
+            this.emitEvent('input', { value: input.value, name: this.getAttribute('name') || '' });
         };
 
         const focusHandler = () => {
@@ -260,14 +257,8 @@ export class NcAutocomplete extends Component {
         const input = this.$<HTMLInputElement>('input');
         if (input) input.value = value;
         this._refreshDropdown();
-        this.dispatchEvent(new CustomEvent('select', {
-            bubbles: true, composed: true,
-            detail: { value, name: this.getAttribute('name') || '' }
-        }));
-        this.dispatchEvent(new CustomEvent('change', {
-            bubbles: true, composed: true,
-            detail: { value, name: this.getAttribute('name') || '' }
-        }));
+        this.emitEvent('nc-autocomplete-select', { value, name: this.getAttribute('name') || '' });
+        this.emitEvent('change', { value, name: this.getAttribute('name') || '' });
     }
 
     private _refreshDropdown() {

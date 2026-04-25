@@ -218,10 +218,7 @@ export class NcRichText extends Component {
         const hidden = this.$<HTMLInputElement>('input[type="hidden"]');
         if (hidden) hidden.value = html;
         const name = this.getAttribute('name') || '';
-        this.dispatchEvent(new CustomEvent('input', {
-            bubbles: true, composed: true,
-            detail: { value: html, name }
-        }));
+        this.emitEvent('input', { value: html, name });
     }
 
     private _updateToolbarState() {
@@ -253,10 +250,7 @@ export class NcRichText extends Component {
 
         editable.addEventListener('input', () => this._onContentChange());
         editable.addEventListener('blur', () => {
-            this.dispatchEvent(new CustomEvent('change', {
-                bubbles: true, composed: true,
-                detail: { value: this._value, name: this.getAttribute('name') || '' }
-            }));
+            this.emitEvent('change', { value: this._value, name: this.getAttribute('name') || '' });
         });
         editable.addEventListener('keyup', () => this._updateToolbarState());
         editable.addEventListener('mouseup', () => this._updateToolbarState());

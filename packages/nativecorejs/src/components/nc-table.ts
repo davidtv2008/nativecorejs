@@ -29,6 +29,7 @@
  *   </nc-table>
  */
 import { Component, defineComponent } from '../../.nativecore/core/component.js';
+import { html, raw } from '../../.nativecore/utils/templates.js';
 
 type TableAlign = 'left' | 'center' | 'right';
 interface TableColumn {
@@ -254,9 +255,7 @@ export class NcTable extends Component {
                 if (this._sortKey === key) this._sortDir = this._sortDir === 'asc' ? 'desc' : 'asc';
                 else { this._sortKey = key; this._sortDir = 'asc'; }
                 this.render();
-                this.dispatchEvent(new CustomEvent('sort', {
-                    detail: { key: this._sortKey, direction: this._sortDir }, bubbles: true, composed: true,
-                }));
+                  this.emitEvent('nc-table-sort', { key: this._sortKey, direction: this._sortDir });
                 return;
             }
 
@@ -265,9 +264,7 @@ export class NcTable extends Component {
                 const index = parseInt(row.dataset.rowIndex ?? '-1', 10);
                 const rows  = this._sortedRows(this._parseRows(), this._parseColumns());
                 if (index >= 0 && rows[index]) {
-                    this.dispatchEvent(new CustomEvent('row-click', {
-                        detail: { row: rows[index], index }, bubbles: true, composed: true,
-                    }));
+                      this.emitEvent('nc-table-row-click', { row: rows[index], index });
                 }
             }
         });

@@ -46,6 +46,7 @@
  */
 
 import { Component, defineComponent } from '../../.nativecore/core/component.js';
+import { html, raw } from '../../.nativecore/utils/templates.js';
 
 // -- NcField ------------------------------------------------------------------
 
@@ -187,10 +188,7 @@ export class NcForm extends Component {
             if (!valid) return;
         }
         const values = this.getValues();
-        this.dispatchEvent(new CustomEvent('submit', {
-            bubbles: true, composed: true,
-            detail: { values }
-        }));
+        this.emitEvent('submit', { values });
     }
 
     getValues(): Record<string, string> {
@@ -288,10 +286,7 @@ export class NcForm extends Component {
         });
 
         if (!valid) {
-            this.dispatchEvent(new CustomEvent('invalid', {
-                bubbles: true, composed: true,
-                detail: { fields: Array.from(new Set(invalidFields)) }
-            }));
+            this.emitEvent('invalid', { fields: Array.from(new Set(invalidFields)) });
         }
         return valid;
     }

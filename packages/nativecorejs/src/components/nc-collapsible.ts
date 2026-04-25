@@ -23,6 +23,7 @@
  *   </nc-collapsible>
  */
 import { Component, defineComponent } from '../../.nativecore/core/component.js';
+import { html } from '../../.nativecore/utils/templates.js';
 
 export class NcCollapsible extends Component {
     static useShadowDOM = true;
@@ -142,8 +143,8 @@ export class NcCollapsible extends Component {
         const nowOpen = !this.hasAttribute('open');
         if (nowOpen) this.setAttribute('open', '');
         else this.removeAttribute('open');
-        this.dispatchEvent(new CustomEvent('toggle', { detail: { open: nowOpen }, bubbles: true, composed: true }));
-        this.dispatchEvent(new CustomEvent(nowOpen ? 'open' : 'close', { bubbles: true, composed: true }));
+        this.emitEvent('nc-collapsible-toggle', { open: nowOpen });
+        this.emitEvent(nowOpen ? 'nc-collapsible-open' : 'nc-collapsible-close', {});
     }
 
     attributeChangedCallback(name: string, oldVal: string, newVal: string) {

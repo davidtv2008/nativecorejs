@@ -1,0 +1,13 @@
+{
+  "appName": "Nativecore",
+  "packageManager": "npm",
+  "useTypeScript": false,
+  "features": {
+    "auth": true,
+    "dashboard": true,
+    "devTools": true,
+    "hmr": true,
+    "mockApi": true,
+    "capacitor": false
+  }
+}

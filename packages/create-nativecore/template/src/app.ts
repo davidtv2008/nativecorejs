@@ -28,6 +28,9 @@ import { pausePageCleanupCollection, resumePageCleanupCollection } from '@core/p
 import '@components/registry.js'; // side-effect import: registers all lazy components
 
 function isLocalhost(): boolean {
+    // Never treat Capacitor's WebView as localhost — it uses https://localhost as its
+    // internal origin but is a production native app, not a dev server.
+    if ((window as any).Capacitor?.isNativePlatform?.()) return false;
     const hostname = window.location.hostname;
     return hostname === 'localhost' || 
         hostname === '127.0.0.1' || 

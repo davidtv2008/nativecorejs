@@ -1,6 +1,6 @@
 import { dom } from '@core-utils/dom.js';
 import { trackEvents } from '@core-utils/events.js';
-import { http } from '@core/http.js';
+import http from '@core/http.js';
 import router from '@core/router.js';
 
 interface PostDetail {

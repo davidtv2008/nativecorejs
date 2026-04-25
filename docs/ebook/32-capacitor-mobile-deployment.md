@@ -1,10 +1,352 @@
 # Chapter 32 — Capacitor: Packaging for Android and iOS
 
-> **What you'll build in this chapter:** Package Taskflow from Project 1 as a native Android app using Capacitor, run it in the Android Emulator, produce a signed APK — and, on macOS, complete the same flow for iOS.
+> **What you'll build in this chapter:** Package a NativeCoreJS project as a native Android app using Capacitor, run it on a real device or emulator, produce a signed APK — and, on macOS, complete the same flow for iOS.
 
-NativeCoreJS is a web application framework. Its output is a `dist/` folder of HTML, CSS, and JavaScript that runs in any browser. [Capacitor](https://capacitorjs.com/) is the bridge that takes that `dist/` folder and packages it as a native Android APK or iOS app — without touching your source code.
+NativeCoreJS is a web application framework. Its production output lands in the `_deploy/` folder — a complete static site ready for any file-based host. [Capacitor](https://capacitorjs.com/) is the bridge that takes that `_deploy/` folder and packages it as a native Android APK or iOS app without touching your source code.
 
-This chapter explains the full workflow, what you can accomplish on any OS, what requires macOS, and what Capacitor genuinely cannot do.
+This chapter covers two starting points:
+
+- **Path A** — you scaffolded your project with `--capacitor` (everything is pre-configured)
+- **Path B** — you scaffolded without `--capacitor` and want to add Capacitor later
+
+---
+
+## What Capacitor Does
+
+Capacitor wraps your web app in a native shell. On Android that shell is a `WebView` inside an Android Studio project. On iOS it is a `WKWebView` inside an Xcode project. Your NativeCoreJS code runs exactly as it does in the browser — the same DOM, the same custom elements, the same router — but it is now a `.apk` or `.ipa` file that users install from the app stores.
+
+Capacitor also provides a plugin system that lets you call native device APIs (camera, geolocation, push notifications, haptics, file system, biometrics) through a typed JavaScript interface. Without plugins your app can only do what a browser can do.
+
+---
+
+## Mac-Free vs Mac-Required: The Decision Table
+
+| Task | Windows / Linux | macOS |
+|---|---|---|
+| Build app logic and UI (`npm run dev`) | ✓ | ✓ |
+| Run unit tests (`npm test`) | ✓ | ✓ |
+| Build the production web bundle (`npm run build:client`) | ✓ | ✓ |
+| Add Android platform (`npm run cap:add:android`) | ✓ | ✓ |
+| Sync web assets to Android (`npm run cap:sync`) | ✓ | ✓ |
+| Run in Android Emulator | ✓ (needs Android Studio) | ✓ |
+| Run on physical Android device | ✓ (needs Android Studio) | ✓ |
+| Submit to Google Play | ✓ | ✓ |
+| Add iOS platform (`npm run cap:add:ios`) | ✗ | ✓ |
+| Build for iOS Simulator | ✗ | ✓ (Xcode required) |
+| Run on physical iPhone / iPad | ✗ | ✓ (Xcode required) |
+| Submit to the App Store | ✗ | ✓ (Xcode required) |
+
+**Summary:** You can build, develop, and ship a full Android app without ever touching a Mac. iOS requires macOS and Xcode — this is an Apple restriction, not a Capacitor or NativeCoreJS limitation.
+
+---
+
+## Path A — Project Scaffolded with `--capacitor`
+
+When you scaffolded with the `--capacitor` flag, everything is already wired up:
+
+```bash
+npx create-nativecore my-app --capacitor
+# or answer yes to the Capacitor prompt when running without flags
+npx create-nativecore my-app
+```
+
+What this gives you out of the box:
+
+- `capacitor.config.ts` (TypeScript projects) or `capacitor.config.cjs` (JavaScript projects) with `webDir: '_deploy'`
+- All `cap:*` npm scripts in `package.json`
+- `@capacitor/core`, `@capacitor/cli`, `@capacitor/android`, `@capacitor/ios` installed
+
+Skip directly to [One-Time System Setup](#one-time-system-setup-android).
+
+---
+
+## Path B — Adding Capacitor to an Existing Project
+
+If your project was scaffolded without `--capacitor`, your `package.json` already has a `cap:init` script that handles the setup correctly. Run it:
+
+```bash
+npm install @capacitor/core
+npm install --save-dev @capacitor/cli @capacitor/android @capacitor/ios
+npm run cap:init
+```
+
+The `cap:init` script runs:
+
+```
+npx cap init "My App" com.example.myapp --web-dir _deploy
+```
+
+This creates `capacitor.config.json` with `webDir` pre-set to `_deploy`. Do **not** run `npx cap init` directly — the interactive prompt defaults `webDir` to `www`, which is wrong for NativeCoreJS projects. Always use `npm run cap:init`.
+
+After `cap:init`, add the remaining `cap:*` scripts to your `package.json` manually (or re-scaffold with `--capacitor`):
+
+```json
+"cap:sync": "npm run build:client && npx cap sync",
+"cap:android": "npm run cap:sync && npx cap open android",
+"cap:ios": "npm run cap:sync && npx cap open ios",
+"cap:add:android": "npx cap add android && node .nativecore/scripts/patch-android-assets.mjs",
+"cap:add:ios": "npx cap add ios",
+"cap:run:android": "npm run cap:sync && npx cap run android",
+"cap:run:ios": "npm run cap:sync && npx cap run ios"
+```
+
+---
+
+## The `capacitor.config` File
+
+### TypeScript projects (`capacitor.config.ts`)
+
+```typescript
+import type { CapacitorConfig } from '@capacitor/cli';
+
+const config: CapacitorConfig = {
+    appId: 'com.example.myapp',     // change to your reverse-domain ID
+    appName: 'My App',
+    webDir: '_deploy',              // NativeCoreJS build output folder
+    server: {
+        androidScheme: 'https'      // required for cookies and secure contexts
+    }
+};
+
+export default config;
+```
+
+### JavaScript projects (`capacitor.config.cjs`)
+
+```js
+/** @type {import('@capacitor/cli').CapacitorConfig} */
+const config = {
+    appId: 'com.example.myapp',
+    appName: 'My App',
+    webDir: '_deploy',
+    server: {
+        androidScheme: 'https'
+    }
+};
+
+module.exports = config;
+```
+
+> **Why `.cjs` for JavaScript projects?** NativeCoreJS projects have `"type": "module"` in `package.json`, which makes all `.js` files ES modules. Capacitor's CLI uses `require()` to load the config file, which is incompatible with `export default`. The `.cjs` extension forces Node to treat the file as CommonJS regardless of `"type": "module"`.
+
+> **Why `_deploy` and not `dist`?** NativeCoreJS compiles TypeScript to `dist/` as an intermediate step, but the final production bundle — with HTML shells, views, styles, and all static assets assembled — lives in `_deploy/`. Capacitor must point to `_deploy/`.
+
+**Edit `appId` before adding any platform.** The app ID is baked into the native project folder structure and is difficult to change afterwards. Use your own reverse-domain identifier: `com.yourcompany.yourapp`.
+
+---
+
+## One-Time System Setup (Android)
+
+1. Install [Android Studio](https://developer.android.com/studio)
+2. In Android Studio, open **SDK Manager** and install at least one Android SDK (API 24 or higher)
+3. Set `ANDROID_HOME` in your environment:
+
+```powershell
+# Windows PowerShell
+$env:ANDROID_HOME = "$env:LOCALAPPDATA\Android\Sdk"
+```
+
+```bash
+# macOS / Linux
+export ANDROID_HOME=$HOME/Android/Sdk
+```
+
+---
+
+## Adding the Android Platform (Once)
+
+```bash
+npm run cap:add:android
+```
+
+This does two things:
+
+1. Runs `npx cap add android` — generates the `android/` native project
+2. Runs `patch-android-assets.mjs` — removes `.*` from Android's asset ignore pattern so the `.nativecore/` framework core is included in the APK
+
+> **Why the patch?** Android's asset packager (`aapt`) ignores all dot-prefixed files and directories by default. NativeCoreJS stores its framework core in `.nativecore/`, which would be silently excluded from the app without this fix.
+
+Commit the `android/` folder to source control — it is your native Android project.
+
+---
+
+## Daily Workflow After Setup
+
+```bash
+npm run cap:sync
+```
+
+This builds `_deploy/` and copies it into the native projects. Run it every time you change your web code.
+
+To open Android Studio:
+
+```bash
+npm run cap:android
+```
+
+To run directly on a connected device or emulator without opening Android Studio:
+
+```bash
+npm run cap:run:android
+```
+
+---
+
+## The `cap:*` npm Scripts Reference
+
+| Script | What it does |
+|---|---|
+| `npm run cap:init` | Initialises Capacitor with correct `webDir: '_deploy'` (Path B only, run once) |
+| `npm run cap:add:android` | Generates `android/` and patches the asset filter (run once) |
+| `npm run cap:add:ios` | Generates `ios/` (run once, macOS only) |
+| `npm run cap:sync` | Builds `_deploy/` and syncs it into native projects |
+| `npm run cap:android` | Syncs then opens Android Studio |
+| `npm run cap:ios` | Syncs then opens Xcode (macOS only) |
+| `npm run cap:run:android` | Syncs then runs on a connected Android device or emulator |
+| `npm run cap:run:ios` | Syncs then runs on a connected iOS device or simulator |
+
+---
+
+## Debugging on Device
+
+Use Chrome remote debugging to inspect the WebView running on a physical Android device:
+
+1. With the app running on the device, open Chrome on your PC and navigate to `chrome://inspect/#devices`
+2. Your device appears under **Remote Target** — click **inspect** under the WebView entry
+3. Full Chrome DevTools open — console, network, elements, sources
+
+For iOS, use Safari on macOS: **Develop → [device name] → [app WebView]**.
+
+---
+
+## iOS Workflow (macOS + Xcode Required)
+
+### One-time setup
+
+1. Install Xcode from the Mac App Store
+2. Accept the Xcode license: `sudo xcodebuild -license accept`
+3. Install command-line tools: `xcode-select --install`
+
+### Adding the platform (once)
+
+```bash
+npm run cap:add:ios
+```
+
+### Ongoing workflow
+
+```bash
+npm run cap:ios     # syncs and opens Xcode
+```
+
+Select a simulator or connected device in Xcode and press **Run**.
+
+### Building a release IPA
+
+**Product → Archive**, then use the Organizer to upload to App Store Connect. An Apple Developer Program membership ($99/year) is required to distribute outside TestFlight.
+
+---
+
+## Building a Release APK (Android)
+
+In Android Studio: **Build → Generate Signed Bundle / APK**.
+
+Follow the signing wizard to create a keystore. Keep the keystore file safe — you cannot update an app on Google Play without it. The resulting signed `.apk` or `.aab` is what you upload to the Google Play Console.
+
+---
+
+## Using Capacitor Plugins for Native APIs
+
+```bash
+npm install @capacitor/camera
+npm run cap:sync
+```
+
+```typescript
+import { Camera, CameraResultType } from '@capacitor/camera';
+
+const photo = await Camera.getPhoto({
+    quality: 90,
+    resultType: CameraResultType.Uri
+});
+```
+
+After installing any plugin, always run `npm run cap:sync` to register it in the native projects.
+
+---
+
+## The `androidScheme: 'https'` Setting
+
+Keep `server.androidScheme: 'https'` in your config at all times. Without it:
+
+- `sessionStorage` and cookies may not persist correctly
+- `fetch()` may fail due to mixed-content restrictions
+- Web Crypto API is unavailable (it requires a secure context)
+
+---
+
+## What Capacitor Cannot Do
+
+| Limitation | Explanation |
+|---|---|
+| **No hot reload in native** | HMR works only in the browser. Native builds require a full `cap:sync`. |
+| **No native UI components** | Your UI is rendered by the WebView engine, not native OS widgets. |
+| **No background execution without plugins** | Background tasks and push notifications require Capacitor plugins. |
+| **App Store approval** | Apple rejects thin website wrappers. Your app must provide meaningful native functionality. |
+| **Old WebView compatibility** | Android WebView on API 24–27 devices may lack some modern browser APIs. Test on older devices if your audience requires it. |
+
+---
+
+## `.gitignore` for Capacitor
+
+Commit `android/` and `ios/` — they are your native projects. Ignore build artifacts:
+
+```gitignore
+android/.gradle/
+android/app/build/
+ios/DerivedData/
+ios/Pods/
+```
+
+---
+
+## Project Structure After Adding Capacitor
+
+```
+my-app/
+├── capacitor.config.ts     ← Capacitor configuration (webDir: '_deploy')
+├── android/                ← Android Studio project (committed)
+├── ios/                    ← Xcode project (committed, macOS only)
+├── _deploy/                ← production build output (gitignored)
+├── dist/                   ← intermediate compiled JS (gitignored)
+├── src/                    ← NativeCoreJS source
+└── package.json
+```
+
+---
+
+## Recommended Workflow
+
+```
+1.  npm run dev             → browser dev loop (most of your time here)
+2.  npm run cap:sync        → after a significant feature is complete
+3.  npm run cap:android     → verify on Android device or emulator
+4.  npm run cap:ios         → verify on iOS Simulator (Mac only)
+5.  Signed APK / IPA        → when shipping a release
+```
+
+---
+
+## Done Criteria
+
+- [ ] Project has a `capacitor.config.ts` (or `.cjs`) with `webDir: '_deploy'` and `androidScheme: 'https'`
+- [ ] `npm run cap:add:android` completes without errors and generates `android/`
+- [ ] `npm run cap:sync` copies `_deploy/` into the Android assets successfully
+- [ ] App opens and renders correctly on an Android emulator or physical device
+- [ ] Dev tools pills (HMR, dev mode) are not visible in the native app
+- [ ] A signed debug APK is produced via Android Studio
+- [ ] *(macOS only)* App opens in the iOS Simulator via `npm run cap:ios`
+
 
 ---
 

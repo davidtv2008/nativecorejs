@@ -19,6 +19,8 @@
  */
 
 import { Component, defineComponent } from '../../.nativecore/core/component.js';
+import { html, raw } from '../../.nativecore/utils/templates.js';
+import { useState } from '../../.nativecore/core/state.js';
 
 const DEFAULT_SWATCHES = [
     '#ef4444','#f97316','#f59e0b','#eab308',
@@ -35,7 +37,7 @@ export class NcColorPicker extends Component {
         return ['name', 'value', 'swatches', 'show-input', 'disabled', 'size'];
     }
 
-    private _value = '#10b981';
+    private _value = useState('#10b981');
 
     constructor() { super(); }
 
@@ -47,9 +49,9 @@ export class NcColorPicker extends Component {
 
     template() {
         if (!this._mounted) {
-            this._value = this.getAttribute('value') || '#10b981';
+            this._value.value = this.getAttribute('value') || '#10b981';
         }
-        const value = this._value;
+        const value = this._value.value;
         const showInput = this.getAttribute('show-input') !== 'false';
         const disabled = this.hasAttribute('disabled');
         const swatches = this._getSwatches();
@@ -179,83 +181,67 @@ export class NcColorPicker extends Component {
     }
 
     onMount() {
-        this._bindEvents();
-    }
-
-    private _bindEvents() {
-        // Swatch clicks
-        this.$<HTMLElement>('.swatches')!.addEventListener('click', (e) => {
+        // Use this.on() delegation — auto-cleaned on unmount, survives re-renders
+        this.on('click', (e: Event) => {
             const btn = (e.target as HTMLElement).closest<HTMLElement>('[data-color]');
             if (btn) this._commit(btn.dataset.color!);
         });
 
-        // Native color input
-        const native = this.$<HTMLInputElement>('.native-input');
-        if (native) {
-            native.addEventListener('input', () => {
-                this._commit(native.value, false);
+        this.on('input', (e: Event) => {
+            const target = e.target as HTMLInputElement;
+            if (target.classList.contains('native-input')) {
+                this._commit(target.value, false);
                 const hex = this.$<HTMLInputElement>('.hex-input');
-                if (hex) hex.value = native.value;
-            });
-            native.addEventListener('change', () => this._commit(native.value));
-        }
-
-        // Hex text input
-        const hexIn = this.$<HTMLInputElement>('.hex-input');
-        if (hexIn) {
-            hexIn.addEventListener('input', () => {
-                const v = hexIn.value.trim();
+                if (hex) hex.value = target.value;
+            } else if (target.classList.contains('hex-input')) {
+                const v = target.value.trim();
                 if (/^#[0-9a-fA-F]{6}$/.test(v)) {
                     this._commit(v, false);
                     const nat = this.$<HTMLInputElement>('.native-input');
                     if (nat) nat.value = v;
                 }
-            });
-            hexIn.addEventListener('change', () => {
-                const v = hexIn.value.trim();
+            }
+        });
+
+        this.on('change', (e: Event) => {
+            const target = e.target as HTMLInputElement;
+            if (target.classList.contains('native-input')) {
+                this._commit(target.value);
+            } else if (target.classList.contains('hex-input')) {
+                const v = target.value.trim();
                 if (/^#[0-9a-fA-F]{6}$/.test(v)) this._commit(v);
-                else hexIn.value = this._value; // revert invalid
-            });
-        }
+                else target.value = this._value.value;
+            }
+        });
     }
 
     private _commit(value: string, fireChange = true) {
-        this._value = value;
+        this._value.value = value;
         this.setAttribute('value', value);
 
-        // Update swatch active states
         this.$$<HTMLElement>('.swatch').forEach(s => {
             const active = s.dataset.color?.toLowerCase() === value.toLowerCase();
             s.classList.toggle('active', active);
             s.setAttribute('aria-selected', String(active));
         });
 
-        // Update preview
         const preview = this.$<HTMLElement>('.preview');
         if (preview) preview.style.background = value;
 
-        // Update hidden input
         const hidden = this.$<HTMLInputElement>('input[type="hidden"]');
         if (hidden) hidden.value = value;
 
         const name = this.getAttribute('name') || '';
-        const eventType = fireChange ? 'change' : 'input';
-        this.dispatchEvent(new CustomEvent(eventType, {
-            bubbles: true, composed: true,
-            detail: { value, name }
-        }));
+        this.emitEvent(fireChange ? 'change' : 'input', { value, name });
         if (fireChange) {
-            this.dispatchEvent(new CustomEvent('input', {
-                bubbles: true, composed: true,
-                detail: { value, name }
-            }));
+            this.emitEvent('input', { value, name });
         }
     }
 
     attributeChangedCallback(name: string, oldValue: string, newValue: string) {
         if (oldValue === newValue) return;
         if (name === 'value' && this._mounted) {
-            this._value = newValue;
+            this._value.value = newValue;
             this._commit(newValue, false);
             const hex = this.$<HTMLInputElement>('.hex-input');
             if (hex) hex.value = newValue;

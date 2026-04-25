@@ -13,9 +13,9 @@
  *   - width: string - CSS width of panel (default: 'auto'; use 'trigger' to match trigger width)
  *
  * Events:
- *   - open:   CustomEvent
- *   - close:  CustomEvent
- *   - select: CustomEvent<{ value: string; label: string }> - when a [data-value] child is clicked
+ *   - nc-dropdown-open:   CustomEvent
+ *   - nc-dropdown-close:  CustomEvent
+ *   - nc-dropdown-select: CustomEvent<{ value: string; label: string }> - when a [data-value] child is clicked
  *
  * Usage:
  *   <nc-dropdown>
@@ -28,6 +28,7 @@
  */
 
 import { Component, defineComponent } from '../../.nativecore/core/component.js';
+import { html } from '../../.nativecore/utils/templates.js';
 
 export class NcDropdown extends Component {
     static useShadowDOM = true;
@@ -126,10 +127,7 @@ export class NcDropdown extends Component {
                 if (!target) return;
                 const value = target.dataset.value ?? '';
                 const label = target.textContent?.trim() ?? '';
-                this.dispatchEvent(new CustomEvent('select', {
-                    bubbles: true, composed: true,
-                    detail: { value, label }
-                }));
+                this.emitEvent('nc-dropdown-select', { value, label });
                 if (this.getAttribute('close-on-select') !== 'false') {
                     this._setOpen(false);
                 }
@@ -191,9 +189,7 @@ export class NcDropdown extends Component {
                         : `scale(0.97) translateY(${above ? '4px' : '-4px'})`);
                 panel.setAttribute('aria-hidden', String(!open));
             }
-            this.dispatchEvent(new CustomEvent(open ? 'open' : 'close', {
-                bubbles: true, composed: true
-            }));
+            this.emitEvent(open ? 'nc-dropdown-open' : 'nc-dropdown-close', {});
             return;
         }
         if (this._mounted) { this.render(); this._bindEvents(); }

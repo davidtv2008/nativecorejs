@@ -212,15 +212,57 @@ off(); // remove listener
 ## Custom Events
 
 ```typescript
-// Emit (inside a Component)
+// Emit from inside a Component — bubbles + composed are true by default
 this.emitEvent('nc-task-complete', { taskId: 42 });
-this.emitEvent('nc-task-complete', { taskId: 42 }, { composed: true, bubbles: true });
+// Override defaults only when needed
+this.emitEvent('nc-task-complete', { taskId: 42 }, { composed: false });
 
-// Listen
+// Listen anywhere in the tree
 document.addEventListener('nc-task-complete', (e: CustomEvent<{ taskId: number }>) => {
     console.log(e.detail.taskId);
 });
 ```
+
+> **Naming convention:** use `nc-{component}-{action}` for custom element events (e.g. `nc-modal-open`, `nc-table-row-click`). Form-input elements (`nc-input`, `nc-select`, etc.) keep the standard `change` / `input` names.
+
+---
+
+## Built-in Component Events
+
+Quick reference for events emitted by the framework's built-in `nc-*` elements.
+
+| Component | Event | Detail |
+|---|---|---|
+| `nc-accordion-item` | `nc-accordion-toggle` | `{ open: boolean }` |
+| `nc-alert` | `nc-alert-dismiss` | `{}` |
+| `nc-animation` | `nc-animation-start` / `nc-animation-finish` / `nc-animation-cancel` | `{}` |
+| `nc-bottom-nav` | `nc-bottom-nav-change` | `{ value: string }` |
+| `nc-canvas` | `nc-canvas-ready` | `{ canvas, ctx }` |
+| `nc-canvas` | `nc-canvas-draw-start` / `nc-canvas-draw-move` | `{ x: number, y: number }` |
+| `nc-canvas` | `nc-canvas-draw-end` | `{ dataURL: string }` |
+| `nc-canvas` | `nc-canvas-clear` | `{}` |
+| `nc-chip` | `nc-chip-dismiss` | `{}` |
+| `nc-collapsible` | `nc-collapsible-toggle` | `{ open: boolean }` |
+| `nc-collapsible` | `nc-collapsible-open` / `nc-collapsible-close` | `{}` |
+| `nc-copy-button` | `nc-copy-button-copy` | `{ value: string }` |
+| `nc-copy-button` | `nc-copy-button-error` | `{ error: unknown }` |
+| `nc-drawer` | `nc-drawer-open` / `nc-drawer-close` | `{}` |
+| `nc-dropdown` | `nc-dropdown-open` / `nc-dropdown-close` | `{}` |
+| `nc-dropdown` | `nc-dropdown-select` | `{ value: string, label: string }` |
+| `nc-menu` | `nc-menu-select` | `{ item: HTMLElement, label: string }` |
+| `nc-modal` | `nc-modal-open` / `nc-modal-close` | `{}` |
+| `nc-nav-item` | `nc-nav-item-click` | `{ href: string }` |
+| `nc-pagination` | `nc-pagination-change` | `{ page: number }` |
+| `nc-popover` | `nc-popover-open` / `nc-popover-close` | `{}` |
+| `nc-splash` | `nc-splash-complete` | `{}` |
+| `nc-stepper` | `nc-stepper-change` | `{ step: number, prev: number }` |
+| `nc-table` | `nc-table-sort` | `{ key: string, direction: 'asc' \| 'desc' }` |
+| `nc-table` | `nc-table-row-click` | `{ row: object, index: number }` |
+| `nc-tabs` | `nc-tab-change` | `{ index: number, label: string \| null }` |
+| **Form inputs** | `change` | component-specific `{ value, name }` |
+| **Form inputs** | `input` | `{ value: string, name: string }` |
+
+Form inputs that keep standard event names: `nc-input`, `nc-checkbox`, `nc-radio`, `nc-select`, `nc-textarea`, `nc-slider`, `nc-number-input`, `nc-otp-input`, `nc-switch`, `nc-rating`, `nc-date-picker`, `nc-time-picker`, `nc-color-picker`, `nc-rich-text`, `nc-file-upload`, `nc-autocomplete`.
 
 ---
 

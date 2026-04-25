@@ -1,4 +1,5 @@
 import { Component, defineComponent } from '../../.nativecore/core/component.js';
+import { html, raw } from '../../.nativecore/utils/templates.js';
 
 export class NcTextarea extends Component {
     static useShadowDOM = true;
@@ -104,34 +105,25 @@ export class NcTextarea extends Component {
     }
 
     onMount() {
-        this.bindEvents();
-    }
-
-    private bindEvents() {
         const textarea = this.shadowRoot?.querySelector<HTMLTextAreaElement>('textarea');
-        if (!textarea) return;
-
-        if (this.hasAttribute('autoresize')) {
+        if (textarea && this.hasAttribute('autoresize')) {
             this.autoResize(textarea);
         }
 
-        textarea.addEventListener('input', () => {
-            if (this.hasAttribute('autoresize')) this.autoResize(textarea);
-            this.updateCounter(textarea.value);
-            this.dispatchEvent(new CustomEvent('input', {
-                bubbles: true,
-                composed: true,
-                detail: { value: textarea.value, name: this.getAttribute('name') || '' }
-            }));
+        // Use shadowRoot delegation — survives re-renders, no listener leak
+        this.on('input', (event: Event) => {
+            const el = event.target as HTMLTextAreaElement;
+            if (el.tagName !== 'TEXTAREA') return;
+            if (this.hasAttribute('autoresize')) this.autoResize(el);
+            this.updateCounter(el.value);
+            this.emitEvent('input', { value: el.value, name: this.getAttribute('name') || '' });
         });
 
-        textarea.addEventListener('change', () => {
-            this.setAttribute('value', textarea.value);
-            this.dispatchEvent(new CustomEvent('change', {
-                bubbles: true,
-                composed: true,
-                detail: { value: textarea.value, name: this.getAttribute('name') || '' }
-            }));
+        this.on('change', (event: Event) => {
+            const el = event.target as HTMLTextAreaElement;
+            if (el.tagName !== 'TEXTAREA') return;
+            this.setAttribute('value', el.value);
+            this.emitEvent('change', { value: el.value, name: this.getAttribute('name') || '' });
         });
     }
 
@@ -164,7 +156,6 @@ export class NcTextarea extends Component {
         }
         if (this._mounted) {
             this.render();
-            this.bindEvents();
         }
     }
 }

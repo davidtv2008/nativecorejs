@@ -81,7 +81,7 @@ export class NcChip extends Component {
         if (button) {
             button.addEventListener('click', event => {
                 event.stopPropagation();
-                this.dispatchEvent(new CustomEvent('dismiss', { bubbles: true, composed: true }));
+                this.emitEvent('nc-chip-dismiss', {});
             });
         }
     }

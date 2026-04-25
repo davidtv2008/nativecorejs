@@ -16,8 +16,8 @@
  *   - footer - action buttons area
  *
  * Events:
- *   - open:  CustomEvent - after modal opens
- *   - close: CustomEvent - after modal closes
+ *   - nc-modal-open:  CustomEvent - after modal opens
+ *   - nc-modal-close: CustomEvent - after modal closes
  *
  * Static API:
  *   NcModal.open(id)  - open a modal by id
@@ -37,6 +37,7 @@
  */
 
 import { Component, defineComponent } from '../../.nativecore/core/component.js';
+import { html, raw } from '../../.nativecore/utils/templates.js';
 import { dom } from '../../.nativecore/utils/dom.js';
 import { trapFocus } from '../a11y/index.js';
 
@@ -238,9 +239,7 @@ export class NcModal extends Component {
                 }
             }
             document.body.style.overflow = open ? 'hidden' : '';
-            this.dispatchEvent(new CustomEvent(open ? 'open' : 'close', {
-                bubbles: true, composed: true
-            }));
+            this.emitEvent(open ? 'nc-modal-open' : 'nc-modal-close', {});
             return;
         }
         if (this._mounted) { this.render(); this._bindEvents(); }

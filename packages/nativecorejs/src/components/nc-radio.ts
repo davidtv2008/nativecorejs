@@ -1,4 +1,5 @@
 import { Component, defineComponent } from '../../.nativecore/core/component.js';
+import { html, raw } from '../../.nativecore/utils/templates.js';
 
 export class NcRadio extends Component {
     static useShadowDOM = true;
@@ -127,12 +128,12 @@ export class NcRadio extends Component {
         this.setAttribute('role', 'radio');
         this.setAttribute('aria-checked', String(this.hasAttribute('checked')));
 
-        this.shadowRoot?.addEventListener('click', () => {
+        this.on('click', () => {
             if (this.hasAttribute('disabled')) return;
             this.select();
         });
 
-        this.addEventListener('keydown', (event: KeyboardEvent) => {
+        this.on('keydown', (event: KeyboardEvent) => {
             if (event.key === ' ' || event.key === 'Enter') {
                 event.preventDefault();
                 if (!this.hasAttribute('disabled')) this.select();
@@ -158,14 +159,10 @@ export class NcRadio extends Component {
         this.setAttribute('checked', '');
         this.setAttribute('aria-checked', 'true');
 
-        this.dispatchEvent(new CustomEvent('change', {
-            bubbles: true,
-            composed: true,
-            detail: {
-                value: this.getAttribute('value') || '',
-                name: this.getAttribute('name') || ''
-            }
-        }));
+        this.emitEvent('change', {
+            value: this.getAttribute('value') || '',
+            name: this.getAttribute('name') || ''
+        });
     }
 
     attributeChangedCallback(name: string, oldValue: string, newValue: string) {
