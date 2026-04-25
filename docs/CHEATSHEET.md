@@ -58,44 +58,94 @@ export async function pageController(params, state, loaderData) {
 
 ## Routing
 
+### `routes.ts` — declaring routes
+
 ```typescript
+import { createLazyController } from '@core/lazyController.js';
 import router from '@core/router.js';
+import type { Router } from '@core/router.js';
 
-// Register routes
-router.register('/path', 'src/views/page.html', controller);
-router.register('/items/:id', 'src/views/item.html', controller);
-router.register('/docs/*', 'src/views/docs.html', controller);
+const lazy = createLazyController(import.meta.url);
 
-// With cache policy
-router.register('/home', 'src/views/home.html', controller)
-      .cache({ ttl: 300, revalidate: true });
+export function registerRoutes(r: Router): void {
+    // @group:public
+    r.group({}, (r) => {
+        r.register('/', 'src/views/public/home.html',
+            lazy('homeController', '../controllers/home.controller.js'))
+         .cache({ ttl: 300, revalidate: true });
 
-// With data loader (runs before controller)
-router.register('/dashboard', 'src/views/dashboard.html', controller, {
-    loader: async (params, signal) => fetchData('/api/me', { signal })
-});
+        r.register('/login', 'src/views/public/login.html',
+            lazy('loginController', '../controllers/login.controller.js'));
+    });
 
-// Navigate
-router.navigate('/path');
-router.navigate('/items/42', { from: 'list' });
-router.replace('/login');
-router.back();
+    // @group:protected
+    r.group({ middleware: ['auth'] }, (r) => {
+        r.register('/dashboard', 'src/views/protected/dashboard.html',
+            lazy('dashboardController', '../controllers/dashboard.controller.js'))
+         .cache({ ttl: 30, revalidate: true });
 
-// Middleware (return false to cancel navigation)
-router.use((route, state) => {
-    if (route.path !== '/login' && !auth.isAuthenticated()) {
-        router.replace('/login');
+        r.register('/tasks/:id', 'src/views/protected/task.html',
+            lazy('taskController', '../controllers/task.controller.js'));
+
+        // With data loader (runs before controller)
+        r.register('/profile', 'src/views/protected/profile.html',
+            lazy('profileController', '../controllers/profile.controller.js'), {
+                loader: async (params, signal) => fetchData('/api/me', { signal })
+            });
+    });
+}
+
+export const protectedRoutes = router.getPathsForMiddleware('auth');
+```
+
+`r.group({ middleware: ['auth'] }, cb)` stamps every route in the callback with the `auth` tag. Groups can be nested; inner groups inherit ancestor tags. The optional `prefix` option prepends a path segment to every route in the group.
+
+### `app.ts` — middleware and boot
+
+```typescript
+import { createMiddleware } from '@core/router.js';
+import { authMiddleware } from './middleware/auth.middleware.js';
+import { registerRoutes } from './routes/routes.js';
+
+// @middleware — registered middleware (auto-updated by make:middleware)
+router.use(createMiddleware('auth', authMiddleware)); // only fires on 'auth'-tagged routes
+router.use(loggingMiddleware);                        // no tag → fires on every navigation
+
+registerRoutes(router);
+router.start(); // call exactly once
+```
+
+`createMiddleware('tag', fn)` wraps `fn` so it **only runs** when the navigated route carries that tag (checked via `router.getTagsForPath()`).
+
+### Middleware signature
+
+```typescript
+// src/middleware/auth.middleware.ts
+import type { RouteMatch } from '@core/router.js';
+
+export async function authMiddleware(route: RouteMatch, state?: unknown): Promise<boolean> {
+    if (!auth.isAuthenticated()) {
+        router.replace('/login', { redirect: route.path }); // return false to cancel
         return false;
     }
-});
+    return true; // allow navigation
+}
+```
 
-// Prefetch
+Return `true` to allow, `false` to cancel. Async middleware is supported — return `Promise<boolean>`.
+
+### Navigation helpers
+
+```typescript
+router.navigate('/path');
+router.navigate('/items/42', { from: 'list' }); // state passed to middleware + controller
+router.replace('/login');                        // swap history entry (no back-stack entry)
+router.back();
+
 router.prefetch('/dashboard');
 router.bustCache('/dashboard');
 
-// Current route
-const route = router.getCurrentRoute();
-// route.path, route.params, route.config
+const route = router.getCurrentRoute(); // { path, params, config }
 ```
 
 ---
@@ -135,14 +185,105 @@ defineComponent('my-card', MyCard);
 ## Bind API (Fine-Grained Updates)
 
 ```typescript
-// In a Component subclass:
+// In a Component subclass — all subscriptions auto-disposed on unmount:
 const loading = useState(false);
-const label = useState('Submit');
+const label   = useState('Submit');
 
-this.bind(loading, '#spinner', 'hidden');   // elem.hidden = loading.value
-this.bind(label, '#btn');                   // elem.textContent = label.value
+this.bind(loading, '#spinner', 'hidden');    // elem.hidden = loading.value
+this.bind(label, '#btn');                    // elem.textContent = label.value
 this.bindAttr(loading, '#btn', 'disabled'); // elem.setAttribute('disabled', ...)
+
+// Multiple bindings at once
+this.bindAll({
+    '.stats__total':     this.total,
+    '.stats__completed': this.completed,
+});
+
+// Two-way binding (State ↔ DOM) — auto-detects checkbox/radio
+this.model(this.username, 'input[name="username"]');        // input event + .value
+this.model(this.agreed, 'input[type="checkbox"]');          // change event + .checked
+this.model(this.rating, 'nc-rating', { event: 'nc-change', prop: 'value' }); // custom
 ```
+
+---
+
+## Wires — Declarative Controller Bindings
+
+Standalone utilities from `@core-utils/wires.js` that auto-register cleanup via the Page Cleanup Registry (no return value needed):
+
+```typescript
+import { wireInputs, wireContents, wireAttributes } from '@core-utils/wires.js';
+
+export async function tasksController() {
+    // Two-way: [wire-input="key"] ↔ State<T>
+    const { title, done } = wireInputs();
+
+    // Display: [wire-content="key"] → State<string> (textContent)
+    const { heading, count } = wireContents();
+
+    // Attribute: [wire-attribute="key:attr-name"] → State<string> (setAttribute)
+    const { status, busy } = wireAttributes();
+
+    heading.value = 'My Tasks';         // → <h1 wire-content="heading"> updates
+    count.value   = String(items.length);
+    status.value  = 'active';           // → setAttribute('data-status', 'active')
+    // title.value reflects user input two-way
+}
+```
+
+**HTML counterparts:**
+
+```html
+<div data-view="tasks">
+    <h1     wire-content="heading">Loading…</h1>
+    <span   wire-content="count">0</span>
+    <input  wire-input="title"  placeholder="Task title" />
+    <input  wire-input="done"   type="checkbox" />
+    <div    wire-attribute="status:data-status">…</div>
+    <button wire-attribute="busy:aria-busy">Save</button>
+</div>
+```
+
+Optional overrides (non-standard events or an explicit root):
+
+```typescript
+const { rating } = wireInputs({ overrides: { rating: { event: 'nc-change', prop: 'value' } } });
+const { title }  = wireInputs({ root: document.querySelector('[data-view="tasks"]') });
+```
+
+---
+
+## Wires — In Components (`this.wire*()`)
+
+Same pattern inside a `Component` subclass — state property names must match attribute values:
+
+```typescript
+class TaskForm extends Component {
+    static useShadowDOM = true;
+
+    title  = useState('');
+    done   = useState(false);
+    status = useState('pending');
+    count  = computed(() => `${this.items.value.length} tasks`);
+
+    template() {
+        return `
+            <input  wire-input="title" />
+            <input  wire-input="done" type="checkbox" />
+            <span   wire-content="count">0 tasks</span>
+            <article wire-attribute="status:data-status">…</article>
+        `;
+    }
+
+    onMount() {
+        this.wireInputs();      // wires all [wire-input] to same-named State<T> props
+        this.wireContents();    // wires all [wire-content] to same-named state/computed props
+        this.wireAttributes();  // wires all [wire-attribute] to same-named state props
+    }
+}
+```
+
+All subscriptions are auto-disposed on unmount. Call each `wire*()` method **once from `onMount()`** only.
 
 ---
 
@@ -342,6 +483,7 @@ npm run make:component <name>         # src/components/ui/<name>.ts
 npm run make:view <path>              # src/views/<path>.html + optional controller
 npm run make:controller <name>        # src/controllers/<name>.controller.ts
 npm run make:store <name>             # src/stores/<name>.store.ts
+npm run make:middleware <name>        # src/middleware/<name>.middleware.ts + wires app.ts
 npm run remove:component <name>       # removes component + registry entry
 npm run remove:view <path>            # removes view + controller + route entry
 ```
