@@ -10,7 +10,7 @@ NativeCoreJS bugs are usually localised to one of four places: route registratio
 
 ### Symptom: The page is blank / view does not load
 
-1. Check the registered path in `routes.ts` — does it exactly match the URL you navigated to?
+1. Check the registered path in `routes.js` — does it exactly match the URL you navigated to?
 2. Check the HTML file path — does the file exist at `src/views/…/<name>.html`?
 3. Check the lazy controller export name — does the string passed to `lazyController()` match the exported function name?
 4. Check the `protectedRoutes` array — if the route is supposed to be public, make sure it is not accidentally listed as protected.
@@ -29,7 +29,7 @@ NativeCoreJS bugs are usually localised to one of four places: route registratio
 ### Symptom: Query string params are `undefined` in the controller
 
 - Query string values live on `params.query`, not `params` directly:
-  ```typescript
+  ```javascript
   // URL: /tasks?sort=due-date&filter=mine
   const sort   = params.query?.sort;   // "due-date"
   const filter = params.query?.filter; // "mine"
@@ -39,9 +39,9 @@ NativeCoreJS bugs are usually localised to one of four places: route registratio
 
 ## Component Problems
 
-### Symptom: Custom element renders as a plain `<div>` with no styles
+### Symptom: Custom element renders`<div>` with no styles
 
-1. Is the tag registered? Check `src/components/appRegistry.ts` for a matching `componentRegistry.register()` call.
+1. Is the tag registered? Check `src/components/appRegistry.js` for a matching `componentRegistry.register()` call.
 2. Is `static useShadowDOM = true` set on the class?
 3. Is there a typo in the tag name (kebab-case, not PascalCase in HTML)?
 4. Run `npm run build` and check that the compiled JS file exists in `dist/components/`.
@@ -91,7 +91,7 @@ NativeCoreJS bugs are usually localised to one of four places: route registratio
 ### Symptom: `Cannot find module '…'` at runtime
 
 1. Does the import path end in `.js`? The browser loads compiled `.js` files from `dist/`. Source imports must use `.js` even when the source file is `.ts`:
-   ```typescript
+   ```javascript
    import { useState } from '@core/state.js'; // ✅
    import { useState } from '@core/state';    // ❌
    ```
@@ -101,7 +101,7 @@ NativeCoreJS bugs are usually localised to one of four places: route registratio
 ### Symptom: Changes are not reflected after saving
 
 - The dev server uses HMR. If HMR is not picking up a change, try a hard browser refresh (`Cmd+Shift+R` / `Ctrl+Shift+R`).
-- If you added a new component but it still shows as unknown, check that it was added to `registry.ts` and that `npm run build` has run.
+- If you added a new component but it still shows`registry.ts` and that `npm run build` has run.
 
 ### Symptom: Production build is larger than expected
 

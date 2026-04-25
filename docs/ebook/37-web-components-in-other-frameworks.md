@@ -35,7 +35,7 @@ npm install nativecorejs
 
 ### The component file
 
-```typescript
+```javascript
 // nc-greeting.ts
 import { Component, defineComponent, escapeHTML } from 'nativecorejs';
 
@@ -43,7 +43,7 @@ class NcGreeting extends Component {
     static useShadowDOM = true;
     static get observedAttributes() { return ['name', 'variant']; }
 
-    template(): string {
+    template() {
         const name = escapeHTML(this.getAttribute('name') ?? 'World');
         const variant = this.getAttribute('variant') ?? 'casual';
         const text = variant === 'formal'
@@ -67,7 +67,7 @@ class NcGreeting extends Component {
         `;
     }
 
-    onMount(): void {
+    onMount() {
         this.on('click', '.greeting', () => {
             this.emitEvent('nc-greeting-clicked', {
                 name: this.getAttribute('name') ?? 'World',
@@ -76,7 +76,7 @@ class NcGreeting extends Component {
         });
     }
 
-    onAttributeChange(name: string): void {
+    onAttributeChange(name) {
         if (name === 'name' || name === 'variant') {
             this.render();
         }
@@ -92,7 +92,7 @@ To share the component across frameworks, build it into a self-contained ES modu
 
 ```bash
 # Using esbuild (add as a devDependency if not already present)
-npx esbuild nc-greeting.ts \
+npx esbuild nc-greeting.js \
   --bundle \
   --format=esm \
   --outfile=dist/nc-greeting.js \
@@ -147,13 +147,13 @@ el.setAttribute('variant', 'formal'); // re-renders automatically
 
 React 19 added first-class Web Component support. Custom events, properties, and refs all work natively.
 
-```tsx
+```javascript
 // App.tsx
 import './nc-greeting.js'; // registers the custom element once
 
 export default function App() {
-    function handleGreetingClick(e: Event) {
-        const detail = (e as CustomEvent).detail;
+    function handleGreetingClick(e) {
+        const detail = e.detail;
         console.log('Clicked:', detail.name, detail.variant);
     }
 
@@ -175,16 +175,16 @@ export default function App() {
 
 **React 18 and earlier** — custom events require an explicit `addEventListener` via a ref because React's synthetic event system does not know about custom event names:
 
-```tsx
+```javascript
 import { useRef, useEffect } from 'react';
 import './nc-greeting.js';
 
 export default function App() {
-    const greetingRef = useRef<HTMLElement>(null);
+    const greetingRef = useRef(null);
 
     useEffect(() => {
         const el = greetingRef.current;
-        const handler = (e: Event) => console.log((e as CustomEvent).detail);
+        const handler = (e) => console.log(e.detail);
         el?.addEventListener('nc-greeting-clicked', handler);
         return () => el?.removeEventListener('nc-greeting-clicked', handler);
     }, []);
@@ -199,18 +199,10 @@ export default function App() {
 
 Add a declaration file so TypeScript knows `<nc-greeting>` is a valid JSX element:
 
-```typescript
+```javascript
 // nc-greeting.d.ts
 declare namespace JSX {
-    interface IntrinsicElements {
-        'nc-greeting': React.DetailedHTMLProps<
-            React.HTMLAttributes<HTMLElement> & {
-                name?: string;
-                variant?: 'formal' | 'casual';
-            },
-            HTMLElement
-        >;
-    }
+    // IntrinsicElements shape: { name, variant }
 }
 ```
 
@@ -222,10 +214,10 @@ Vue 3 treats any element whose name contains a hyphen as a Custom Element automa
 
 ```vue
 <!-- App.vue -->
-<script setup lang="ts">
+<script setup>
 import './nc-greeting.js'; // registers the element
 
-function handleClick(e: CustomEvent) {
+function handleClick(e) {
     console.log('Clicked:', e.detail.name, e.detail.variant);
 }
 </script>
@@ -245,7 +237,7 @@ function handleClick(e: CustomEvent) {
 ### Passing reactive data as attributes
 
 ```vue
-<script setup lang="ts">
+<script setup>
 import { ref } from 'vue';
 import './nc-greeting.js';
 
@@ -262,15 +254,10 @@ Vue's `:name` binding calls `setAttribute('name', value)` whenever `currentName`
 
 ### TypeScript declarations (Vue 3)
 
-```typescript
+```javascript
 // nc-greeting.d.ts
 declare module '@vue/runtime-dom' {
-    interface IntrinsicElements {
-        'nc-greeting': {
-            name?: string;
-            variant?: 'formal' | 'casual';
-            'onNc-greeting-clicked'?: (e: CustomEvent) => void;
-        };
+    // IntrinsicElements shape: { name, variant }
     }
 }
 ```
@@ -281,12 +268,12 @@ declare module '@vue/runtime-dom' {
 
 ```svelte
 <!-- App.svelte -->
-<script lang="ts">
+<script>
     import './nc-greeting.js'; // registers the element
 
     let currentName = 'Alice';
 
-    function handleClick(e: CustomEvent) {
+    function handleClick(e) {
         console.log('Clicked:', e.detail);
         currentName = 'Clicked!';
     }
@@ -312,7 +299,7 @@ Svelte's `bind:value` and `{}` attribute bindings work directly with Web Compone
 
 Angular requires you to add `CUSTOM_ELEMENTS_SCHEMA` to tell the template compiler not to error on unknown element names.
 
-```typescript
+```javascript
 // app.module.ts
 import { NgModule, CUSTOM_ELEMENTS_SCHEMA } from '@angular/core';
 import { BrowserModule } from '@angular/platform-browser';
@@ -327,7 +314,7 @@ import { AppComponent } from './app.component';
 export class AppModule {}
 ```
 
-```typescript
+```javascript
 // app.component.ts
 import { Component, OnInit } from '@angular/core';
 import './nc-greeting.js'; // registers the element
@@ -348,11 +335,11 @@ export class AppComponent implements OnInit {
     currentName = 'Alice';
     variant = 'casual';
 
-    onGreetingClicked(e: CustomEvent): void {
+    onGreetingClicked(e) {
         console.log('Clicked:', e.detail);
     }
 
-    ngOnInit(): void {
+    ngOnInit() {
         // Angular's event binding via (eventName) works for Custom Events
         // that bubble to the host element.
     }
@@ -372,7 +359,7 @@ my-components/
 ├── src/
 │   ├── nc-greeting.ts
 │   ├── nc-stat-card.ts
-│   └── index.ts        ← re-exports all components (calls defineComponent)
+│   └── index.js        ← re-exports all components (calls defineComponent)
 ├── dist/
 │   └── index.js        ← built output
 └── package.json
@@ -391,9 +378,9 @@ my-components/
 }
 ```
 
-In `src/index.ts`:
+In `src/index.js`:
 
-```typescript
+```javascript
 export { NcGreeting } from './nc-greeting.js';
 export { NcStatCard } from './nc-stat-card.js';
 // Importing this file registers all components via side-effects
@@ -407,7 +394,7 @@ npm install my-components nativecorejs
 
 And import once per app entry point:
 
-```typescript
+```javascript
 import 'my-components'; // all components are now registered globally
 ```
 

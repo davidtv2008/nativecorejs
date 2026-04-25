@@ -36,7 +36,8 @@
     "node": ">=18"
   },
   "dependencies": {
-    "esbuild": "^0.25.0"
+    "esbuild": "^0.25.0",
+    "typescript": "^6.0.3"
   },
   "license": "MIT"
 }

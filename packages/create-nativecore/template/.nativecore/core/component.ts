@@ -151,6 +151,45 @@ export class Component extends HTMLElement {
     }
 
     /**
+     * Bind a reactive state to a CSS class toggle.
+     *
+     * Truthy state values add the class; falsy values remove it.
+     */
+    bindClass<T>(state: Readable<T>, selector: string | Element, className: string): void {
+        const el = typeof selector === 'string' ? this.$(selector) : selector;
+        if (!el) {
+            console.warn(`[${this.tagName.toLowerCase()}] bindClass(): no element found for selector "${selector}"`);
+            return;
+        }
+        const dispose = effect(() => {
+            el.classList.toggle(className, Boolean(state.value));
+        });
+        this._bindings.push(dispose);
+    }
+
+    /**
+     * Bind a reactive state to an inline style property.
+     *
+     * Empty/null/undefined values remove the style property.
+     */
+    bindStyle<T>(state: Readable<T>, selector: string | Element, styleName: string): void {
+        const el = typeof selector === 'string' ? this.$(selector) : selector;
+        if (!el) {
+            console.warn(`[${this.tagName.toLowerCase()}] bindStyle(): no element found for selector "${selector}"`);
+            return;
+        }
+        const dispose = effect(() => {
+            const raw = state.value;
+            if (raw === '' || raw === null || raw === undefined) {
+                (el as HTMLElement).style.removeProperty(styleName);
+                return;
+            }
+            (el as HTMLElement).style.setProperty(styleName, String(raw));
+        });
+        this._bindings.push(dispose);
+    }
+
+    /**
      * Batch-bind multiple selectors to reactive states.
      * Each key is a CSS selector; each value is the state to watch.
      * Updates textContent by default.
@@ -323,9 +362,81 @@ export class Component extends HTMLElement {
     }
 
     /**
-     * Convenience shorthand: wire all three declarative binding types in one call.
+     * Declarative one-way class binding. Scans the component for every
+     * [wire-class="propName:class-name"] element and toggles class-name
+     * based on this[propName].value truthiness.
+     *
+     * @example
+     * // template: <button wire-class="isLoading:is-loading"></button>
+     * isLoading = useState(false);
+     * onMount() { this.wireClasses(); }
+     */
+    wireClasses(): void {
+        const root = this.shadowRoot ?? this;
+        root.querySelectorAll<Element>('[wire-class]').forEach(el => {
+            const raw = el.getAttribute('wire-class')!;
+            const colonIndex = raw.indexOf(':');
+            if (colonIndex === -1) {
+                console.warn(
+                    `[${this.tagName.toLowerCase()}] wireClasses(): invalid wire-class value "${raw}" - ` +
+                    `expected format "propName:class-name" (e.g. "isOpen:is-open")`
+                );
+                return;
+            }
+            const stateName = raw.slice(0, colonIndex).trim();
+            const className = raw.slice(colonIndex + 1).trim();
+            const stateRef = (this as any)[stateName];
+            if (!stateRef || typeof stateRef.watch !== 'function') {
+                console.warn(
+                    `[${this.tagName.toLowerCase()}] wireClasses(): no State found for ` +
+                    `wire-class="${raw}". Make sure "${stateName}" exists and was created with useState() or computed().`
+                );
+                return;
+            }
+            this.bindClass(stateRef, el, className);
+        });
+    }
+
+    /**
+     * Declarative one-way inline style binding. Scans the component for every
+     * [wire-style="propName:css-property"] element and applies
+     * style.setProperty(css-property, this[propName].value).
+     *
+     * @example
+     * // template: <div wire-style="progressWidth:width"></div>
+     * progressWidth = useState('50%');
+     * onMount() { this.wireStyles(); }
+     */
+    wireStyles(): void {
+        const root = this.shadowRoot ?? this;
+        root.querySelectorAll<Element>('[wire-style]').forEach(el => {
+            const raw = el.getAttribute('wire-style')!;
+            const colonIndex = raw.indexOf(':');
+            if (colonIndex === -1) {
+                console.warn(
+                    `[${this.tagName.toLowerCase()}] wireStyles(): invalid wire-style value "${raw}" - ` +
+                    `expected format "propName:css-property" (e.g. "barWidth:width")`
+                );
+                return;
+            }
+            const stateName = raw.slice(0, colonIndex).trim();
+            const styleName = raw.slice(colonIndex + 1).trim();
+            const stateRef = (this as any)[stateName];
+            if (!stateRef || typeof stateRef.watch !== 'function') {
+                console.warn(
+                    `[${this.tagName.toLowerCase()}] wireStyles(): no State found for ` +
+                    `wire-style="${raw}". Make sure "${stateName}" exists and was created with useState() or computed().`
+                );
+                return;
+            }
+            this.bindStyle(stateRef, el, styleName);
+        });
+    }
+
+    /**
+     * Convenience shorthand: wire all declarative binding types in one call.
      * Equivalent to calling `wireInputs(options)`, `wireContents()`, and
-     * `wireAttributes()` in sequence.
+     * `wireAttributes()`, `wireClasses()`, and `wireStyles()` in sequence.
      *
      * Call once from `onMount()`.
      *
@@ -342,6 +453,8 @@ export class Component extends HTMLElement {
         this.wireInputs(options);
         this.wireContents();
         this.wireAttributes();
+        this.wireClasses();
+        this.wireStyles();
     }
 
     /**

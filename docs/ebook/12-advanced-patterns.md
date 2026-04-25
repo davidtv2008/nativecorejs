@@ -10,29 +10,26 @@ The patterns covered so far — per-controller state, direct DOM bindings, and `
 
 A global store is just a plain TypeScript module that exports `useState` instances. Any controller or component that imports the module gets a reference to the **same** state object.
 
-```typescript
-// src/stores/taskflow.store.ts
+```javascript
+// src/stores/taskflow.store.js
 import { useState } from '@core/state.js';
 
-export interface ActiveProject {
-  id:   number;
-  name: string;
-}
+// ActiveProject shape: { id, name }
 
-export const activeProject = useState<ActiveProject | null>(null);
+export const activeProject = useState(null);
 export const sidebarOpen   = useState(true);
 ```
 
 Import and use anywhere:
 
-```typescript
+```javascript
 // In dashboardController
 import { activeProject } from '../stores/taskflow.store.js';
 
 activeProject.value = { id: 3, name: 'Acme Launch' };
 ```
 
-```typescript
+```javascript
 // In a sidebar Component
 import { sidebarOpen } from '../stores/taskflow.store.js';
 
@@ -49,9 +46,9 @@ When two components do not share a parent–child relationship, the cleanest cha
 
 ### Dispatching (inside a Component)
 
-```typescript
+```javascript
 // Inside ProjectFilterComponent
-private emitFilterChange(projectId: string | null) {
+emitFilterChange(projectId) {
   this.dispatchEvent(new CustomEvent('project-filter-change', {
     bubbles:  true,
     composed: true,           // escapes the shadow root
@@ -62,10 +59,10 @@ private emitFilterChange(projectId: string | null) {
 
 ### Listening (inside a controller)
 
-```typescript
+```javascript
 // Inside tasksController
-const filterHandler = (e: Event) => {
-  const { projectId } = (e as CustomEvent).detail;
+const filterHandler = (e) => {
+  const { projectId } = (e).detail;
   activeProjectId.value = projectId;
 };
 
@@ -83,7 +80,7 @@ disposers.push(() =>
 
 Every Component instance exposes `patchState()` for merging new values into `this.state` without triggering a full re-render. This is useful when your component drives all DOM updates through `bind()` bindings exclusively.
 
-```typescript
+```javascript
 // In a Component method — merges into this.state, no re-render
 this.patchState({
     projectName: 'New Name',
@@ -100,10 +97,10 @@ Because `bind()` bindings react to their own `State<T>` objects — not `this.st
 
 `computed()` auto-tracks every `useState` read inside its callback and re-evaluates lazily whenever any of them changes.
 
-```typescript
+```javascript
 import { useState, computed } from '@core/state.js';
 
-const tasks       = useState<Task[]>([]);
+const tasks       = useState([]);
 const filterText  = useState('');
 const showDone    = useState(false);
 
@@ -122,7 +119,7 @@ bind(filteredTasks, '.task-count'); // automatically re-runs
 
 Always call `filteredTasks.dispose()` in `onUnmount` (Components) or in the controller's cleanup function:
 
-```typescript
+```javascript
 return () => {
   filteredTasks.dispose();
   dispose(); // trackEvents cleanup
@@ -137,11 +134,11 @@ return () => {
 
 An `effect` that fires on every keystroke can flood the network with search requests. Debounce it by using the `debounce` helper from `@utils/helpers.js`:
 
-```typescript
+```javascript
 import { debounce } from '@utils/helpers.js';
 import { effect } from '@core/state.js';
 
-const debouncedSearch = debounce(async (term: string) => {
+const debouncedSearch = debounce(async (term) => {
     const { data } = await api.get(`/tasks?q=${encodeURIComponent(term)}`);
     tasks.value = data ?? [];
 }, 300);
@@ -155,7 +152,7 @@ disposers.push(stopEffect);
 
 `effect()` has a built-in loop guard: default max **1000** runs per notification flush. You can override it per effect when needed:
 
-```typescript
+```javascript
 const stopEffect = effect(() => {
   debouncedSearch(searchQuery.value);
 }, { maxRunsPerFlush: 1500 });
@@ -165,8 +162,8 @@ Use `maxRunsPerFlush: 0` only when you deliberately want to disable the guard fo
 
 If you prefer not to import the helper, you can manage the timer manually:
 
-```typescript
-let debounceTimer: ReturnType<typeof setTimeout> | null = null;
+```javascript
+const value = null;
 
 const stopEffect = effect(() => {
   const term = searchQuery.value;
@@ -187,11 +184,11 @@ disposers.push(() => {
 
 `throttle` is the complement to `debounce`: instead of waiting for silence, it lets a function run at most once per interval. Use it for high-frequency events like `scroll` or `mousemove` that should trigger periodic updates but not on every tick:
 
-```typescript
+```javascript
 import { throttle } from '@utils/helpers.js';
 
-const updateScrollIndicator = throttle((scrollY: number) => {
-    const indicator = scope.$('[data-hook="scroll-indicator"]') as HTMLElement;
+const updateScrollIndicator = throttle((scrollY) => {
+    const indicator = scope.$('[data-hook="scroll-indicator"]');
     if (indicator) indicator.style.width = `${Math.min(100, scrollY / 10)}%`;
 }, 100); // at most once every 100ms
 
@@ -212,8 +209,8 @@ disposers.push(() => window.removeEventListener('scroll', handleScroll));
 npm run make:component project-filter
 ```
 
-```typescript
-// src/components/ui/project-filter.ts
+```javascript
+// src/components/ui/project-filter.js
 import { Component }        from '@core/component.js';
 import { defineComponent }  from '@core/define.js';
 import { useState }         from '@core/state.js';
@@ -222,8 +219,8 @@ import { api }              from '@services/api.service.js';
 class ProjectFilterComponent extends Component {
   static useShadowDOM = true;
 
-  private projects = useState<{ id: number; name: string }[]>([]);
-  private selected = useState<string>('all');
+  private projects = useState([]);
+  private selected = useState('all');
 
   template() {
     return /* html */`
@@ -236,16 +233,16 @@ class ProjectFilterComponent extends Component {
     const { data } = await api.getCached('/projects', { tags: ['projects'] });
 
     if (data) {
-      this.projects.value = data as any[];
-      const select = this.shadowRoot!.querySelector('#project-select') as any;
+      this.projects.value = data;
+      const select = this.shadowRoot.querySelector('#project-select');
       select.options = [
         { label: 'All projects', value: 'all' },
-        ...(data as any[]).map(p => ({ label: p.name, value: String(p.id) })),
+        ...data.map((p) => ({ label: p.name, value: String(p.id) })),
       ];
     }
 
-    this.on('change', '#project-select', (e: Event) => {
-      const val = (e.target as any).value;
+    this.on('change', '#project-select', (e) => {
+      const val = (e.target).value;
       this.selected.value = val;
       this.emitFilterChange(val === 'all' ? null : val);
     });
@@ -255,7 +252,7 @@ class ProjectFilterComponent extends Component {
     this.projects.value = [];
   }
 
-  private emitFilterChange(projectId: string | null) {
+  emitFilterChange(projectId) {
     this.dispatchEvent(new CustomEvent('project-filter-change', {
       bubbles:  true,
       composed: true,
@@ -269,19 +266,19 @@ defineComponent('project-filter', ProjectFilterComponent);
 
 ### `tasksController.ts` — listening for the filter
 
-```typescript
+```javascript
 import { dom }         from '@core-utils/dom.js';
 import { api }         from '@services/api.service.js';
 import { useState, computed, effect } from '@core/state.js';
 import { trackEvents } from '@core-utils/events.js';
 
-export async function tasksController(): Promise<() => void> {
+export async function tasksController() => void> {
   const scope     = dom.view('tasks');
   const { on, dispose } = trackEvents();
-  const disposers: Array<() => void> = [];
+  const disposers = [];
 
-  const allTasks        = useState<any[]>([]);
-  const activeProjectId = useState<string | null>(null);
+  const allTasks        = useState([]);
+  const activeProjectId = useState(null);
   const filterText      = useState('');
 
   // Derived list — re-computes whenever any dep changes
@@ -301,8 +298,8 @@ export async function tasksController(): Promise<() => void> {
   disposers.push(stopEffect);
 
   // Listen for filter events from the <project-filter> component
-  const filterHandler = (e: Event) => {
-    activeProjectId.value = (e as CustomEvent).detail.projectId;
+  const filterHandler = (e) => {
+    activeProjectId.value = (e).detail.projectId;
   };
   document.addEventListener('project-filter-change', filterHandler);
   disposers.push(() =>
@@ -310,11 +307,11 @@ export async function tasksController(): Promise<() => void> {
   );
 
   // Debounced search
-  let debounceTimer: ReturnType<typeof setTimeout> | null = null;
-  on('input', '#task-search', (e: Event) => {
+  const value = null;
+  on('input', '#task-search', (e) => {
     if (debounceTimer) clearTimeout(debounceTimer);
     debounceTimer = setTimeout(() => {
-      filterText.value = (e.target as HTMLInputElement).value;
+      filterText.value = (e.target).value;
     }, 300);
   });
   disposers.push(() => { if (debounceTimer) clearTimeout(debounceTimer); });
@@ -323,8 +320,8 @@ export async function tasksController(): Promise<() => void> {
   const { data } = await api.getCached('/tasks', { tags: ['tasks'] });
   allTasks.value = data ?? [];
 
-  function renderTasks(tasks: any[]) {
-    const table = scope.$('#tasks-table') as any;
+  function renderTasks(tasks) {
+    const table = scope.$('#tasks-table');
     table.rows = tasks;
   }
 
@@ -341,7 +338,7 @@ export async function tasksController(): Promise<() => void> {
 
 ## Done Criteria
 
-- [ ] `src/stores/task.store.ts` exports `tasks`, `loadingTasks`, and derived computeds (`taskCount`, `doneTasks`).
+- [ ] `src/stores/task.store.js` exports `tasks`, `loadingTasks`, and derived computeds (`taskCount`, `doneTasks`).
 - [ ] The dashboard badge reacts to `taskStore.tasks.value` changes made by the tasks controller.
 - [ ] `<project-filter>` emits `project-filter-change` with `{ projectId }` in the event detail.
 - [ ] `batch()` wraps the store's API response handler to coalesce `tasks` and `loading` updates.

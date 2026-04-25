@@ -24,48 +24,40 @@ Controller-local state can't solve either of these problems. Global stores can.
 
 The key insight is simple: `useState()` called at **module scope** creates a state value that is initialised once when the module is first imported, and lives for the entire app session.
 
-```typescript
-// src/stores/task.store.ts
+```javascript
+// src/stores/task.store.js
 import { useState } from '@core/state.js';
 
-export const tasks = useState<Task[]>([]);
+export const tasks = useState([]);
 export const loadingTasks = useState(false);
 ```
 
-Every controller that imports `task.store.ts` gets references to the *same* `tasks` and `loadingTasks` objects. An `effect()` in the dashboard controller that reads `tasks.value` will re-run whenever the tasks list controller writes to `tasks.value` — because they are the same state object.
+Every controller that imports `task.store.js` gets references to the *same* `tasks` and `loadingTasks` objects. An `effect()` in the dashboard controller that reads `tasks.value` will re-run whenever the tasks list controller writes to `tasks.value` — because they are the same state object.
 
 This is the store pattern. There is no special "store API" in NativeCoreJS — stores are just modules that export module-level state.
 
 ---
 
-## Building `task.store.ts`
+## Building `task.store.js`
 
 Stores are plain TypeScript modules. There is no scaffold command for them — create the `src/stores/` directory and the file manually:
 
-```typescript
-// src/stores/task.store.ts
+```javascript
+// src/stores/task.store.js
 import { useState, computed } from '@core/state.js';
 import { api } from '@services/api.service.js';
 import { router } from '@core/router.js';
 
-export interface Task {
-    id: string;
-    title: string;
-    description: string;
-    status: 'todo' | 'in-progress' | 'done';
-    projectId: string | null;
-    dueDate: string | null;
-    completed: boolean;
-}
+// Task shape: { id, title, description, status, projectId, dueDate, completed }
 
 // --- State ---
-export const tasks = useState<Task[]>([]);
-export const activeProjectId = useState<string | null>(null);
+export const tasks = useState([]);
+export const activeProjectId = useState(null);
 export const loadingTasks = useState(false);
 
 // --- Actions ---
 
-export async function loadTasks(projectId?: string): Promise<void> {
+export async function loadTasks(projectId) {
     loadingTasks.value = true;
     try {
         const path = projectId ? `/tasks?projectId=${projectId}` : '/tasks';
@@ -75,21 +67,21 @@ export async function loadTasks(projectId?: string): Promise<void> {
             queryKey: projectId ? ['tasks', 'list', projectId] : ['tasks', 'list'],
             tags: ['tasks'],
         });
-        tasks.value = data as Task[];
+        tasks.value = data;
     } finally {
         loadingTasks.value = false;
     }
 }
 
-export async function createTask(payload: Omit<Task, 'id'>): Promise<Task> {
-    const created = await api.post('/tasks', payload) as Task;
+export async function createTask(payload, 'id'>) {
+    const created = await api.post('/tasks', payload);
     tasks.value = [...tasks.value, created];
     api.invalidateTags('tasks');
     router.bustCache('/tasks');
     return created;
 }
 
-export async function updateTask(id: string, payload: Partial<Task>): Promise<void> {
+export async function updateTask(id, payload) {
     await api.put(`/tasks/${id}`, payload);
     tasks.value = tasks.value.map(t =>
         t.id === id ? { ...t, ...payload } : t
@@ -97,14 +89,14 @@ export async function updateTask(id: string, payload: Partial<Task>): Promise<vo
     api.invalidateQuery(['tasks', id], { exact: true });
 }
 
-export async function deleteTask(id: string): Promise<void> {
+export async function deleteTask(id) {
     await api.delete(`/tasks/${id}`);
     tasks.value = tasks.value.filter(t => t.id !== id);
     api.invalidateTags('tasks');
     router.bustCache('/tasks');
 }
 
-export function reset(): void {
+export function reset() {
     tasks.value = [];
     activeProjectId.value = null;
     loadingTasks.value = false;
@@ -115,23 +107,19 @@ Actions live alongside state in the same module. They mutate the store state *an
 
 ---
 
-## Building `project.store.ts`
+## Building `project.store.js`
 
-```typescript
-// src/stores/project.store.ts
+```javascript
+// src/stores/project.store.js
 import { useState } from '@core/state.js';
 import { api } from '@services/api.service.js';
 
-export interface Project {
-    id: string;
-    name: string;
-    color: string;
-}
+// Project shape: { id, name, color }
 
-export const projects = useState<Project[]>([]);
+export const projects = useState([]);
 export const loadingProjects = useState(false);
 
-export async function loadProjects(): Promise<void> {
+export async function loadProjects() {
     loadingProjects.value = true;
     try {
         const data = await api.getCached('/projects', {
@@ -140,20 +128,20 @@ export async function loadProjects(): Promise<void> {
             queryKey: ['projects', 'list'],
             tags: ['projects'],
         });
-        projects.value = data as Project[];
+        projects.value = data;
     } finally {
         loadingProjects.value = false;
     }
 }
 
-export async function createProject(payload: Omit<Project, 'id'>): Promise<Project> {
-    const created = await api.post('/projects', payload) as Project;
+export async function createProject(payload, 'id'>) {
+    const created = await api.post('/projects', payload);
     projects.value = [...projects.value, created];
     api.invalidateTags('projects');
     return created;
 }
 
-export function reset(): void {
+export function reset() {
     projects.value = [];
 }
 ```
@@ -164,8 +152,8 @@ export function reset(): void {
 
 The tasks list controller now becomes lean — it delegates data management to the store:
 
-```typescript
-// src/controllers/tasks.controller.ts
+```javascript
+// src/controllers/tasks.controller.js
 import { effect } from '@core/state.js';
 import { dom } from '@core-utils/dom.js';
 import { trackEvents } from '@core-utils/events.js';
@@ -180,9 +168,9 @@ import {
 
 export async function tasksController(
     params: Record<string, string> = {}
-): Promise<() => void> {
+) {
     const events = trackEvents();
-    const disposers: Array<() => void> = [];
+    const disposers = [];
     const scope = dom.view('tasks');
 
     // Load tasks — if they are already in the store from a previous visit,
@@ -209,7 +197,7 @@ export async function tasksController(
     }));
 
     events.onClick('open-task', (e) => {
-        const li = (e.target as HTMLElement).closest('[data-task-id]') as HTMLElement;
+        const li = (e.target).closest('[data-task-id]');
         if (!li) return;
         router.navigate('/tasks/' + li.dataset.taskId);
     });
@@ -229,8 +217,8 @@ The `effect()` reads both `loadingTasks.value` and `tasks.value`. Whenever eithe
 
 The dashboard also shows task data — a count badge and an "overdue tasks" section. It imports the same store:
 
-```typescript
-// src/controllers/dashboard.controller.ts
+```javascript
+// src/controllers/dashboard.controller.js
 import { effect, computed } from '@core/state.js';
 import { dom } from '@core-utils/dom.js';
 import { trackEvents } from '@core-utils/events.js';
@@ -238,9 +226,9 @@ import { tasks, loadTasks } from '../stores/task.store.js';
 
 export async function dashboardController(
     params: Record<string, string> = {}
-): Promise<() => void> {
+) {
     const events = trackEvents();
-    const disposers: Array<() => void> = [];
+    const disposers = [];
     const scope = dom.view('dashboard');
 
     await loadTasks();
@@ -282,8 +270,8 @@ Module-level state persists for the app session — including across logout. If 
 
 Call each store's `reset()` function in the logout handler:
 
-```typescript
-// src/controllers/settings.controller.ts (or wherever logout lives)
+```javascript
+// src/controllers/settings.controller.js (or wherever logout lives)
 import { taskStore } from '../stores/task.store.js';
 import { projectStore } from '../stores/project.store.js';
 import { auth } from '@services/auth.service.js';
@@ -303,8 +291,8 @@ async function handleLogout() {
 
 A search bar that lives in the app shell can filter content on multiple views. A search store makes this wiring trivial:
 
-```typescript
-// src/stores/search.store.ts
+```javascript
+// src/stores/search.store.js
 import { useState } from '@core/state.js';
 
 export const searchQuery = useState('');

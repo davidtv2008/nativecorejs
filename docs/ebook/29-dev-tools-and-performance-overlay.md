@@ -6,8 +6,8 @@ NativeCoreJS ships with a built-in developer tooling layer that is only ever act
 
 In addition to the dev-overlay, the framework now ships a small **in-page DevTools panel** (`mountDevTools()`) that runs without any browser extension. It adds a floating panel with three tabs — **Stores**, **Components**, and **Router** — lets you inspect and mutate any exported store value live, highlights mounted `nc-*` elements when you hover over them, and shows the current route/query. Because it lives inside a closed Shadow Root it never clashes with your app's styles, and because it is opt-in you decide when and how to load it.
 
-```typescript
-// src/app.ts — only during local development
+```javascript
+// src/app.js — only during local development
 if (isLocalhost()) {
     import('nativecorejs').then(({ mountDevTools }) => {
         mountDevTools({ hotkey: { ctrl: true, shift: true, key: 'D' } });
@@ -21,10 +21,10 @@ Press `Ctrl+Shift+D` to toggle the panel. Use the JSON editor in the Stores tab 
 
 ## 29.1 How Dev Tools Load
 
-All developer tooling is imported dynamically inside `initDevTools()` in `src/app.ts`:
+All developer tooling is imported dynamically inside `initDevTools()` in `src/app.js`:
 
-```typescript
-function initDevTools(): void {
+```javascript
+function initDevTools() {
     if (!isLocalhost()) {
         return; // hard guard — nothing below runs in production
     }
@@ -35,7 +35,7 @@ function initDevTools(): void {
         import('./utils/devOverlay.js'),
     ])
         .then(([, , { initDevOverlay }]) => {
-            (window as any).__NATIVECORE_DEV__ = true;
+            (window).__NATIVECORE_DEV__ = true;
             initDevOverlay();
         })
         .catch(() => {
@@ -286,7 +286,7 @@ It opens and closes via the tab on the left edge of the screen (visible only whe
 
 The dev tooling layer has multiple layers of protection against leaking into production:
 
-**Runtime guard** — `isLocalhost()` in `app.ts` must return `true` for dev tools to load. A deployed app on any real domain never reaches the dynamic imports.
+**Runtime guard** — `isLocalhost()` in `app.js` must return `true` for dev tools to load. A deployed app on any real domain never reaches the dynamic imports.
 
 **Build-time exclusion** — `tsconfig.build.json` excludes the `.nativecore/` directory entirely. The `denc-tools.ts`, `hmr.ts`, `outline-panel.ts`, and `component-overlay.ts` files are not compiled and do not appear in the production bundle.
 
@@ -302,7 +302,7 @@ You do not need to do anything special to keep the overlay out of production. It
 
 | File | Location | Purpose |
 |---|---|---|
-| `devOverlay.ts` | `src/utils/devOverlay.ts` | Performance overlay — HUD, modals, all instrumentation |
+| `devOverlay.ts` | `src/utils/devOverlay.js` | Performance overlay — HUD, modals, all instrumentation |
 | `denc-tools.ts` | `.nativecore/denc-tools.ts` | Component inspector, outline panel, DEV MODE toggle |
 | `hmr.ts` | `.nativecore/hmr.ts` | Hot Module Replacement via WebSocket |
 | `outline-panel.ts` | `.nativecore/outline-panel.ts` | Left-side DOM tree panel |
@@ -311,7 +311,7 @@ You do not need to do anything special to keep the overlay out of production. It
 
 The overlay communicates with the denc-tools toggle via a custom DOM event:
 
-```typescript
+```javascript
 // denc-tools.ts dispatches when the DEV MODE button is clicked:
 document.dispatchEvent(new CustomEvent('nc-devtools-visibility', {
     detail: { visible: true | false }
@@ -319,7 +319,7 @@ document.dispatchEvent(new CustomEvent('nc-devtools-visibility', {
 
 // devOverlay.ts listens and shows/hides accordingly:
 document.addEventListener('nc-devtools-visibility', (e) => {
-    const visible = (e as CustomEvent<{ visible: boolean }>).detail.visible;
+    const visible = (e).detail.visible;
     if (visible) showOverlay();
     else hideOverlay();
 });

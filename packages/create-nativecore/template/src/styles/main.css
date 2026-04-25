@@ -234,6 +234,12 @@ a:hover {
     border-color: var(--color-primary-light, #6ee7b7);
 }
 
+/* make:view scaffold — toggled via wire-class="cardActive:card--wired-active" */
+.card.card--wired-active {
+    border-color: var(--color-primary, #22c55e);
+    box-shadow: var(--shadow-md);
+}
+
 .card__icon {
     font-size: 1.25rem;
     color: var(--color-primary);

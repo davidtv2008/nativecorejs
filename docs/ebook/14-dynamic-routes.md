@@ -54,9 +54,9 @@ The CLI will ask you a series of questions:
 After answering, the tool creates:
 
 - `src/views/task-detail/task-detail.view.html`
-- `src/controllers/task-detail.controller.ts`
+- `src/controllers/task-detail.controller.js`
 
-And registers the route stub in your `routes.ts`.
+And registers the route stub in your `routes.js`.
 
 ---
 
@@ -66,16 +66,16 @@ Every controller receives a `params` object as its first argument. This is a pla
 
 For a route registered as `/tasks/:id`, navigating to `/tasks/42` will call your controller with:
 
-```typescript
+```javascript
 params = { id: "42" }
 ```
 
 The controller signature:
 
-```typescript
+```javascript
 export async function taskDetailController(
     params: Record<string, string> = {}
-): Promise<() => void> {
+) {
     const taskId = params.id;
     // ...
 }
@@ -89,30 +89,25 @@ All param values are strings — convert to a number if your API expects one.
 
 Here is a complete implementation. It reads `params.id`, fetches the task from the API, renders the task to the DOM, and handles the case where the task doesn't exist.
 
-```typescript
+```javascript
 import { useState, effect } from '@core/state.js';
 import { dom } from '@core-utils/dom.js';
 import { trackEvents } from '@core-utils/events.js';
 import { api } from '@services/api.service.js';
 import { router } from '@core/router.js';
 
-interface Task {
-    id: number;
-    title: string;
-    description: string;
-    status: 'todo' | 'in-progress' | 'done';
-}
+// Task shape: { id, title, description, status }
 
 export async function taskDetailController(
     params: Record<string, string> = {}
-): Promise<() => void> {
+) {
     const events = trackEvents();
-    const disposers: Array<() => void> = [];
+    const disposers = [];
 
     const scope = dom.view('task-detail');
     const taskId = params.id;
 
-    const task = useState<Task | null>(null);
+    const task = useState(null);
     const loading = useState(true);
     const notFound = useState(false);
 
@@ -122,7 +117,7 @@ export async function taskDetailController(
         if (!data) {
             notFound.value = true;
         } else {
-            task.value = data as Task;
+            task.value = data;
         }
     } catch {
         notFound.value = true;
@@ -209,12 +204,12 @@ npm run make:view project-tasks
 
 In the controller, check whether `taskId` is present:
 
-```typescript
+```javascript
 export async function projectTasksController(
     params: Record<string, string> = {}
-): Promise<() => void> {
+) {
     const events = trackEvents();
-    const disposers: Array<() => void> = [];
+    const disposers = [];
 
     const projectId = params.id;          // always present
     const taskId = params.taskId;         // may be undefined
@@ -254,12 +249,12 @@ npm run make:view not-found
 
 When a user hits `/*`, the router captures the unmatched portion of the URL as `params.wildcard`:
 
-```typescript
+```javascript
 export async function notFoundController(
     params: Record<string, string> = {}
-): Promise<() => void> {
+) {
     const events = trackEvents();
-    const disposers: Array<() => void> = [];
+    const disposers = [];
 
     const scope = dom.view('not-found');
     const attempted = params.wildcard ?? '/';
@@ -278,15 +273,15 @@ export async function notFoundController(
 }
 ```
 
-> **Warning:** Register `/*` *last* in your `routes.ts`. The router matches routes in registration order, and a wildcard registered first will swallow every navigation.
+> **Warning:** Register `/*` *last* in your `routes.js`. The router matches routes in registration order, and a wildcard registered first will swallow every navigation.
 
 ---
 
-## Route Registration in `routes.ts`
+## Route Registration in `routes.js`
 
 Here is how all three patterns look together in Taskflow's route file:
 
-```typescript
+```javascript
 import { router } from '@core/router.js';
 import { taskDetailController } from './controllers/task-detail.controller.js';
 import { projectTasksController } from './controllers/project-tasks.controller.js';
@@ -312,11 +307,11 @@ router.register('/*', 'views/not-found/not-found.view.html', notFoundController)
 
 From the task list controller, navigate to a task's detail page by composing the path string:
 
-```typescript
+```javascript
 events.onClick('task-item', (e) => {
-    const el = (e.target as HTMLElement).closest('[data-task-id]');
+    const el = (e.target).closest('[data-task-id]');
     if (!el) return;
-    const taskId = (el as HTMLElement).dataset.taskId;
+    const taskId = (el).dataset.taskId;
     router.navigate('/tasks/' + taskId);
 });
 ```
@@ -329,7 +324,7 @@ The router pushes the full path to browser history, and `taskDetailController` r
 
 Params are baked into the route definition (`/tasks/:id`); query strings are not. For filters, pagination, sort order, or any state that's optional and can change within the same route, use the router's query helpers instead of reading `window.location.search` directly.
 
-```typescript
+```javascript
 import router from '@core/router.js';
 
 // Read — keys that appear multiple times become arrays
@@ -353,7 +348,7 @@ Setting the query via `setQuery()` does **not** re-run the current controller or
 
 Beyond URL params and query strings, the router lets you attach an arbitrary state object to a navigation entry. This state survives back/forward clicks and is available instantly on arrival — without encoding anything in the URL.
 
-```typescript
+```javascript
 // Push navigation with attached state
 router.navigate('/tasks/' + taskId, {
     fromView: 'kanban',
@@ -391,7 +386,7 @@ If no route matches and you haven't registered a `/*` wildcard, the router simpl
 ## Done Criteria
 
 - [ ] `npx create-nativecore shopboard` scaffolds the ShopBoard project.
-- [ ] `/products` and `/products/:id` are registered in `src/routes/routes.ts`.
+- [ ] `/products` and `/products/:id` are registered in `src/routes/routes.js`.
 - [ ] The product detail controller reads `params.id` and logs it to the console.
 - [ ] Navigating to `/products/999` shows the wildcard 404 fallback page.
 

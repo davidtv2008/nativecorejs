@@ -31,7 +31,7 @@ This chapter explains two strategies for producing that HTML, helps you choose t
 
 The `build:ssg` script automates the following steps:
 
-1. Reads `src/routes/routes.ts` and extracts every registered route.
+1. Reads `src/routes/routes.js` and extracts every registered route.
 2. Skips protected routes (listed in `protectedRoutes`) and dynamic routes (`:param`, `*`).
 3. Starts the compiled dev server on port 8000 (or reuses one that is already running).
 4. Visits each public route with a headless Chromium browser (Puppeteer).
@@ -250,15 +250,15 @@ For the vast majority of NativeCoreJS applications, SSG covers all SEO requireme
 
 ## Controlling Which Routes Are Pre-Rendered
 
-SSG reads `src/routes/routes.ts` and applies the following filters automatically:
+SSG reads `src/routes/routes.js` and applies the following filters automatically:
 
 1. **Protected routes** — any route listed in `protectedRoutes` is excluded.
 2. **Dynamic routes** — routes containing `:param` or `*` are excluded (the URL parameters are not known at build time).
 
 To opt a *public* route out of pre-rendering, the simplest approach is to add it to `protectedRoutes` with a comment explaining the intent:
 
-```typescript
-// routes.ts
+```javascript
+// routes.js
 export const protectedRoutes = [
     '/dashboard',   // requires authentication
     '/profile',     // requires authentication
@@ -266,7 +266,7 @@ export const protectedRoutes = [
 ];
 ```
 
-To add a route that is not in `routes.ts` (for example, a static marketing page served by a separate system), add it to the `routes` array in `ssg.mjs` directly.
+To add a route that is not in `routes.js` (for example, a static marketing page served by a separate system), add it to the `routes` array in `ssg.mjs` directly.
 
 ---
 

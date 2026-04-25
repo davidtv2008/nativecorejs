@@ -10,41 +10,36 @@ NativeCoreJS middleware is a chain of functions the router invokes before every 
 
 ## The Middleware Signature
 
-```typescript
-type MiddlewareFunction = (
-    route: RouteMatch,
-    state?: unknown
-) => Promise<boolean> | boolean;
+```javascript
+// MiddlewareFunction shape:
+// (route, state?) => Promise | boolean
 ```
 
 `RouteMatch` gives you everything you need to make a decision:
 
-```typescript
-type RouteMatch = {
-    path: string;                      // the matched registered path, e.g. '/tasks/:id'
-    params: Record<string, string>;    // extracted URL params, e.g. { id: '42' }
-    config: RouteConfig;               // the full route registration object
-};
+```javascript
+// RouteMatch shape:
+// { path, params, config }
 ```
 
-Return `true` to allow navigation. Return `false` to cancel it. Middleware can be async — return a `Promise<boolean>` if you need to call an API before deciding.
+Return `true` to allow navigation. Return `false` to cancel it. Middleware can be async — return a `Promise` if you need to call an API before deciding.
 
 ---
 
 ## `createMiddleware` — Tag-Based Dispatch
 
-Rather than checking which route is protected inside every middleware function, NativeCoreJS uses a tag dispatch pattern. Routes declare which middleware tags apply to them in `routes.ts`:
+Rather than checking which route is protected inside every middleware function, NativeCoreJS uses a tag dispatch pattern. Routes declare which middleware tags apply to them in `routes.js`:
 
-```typescript
+```javascript
 r.group({ middleware: ['auth'] }, (r) => {
     r.register('/dashboard', ...);
     r.register('/tasks', ...);
 });
 ```
 
-And in `app.ts`, each middleware function is wrapped with `createMiddleware(tag, fn)`:
+And in `app.js`, each middleware function is wrapped with `createMiddleware(tag, fn)`:
 
-```typescript
+```javascript
 // @middleware — registered middleware (auto-updated by make:middleware)
 router.use(createMiddleware('auth', authMiddleware));
 ```
@@ -56,13 +51,12 @@ router.use(createMiddleware('auth', authMiddleware));
 
 This means `authMiddleware` itself doesn't need to know which routes require auth. It just implements the logic:
 
-```typescript
-// src/middleware/auth.middleware.ts
+```javascript
+// src/middleware/auth.middleware.js
 import auth from '@services/auth.service.js';
 import router from '@core/router.js';
-import type { RouteMatch } from '@core/router.js';
 
-export async function authMiddleware(route: RouteMatch): Promise<boolean> {
+export async function authMiddleware(route) {
     if (!auth.isAuthenticated()) {
         router.replace('/login', { redirect: route.path });
         return false;
@@ -84,27 +78,27 @@ npm run make:middleware verified
 ```
 
 This:
-1. Creates `src/middleware/verified.middleware.ts` with the correct signature
-2. Adds the import to `src/app.ts`
-3. Inserts `router.use(createMiddleware('verified', verifiedMiddleware))` after the `// @middleware` sentinel in `app.ts`
+1. Creates `src/middleware/verified.middleware.js` with the correct signature
+2. Adds the import to `src/app.js`
+3. Inserts `router.use(createMiddleware('verified', verifiedMiddleware))` after the `// @middleware` sentinel in `app.js`
 
 ```
-✔ Created: src/middleware/verified.middleware.ts
-✔ Added import to src/app.ts
-✔ Added router.use(createMiddleware('verified', verifiedMiddleware)) to src/app.ts
+✔ Created: src/middleware/verified.middleware.js
+✔ Added import to src/app.js
+✔ Added router.use(createMiddleware('verified', verifiedMiddleware)) to src/app.js
 ```
 
-Then apply the tag in `routes.ts`:
+Then apply the tag in `routes.js`:
 
-```typescript
-r.group({ middleware: ['verified'] }, (r) => {
+```javascript
+r.group({ middleware: ['auth'] }, (r) => {
     r.register('/settings/billing', ...);
 });
 ```
 
 Or combine multiple tags on one group:
 
-```typescript
+```javascript
 r.group({ middleware: ['auth', 'verified'] }, (r) => {
     r.register('/settings/billing', ...);
 });
@@ -118,12 +112,12 @@ Both `authMiddleware` and `verifiedMiddleware` will run for that route — in re
 
 The auth middleware stores the intended path in navigation state. The login controller reads it after a successful login:
 
-```typescript
-// src/controllers/login.controller.ts
+```javascript
+// src/controllers/login.controller.js
 export async function loginController(
     params: Record<string, string> = {},
     state?: { redirect?: string }
-): Promise<() => void> {
+) {
     // ...
     events.onClick('submit', async () => {
         await auth.login(email, password);
@@ -141,7 +135,7 @@ The `state` parameter is passed by the router automatically — no query string 
 
 Middleware runs in **registration order**:
 
-```typescript
+```javascript
 // @middleware — registered middleware (auto-updated by make:middleware)
 router.use(createMiddleware('auth',      authMiddleware));
 router.use(createMiddleware('analytics', analyticsMiddleware));
@@ -156,11 +150,10 @@ If `authMiddleware` returns `false`, neither `analyticsMiddleware` nor `loggingM
 
 ## Building a Logging Middleware
 
-```typescript
-// src/middleware/logging.middleware.ts
-import type { RouteMatch } from '@core/router.js';
+```javascript
+// src/middleware/logging.middleware.js
 
-export function loggingMiddleware(route: RouteMatch, state?: unknown): boolean {
+export function loggingMiddleware(route, state) {
     console.log('[Router]', route.path, { params: route.params, state });
     return true;
 }
@@ -168,7 +161,7 @@ export function loggingMiddleware(route: RouteMatch, state?: unknown): boolean {
 
 Logging middleware doesn't need a tag — it should run on every route. Register it without `createMiddleware`:
 
-```typescript
+```javascript
 router.use(loggingMiddleware); // no tag — runs on every navigation
 ```
 
@@ -178,18 +171,17 @@ router.use(loggingMiddleware); // no tag — runs on every navigation
 
 Prevent users from accidentally leaving a form with unsaved changes:
 
-```typescript
-// src/stores/form-dirty.store.ts
+```javascript
+// src/stores/form-dirty.store.js
 import { useState } from '@core/state.js';
 export const formDirty = useState(false);
 ```
 
-```typescript
-// src/middleware/unsaved-changes.middleware.ts
+```javascript
+// src/middleware/unsaved-changes.middleware.js
 import { formDirty } from '../stores/form-dirty.store.js';
-import type { RouteMatch } from '@core/router.js';
 
-export function unsavedChangesMiddleware(route: RouteMatch): boolean {
+export function unsavedChangesMiddleware(route) {
     if (!formDirty.value) return true;
 
     const confirmed = window.confirm('You have unsaved changes. Leave anyway?');
@@ -203,15 +195,15 @@ export function unsavedChangesMiddleware(route: RouteMatch): boolean {
 
 Apply it to any form route by tagging it:
 
-```typescript
-r.group({ middleware: ['unsaved-changes'] }, (r) => {
+```javascript
+r.group({ middleware: ['auth'] }, (r) => {
     r.register('/tasks/:id/edit', ...);
 });
 ```
 
 And in the controller set the flag:
 
-```typescript
+```javascript
 events.onInput('task-form', () => { formDirty.value = true; });
 events.onClick('save', async () => {
     await handleSave();
@@ -226,7 +218,7 @@ events.onClick('save', async () => {
 
 Navigation state flows through the entire middleware chain. When you call:
 
-```typescript
+```javascript
 router.navigate('/tasks', { filter: 'overdue' });
 ```
 
@@ -236,7 +228,7 @@ Every middleware receives that state as its second argument, and it's also avail
 
 ## Done Criteria
 
-- [ ] `npm run make:middleware verified` creates the file and wires app.ts correctly.
+- [ ] `npm run make:middleware verified` creates the file and wires app.js correctly.
 - [ ] Navigating to a route tagged `['auth']` without a token redirects to `/login`.
 - [ ] The "save-on-navigate" guard fires a `confirm()` when `formDirty` is true.
 - [ ] Auth redirect restores the user to the originally-intended path after login.

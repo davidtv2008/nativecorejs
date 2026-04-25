@@ -55,18 +55,18 @@ taskflow/
 ├── api/                      # Local mock API (dev only)
 ├── public/                   # Static assets copied as-is to the build output
 ├── src/
-│   ├── app.ts                # Application entry point
+│   ├── app.js                # Application entry point
 │   ├── components/           # Web Components
 │   │   ├── registry.ts       # Lazy component registry
-│   │   ├── preloadRegistry.ts
+│   │   ├── preloadRegistry.js
 │   │   ├── core/             # Layout components (app-header, app-sidebar, etc.)
 │   │   └── ui/               # Reusable nc-* UI components
 │   ├── constants/            # App-wide constants (routes, endpoints, storage keys)
 │   ├── controllers/          # Route controllers
-│   │   └── index.ts          # Named re-exports for all controllers
+│   │   └── index.js          # Named re-exports for all controllers
 │   ├── middleware/           # Router middleware (e.g. auth guard)
 │   ├── routes/
-│   │   └── routes.ts         # Central route registry
+│   │   └── routes.js         # Central route registry
 │   ├── services/             # API, auth, logger, storage services
 │   ├── stores/               # Global reactive stores
 │   ├── styles/               # Global CSS (core.css, main.css, variables.css)
@@ -121,14 +121,13 @@ The generated `index.html` is production-ready from day one. It includes SEO met
 
 The router renders views into `#main-content` — not directly into `#app`. The outer `#app` wrapper holds the persistent layout shell (header, sidebar, footer) that stays mounted across navigations. The single `<script type="module">` at the bottom loads the compiled entry point from `dist/`.
 
-### `src/app.ts` — The Entry Point
+### `src/app.js` — The Entry Point
 
-`app.ts` boots everything in the correct order:
+`app.js` boots everything in the correct order:
 
-```typescript
+```javascript
 import router from '@core/router.js';
 import auth from '@services/auth.service.js';
-import type { User } from '@services/auth.service.js';
 import api from '@services/api.service.js';
 import { authMiddleware } from '@middleware/auth.middleware.js';
 import { registerRoutes, protectedRoutes } from '@routes/routes.js';
@@ -206,7 +205,7 @@ async function init() {
     initDevTools();
 }
 
-function initDevTools(): void {
+function initDevTools() {
     if (!isLocalhost()) {
         return;
     }
@@ -228,22 +227,21 @@ function initDevTools(): void {
 init();
 ```
 
-Keep `app.ts` minimal. Routes belong in `routes/routes.ts`, components in `components/registry.ts`, and auth logic in `services/auth.service.ts`.
+Keep `app.js` minimal. Routes belong in `routes/routes.js`, components in `components/registry.ts`, and auth logic in `services/auth.service.ts`.
 
-### `src/routes/routes.ts`
+### `src/routes/routes.js`
 
-```typescript
+```javascript
 import { bustCache } from '@core-utils/cacheBuster.js';
-import type { ControllerFunction } from '@core/router.js';
 
-function lazyController(controllerName: string, controllerPath: string): ControllerFunction {
-    return async (...args: any[]) => {
+function lazyController(controllerName, controllerPath) {
+    return async (...args) => {
         const module = await import(bustCache(controllerPath));
         return module[controllerName](...args);
     };
 }
 
-export function registerRoutes(router: any): void {
+export function registerRoutes(router) {
     router
         .register('/', 'src/views/public/home.html',
             lazyController('homeController', '../controllers/home.controller.js'))
@@ -259,9 +257,9 @@ export function registerRoutes(router: any): void {
 export const protectedRoutes = ['/dashboard'];
 ```
 
-`lazyController` is defined locally in this file — it is not imported from the framework. It wraps a dynamic `import()` so the controller module is only fetched when its route is first visited. `.cache()` takes a `{ ttl, revalidate }` options object. `router.start()` is called from `app.ts`, not here.
+`lazyController` is defined locally in this file — it is not imported from the framework. It wraps a dynamic `import()` so the controller module is only fetched when its route is first visited. `.cache()` takes a `{ ttl, revalidate }` options object. `router.start()` is called from `app.js`, not here.
 
-The `protectedRoutes` export is the authoritative list of paths that require authentication. The auth middleware in `app.ts` uses this list to redirect unauthenticated users to `/login`. We wire up that logic in Chapter 07.
+The `protectedRoutes` export is the authoritative list of paths that require authentication. The auth middleware in `app.js` uses this list to redirect unauthenticated users to `/login`. We wire up that logic in Chapter 07.
 
 ### `tsconfig.json` — Path Aliases
 
@@ -312,9 +310,9 @@ The dev server runs on port **8000**. It serves the compiled `dist/` files, hand
 The scaffolded project includes generator scripts for the three things you create most often:
 
 ```bash
-npm run make:component <name>   # creates src/components/ui/<name>.ts, registers in registry.ts
+npm run make:component <name>   # creates src/components/ui/<name>.js, registers in registry.ts
 npm run make:view <name>        # interactive: creates view HTML + optional controller + route entry
-npm run make:controller <name>  # creates src/controllers/<name>.controller.ts + index.ts export
+npm run make:controller <name>  # creates src/controllers/<name>.controller.js + index.js export
 ```
 
 > **Web Component naming rule:** The name passed to `make:component` must be in `kebab-case` and **must contain at least one hyphen** (e.g. `task-card`, not `TaskCard` or `taskcard`). This is a browser requirement — the Custom Elements spec rejects any tag name without a hyphen. The generator enforces this and will error if the name is invalid.
@@ -327,9 +325,9 @@ Route path (/name):
 Create a controller for this view? (y/n):
 ```
 
-It writes the view HTML, optionally writes a controller, adds the export to `controllers/index.ts`, and inserts the route registration into `routes.ts` — all in one step.
+It writes the view HTML, optionally writes a controller, adds the export to `controllers/index.js`, and inserts the route registration into `routes.js` — all in one step.
 
-`make:component` always creates the file at `src/components/ui/<name>.ts` and appends the registration line to `src/components/registry.ts`.
+`make:component` always creates the file at `src/components/ui/<name>.js` and appends the registration line to `src/components/registry.js`.
 
 ---
 
@@ -339,7 +337,7 @@ Let's create the three views we will build into over the coming chapters:
 
 > **Note:** If you accepted the default "Include auth flow?" prompt when scaffolding the project, a `/login` route and its controller were already generated. You can skip the first command below and go straight to `npm run make:view tasks`.
 
-> **Note:** If you accepted the default "Include dashboard route?" prompt when scaffolding, `/dashboard` was also generated automatically. Skip that last command if it already exists in your `routes.ts`.
+> **Note:** If you accepted the default "Include dashboard route?" prompt when scaffolding, `/dashboard` was also generated automatically. Skip that last command if it already exists in your `routes.js`.
 
 ```bash
 npm run make:view login
@@ -358,7 +356,7 @@ npm run make:view dashboard
 # Create a controller for this view? y
 ```
 
-After running these, `src/routes/routes.ts` will have the new routes appended inside `registerRoutes`. Open it and confirm the three new registrations are present alongside the defaults before moving on.
+After running these, `src/routes/routes.js` will have the new routes appended inside `registerRoutes`. Open it and confirm the three new registrations are present alongside the defaults before moving on.
 
 ---
 
@@ -366,7 +364,7 @@ After running these, `src/routes/routes.ts` will have the new routes appended in
 
 - [ ] `npm create nativecore@latest taskflow` completes without errors.
 - [ ] `npm run dev` opens the app at `http://localhost:8000`.
-- [ ] `/login`, `/tasks`, and `/dashboard` routes are registered in `src/routes/routes.ts`.
+- [ ] `/login`, `/tasks`, and `/dashboard` routes are registered in `src/routes/routes.js`.
 - [ ] The NativeCoreJS dev tools panel is visible in the browser on `localhost`.
 
 ---

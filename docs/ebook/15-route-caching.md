@@ -22,7 +22,7 @@ This makes back-navigation essentially free. If a user opens a task, returns to 
 
 Chain `.cache()` immediately after `.register()`:
 
-```typescript
+```javascript
 router
     .register('/dashboard', 'views/dashboard/dashboard.view.html', dashboardController)
     .cache({ ttl: 30, revalidate: true });
@@ -32,7 +32,7 @@ router
 
 ### Block-on-Stale: `revalidate: false`
 
-```typescript
+```javascript
 .cache({ ttl: 300, revalidate: false })
 ```
 
@@ -40,7 +40,7 @@ When the cached entry is stale, the router **blocks navigation** and fetches fre
 
 ### Stale-While-Revalidate: `revalidate: true`
 
-```typescript
+```javascript
 .cache({ ttl: 30, revalidate: true })
 ```
 
@@ -50,11 +50,11 @@ When the cached entry is stale, the router **immediately shows the stale HTML** 
 
 ---
 
-## Comprehensive Taskflow `routes.ts`
+## Comprehensive Taskflow `routes.js`
 
 Here is the full route registration for Taskflow, with cache policies chosen to match each page's characteristics:
 
-```typescript
+```javascript
 import { router } from '@core/router.js';
 import { homeController } from './controllers/home.controller.js';
 import { loginController } from './controllers/login.controller.js';
@@ -119,7 +119,7 @@ Notice that parameterized routes (`/tasks/:id`, `/projects/:id/tasks/:taskId?`) 
 
 ## Creating New Views — Always Use the CLI
 
-Before adding a new entry to `routes.ts`, always scaffold the view with:
+Before adding a new entry to `routes.js`, always scaffold the view with:
 
 ```bash
 npm run make:view settings
@@ -131,7 +131,7 @@ npm run make:view settings
 ? Generate a controller? › Yes
 ```
 
-The command creates `src/views/settings/settings.view.html` and `src/controllers/settings.controller.ts` with the correct boilerplate. Never create these files by hand — the scaffolder wires up the `data-view` attribute, imports, and controller signature for you.
+The command creates `src/views/settings/settings.view.html` and `src/controllers/settings.controller.js` with the correct boilerplate. Never create these files by hand — the scaffolder wires up the `data-view` attribute, imports, and controller signature for you.
 
 ---
 
@@ -141,26 +141,26 @@ Prefetching fetches a route's HTML and stores it in the cache *before* the user 
 
 A natural place to prefetch is when a page is likely to be the user's next destination. In Taskflow, the login page knows the user is about to go to the dashboard after a successful login:
 
-```typescript
-// login.controller.ts
+```javascript
+// login.controller.js
 export async function loginController(
     params: Record<string, string> = {}
-): Promise<() => void> {
+) {
     const events = trackEvents();
-    const disposers: Array<() => void> = [];
+    const disposers = [];
 
     // Warm the dashboard cache while the user fills the form
     router.prefetch('/dashboard');
     router.prefetch('/tasks');
 
     events.onClick('submit', async () => {
-        const form = dom.view('login').hook('form') as HTMLFormElement;
+        const form = dom.view('login').hook('form');
         const data = new FormData(form);
 
         try {
             await auth.login(
-                data.get('email') as string,
-                data.get('password') as string
+                data.get('email')
+                data.get('password')
             );
             router.navigate('/dashboard');
         } catch (err) {
@@ -179,7 +179,7 @@ By the time the user finishes typing their password and clicks Submit, `/dashboa
 
 You can also prefetch on hover — when the user's mouse enters a nav link, start prefetching its destination:
 
-```typescript
+```javascript
 events.onMouseEnter('nav-tasks', () => router.prefetch('/tasks'));
 ```
 
@@ -189,7 +189,7 @@ events.onMouseEnter('nav-tasks', () => router.prefetch('/tasks'));
 
 When your app mutates data in a way that changes what the view *should* look like, you need to tell the cache to discard its stored copy. `router.bustCache()` does this.
 
-```typescript
+```javascript
 // After creating a new task
 await api.post('/tasks', newTask);
 router.bustCache('/tasks');
@@ -200,7 +200,7 @@ The *next* navigation to `/tasks` will fetch fresh HTML from the server.
 You can also bust all cached routes at once by calling `router.bustCache()` with no arguments — useful after a user logs out or switches accounts.
 
 > **Warning:** `router.bustCache()` only invalidates the **HTML template cache**. It does not clear API response data. After a mutation you typically want both:
-> ```typescript
+> ```javascript
 > router.bustCache('/tasks');
 > api.invalidateTags('tasks');   // also clear the API data cache
 > ```

@@ -65,43 +65,46 @@ async function main() {
  */
 import { trackEvents } from '@core-utils/events.js';
 import { dom } from '@core-utils/dom.js';
-import { wireContents, wireInputs, wireAttributes } from '@core-utils/wires.js';
+import { wireContents, wireInputs, wireAttributes, wireClasses, wireStyles } from '@core-utils/wires.js';
 import auth from '@services/auth.service.js';
-import api from '@services/api.service.js';
 
-export async function ${camelName}Controller(params: Record<string, string> = {}): Promise<void> {
+export async function ${camelName}Controller(params: Record<string, string> = {}): Promise<() => void> {
 
-    // -- Setup ---------------------------------------------------------------
+    // Setup
     const events = trackEvents();
     void params;
 
-    // -- Text bindings (wire-content) ---------------------------------------------
-    // wireContents() scans [wire-content] elements and wires state→textContent.
-    // Setting title.value updates the <h1> instantly. Auto-cleaned on nav.
+    // Wires
     const { title, summary } = wireContents();
+    const { cardStatus } = wireAttributes();
+    const { email } = wireInputs();
+    const { cardActive } = wireClasses();
+    const { cardOpacity } = wireStyles();
+
+    // Behavior
     title.value   = auth.getUser()?.name
         ? '${titleName} — ' + auth.getUser()!.name
         : '${titleName}';
     summary.value = 'Your controller is wired up and ready.';
-
-    // -- Attribute bindings (wire-attribute) -----------------------------------
-    // wireAttributes() scans [wire-attribute="key:attr"] and wires state→setAttribute.
-    // Setting cardStatus.value updates data-status on the card. Auto-cleaned on nav.
-    const { cardStatus } = wireAttributes();
     cardStatus.value = 'ready';
+    email.value = '';
+    cardActive.value = false;
+    cardOpacity.value = '1';
 
-    // -- Events --------------------------------------------------------------
+    // Events
     events.onClick(dom.view('${kebabName}').actionSelector('primary-action'), () => {
         title.value      = auth.getUser()?.name ? '${titleName} — ' + auth.getUser()!.name : '${titleName}';
         cardStatus.value = 'active';
+        cardActive.value = true;
+        cardOpacity.value = '0.95';
     });
 
-
-    // -- Model bindings (wire-input) -------------------------------------------
-    // wireInputs() scans [wire-input] elements and wires state⇄input.
-    // Setting email.value updates the input instantly. Auto-cleaned on nav.
-    const { email } = wireInputs();
-    email.value = '';
+    // Cleanup
+    // wire* and reactive bindings auto-dispose via PageCleanupRegistry.
+    // Return cleanup only for tracked DOM events/listeners.
+    return () => {
+        events.cleanup();
+    };
 }
 `;
 
@@ -112,43 +115,46 @@ export async function ${camelName}Controller(params: Record<string, string> = {}
  */
 import { trackEvents } from '@core-utils/events.js';
 import { dom } from '@core-utils/dom.js';
-import { wireContents, wireInputs, wireAttributes } from '@core-utils/wires.js';
+import { wireContents, wireInputs, wireAttributes, wireClasses, wireStyles } from '@core-utils/wires.js';
 import auth from '@services/auth.service.js';
-import api from '@services/api.service.js';
 
 export async function ${camelName}Controller(params = {}) {
 
-    // -- Setup ---------------------------------------------------------------
+    // Setup
     const events = trackEvents();
     void params;
 
-    // -- Text bindings (wire-content) ---------------------------------------------
-    // wireContents() scans [wire-content] elements and wires state→textContent.
-    // Setting title.value updates the <h1> instantly. Auto-cleaned on nav.
+    // Wires
     const { title, summary } = wireContents();
+    const { cardStatus } = wireAttributes();
+    const { email } = wireInputs();
+    const { cardActive } = wireClasses();
+    const { cardOpacity } = wireStyles();
+
+    // Behavior
     title.value   = auth.getUser()?.name
         ? '${titleName} — ' + auth.getUser()?.name
         : '${titleName}';
     summary.value = 'Your controller is wired up and ready.';
-
-    // -- Attribute bindings (wire-attribute) -----------------------------------
-    // wireAttributes() scans [wire-attribute="key:attr"] and wires state→setAttribute.
-    // Setting cardStatus.value updates data-status on the card. Auto-cleaned on nav.
-    const { cardStatus } = wireAttributes();
     cardStatus.value = 'ready';
+    email.value = '';
+    cardActive.value = false;
+    cardOpacity.value = '1';
 
-    // -- Events --------------------------------------------------------------
+    // Events
     events.onClick(dom.view('${kebabName}').actionSelector('primary-action'), () => {
         title.value      = auth.getUser()?.name ? '${titleName} — ' + auth.getUser()?.name : '${titleName}';
         cardStatus.value = 'active';
+        cardActive.value = true;
+        cardOpacity.value = '0.95';
     });
 
-
-    // -- Model bindings (wire-input) -------------------------------------------
-    // wireInputs() scans [wire-input] elements and wires state⇄input.
-    // Setting email.value updates the input instantly. Auto-cleaned on nav.
-    const { email } = wireInputs();
-    email.value = '';
+    // Cleanup
+    // wire* and reactive bindings auto-dispose via PageCleanupRegistry.
+    // Return cleanup only for tracked DOM events/listeners.
+    return () => {
+        events.cleanup();
+    };
 }
 `;
 

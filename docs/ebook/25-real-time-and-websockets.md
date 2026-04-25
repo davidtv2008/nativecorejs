@@ -66,25 +66,21 @@ The following example wires a WebSocket to a chat thread view with message rende
 </div>
 ```
 
-### Controller (`src/controllers/chat-thread.controller.ts`)
+### Controller (`src/controllers/chat-thread.controller.js`)
 
-```typescript
+```javascript
 import { dom }         from '@core-utils/dom.js';
 import { trackEvents } from '@core-utils/events.js';
 import { useState, effect } from '@core/state.js';
 import { connectWebSocket } from 'nativecorejs';
 import router           from '@core/router.js';
 
-interface ChatMessage {
-    id:     string;
-    author: string;
-    body:   string;
-}
+// ChatMessage shape: { id, author, body }
 
-export async function chatThreadController(params: { threadId: string }): Promise<() => void> {
+export async function chatThreadController(params) => void> {
     // -- Setup ---------------------------------------------------------------
     const events    = trackEvents();
-    const disposers: Array<() => void> = [];
+    const disposers = [];
 
     // -- DOM refs ------------------------------------------------------------
     const scope      = dom.view('chat-thread');
@@ -94,7 +90,7 @@ export async function chatThreadController(params: { threadId: string }): Promis
     const input      = scope.input('message-input');
 
     // -- State ---------------------------------------------------------------
-    const messages   = useState<ChatMessage[]>([]);
+    const messages   = useState([]);
     const connected  = useState(false);
 
     // -- WebSocket -----------------------------------------------------------
@@ -107,8 +103,8 @@ export async function chatThreadController(params: { threadId: string }): Promis
     const socket = connectWebSocket(socketUrl, {
         onOpen:    () => { connected.value = true; },
         onClose:   () => { connected.value = false; },
-        onJsonMessage: (msg: unknown) => {
-            const chatMsg = msg as ChatMessage;
+        onJsonMessage: (msg) => {
+            const chatMsg = msg;
             messages.value = [...messages.value, chatMsg];
         },
         onError:   () => {
@@ -140,8 +136,8 @@ export async function chatThreadController(params: { threadId: string }): Promis
             messages.value.forEach((m, i) => {
                 const el = items[i];
                 if (!el) return;
-                (el.querySelector('.message__author') as HTMLElement).textContent = m.author;
-                (el.querySelector('.message__body') as HTMLElement).textContent   = m.body;
+                (el.querySelector('.message__author')).textContent = m.author;
+                (el.querySelector('.message__body')).textContent   = m.body;
             });
 
             // Scroll to the latest message
@@ -156,7 +152,7 @@ export async function chatThreadController(params: { threadId: string }): Promis
     );
 
     // -- Events --------------------------------------------------------------
-    events.on(form, 'submit', (e: Event) => {
+    events.on(form, 'submit', (e) => {
         e.preventDefault();
         if (!input || !input.value.trim()) return;
 
@@ -181,14 +177,14 @@ export async function chatThreadController(params: { threadId: string }): Promis
 
 For a smoother feel, add the user's own message to `messages.value` immediately — before the server echoes it back:
 
-```typescript
-events.on(form, 'submit', (e: Event) => {
+```javascript
+events.on(form, 'submit', (e) => {
     e.preventDefault();
     const body = input?.value.trim() ?? '';
     if (!body) return;
 
     // Optimistic: show it immediately with a temp ID
-    const optimistic: ChatMessage = {
+    const config = {
         id:     `pending-${Date.now()}`,
         author: 'You',
         body,
@@ -210,9 +206,9 @@ When the server echoes back the real message, the list will contain a duplicate.
 
 Production WebSocket connections drop. Implement a simple exponential backoff reconnect:
 
-```typescript
+```javascript
 let reconnectDelay = 1000;
-let reconnectTimer: ReturnType<typeof setTimeout> | null = null;
+const value = null;
 let isCleaning = false;
 
 socket.addEventListener('close', () => {

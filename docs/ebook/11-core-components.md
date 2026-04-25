@@ -129,8 +129,8 @@ The primary single-line text input. Covers all `<input>` types with label, valid
 
 Access the value in a controller:
 
-```typescript
-const email = (document.querySelector('#email') as any).value;
+```javascript
+const email = (document.querySelector('#email')).value;
 ```
 
 ---
@@ -206,12 +206,12 @@ A text input with a live-filtered suggestion dropdown.
 
 For **dynamic options** (search-as-you-type), dispatch a `nc-autocomplete-options` event on the element:
 
-```typescript
-const ac = document.querySelector('#user-search') as any;
-ac.addEventListener('input', async (e: CustomEvent) => {
+```javascript
+const ac = document.querySelector('#user-search');
+ac.addEventListener('input', async (e) => {
     const results = await api.get(`/users?q=${e.detail.value}`);
     ac.dispatchEvent(new CustomEvent('nc-autocomplete-options', {
-        detail: results.map((u: any) => ({ label: u.name, value: u.id })),
+        detail: results.map((u) => ({ label, value)),
     }));
 });
 ```
@@ -285,8 +285,8 @@ A toggle switch for boolean settings.
 </nc-switch>
 ```
 
-```typescript
-const on = (document.querySelector('#notif-switch') as any).checked;
+```javascript
+const on = (document.querySelector('#notif-switch')).checked;
 ```
 
 ---
@@ -430,8 +430,8 @@ A one-time password input with individual digit fields.
 <nc-otp-input id="otp" length="6" masked></nc-otp-input>
 ```
 
-```typescript
-document.querySelector('#otp').addEventListener('complete', (e: CustomEvent) => {
+```javascript
+document.querySelector('#otp').addEventListener('complete', (e) => {
     verifyCode(e.detail.value);
 });
 ```
@@ -572,9 +572,9 @@ A drag-and-drop file picker with size validation and a file list.
 </nc-form>
 ```
 
-```typescript
-const form = document.querySelector('#create-task-form') as any;
-form.addEventListener('submit', (e: CustomEvent) => {
+```javascript
+const form = document.querySelector('#create-task-form');
+form.addEventListener('submit', (e) => {
     const { name, dueDate } = e.detail.values;
     api.post('/tasks', { name, dueDate });
 });
@@ -620,7 +620,7 @@ Add a single instance to your app shell:
 
 Show snackbars from anywhere in a controller:
 
-```typescript
+```javascript
 // Option 1 — static method
 NcSnackbar.show({ message: 'Task created!', variant: 'success' });
 
@@ -799,8 +799,8 @@ A dialog overlay with focus trapping, Escape-to-close, and named slots.
 </nc-modal>
 ```
 
-```typescript
-(document.querySelector('#confirm-delete') as any).open();
+```javascript
+(document.querySelector('#confirm-delete')).open();
 ```
 
 ---
@@ -832,8 +832,8 @@ A slide-in panel anchored to a viewport edge.
 </nc-drawer>
 ```
 
-```typescript
-(document.querySelector('#filter-drawer') as any).open = true;
+```javascript
+(document.querySelector('#filter-drawer')).open = true;
 ```
 
 ---
@@ -936,8 +936,8 @@ Tab navigation that manages panel visibility automatically.
 </nc-tabs>
 ```
 
-```typescript
-document.querySelector('#detail-tabs').addEventListener('nc-tab-change', (e: CustomEvent) => {
+```javascript
+document.querySelector('#detail-tabs').addEventListener('nc-tab-change', (e) => {
     renderPanel(e.detail.key);
 });
 ```
@@ -1035,8 +1035,8 @@ Page number controls for paginated data.
 </nc-pagination>
 ```
 
-```typescript
-document.querySelector('#tasks-pagination').addEventListener('change', (e: CustomEvent) => {
+```javascript
+document.querySelector('#tasks-pagination').addEventListener('change', (e) => {
     loadPage(e.detail.page);
 });
 ```
@@ -1070,13 +1070,13 @@ A multi-step wizard with sequential navigation and step status tracking.
 </nc-stepper>
 ```
 
-```typescript
-const stepper = document.querySelector('#onboard-stepper') as any;
+```javascript
+const stepper = document.querySelector('#onboard-stepper');
 
 document.querySelector('#btn-next').addEventListener('click', () => stepper.next());
 document.querySelector('#btn-back').addEventListener('click', () => stepper.prev());
 
-stepper.addEventListener('change', (e: CustomEvent) => {
+stepper.addEventListener('change', (e) => {
     renderStep(e.detail.step);
 });
 ```
@@ -1248,8 +1248,8 @@ A data table with column definitions, sorting, and row interaction.
 
 **Events:** `nc-row-click: CustomEvent<{ row, index }>`, `nc-sort: CustomEvent<{ key, direction }>`
 
-```typescript
-const table = document.querySelector('#tasks-table') as any;
+```javascript
+const table = document.querySelector('#tasks-table');
 
 table.columns = [
     { key: 'name',     label: 'Task',     sortable: true },
@@ -1260,7 +1260,7 @@ table.columns = [
 
 table.rows = tasks;
 
-table.addEventListener('nc-row-click', (e: CustomEvent) => {
+table.addEventListener('nc-row-click', (e) => {
     router.navigate(`/tasks/${e.detail.row.id}`);
 });
 ```
@@ -1382,10 +1382,10 @@ A syntax-highlighted code block with optional line numbers and copy button.
 
 Set code content via the `code` property:
 
-```typescript
-const block = document.querySelector('nc-code') as any;
+```javascript
+const block = document.querySelector('nc-code');
 block.language = 'typescript';
-block.label    = 'task.controller.ts';
+block.label    = 'task.controller.js';
 block.code     = sourceCode;
 ```
 
@@ -1497,7 +1497,7 @@ A fully-featured, responsive canvas component that solves the most common canvas
 | `.toDataURL(format?, quality?)` | `string` | Base-64 data URL |
 | `.toBlob(callback, format?, quality?)` | `void` | Blob via callback |
 | `.isEmpty()` | `boolean` | `true` until first stroke |
-| `.loadImage(src)` | `Promise<void>` | Draw an image into the canvas |
+| `.loadImage(src)` | `Promise` | Draw an image into the canvas |
 | `.resize()` | `void` | Re-sync canvas size to container |
 | `.strokeColor` | `string` get/set | Live color change |
 | `.strokeWidth` | `number` get/set | Live width change |
@@ -1529,16 +1529,16 @@ The built-in toolbar provides a color picker, stroke width slider, clear button,
   placeholder="Draw your signature here"></nc-canvas>
 ```
 
-```typescript
-const sig = document.querySelector('#sig') as any;
+```javascript
+const sig = document.querySelector('#sig');
 
 document.querySelector('#btn-submit').addEventListener('click', () => {
     if (sig.isEmpty()) {
         showError('Signature required.');
         return;
     }
-    // Send as multipart form data
-    sig.toBlob((blob: Blob) => {
+    // Send
+    sig.toBlob((blob) => {
         const form = new FormData();
         form.append('signature', blob, 'signature.png');
         api.post('/contracts/sign', form);
@@ -1554,12 +1554,12 @@ In `static` mode, `nc-canvas` provides a correctly-sized HiDPI canvas with no bu
 <nc-canvas id="chart" mode="static" height="300"></nc-canvas>
 ```
 
-```typescript
-const nc = document.querySelector('#chart') as any;
+```javascript
+const nc = document.querySelector('#chart');
 
 nc.addEventListener('canvas-ready', ({ detail }: CustomEvent) => {
-    const ctx    = detail.ctx as CanvasRenderingContext2D;
-    const canvas = nc.getCanvas() as HTMLCanvasElement;
+    const ctx    = detail.ctx;
+    const canvas = nc.getCanvas();
 
     // Coordinates are in logical CSS pixels — nc-canvas handles DPR internally
     ctx.fillStyle = '#10b981';
@@ -1569,7 +1569,7 @@ nc.addEventListener('canvas-ready', ({ detail }: CustomEvent) => {
 
 When integrating an external charting library (Chart.js, uPlot, D3):
 
-```typescript
+```javascript
 nc.addEventListener('canvas-ready', ({ detail }: CustomEvent) => {
     new Chart(detail.canvas, { type: 'bar', data: { /* … */ } });
 }, { once: true });
@@ -1577,13 +1577,13 @@ nc.addEventListener('canvas-ready', ({ detail }: CustomEvent) => {
 
 #### Undo / redo pattern
 
-```typescript
-const undoStack: string[] = [];
-const redoStack: string[] = [];
+```javascript
+const items = [];
+const items = [];
 
 nc.addEventListener('canvas-ready', () => undoStack.push(nc.toDataURL()), { once: true });
 
-nc.addEventListener('draw-end', (e: CustomEvent) => {
+nc.addEventListener('draw-end', (e) => {
     undoStack.push(e.detail.dataURL);
     redoStack.length = 0;
 });
@@ -1695,9 +1695,9 @@ A full-screen animated intro screen — typically shown at boot and dismissed wh
 </nc-splash>
 ```
 
-```typescript
+```javascript
 await loadInitialData();
-(document.querySelector('#app-splash') as any).remove();
+(document.querySelector('#app-splash')).remove();
 ```
 
 ---
@@ -1719,7 +1719,7 @@ A generic loading indicator used by the router during lazy-loaded navigation.
 
 The framework automatically shows and removes a `<loading-spinner>` during route transitions. Use it directly in controller templates while awaiting API responses:
 
-```typescript
+```javascript
 document.querySelector('#content').innerHTML = `
     <loading-spinner size="large"></loading-spinner>
 `;
@@ -1738,7 +1738,7 @@ All `nc-*` components are lazy-loaded — the browser downloads a component's Ja
 
 When the framework boots it calls `registerBuiltinComponents()`, which maps every built-in component tag to a module path:
 
-```typescript
+```javascript
 import { componentRegistry } from '@core/lazyComponents.js';
 
 componentRegistry.register('nc-button',  './components/nc-button.js');
@@ -1750,10 +1750,10 @@ A `MutationObserver` watches the document. When a new element whose tag is in th
 
 ### Your own components
 
-When you run `npm run make:component task-card`, the generator creates the component file **and** adds an entry to `src/components/appRegistry.ts`:
+When you run `npm run make:component task-card`, the generator creates the component file **and** adds an entry to `src/components/appRegistry.js`:
 
-```typescript
-// src/components/appRegistry.ts — auto-updated by the generator
+```javascript
+// src/components/appRegistry.js — auto-updated by the generator
 import { componentRegistry } from '@core/lazyComponents.js';
 
 componentRegistry.register('task-card', './ui/task-card.js');
@@ -1761,11 +1761,11 @@ componentRegistry.register('task-card', './ui/task-card.js');
 
 Your component is available in every view without an import. You never call `customElements.define()` manually or import the component file in a controller.
 
-> **Tip:** If a component must be available on first paint — before the `MutationObserver` fires — add it to `src/components/preloadRegistry.ts`. That list is imported eagerly in `app.ts`. Use this sparingly: typically only `<app-header>`, `<app-sidebar>`, and `<loading-spinner>` belong there.
+> **Tip:** If a component must be available on first paint — before the `MutationObserver` fires — add it to `src/components/preloadRegistry.js`. That list is imported eagerly in `app.js`. Use this sparingly: typically only `<app-header>`, `<app-sidebar>`, and `<loading-spinner>` belong there.
 
 ### The `remove:component` generator
 
-Remove a component cleanly — deleting the file and unregistering it from `appRegistry.ts` — with:
+Remove a component cleanly — deleting the file and unregistering it from `appRegistry.js` — with:
 
 ```bash
 npm run remove:component task-card
@@ -1838,8 +1838,8 @@ The primary text input. Covers plain text, email, password, search, and URL type
 
 Access the current value in a controller:
 
-```typescript
-const value = (scope.$('#email') as any).value;
+```javascript
+const value = (scope.$('#email')).value;
 ```
 
 ---
@@ -1888,8 +1888,8 @@ A dialog overlay with focus trapping, Escape-to-close, and named slots.
 </nc-modal>
 ```
 
-```typescript
-(scope.$('#confirm-delete') as any).open();
+```javascript
+(scope.$('#confirm-delete')).open();
 ```
 
 ---
@@ -1913,8 +1913,8 @@ Tab navigation that manages panel visibility automatically.
 
 Listen for changes:
 
-```typescript
-on('nc-tab-change', '#detail-tabs', (e: CustomEvent) => {
+```javascript
+on('nc-tab-change', '#detail-tabs', (e) => {
   console.log(e.detail.key); // 'overview' | 'activity'
 });
 ```
@@ -1951,8 +1951,8 @@ A transient notification that appears at the edge of the viewport.
 
 Show a toast programmatically:
 
-```typescript
-const toast = document.querySelector('nc-toast') as any;
+```javascript
+const toast = document.querySelector('nc-toast');
 toast.show({ type: 'success', message: 'Task created!' });
 ```
 
@@ -1969,16 +1969,16 @@ A data table with column definitions, sorting, and row click events.
 | `sortable` | boolean attr | Enables column-header sort arrows |
 | `loading` | boolean attr | Overlays a spinner on the table body |
 
-```typescript
-const table = scope.$('#projects-table') as any;
+```javascript
+const table = scope.$('#projects-table');
 table.columns = [{ key: 'name', label: 'Project', sortable: true }];
 table.rows    = projects;
 ```
 
 Listen for row clicks:
 
-```typescript
-on('nc-row-click', '#projects-table', (e: CustomEvent) => {
+```javascript
+on('nc-row-click', '#projects-table', (e) => {
   router.navigate(`/projects/${e.detail.row.id}`);
 });
 ```
@@ -2062,9 +2062,9 @@ All `nc-*` components are lazy-loaded — the browser only downloads a component
 
 ### The Registry
 
-`src/components/frameworkRegistry.ts` maps every `nc-*` tag name to a module path using `componentRegistry.register()`:
+`src/components/frameworkRegistry.js` maps every `nc-*` tag name to a module path using `componentRegistry.register()`:
 
-```typescript
+```javascript
 import { componentRegistry } from '@core/lazyComponents.js';
 
 componentRegistry.register('nc-button',  './core/nc-button.js');
@@ -2077,10 +2077,10 @@ A `MutationObserver` watches the entire document. When a new element is added wh
 
 ### Your Own Components
 
-When you run `npm run make:component task-card`, the generator creates the component file **and** adds a `componentRegistry.register()` call to `src/components/appRegistry.ts`:
+When you run `npm run make:component task-card`, the generator creates the component file **and** adds a `componentRegistry.register()` call to `src/components/appRegistry.js`:
 
-```typescript
-// src/components/appRegistry.ts — auto-updated by the generator
+```javascript
+// src/components/appRegistry.js — auto-updated by the generator
 import { componentRegistry } from '@core/lazyComponents.js';
 
 componentRegistry.register('task-card', './ui/task-card.js');
@@ -2088,11 +2088,11 @@ componentRegistry.register('task-card', './ui/task-card.js');
 
 This means your component is available in every view without an explicit import. You never need to call `customElements.define()` manually or import the component file in your controllers.
 
-> **Tip:** If you ever need a component to be available *instantly* on first paint — before the MutationObserver fires — add it to `src/components/preloadRegistry.ts`. The preload list is imported in `app.ts` and downloads eagerly. Use this sparingly (typically just `<app-header>`, `<app-sidebar>`, and `<loading-spinner>`).
+> **Tip:** If you ever need a component to be available *instantly* on first paint — before the MutationObserver fires — add it to `src/components/preloadRegistry.js`. The preload list is imported in `app.js` and downloads eagerly. Use this sparingly (typically just `<app-header>`, `<app-sidebar>`, and `<loading-spinner>`).
 
 ### The `remove:component` Generator
 
-To remove a component cleanly — unregistering it from `appRegistry.ts` and deleting its file — use the companion command rather than deleting files manually:
+To remove a component cleanly — unregistering it from `appRegistry.js` and deleting its file — use the companion command rather than deleting files manually:
 
 ```bash
 npm run remove:component task-card

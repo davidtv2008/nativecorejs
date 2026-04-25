@@ -1,6 +1,6 @@
 ﻿# Chapter 06 — Views and Routing
 
-> **What you'll build in this chapter:** Understand how Taskflow's URL structure is declared in `routes.ts`, how `registerRoutes()` wires everything together in `app.ts`, and how the `data-view` / `data-hook` / `data-action` conventions connect your HTML views to controllers.
+> **What you'll build in this chapter:** Understand how Taskflow's URL structure is declared in `routes.js`, how `registerRoutes()` wires everything together in `app.js`, and how the `data-view` / `data-hook` / `data-action` conventions connect your HTML views to controllers.
 
 ## What Is a View?
 
@@ -24,22 +24,21 @@ src/views/
     └── tasks.html
 ```
 
-The `public/` and `protected/` directories are a **convention** that your `routes.ts` enforces. The router does not automatically protect views in `protected/` — it is your `protectedRoutes` array (and the `authMiddleware` registered in `app.ts`) that determines what requires authentication. The directory names exist to keep your file tree clear at a glance.
+The `public/` and `protected/` directories are a **convention** that your `routes.js` enforces. The router does not automatically protect views in `protected/` — it is your `protectedRoutes` array (and the `authMiddleware` registered in `app.js`) that determines what requires authentication. The directory names exist to keep your file tree clear at a glance.
 
 ---
 
-## The `routes.ts` File
+## The `routes.js` File
 
-All routing configuration lives in `src/routes/routes.ts`. The scaffold generates this pattern:
+All routing configuration lives in `src/routes/routes.js`. The scaffold generates this pattern:
 
-```typescript
+```javascript
 import { createLazyController } from '@core/lazyController.js';
 import router from '@core/router.js';
-import type { Router } from '@core/router.js';
 
 const lazyController = createLazyController(import.meta.url);
 
-export function registerRoutes(r: Router): void {
+export function registerRoutes(r) {
     // @group:public
     r.group({}, (r) => {
         r.register('/', 'src/views/public/home.html', lazyController('homeController', '../controllers/home.controller.js'))
@@ -62,16 +61,15 @@ export const protectedRoutes = router.getPathsForMiddleware('auth');
 
 ### `lazyController(controllerName, controllerPath)`
 
-`lazyController` lives in `.nativecore/core/lazyController.ts`. Because browser dynamic `import()` resolves paths relative to the module containing the call, moving this helper to `@core/` would break relative paths. The factory pattern solves this: `createLazyController(import.meta.url)` captures `routes.ts`'s own URL as the base, so `'../controllers/home.controller.js'` always resolves correctly regardless of where the helper lives:
+`lazyController` lives in `.nativecore/core/lazyController.ts`. Because browser dynamic `import()` resolves paths relative to the module containing the call, moving this helper to `@core/` would break relative paths. The factory pattern solves this: `createLazyController(import.meta.url)` captures `routes.js`'s own URL as the base, so `'../controllers/home.controller.js'` always resolves correctly regardless of where the helper lives:
 
-```typescript
+```javascript
 // .nativecore/core/lazyController.ts
 import { bustCache } from '../utils/cacheBuster.js';
-import type { ControllerFunction } from '@core/router.js';
 
-export function createLazyController(base: string) {
-    return function lazyController(controllerName: string, controllerPath: string): ControllerFunction {
-        return async (...args: any[]) => {
+export function createLazyController(base) {
+    return function lazyController(controllerName, controllerPath) {
+        return async (...args) => {
             const resolved = new URL(controllerPath, base).href;
             const module = await import(bustCache(resolved));
             return module[controllerName](...args);
@@ -89,11 +87,11 @@ Note the path is `'../controllers/tasks.controller.js'` — a relative path from
 
 ### `registerRoutes(r)`
 
-Routes are registered inside a function called from `app.ts`. Routes are organized into groups using `r.group()` — each group carries shared options like middleware tags. The `// @group:public` and `// @group:protected` comments are sentinel markers the `make:view` generator uses to find the right block to insert new routes into.
+Routes are registered inside a function called from `app.js`. Routes are organized into groups using `r.group()` — each group carries shared options like middleware tags. The `// @group:public` and `// @group:protected` comments are sentinel markers the `make:view` generator uses to find the right block to insert new routes into.
 
 ### `r.group(options, callback)`
 
-```typescript
+```javascript
 r.group({ middleware: ['auth'] }, (r) => {
     r.register('/dashboard', ...);
     r.register('/tasks', ...);
@@ -109,7 +107,7 @@ Groups can be nested. The innermost group inherits all ancestor middleware tags.
 
 ### `protectedRoutes` — derived, not manual
 
-```typescript
+```javascript
 export const protectedRoutes = router.getPathsForMiddleware('auth');
 ```
 
@@ -119,7 +117,7 @@ Rather than maintaining a separate array that must be kept in sync with `registe
 
 `.cache()` instructs the router to keep the parsed HTML document in memory after the first load. Subsequent navigations reuse the cached fragment — no network fetch, no HTML parse.
 
-```typescript
+```javascript
 .cache({ ttl: 300, revalidate: true })  // cache for 300 seconds, revalidate in background
 .cache()                                 // cache indefinitely
 ```
@@ -128,19 +126,19 @@ Use it on routes the user visits frequently. Avoid it on routes where the HTML s
 
 ---
 
-## How `app.ts` Wires It Together
+## How `app.js` Wires It Together
 
-`registerRoutes()` is called from `app.ts` during the boot sequence:
+`registerRoutes()` is called from `app.js` during the boot sequence:
 
-```typescript
-// src/app.ts (simplified)
+```javascript
+// src/app.js (simplified)
 // @middleware — registered middleware (auto-updated by make:middleware)
 router.use(createMiddleware('auth', authMiddleware));  // only runs on 'auth'-tagged routes
 registerRoutes(router);                                // all routes registered
 router.start();                                        // begin listening, render first view
 ```
 
-`router.start()` is called **exactly once**, at the end of `init()` in `app.ts`. Never call it inside a controller or component.
+`router.start()` is called **exactly once**, at the end of `init()` in `app.js`. Never call it inside a controller or component.
 
 Each `router.use(createMiddleware(...))` call wraps a middleware function so it **only fires when the navigated route carries that tag**. `authMiddleware` doesn't need to know which routes require auth — `createMiddleware('auth', ...)` handles that check automatically using `router.getTagsForPath()`.
 
@@ -213,7 +211,7 @@ The `<task-stats>` component is already wired up with `total` and `completed` at
 
 Register a parameterised route with a colon prefix:
 
-```typescript
+```javascript
 .register(
     '/tasks/:id',
     'src/views/protected/task-detail.html',
@@ -227,7 +225,7 @@ The `id` segment is extracted and passed to the controller as `params.id`. You w
 
 ## Using `npm run make:view`
 
-The generator asks a few questions and writes both the HTML file and the controller, then updates `routes.ts` automatically:
+The generator asks a few questions and writes both the HTML file and the controller, then updates `routes.js` automatically:
 
 ```bash
 npm run make:view task-detail
@@ -240,8 +238,8 @@ npm run make:view task-detail
 ? Cache this route? No
 
 ✔ Created src/views/protected/task-detail.html
-✔ Created src/controllers/task-detail.controller.ts
-✔ Updated src/routes/routes.ts
+✔ Created src/controllers/task-detail.controller.js
+✔ Updated src/routes/routes.js
 ```
 
 ---
@@ -254,8 +252,8 @@ npm run make:view task-detail
 
 - [ ] Navigating to `/tasks` loads `src/views/protected/tasks.html` with the hardcoded task cards visible.
 - [ ] Navigating to `/dashboard` loads `src/views/protected/dashboard.html`.
-- [ ] `registerRoutes()` is called once from `app.ts`.
-- [ ] `router.start()` is called exactly once, in `src/app.ts`.
+- [ ] `registerRoutes()` is called once from `app.js`.
+- [ ] `router.start()` is called exactly once, in `src/app.js`.
 - [ ] `<task-stats>` is visible on the tasks view showing 10 total / 4 completed.
 
 ---

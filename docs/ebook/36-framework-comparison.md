@@ -17,7 +17,7 @@ Scoring legend:  ✦ = meaningful advantage  ✧ = roughly equivalent  ✦✦ = 
 ## 1. Reactive State
 
 ### NativeCoreJS
-```typescript
+```javascript
 const [count, setCount] = useState(0);
 count.value;                      // read
 setCount(prev => prev + 1);       // update
@@ -26,7 +26,7 @@ effect(() => console.log(count.value)); // reactive effect
 `useState` is explicit and inspectable. The reactive graph is built lazily through `effect` / `computed` — no proxies, no magic assignment.
 
 ### React
-```tsx
+```javascript
 const [count, setCount] = useState(0);
 count;                            // read (just a plain number)
 setCount(prev => prev + 1);
@@ -52,7 +52,7 @@ $: console.log(count);
 Fewest lines. Compiler magic means the developer doesn't control when effects run.
 
 ### Lit
-```typescript
+```javascript
 @state() count = 0;
 this.count++;   // triggers re-render of lit-html template
 ```
@@ -65,7 +65,7 @@ State is tied to the component — no module-level reactive state without additi
 ## 2. Component Definition
 
 ### NativeCoreJS
-```typescript
+```javascript
 class MyButton extends Component {
     template() { return `<button class="btn">${this.getAttribute('label')}</button>`; }
     onMount() { this.on('click', 'button', () => this.emitEvent('nc-click')); }
@@ -74,8 +74,8 @@ defineComponent('my-button', MyButton);
 ```
 
 ### React
-```tsx
-function MyButton({ label, onClick }: { label: string; onClick: () => void }) {
+```javascript
+function MyButton({ label, onClick }) {
     return <button className="btn" onClick={onClick}>{label}</button>;
 }
 ```
@@ -84,8 +84,8 @@ function MyButton({ label, onClick }: { label: string; onClick: () => void }) {
 ```vue
 <template><button class="btn" @click="$emit('click')">{{ label }}</button></template>
 <script setup lang="ts">
-const props = defineProps<{ label: string }>();
-const emit = defineEmits<{ (e: 'click'): void }>();
+const props = defineProps(['label']);
+const emit = defineEmits(['click']);
 </script>
 ```
 
@@ -100,7 +100,7 @@ const emit = defineEmits<{ (e: 'click'): void }>();
 ```
 
 ### Lit
-```typescript
+```javascript
 @customElement('my-button')
 class MyButton extends LitElement {
     @property() label = '';
@@ -115,15 +115,15 @@ class MyButton extends LitElement {
 ## 3. List Rendering
 
 ### NativeCoreJS (keyed reconciliation)
-```typescript
+```javascript
 // In template()
 const items = this.getAttribute('items') ?? '[]';
-const list = JSON.parse(items) as Task[];
+const list = JSON.parse(items);
 return `<ul>${list.map(t => `<li key="${t.id}">${escapeHTML(t.title)}</li>`).join('')}</ul>`;
 ```
 
 ### React
-```tsx
+```javascript
 {items.map(t => <li key={t.id}>{t.title}</li>)}
 ```
 
@@ -140,7 +140,7 @@ return `<ul>${list.map(t => `<li key="${t.id}">${escapeHTML(t.title)}</li>`).joi
 ```
 
 ### Lit
-```typescript
+```javascript
 ${repeat(items, t => t.id, t => html`<li>${t.title}</li>`)}
 ```
 
@@ -151,13 +151,13 @@ ${repeat(items, t => t.id, t => html`<li>${t.title}</li>`)}
 ## 4. Routing
 
 ### NativeCoreJS
-```typescript
+```javascript
 router.register('/tasks/:id', 'src/views/task.html', taskController);
 router.navigate('/tasks/42');
 ```
 
 ### React (React Router v7)
-```tsx
+```javascript
 <Route path="/tasks/:id" element={<TaskPage />} />
 // navigate
 const navigate = useNavigate();
@@ -165,7 +165,7 @@ navigate('/tasks/42');
 ```
 
 ### Vue 3 (Vue Router)
-```typescript
+```javascript
 { path: '/tasks/:id', component: TaskPage }
 router.push('/tasks/42');
 ```
@@ -177,7 +177,7 @@ goto('/tasks/42');
 ```
 
 ### Lit (lit-router or custom)
-```typescript
+```javascript
 // No batteries-included router. Requires a third-party package.
 ```
 
@@ -188,28 +188,28 @@ goto('/tasks/42');
 ## 5. Data Fetching
 
 ### NativeCoreJS (route loader)
-```typescript
+```javascript
 router.register('/tasks', 'tasks.html', tasksController, {
     loader: (params, signal) => fetch('/api/tasks', { signal }).then(r => r.json())
 });
 
 // In controller — loaderData is the resolved value
 export async function tasksController(params, state, loaderData) {
-    const tasks = loaderData as Task[];
+    const tasks = loaderData;
 }
 ```
 
 ### React (React Router loader)
-```typescript
+```javascript
 export async function loader({ request }) {
-    return fetch('/api/tasks', { signal: request.signal }).then(r => r.json());
+    return fetch('/api/tasks', { signal).then(r => r.json());
 }
 // In component
-const tasks = useLoaderData<Task[]>();
+const tasks = useLoaderData();
 ```
 
 ### Vue 3 (Pinia + setup)
-```typescript
+```javascript
 const taskStore = useTaskStore();
 onMounted(() => taskStore.fetchTasks());
 // or with vue-query
@@ -217,14 +217,14 @@ const { data } = useQuery({ queryKey: ['tasks'], queryFn: fetchTasks });
 ```
 
 ### Svelte (SvelteKit load function)
-```typescript
+```javascript
 export async function load({ fetch }) {
     return { tasks: await fetch('/api/tasks').then(r => r.json()) };
 }
 ```
 
 ### Lit
-```typescript
+```javascript
 // No standard pattern. Usually a property bound to a Reactive Controller.
 ```
 
@@ -235,19 +235,19 @@ export async function load({ fetch }) {
 ## 6. Form Handling
 
 ### NativeCoreJS
-```typescript
+```javascript
 // Use nc-form + nc-input + nc-field components
 // Validation via HTML5 constraint API + nc-form validation events
-const form = this.$<HTMLFormElement>('nc-form');
-form?.addEventListener('nc-submit', async (e: CustomEvent<FormData>) => {
+const form = this.$('nc-form');
+form?.addEventListener('nc-submit', async (e) => {
     await api.post('/api/tasks', Object.fromEntries(e.detail));
 });
 ```
 
 ### React
-```tsx
+```javascript
 // React Hook Form (popular third-party)
-const { register, handleSubmit } = useForm<FormValues>();
+const { register, handleSubmit } = useForm();
 <form onSubmit={handleSubmit(onSubmit)}>
     <input {...register('title', { required: true })} />
 </form>
@@ -268,7 +268,7 @@ const { register, handleSubmit } = useForm<FormValues>();
 ```
 
 ### Lit
-```typescript
+```javascript
 <form @submit=${this.onSubmit}>
     <input name="title" required />
 </form>
@@ -281,8 +281,8 @@ const { register, handleSubmit } = useForm<FormValues>();
 ## 7. Global State Management
 
 ### NativeCoreJS (built-in)
-```typescript
-// src/stores/cart.store.ts
+```javascript
+// src/stores/cart.store.js
 import { useState } from 'nativecorejs';
 export const cartStore = useState({ items: [], total: 0 });
 
@@ -293,29 +293,29 @@ cartStore.watch(state => updateCartBadge(state.items.length));
 ```
 
 ### React (Zustand — popular third-party)
-```typescript
-const useCart = create<CartState>(set => ({
+```javascript
+const useCart = create(set => ({
     items: [], total: 0,
-    addItem: (item) => set(s => ({ items: [...s.items, item] }))
+    addItem: (item) => set(s => ({ items, item] }))
 }));
 const { items } = useCart();
 ```
 
 ### Vue 3 (Pinia — official)
-```typescript
-const useCartStore = defineStore('cart', { state: () => ({ items: [], total: 0 }) });
+```javascript
+const useCartStore = defineStore('cart', { state) => ({ items, total) });
 const cart = useCartStore();
 cart.items.push(newItem);
 ```
 
 ### Svelte (built-in writable stores)
-```typescript
+```javascript
 const cart = writable({ items: [], total: 0 });
 $cart.items; // reactive in Svelte components via $
 ```
 
 ### Lit (no standard)
-```typescript
+```javascript
 // Requires a third-party solution: MobX, Jotai, Zustand, etc.
 ```
 
@@ -326,21 +326,21 @@ $cart.items; // reactive in Svelte components via $
 ## 8. Testing
 
 ### NativeCoreJS
-```typescript
+```javascript
 import { mountComponent, waitFor, fireEvent } from 'nativecorejs/testing';
 
 test('button emits nc-click', async () => {
     const el = mountComponent('<my-button label="Save"></my-button>');
     await waitFor(() => el.shadowRoot?.querySelector('button'));
-    const events: CustomEvent[] = [];
-    el.addEventListener('nc-click', (e: Event) => events.push(e as CustomEvent));
+    const items = [];
+    el.addEventListener('nc-click', (e) => events.push(e));
     fireEvent(el.shadowRoot!.querySelector('button')!, 'click');
     expect(events).toHaveLength(1);
 });
 ```
 
 ### React (React Testing Library)
-```tsx
+```javascript
 render(<MyButton label="Save" onClick={fn} />);
 await screen.findByRole('button', { name: 'Save' });
 userEvent.click(screen.getByRole('button'));
@@ -348,21 +348,21 @@ expect(fn).toHaveBeenCalledOnce();
 ```
 
 ### Vue 3 (Vue Test Utils)
-```typescript
+```javascript
 const wrapper = mount(MyButton, { props: { label: 'Save' } });
 await wrapper.find('button').trigger('click');
 expect(wrapper.emitted('click')).toHaveLength(1);
 ```
 
 ### Svelte (svelte-testing-library)
-```typescript
+```javascript
 const { getByRole } = render(MyButton, { props: { label: 'Save' } });
 fireEvent.click(getByRole('button'));
 ```
 
 ### Lit
-```typescript
-const el = await fixture<MyButton>(html`<my-button label="Save"></my-button>`);
+```javascript
+const el = await fixture(html`<my-button label="Save"></my-button>`);
 el.shadowRoot?.querySelector('button')?.click();
 await el.updateComplete;
 ```
@@ -374,7 +374,7 @@ await el.updateComplete;
 ## 9. Accessibility
 
 ### NativeCoreJS
-```typescript
+```javascript
 import { trapFocus, announce, roving } from 'nativecorejs';
 
 // Trap focus in a modal
@@ -387,7 +387,7 @@ announce('Task saved', 'polite');
 const release = roving(listEl, '[role=option]');
 ```
 
-Built-in: `trapFocus`, `announce`, `roving` in `src/a11y/index.ts`. Used by `nc-modal` and `nc-drawer` automatically.
+Built-in: `trapFocus`, `announce`, `roving` in `src/a11y/index.js`. Used by `nc-modal` and `nc-drawer` automatically.
 
 ### React
 No built-in a11y utilities — use `focus-trap-react`, `aria-live` portals, or `@radix-ui/react`.

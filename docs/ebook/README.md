@@ -58,7 +58,7 @@ The Taskflow app from Project 1 packaged as a native app using Capacitor. You ad
 
 ## Golden Rule: Always Use the Generators
 
-Before creating any component, view, or controller file manually, check whether a `npm run make:*` command exists for it. The generators scaffold files that match the project conventions exactly and update `routes.ts`, `index.ts`, and `index.html` automatically.
+Before creating any component, view, or controller file manually, check whether a `npm run make:*` command exists for it. The generators scaffold files that match the project conventions exactly and update `routes.js`, `index.js`, and `index.html` automatically.
 
 ```bash
 npm run make:component <name>    # kebab-case, e.g. task-card
@@ -93,15 +93,15 @@ npm run make:store <name>        # global reactive store with actions
    `useState()`, `computed()`, `effect()`, `batch()`, and building the `<task-stats>` component with live counters.
 
 5. **[05 — The Bind API](./05-bind-api.md)**
-   Fine-grained DOM patching with `bind()`, `bindAttr()`, `bindAll()`, and scoped event delegation with `on()`.
+   Fine-grained DOM patching with `bind()`, `bindAttr()`, `bindClass()`, `bindStyle()`, declarative `wire*` bindings, and scoped event delegation with `on()`.
 
 #### Part 2 — Routing and Controllers
 
 6. **[06 — Views and Routing](./06-views-and-routing.md)**
-   HTML views, `routes.ts`, `router.register()`, `lazyController()`, protected routes, `data-*` conventions, and `npm run make:view`.
+   HTML views, `routes.js`, `router.register()`, `lazyController()`, protected routes, `data-*` conventions, and `npm run make:view`.
 
 7. **[07 — Controllers](./07-controllers.md)**
-   Controllers as async cleanup functions, `effect()`, `trackEvents()`, `disposers[]`, and `dom.view()`.
+   Controllers as async cleanup functions, wire-first bindings (`wire*`), `effect()`, `trackEvents()`, and `dom.view()`.
 
 8. **[08 — Authentication](./08-authentication.md)**
    Auth flow, `auth.service`, protected routes, session persistence, the login view, and redirecting after sign-in.
@@ -167,7 +167,7 @@ npm run make:store <name>        # global reactive store with actions
 #### Part 6 — Quality and Mastery
 
 21. **[21 — TypeScript Patterns in NativeCoreJS](./21-typescript-patterns.md)**
-    Typed API responses, `ControllerFunction` type, typed custom events, generic stores, and path alias configuration.
+    JavaScript API response handling, controller contracts, custom events, reusable stores, and path alias configuration.
 
 22. **[22 — Accessibility and ARIA](./22-accessibility.md)**
     ARIA in shadow roots, `aria-live` regions, keyboard navigation, focus management, and accessibility testing.

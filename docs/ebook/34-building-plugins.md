@@ -23,45 +23,20 @@ Plugins solve all of these cleanly.
 
 ## The NCPlugin Interface
 
-```typescript
-export interface NCPlugin {
-    /** Unique name — registering two plugins with the same name throws. */
-    name: string;
+```javascript
+// NCPlugin shape: { name, onInstall, onNavigate, onNavigated }
 
-    /**
-     * Called once immediately after registerPlugin() is called.
-     * Return a cleanup function to be called by unregisterPlugin().
-     */
-    onInstall?: () => (() => void) | void;
-
-    /**
-     * Called on every navigation, before the page controller runs.
-     * Read-only — cannot cancel navigation (use router middleware for that).
-     */
-    onNavigate?: (ctx: NCPluginNavigateContext) => void;
-
-    /**
-     * Called on every navigation, after the controller has run
-     * and the pageloaded event has fired.
-     */
-    onNavigated?: (ctx: NCPluginNavigateContext) => void;
-}
-
-export interface NCPluginNavigateContext {
-    path: string;                        // matched route pattern, e.g. '/tasks/:id'
-    params: Record<string, string>;      // extracted URL params, e.g. { id: '42' }
-    match: RouteMatch;                   // full router match object
-}
+// NCPluginNavigateContext shape: { path, params, match }
 ```
 
 ---
 
 ## Registering a Plugin
 
-Call `registerPlugin()` in `src/app.ts`, before `router.start()`.
+Call `registerPlugin()` in `src/app.js`, before `router.start()`.
 
-```typescript
-// src/app.ts
+```javascript
+// src/app.js
 import { registerPlugin } from 'nativecorejs';
 import { analyticsPlugin } from './plugins/analytics.plugin.js';
 import { errorMonitorPlugin } from './plugins/error-monitor.plugin.js';
@@ -83,12 +58,11 @@ Error: NCPlugin "analytics" is already registered. Use a unique name.
 
 ## A Complete Example: Analytics Plugin
 
-```typescript
-// src/plugins/analytics.plugin.ts
-import type { NCPlugin } from 'nativecorejs';
+```javascript
+// src/plugins/analytics.plugin.js
 import analytics from 'your-analytics-sdk';
 
-export const analyticsPlugin: NCPlugin = {
+export const config = {
     name: 'analytics',
 
     onInstall() {
@@ -109,13 +83,12 @@ export const analyticsPlugin: NCPlugin = {
 
 ## A Complete Example: Performance Tracing Plugin
 
-```typescript
-// src/plugins/perf-trace.plugin.ts
-import type { NCPlugin } from 'nativecorejs';
+```javascript
+// src/plugins/perf-trace.plugin.js
 
-const navigationStartTimes = new Map<string, number>();
+const navigationStartTimes = new Map();
 
-export const perfTracePlugin: NCPlugin = {
+export const config = {
     name: 'perf-trace',
 
     onNavigate({ path }) {
@@ -137,22 +110,18 @@ export const perfTracePlugin: NCPlugin = {
 
 ## A Complete Example: Feature Flags Plugin
 
-```typescript
-// src/plugins/feature-flags.plugin.ts
-import type { NCPlugin } from 'nativecorejs';
+```javascript
+// src/plugins/feature-flags.plugin.js
 
-interface FeatureFlags {
-    newDashboard: boolean;
-    betaExport: boolean;
-}
+// FeatureFlags shape: { newDashboard, betaExport }
 
-let flags: FeatureFlags = { newDashboard: false, betaExport: false };
+const config = { newDashboard: false, betaExport: false };
 
-export function isEnabled(flag: keyof FeatureFlags): boolean {
+export function isEnabled(flag) {
     return flags[flag] ?? false;
 }
 
-export const featureFlagsPlugin: NCPlugin = {
+export const config = {
     name: 'feature-flags',
 
     async onInstall() {
@@ -164,8 +133,8 @@ export const featureFlagsPlugin: NCPlugin = {
 
 Using the flag in a controller:
 
-```typescript
-// src/controllers/dashboard.controller.ts
+```javascript
+// src/controllers/dashboard.controller.js
 import { isEnabled } from '../plugins/feature-flags.plugin.js';
 
 export async function dashboardController() {
@@ -183,7 +152,7 @@ export async function dashboardController() {
 
 Call `unregisterPlugin(name)` to remove a plugin and run its cleanup:
 
-```typescript
+```javascript
 import { unregisterPlugin } from 'nativecorejs';
 
 unregisterPlugin('analytics'); // runs the cleanup function returned by onInstall()
@@ -191,7 +160,7 @@ unregisterPlugin('analytics'); // runs the cleanup function returned by onInstal
 
 Useful in tests when you want to reset plugin state between test cases:
 
-```typescript
+```javascript
 beforeEach(() => {
     registerPlugin(myPlugin);
 });
@@ -205,7 +174,7 @@ afterEach(() => {
 
 ## Listing Registered Plugins
 
-```typescript
+```javascript
 import { listPlugins } from 'nativecorejs';
 console.log(listPlugins()); // ['analytics', 'perf-trace', 'feature-flags']
 ```
@@ -264,7 +233,7 @@ Plugin hooks cannot modify route behaviour. If you need to *block* navigation (e
 
 - [ ] `analyticsPlugin` calls `console.log('pageview:', ctx.path)` (or a real analytics endpoint) on every `onNavigated`.
 - [ ] `featureFlagPlugin` fetches flags in `onInstall` and exposes `isEnabled(flag)` globally.
-- [ ] Both plugins are registered in `src/app.ts` before `router.start()`.
+- [ ] Both plugins are registered in `src/app.js` before `router.start()`.
 - [ ] `unregisterPlugin('analytics')` removes the plugin and no further pageview events are logged.
 
 ---

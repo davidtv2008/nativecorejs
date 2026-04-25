@@ -1,16 +1,29 @@
 <div data-view="home">
 <section class="hero">
     <div class="hero-inner">
-        <div class="hero-badge">${badge}</div>
+        <div class="hero-badge" wire-class="ctaAuthed:hero-badge--auth">
+            TypeScript-first. Web Components. Dev tools included.
+        </div>
 
         <h1>NativeCoreJS</h1>
 
         <p class="hero-tagline">
-            ${tagline}
+            Build modern applications with a browser-native architecture that leans on web standards,
+            not proprietary runtimes. NativeCoreJS keeps you close to the platform with Web Components,
+            TypeScript, reactive state, and high-performance patterns that stay durable as the web evolves.
         </p>
 
         <div class="hero-actions">
-            <nc-a variant="hero-primary" href="${primaryHref}" id="get-started-btn" wire-content="ctaText" wire-attribute="ctaHref:href">${primaryLabel}</nc-a>
+            <nc-a
+                variant="hero-primary"
+                href="/login"
+                id="get-started-btn"
+                wire-content="ctaText"
+                wire-attribute="ctaHref:href"
+                wire-style="ctaMinWidth:min-width"
+            >
+                Sign In
+            </nc-a>
             <nc-a variant="hero-ghost" href="https://nativecorejs.com/docs" target="_blank" rel="noopener noreferrer">Read the Docs</nc-a>
             <nc-a variant="hero-ghost" href="https://nativecorejs.com/components">Component Library</nc-a>
         </div>

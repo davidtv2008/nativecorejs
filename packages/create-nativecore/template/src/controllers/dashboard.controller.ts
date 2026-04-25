@@ -11,13 +11,11 @@ import auth from '@services/auth.service.js';
 import api from '@services/api.service.js';
 
 export async function dashboardController(): Promise<() => void> {
+    // Setup
+    const events = trackEvents();
 
-    // -- Setup ---------------------------------------------------------------
-    const events    = trackEvents();
-    const disposers: Array<() => void> = [];
-
-    // -- Wires ---------------------------------------------------------------
-    // Text content bindings — state ↔ [wire-content] elements in the view
+    // Wires
+    // Text bindings -> [wire-content] in dashboard.html
     const {
         welcomeMessage,
         overviewScore,
@@ -28,7 +26,7 @@ export async function dashboardController(): Promise<() => void> {
         statNewToday,
     } = wireContents();
 
-    // Attribute bindings — state ↔ [wire-attribute] elements in the view
+    // Attribute bindings -> [wire-attribute] in dashboard.html
     const {
         usersRingValue,
         sessionsRingValue,
@@ -40,11 +38,11 @@ export async function dashboardController(): Promise<() => void> {
         activityCount,
     } = wireAttributes();
 
-    // -- DOM refs (elements that need complex / innerHTML rendering) ----------
+    // DOM refs that need richer HTML rendering
     const activityTimeline   = dom.$('#dashboard-activity-timeline');
     const metricsTable       = dom.$('#dashboard-metrics-table');
 
-    // -- State & computed (signal lab) ---------------------------------------
+    // Local signal lab state
     const completedState  = useState(14);
     const totalState      = useState(18);
 
@@ -60,17 +58,15 @@ export async function dashboardController(): Promise<() => void> {
         return                                  { title: 'Needs attention',  body: 'Completion dipped below the target threshold. Add or finish scope items to recover.',     variant: 'warning' };
     });
 
-    // -- Reactive bindings (signal lab) --------------------------------------
-    // effect() auto-tracks completedState, totalState, completionState, remainingState,
-    // and statusState. It runs immediately on creation and re-runs whenever any of them
-    // changes. No manual .watch() subscriptions or renderSignalDemo() call needed.
+    // Reactive signal-lab bindings
+    // effect() auto-tracks dependencies and auto-registers cleanup.
     const signalCompleted  = dom.$('#signal-completed');
     const signalRemaining  = dom.$('#signal-remaining');
     const signalCompletion = dom.$('#signal-completion');
     const signalProgress   = dom.$('#signal-progress');
     const signalStatus     = dom.$('#signal-status');
 
-    disposers.push(effect(() => {
+    effect(() => {
         if (signalCompleted)  signalCompleted.textContent  = String(completedState.value);
         if (signalRemaining)  signalRemaining.textContent  = String(remainingState.value);
         if (signalCompletion) signalCompletion.textContent = `${completionState.value}%`;
@@ -81,9 +77,9 @@ export async function dashboardController(): Promise<() => void> {
             signalStatus.setAttribute('title',   s.title);
             signalStatus.textContent = s.body;
         }
-    }));
+    });
 
-    // -- Data loading --------------------------------------------------------
+    // Data loading
     const loadData = async (forceRefresh = false) => {
         try {
             const data = await api.getCached('/dashboard/stats', {
@@ -181,7 +177,7 @@ export async function dashboardController(): Promise<() => void> {
         }
     };
 
-    // -- On load -------------------------------------------------------------
+    // On load
     const user = auth.getUser();
     if (user) {
         welcomeMessage.value = `Welcome back, ${user.name || 'User'}. This workspace demonstrates a cleaner executive layout with authenticated data, core components, and live state patterns.`;
@@ -189,7 +185,7 @@ export async function dashboardController(): Promise<() => void> {
 
     await loadData();
 
-    // -- Events --------------------------------------------------------------
+    // Events
     events.onClick('#refreshBtn', () => {
         api.invalidateQuery(['dashboard', 'stats'], { exact: true });
         api.invalidateTags('dashboard');
@@ -206,13 +202,11 @@ export async function dashboardController(): Promise<() => void> {
         totalState.value     = 18;
     });
 
-    // -- Cleanup -------------------------------------------------------------
+    // Cleanup
+    // wire*, effect(), and computed() bindings auto-dispose via PageCleanupRegistry.
+    // Return cleanup only for tracked DOM events/listeners.
     return () => {
-        completionState.dispose();
-        remainingState.dispose();
-        statusState.dispose();
         events.cleanup();
-        disposers.forEach(d => d());
     };
 }
 

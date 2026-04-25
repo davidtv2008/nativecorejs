@@ -12,7 +12,7 @@ The `bind()` API solves this cleanly. You declare once which DOM node each piece
 
 `bind()` subscribes a selector (or element reference) to a `State<T>` (or `ComputedState<T>`) and updates the matched element's `textContent` whenever the state changes:
 
-```typescript
+```javascript
 // selector string — scoped to this component's shadow root
 this.bind(this.total, '.stats__total');
 
@@ -32,7 +32,7 @@ this.bind(this.inputValue, 'input.search', 'value');
 
 When you need to **format** a value before writing it — for example, appending a `%` sign — create a `computed()` that produces the display string and bind that instead:
 
-```typescript
+```javascript
 const pctDisplay = computed(() => `${this.percentage.value}%`);
 this.bind(pctDisplay, '.stats__percentage');
 ```
@@ -45,7 +45,7 @@ You must call `bind()` from `onMount()`, after the shadow root has been stamped.
 
 `bindAttr()` works like `bind()`, but instead of updating a DOM property it calls `setAttribute()` on the target element. It accepts either a selector string or an element reference:
 
-```typescript
+```javascript
 // selector string
 this.bindAttr(this.statusState, '.task-card__status', 'data-status');
 
@@ -62,11 +62,29 @@ Whenever `this.statusState.value` changes, the target element gets `setAttribute
 
 ---
 
+## `this.bindClass()` and `this.bindStyle()`
+
+NativeCore also supports dedicated helpers for class toggles and inline style updates:
+
+```javascript
+// Toggle class by truthiness
+this.bindClass(this.isOpen, '.panel', 'is-open');
+
+// Set inline style (empty values remove the property)
+this.bindStyle(this.barWidth, '.progress__bar', 'width');
+```
+
+- `bindClass()` maps `Boolean(state.value)` to `el.classList.toggle(className, isOn)`.
+- `bindStyle()` maps `state.value` to `el.style.setProperty(styleName, value)`.
+- Both subscriptions are auto-disposed on component unmount, exactly like `bind()` / `bindAttr()`.
+
+---
+
 ## `this.bindAll({ '.selector': state })`
 
 When you have several bindings to set up at once, `bindAll()` lets you declare them as a single object literal:
 
-```typescript
+```javascript
 this.bindAll({
   '.stats__total':      this.total,
   '.stats__completed':  this.completed,
@@ -86,7 +104,7 @@ Each key is a **selector string**; each value is a state or computed. All subscr
 
 Both directions are **auto-disposed** on component unmount — no cleanup needed in `onUnmount()`.
 
-```typescript
+```javascript
 // Text input — listens for 'input', reads/writes .value
 this.model(this.username, 'input[name="username"]');
 
@@ -120,7 +138,7 @@ You can override both defaults via the `options` argument:
 
 ### Usage
 
-```typescript
+```javascript
 class SignupForm extends Component {
     static useShadowDOM = true;
 
@@ -167,7 +185,7 @@ The reconciler **reuses** existing DOM nodes across re-renders, so the wired lis
 
 For custom elements that fire non-standard events (e.g. `nc-rating`), pass an `overrides` map. This is the same option that the controller's `wireInputs()` accepts:
 
-```typescript
+```javascript
 rating = useState(0);
 
 onMount() {
@@ -195,7 +213,7 @@ Controllers are plain functions — they don't have `this.wireInputs()`. Use the
 
 It works the same way as the component version: **no arguments, no cleanup needed**. It scans the active `[data-view]`, creates a `useState()` for every `[wire-input]` element it finds, wires both directions, and auto-registers cleanup with the page cleanup registry so the router disposes everything on navigation:
 
-```typescript
+```javascript
 import { wireContents, wireInputs, wireAttributes } from '@core-utils/wires.js';
 
 export async function tasksController() {
@@ -215,7 +233,7 @@ export async function tasksController() {
 
 The states are live and two-way bound immediately. Use them anywhere in the controller:
 
-```typescript
+```javascript
 export async function tasksController() {
     const { title, done } = wireInputs();
 
@@ -235,7 +253,7 @@ Initial values are inferred from the element type — no need to declare default
 
 Optional config for non-standard elements or an explicit root:
 
-```typescript
+```javascript
 // Custom event/prop for a third-party component
 const { rating } = wireInputs({
     overrides: { rating: { event: 'nc-change', prop: 'value' } }
@@ -251,13 +269,13 @@ const { title } = wireInputs({
 
 ## `wireContents()` — declarative text binding
 
-`wireContents()` is the display counterpart to `wireInputs()`. It scans the active `[data-view]` for every `[wire-content="key"]` element, creates a `useState<string>()` seeded from the element's current `textContent`, and wires an `effect()` that writes `state.value` back to `el.textContent` whenever it changes.
+`wireContents()` is the display counterpart to `wireInputs()`. It scans the active `[data-view]` for every `[wire-content="key"]` element, creates a `useState()` seeded from the element's current `textContent`, and wires an `effect()` that writes `state.value` back to `el.textContent` whenever it changes.
 
 Use it for **display-only elements**: headings, paragraphs, spans, badges, labels — anything the user reads but doesn't type into.
 
 ### In a controller
 
-```typescript
+```javascript
 
 
 export async function tasksController() {
@@ -277,7 +295,7 @@ Cleanup is auto-registered — no return value needed.
 
 ### In a component
 
-```typescript
+```javascript
 class TaskHeader extends Component {
     static useShadowDOM = true;
 
@@ -309,7 +327,7 @@ The format is always `wire-attribute="stateKey:html-attribute-name"`.
 
 ### In a controller
 
-```typescript
+```javascript
 
 
 export async function tasksController() {
@@ -333,7 +351,7 @@ Paired with CSS:
 
 ### In a component
 
-```typescript
+```javascript
 class TaskCard extends Component {
     static useShadowDOM = true;
 
@@ -360,7 +378,7 @@ class TaskCard extends Component {
 </div>
 ```
 
-```typescript
+```javascript
 const { title, count  } = wireContents();    // text display
 const { filter        } = wireAttributes();  // HTML attribute
 const { search        } = wireInputs();      // two-way input
@@ -373,11 +391,39 @@ filter.value = 'active';
 
 ---
 
+## `wireClasses()` and `wireStyles()` - controller-first class/style wires
+
+When declarative bindings need to target classes or inline styles directly from a controller, use:
+
+- `wireClasses()` for `[wire-class="stateKey:class-name"]`
+- `wireStyles()` for `[wire-style="stateKey:css-property"]`
+
+```javascript
+import { wireClasses, wireStyles } from '@core-utils/wires.js';
+
+export async function tasksController() {
+    const { isSaving } = wireClasses();
+    const { progressWidth } = wireStyles();
+
+    isSaving.value = true;       // -> classList.toggle('is-saving', true)
+    progressWidth.value = '72%'; // -> style.setProperty('width', '72%')
+}
+```
+
+```html
+<button wire-class="isSaving:is-saving">Save</button>
+<div class="bar" wire-style="progressWidth:width"></div>
+```
+
+Like the other wire utilities, both register cleanup with the page cleanup registry.
+
+---
+
 ## `this.wires()` — one-call shorthand for components
 
-When a component uses all three wire types, `this.wires()` is a single convenience call that runs `wireInputs()`, `wireContents()`, and `wireAttributes()` in sequence.
+When a component uses declarative wiring, `this.wires()` is a single convenience call that runs `wireInputs()`, `wireContents()`, `wireAttributes()`, `wireClasses()`, and `wireStyles()` in sequence.
 
-```typescript
+```javascript
 class TaskForm extends Component {
     static useShadowDOM = true;
 
@@ -407,7 +453,7 @@ class TaskForm extends Component {
 
 Without any overrides it's simply:
 
-```typescript
+```javascript
 onMount() {
     this.wires();
 }
@@ -421,7 +467,7 @@ onMount() {
 
 `on()` registers an event listener via scoped event delegation. Instead of calling `addEventListener` on a specific node, `on()` attaches a single delegated listener to the shadow root (or the component element itself if Shadow DOM is off) and filters events by the provided selector:
 
-```typescript
+```javascript
 this.on('click', '.stats__reset', () => {
   this.total.value     = 0;
   this.completed.value = 0;
@@ -440,7 +486,7 @@ Like `bind()`, the listener registered by `on()` is **automatically removed** wh
 
 At the end of Chapter 04, `<task-stats>` calls `this.render()` in both `onMount()` and `attributeChangedCallback`. Every time any attribute changes, `template()` re-runs and the DOM patcher rewrites all three stat nodes:
 
-```typescript
+```javascript
 onMount() {
     this.total.value     = Number(this.getAttribute('total') ?? 0);
     this.completed.value = Number(this.getAttribute('completed') ?? 0);
@@ -466,7 +512,7 @@ Every `render()` call re-evaluates `template()` and runs the DOM patcher across 
 
 ### After — `bind()` API
 
-```typescript
+```javascript
 // ✅ Each node is updated only when its own state changes
 onMount() {
     this.total.value     = Number(this.getAttribute('total') ?? 0);
@@ -485,7 +531,7 @@ onMount() {
     this.bind(pctDisplay,     '.stats__percentage');
 }
 
-attributeChangedCallback(name: string, oldValue: string | null, newValue: string | null): void {
+attributeChangedCallback(name, oldValue, newValue) {
     if (oldValue === newValue || !this._mounted) return;
     const n = Number(newValue ?? 0);
     if (name === 'total')     this.total.value     = isNaN(n) ? 0 : n;
@@ -500,11 +546,10 @@ If `completed.value` changes, only `.stats__completed` and `.stats__percentage` 
 
 ## The Complete Refactored `<task-stats>`
 
-```typescript
+```javascript
 import { Component, defineComponent } from '@core/component.js';
 import { html } from '@core-utils/templates.js';
 import { useState, computed } from '@core/state.js';
-import type { State, ComputedState } from '@core/state.js';
 import '@components/core/nc-button.js';
 
 export class TaskStats extends Component {
@@ -544,7 +589,7 @@ export class TaskStats extends Component {
         `;
     }
 
-    attributeChangedCallback(name: string, oldValue: string | null, newValue: string | null): void {
+    attributeChangedCallback(name, oldValue, newValue) {
         if (oldValue === newValue || !this._mounted) return;
         const n = Number(newValue ?? 0);
         if (name === 'total')     this.total.value     = isNaN(n) ? 0 : n;
@@ -594,8 +639,8 @@ Add a `key=` attribute to each repeated element and NativeCoreJS switches to a *
 
 ### Example
 
-```typescript
-template(): string {
+```javascript
+template() {
     const itemsHtml = this.tasks.value.map(task => `
         <li key="${task.id}" class="task-item ${task.status}">
             <span class="task-title">${escapeHTML(task.title)}</span>
@@ -629,9 +674,13 @@ With `key="${task.id}"`, when `tasks.value` is updated:
 |----------------------|--------------------------------|---------------------------------|
 | `bind()`             | State subscription             | On component unmount            |
 | `bindAttr()`         | State subscription             | On component unmount            |
+| `bindClass()`        | State subscription             | On component unmount            |
+| `bindStyle()`        | State subscription             | On component unmount            |
 | `bindAll()`          | Multiple subscriptions         | On component unmount            |
 | `model()`            | Effect + event listener        | On component unmount            |
 | `wireInputs()`       | Effect + event listener × N    | On component unmount            |
+| `wireClasses()`      | Effect + state subscriptions   | On route navigation             |
+| `wireStyles()`       | Effect + state subscriptions   | On route navigation             |
 | `on()`               | Delegated event listener       | On component unmount            |
 | `computed()`         | Upstream state listener        | Must call `.dispose()` manually |
 | `watch()` on `State` | Imperative callback            | Must call returned disposer manually |

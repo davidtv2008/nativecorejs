@@ -24,18 +24,18 @@ When a user navigates to `/tasks`, the router may serve the HTML from its cache.
 
 ## `api.getCached()` — Full Options
 
-```typescript
+```javascript
 api.getCached(path: string, options: {
     ttl?: number;           // milliseconds, default 60000
     revalidate?: boolean;   // stale-while-revalidate, default false
     queryKey?: string[];    // key for targeted invalidation
     tags?: string[];        // tag for group invalidation
-}): Promise<unknown>
+}): Promise
 ```
 
 A complete call for fetching the task list looks like:
 
-```typescript
+```javascript
 const tasks = await api.getCached('/tasks', {
     ttl: 60_000,
     revalidate: true,
@@ -56,7 +56,7 @@ A query key is an array of strings that uniquely identifies a cached entry. Thin
 
 ### Flat list key
 
-```typescript
+```javascript
 api.getCached('/tasks', { queryKey: ['tasks'] })
 ```
 
@@ -64,7 +64,7 @@ Simple, but coarse — invalidating `['tasks']` invalidates every entry whose ke
 
 ### List with filter context
 
-```typescript
+```javascript
 api.getCached(`/tasks?projectId=${projectId}`, {
     queryKey: ['tasks', 'list', projectId],
     tags: ['tasks'],
@@ -75,7 +75,7 @@ The `projectId` in the key ensures that task lists for different projects are ca
 
 ### Single-item key
 
-```typescript
+```javascript
 api.getCached(`/tasks/${id}`, {
     queryKey: ['tasks', id],
     tags: ['tasks'],
@@ -90,7 +90,7 @@ Granular — you can refresh just one task's data without touching the list.
 
 ### `api.invalidateQuery(queryKey, { exact })`
 
-```typescript
+```javascript
 // Invalidate exactly one cached entry
 api.invalidateQuery(['tasks', taskId], { exact: true });
 
@@ -103,7 +103,7 @@ api.invalidateQuery(['tasks'], { exact: false });
 
 ### `api.invalidateTags(tag)`
 
-```typescript
+```javascript
 api.invalidateTags('tasks');
 ```
 
@@ -117,8 +117,8 @@ Every write operation needs a corresponding cache invalidation strategy. Here is
 
 ### Creating a task
 
-```typescript
-async function handleCreateTask(data: CreateTaskPayload) {
+```javascript
+async function handleCreateTask(data) {
     await api.post('/tasks', data);
 
     // The list of tasks has changed — invalidate all task list caches
@@ -130,8 +130,8 @@ async function handleCreateTask(data: CreateTaskPayload) {
 
 ### Updating a single task
 
-```typescript
-async function handleUpdateTask(id: string, data: UpdateTaskPayload) {
+```javascript
+async function handleUpdateTask(id, data) {
     await api.put(`/tasks/${id}`, data);
 
     // Only this task's detail cache needs to refresh
@@ -143,8 +143,8 @@ async function handleUpdateTask(id: string, data: UpdateTaskPayload) {
 
 ### Deleting a task
 
-```typescript
-async function handleDeleteTask(id: string) {
+```javascript
+async function handleDeleteTask(id) {
     await api.delete(`/tasks/${id}`);
 
     // Blast-invalidate all task caches
@@ -164,8 +164,8 @@ When `revalidate: true` is set and the TTL has expired, `api.getCached()` resolv
 
 When the background fetch completes, the cache is updated. The *next* call to `api.getCached()` will get fresh data — or if the controller is still mounted and the state it reads from is updated, the `effect()` will re-run automatically.
 
-```typescript
-const tasks = useState<Task[]>([]);
+```javascript
+const tasks = useState([]);
 
 const data = await api.getCached('/tasks', {
     ttl: 60_000,
@@ -173,7 +173,7 @@ const data = await api.getCached('/tasks', {
     queryKey: ['tasks', 'list'],
     tags: ['tasks'],
 });
-tasks.value = data as Task[];
+tasks.value = data;
 
 // This effect renders whatever is in `tasks` — stale or fresh
 disposers.push(effect(() => {
@@ -187,22 +187,22 @@ disposers.push(effect(() => {
 
 Waiting for the API to confirm a mutation before updating the UI feels sluggish for simple status toggles. The optimistic pattern updates local state *immediately*, then reconciles with the server result:
 
-```typescript
+```javascript
 export async function taskDetailController(
     params: Record<string, string> = {}
-): Promise<() => void> {
+) {
     const events = trackEvents();
-    const disposers: Array<() => void> = [];
+    const disposers = [];
 
     const taskId = params.id;
-    const task = useState<Task | null>(null);
+    const task = useState(null);
 
     const data = await api.getCached(`/tasks/${taskId}`, {
         ttl: 30_000,
         queryKey: ['tasks', taskId],
         tags: ['tasks'],
     });
-    task.value = data as Task;
+    task.value = data;
 
     events.onClick('toggle-complete', async () => {
         if (!task.value) return;
@@ -250,14 +250,14 @@ The user sees the toggle update immediately. If the server returns an error, the
 
 URL query parameters produce distinct cache entries. These two calls are cached under *different* keys even though they query the same resource:
 
-```typescript
+```javascript
 api.getCached('/tasks?status=done')
 api.getCached('/tasks?status=todo')
 ```
 
 If you invalidate by query key using the path string, you must know all the query string variants in use. This is fragile. Use **tags** to group them:
 
-```typescript
+```javascript
 api.getCached('/tasks?status=done', { tags: ['tasks'] });
 api.getCached('/tasks?status=todo', { tags: ['tasks'] });
 

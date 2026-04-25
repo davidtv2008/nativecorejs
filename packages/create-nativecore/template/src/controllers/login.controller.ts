@@ -11,12 +11,10 @@ import auth from '@services/auth.service.js';
 import api from '@services/api.service.js';
 
 export async function loginController(): Promise<() => void> {
-
-    // -- Setup ---------------------------------------------------------------
+    // Setup
     const events = trackEvents();
-    const disposers: Array<() => void> = [];
 
-    // -- DOM refs (elements that need direct access for focus / attribute sync) --
+    // DOM refs (needed for focus and custom element internals)
     const form               = dom.$<HTMLElement & { getValues?: () => Record<string, string> }>('#loginForm');
     const errorDiv           = dom.$<HTMLElement>('#login-error');
     const loginBtn           = dom.$('#loginBtn');
@@ -24,28 +22,23 @@ export async function loginController(): Promise<() => void> {
     const emailField         = dom.$('#email');
     const passwordField      = dom.$('#password');
 
-    // -- Wires ---------------------------------------------------------------
-    // errorMessage drives the error div's text via the [wire-content] binding
-    // declared in login.html; the effect below also toggles its visibility.
+    // Wires + local state
+    // errorMessage -> [wire-content="errorMessage"] in login.html
     const { errorMessage } = wireContents();
-
-    // -- State ---------------------------------------------------------------
     const isLoading = useState(false);
 
-    // -- Reactive bindings ---------------------------------------------------
-    disposers.push(
-        effect(() => {
-            if (!loginBtn) return;
-            loginBtn.toggleAttribute('disabled', isLoading.value);
-            loginBtn.textContent = isLoading.value ? 'Signing In...' : 'Access Dashboard';
-        }),
-        effect(() => {
-            if (!errorDiv) return;
-            errorDiv.hidden = !errorMessage.value;
-        }),
-    );
+    // Reactive bindings
+    effect(() => {
+        if (!loginBtn) return;
+        loginBtn.toggleAttribute('disabled', isLoading.value);
+        loginBtn.textContent = isLoading.value ? 'Signing In...' : 'Access Dashboard';
+    });
+    effect(() => {
+        if (!errorDiv) return;
+        errorDiv.hidden = !errorMessage.value;
+    });
 
-    // -- Helpers -------------------------------------------------------------
+    // Helpers
     // nc-input wraps a native <input> inside its shadow root
     const getInputValue = (element: Element | null): string => {
         if (!element) return '';
@@ -57,7 +50,7 @@ export async function loginController(): Promise<() => void> {
         dom.within<HTMLInputElement>(element?.shadowRoot ?? element, 'input')?.focus();
     };
 
-    // -- Event handlers ------------------------------------------------------
+    // Event handlers
     const handleSubmit = async (e: Event) => {
         e.preventDefault();
         e.stopPropagation();
@@ -104,7 +97,7 @@ export async function loginController(): Promise<() => void> {
         }
     };
 
-    // -- On load -------------------------------------------------------------
+    // On load
     // Restore remembered email from a previous session
     const savedEmail = localStorage.getItem('rememberedEmail');
     if (savedEmail) {
@@ -112,7 +105,7 @@ export async function loginController(): Promise<() => void> {
         rememberMeCheckbox?.setAttribute('checked', '');
     }
 
-    // -- Events --------------------------------------------------------------
+    // Events
     events.onSubmit('#loginForm', handleSubmit);
     events.onKeydown('#loginForm', (e) => {
         if (e.key === 'Enter') handleSubmit(e);
@@ -127,9 +120,10 @@ export async function loginController(): Promise<() => void> {
         }
     });
 
-    // -- Cleanup -------------------------------------------------------------
+    // Cleanup
+    // wire* and effect() bindings auto-dispose via PageCleanupRegistry.
+    // Return cleanup only for tracked DOM events/listeners.
     return () => {
-        disposers.forEach(d => d());
         events.cleanup();
     };
 }

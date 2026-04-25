@@ -2,7 +2,7 @@
 
 /**
  * Component Removal Script
- * Removes component file, import from registry.ts, and usage from codebase
+ * Removes component file, import from appRegistry, and usage from codebase
  * 
  * Usage:
  *   node scripts/remove-component.mjs sample-component
@@ -15,6 +15,14 @@ import { fileURLToPath } from 'url';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
+const ROOT = path.resolve(__dirname, '../..');
+
+let useTypeScript = true;
+try {
+  const ncConfig = JSON.parse(fs.readFileSync(path.join(ROOT, 'nativecore.config.json'), 'utf8'));
+  if (ncConfig.useTypeScript === false) useTypeScript = false;
+} catch { /* default to TypeScript */ }
+const ext = useTypeScript ? 'ts' : 'js';
 
 // Get component name from command line
 const componentName = process.argv[2];
@@ -22,9 +30,9 @@ const componentName = process.argv[2];
 if (!componentName) {
   console.error('❌ Error: Component name is required');
   console.log('\nUsage:');
-  console.log('  npm run clean:component <name>');
+  console.log('  npm run remove:component <name>');
   console.log('\nExample:');
-  console.log('  npm run clean:component my-card');
+  console.log('  npm run remove:component my-card');
   process.exit(1);
 }
 
@@ -35,21 +43,21 @@ if (!/^[a-z][a-z0-9]*(-[a-z0-9]+)+$/.test(componentName)) {
 }
 
 // Paths
-const componentsDir = path.resolve(__dirname, '../..', 'src', 'components');
+const componentsDir = path.resolve(ROOT, 'src', 'components');
 const uiDir = path.join(componentsDir, 'ui');
-const componentFile = path.join(uiDir, `${componentName}.ts`);
-const registryFile = path.join(componentsDir, 'registry.ts');
+const componentFile = path.join(uiDir, `${componentName}.${ext}`);
+const registryFile = path.join(componentsDir, `appRegistry.${ext}`);
 
 console.log(`\n🗑️  Removing component: ${componentName}\n`);
 
 // Step 1: Check if component file exists
 if (!fs.existsSync(componentFile)) {
-  console.error(`❌ Error: Component file "${componentName}.ts" does not exist`);
-  console.log(`   Expected location: src/components/ui/${componentName}.ts`);
+  console.error(`❌ Error: Component file "${componentName}.${ext}" does not exist`);
+  console.log(`   Expected location: src/components/ui/${componentName}.${ext}`);
   process.exit(1);
 }
 
-// Step 2: Remove from registry.ts (lazy loading registration)
+// Step 2: Remove from appRegistry.<ext> (lazy loading registration)
 let removedFromIndex = false;
 if (fs.existsSync(registryFile)) {
   let indexContent = fs.readFileSync(registryFile, 'utf-8');
@@ -60,17 +68,17 @@ if (fs.existsSync(registryFile)) {
     indexContent = indexContent.replace(registrationPattern, '');
     
     fs.writeFileSync(registryFile, indexContent);
-    console.log('✅ Removed registration from registry.ts');
+    console.log(`✅ Removed registration from appRegistry.${ext}`);
     removedFromIndex = true;
   } else {
-    console.log('⚠️  Registration not found in registry.ts (may have been manually removed)');
+    console.log(`⚠️  Registration not found in appRegistry.${ext} (may have been manually removed)`);
   }
 } else {
-  console.log('⚠️  registry.ts not found');
+  console.log(`⚠️  appRegistry.${ext} not found`);
 }
 
-// Step 2.5: Remove from preloadRegistry.ts if it exists
-const preloadFile = path.join(componentsDir, 'preloadRegistry.ts');
+// Step 2.5: Remove from preloadRegistry.<ext> if it exists
+const preloadFile = path.join(componentsDir, `preloadRegistry.${ext}`);
 let removedFromPreload = false;
 
 if (fs.existsSync(preloadFile)) {
@@ -80,7 +88,7 @@ if (fs.existsSync(preloadFile)) {
   if (preloadPattern.test(preloadContent)) {
     preloadContent = preloadContent.replace(preloadPattern, '');
     fs.writeFileSync(preloadFile, preloadContent);
-    console.log('✅ Removed from preloadRegistry.ts');
+    console.log(`✅ Removed from preloadRegistry.${ext}`);
     removedFromPreload = true;
   }
 }
@@ -94,9 +102,9 @@ const usages = [];
 
 // Search in specific directories
 const searchDirs = [
-  path.resolve(__dirname, '../..', 'src', 'views', 'pages'),
-  path.resolve(__dirname, '../..', 'src', 'components'),
-  path.resolve(__dirname, '../..', 'src', 'controllers'),
+  path.resolve(ROOT, 'src', 'views'),
+  path.resolve(ROOT, 'src', 'components'),
+  path.resolve(ROOT, 'src', 'controllers'),
 ];
 
 function searchDirectory(dirPath) {
@@ -109,7 +117,7 @@ function searchDirectory(dirPath) {
     
     if (file.isDirectory()) {
       searchDirectory(fullPath);
-    } else if (file.name.endsWith('.html') || file.name.endsWith('.ts')) {
+    } else if (file.name.endsWith('.html') || file.name.endsWith('.ts') || file.name.endsWith('.js')) {
       const content = fs.readFileSync(fullPath, 'utf-8');
       const openingMatches = content.match(usagePattern);
       const closingMatches = content.match(closingPattern);
@@ -138,7 +146,7 @@ if (usages.length > 0) {
   console.log(`\n🗑️  Removing <${componentName}> tags from files...`);
   
   for (const usage of usages) {
-    const fullPath = path.resolve(__dirname, '../..', usage.file);
+    const fullPath = path.resolve(ROOT, usage.file);
     let content = fs.readFileSync(fullPath, 'utf-8');
     
     // Remove self-closing tags: <component-name />
@@ -156,15 +164,15 @@ if (usages.length > 0) {
 
 // Step 5: Delete the component file
 fs.unlinkSync(componentFile);
-console.log(`\n✅ Deleted component file: ${componentName}.ts`);
+console.log(`\n✅ Deleted component file: ${componentName}.${ext}`);
 
 // Summary
 console.log('\n✨ Component removed successfully!\n');
 console.log('📊 Summary:');
-console.log(`   🗑️  Deleted: src/components/ui/${componentName}.ts`);
-console.log(`   ${removedFromIndex ? '✅' : '⚠️ '} Registry.ts: ${removedFromIndex ? 'Updated' : 'Not found'}`);
+console.log(`   🗑️  Deleted: src/components/ui/${componentName}.${ext}`);
+console.log(`   ${removedFromIndex ? '✅' : '⚠️ '} appRegistry.${ext}: ${removedFromIndex ? 'Updated' : 'Not found'}`);
 if (removedFromPreload) {
-  console.log(`   ✅ PreloadRegistry.ts: Removed`);
+  console.log(`   ✅ preloadRegistry.${ext}: Removed`);
 }
 console.log(`   📝 Files cleaned: ${usages.length}`);
 console.log('');

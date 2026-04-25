@@ -56,10 +56,10 @@ APP_NAME=Taskflow
 
 NativeCoreJS does not use Vite. The dev pipeline uses **esbuild** for fast TypeScript compilation and path alias resolution, with `tsc --noEmit` running in parallel for type-checking. The production build (`npm run build`) uses the same esbuild pipeline. Environment variables are read at server start from `.env` via `process.env` in `server.js`, or injected into `window` by your hosting provider's build pipeline. A simple pattern used in the template is:
 
-```typescript
-// src/constants/env.ts
+```javascript
+// src/constants/env.js
 export const API_BASE_URL =
-    (window as any).__ENV__?.API_BASE_URL ?? 'http://localhost:3000';
+    (window).__ENV__?.API_BASE_URL ?? 'http://localhost:3000';
 ```
 
 Then set `window.__ENV__` in `index.html` at deploy time via your CI/CD pipeline's find-and-replace step.
@@ -118,9 +118,9 @@ Run `vercel --prod` from the project root or connect the repository via the Verc
 
 ## Service Worker and PWA Basics
 
-NativeCoreJS does not generate a service worker for you, but the build output is structured to make adding one straightforward. Create `public/sw.js` and register it in `src/main.ts`:
+NativeCoreJS does not generate a service worker for you, but the build output is structured to make adding one straightforward. Create `public/sw.js` and register it in `src/main.js`:
 
-```typescript
+```javascript
 if ('serviceWorker' in navigator) {
   navigator.serviceWorker.register('/sw.js').catch(console.error);
 }
@@ -138,7 +138,7 @@ Add a `manifest.json` at the project root with `name`, `icons`, `start_url`, and
 
 Before data arrives, show a skeleton placeholder instead of an empty or partially-rendered view. NativeCoreJS ships `<nc-skeleton>` for this purpose:
 
-```typescript
+```javascript
 // In the controller, before the async fetch
 const root = dom.$('#content-root');
 if (root) root.innerHTML = '<nc-skeleton lines="4"></nc-skeleton>';
@@ -162,7 +162,7 @@ Attributes:
 
 Every route controller loaded via `lazyController()` is code-split automatically. The controller module is not downloaded until the user navigates to that route:
 
-```typescript
+```javascript
 router.register('/reports', 'reports.html', lazyController('reportsController'));
 ```
 
@@ -172,7 +172,7 @@ Controllers for pages the user rarely visits (admin panels, settings) should alw
 
 `.cache()` on a route registration tells the router to keep the rendered view alive in the DOM instead of tearing it down on navigation. Use it for frequently visited pages:
 
-```typescript
+```javascript
 router.register('/dashboard', 'dashboard.html', lazyController('dashboardController')).cache();
 ```
 
@@ -180,10 +180,10 @@ Avoid `.cache()` for routes that must always show the latest server data without
 
 ### Component Preloading
 
-`preloadRegistry.ts` lists components that should be preloaded in the background after the initial paint. Add your heaviest components there:
+`preloadRegistry.js` lists components that should be preloaded in the background after the initial paint. Add your heaviest components there:
 
-```typescript
-// src/preloadRegistry.ts
+```javascript
+// src/preloadRegistry.js
 export const preloadComponents = [
   () => import('./components/project-filter/project-filter.component.js'),
   () => import('./components/task-card/task-card.component.js'),
@@ -196,8 +196,8 @@ These imports fire after `requestIdleCallback`, so they never compete with the f
 
 | Component type | Where to register |
 |---|---|
-| Shell nav, sidebar, header | `preloadRegistry.ts` — needed on every page immediately |
-| Loading spinner | `preloadRegistry.ts` — must be available before any fetch |
+| Shell nav, sidebar, header | `preloadRegistry.js` — needed on every page immediately |
+| Loading spinner | `preloadRegistry.js` — must be available before any fetch |
 | Most `nc-*` primitives | `frameworkRegistry.ts` (already done) — lazy by default |
 | Your domain components (`task-card`, etc.) | `registry.ts` — lazy unless profiling shows a first-paint cost |
 | Very heavy charts or editors | `registry.ts` — definitely lazy; show `nc-skeleton` first |
@@ -219,7 +219,7 @@ When animating with CSS or the `nc-animation` component, prefer `transform` and 
 
 Setting `revalidate: true` on frequently-read endpoints means users always see data instantly, even if it is a few seconds stale:
 
-```typescript
+```javascript
 await api.getCached('/dashboard/summary', {
   ttl:        30_000,
   revalidate: true,

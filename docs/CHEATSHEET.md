@@ -40,16 +40,16 @@ import { useState, effect } from '@core/state.js';
 import { trackEvents } from '@core-utils/events.js';
 
 export async function pageController(params, state, loaderData) {
-    const disposers = [];
     const events = trackEvents();
 
     const items = useState([]);
-    disposers.push(effect(() => render(items.value)));
+    effect(() => render(items.value)); // auto-cleaned on navigation
 
     events.on(document, 'click', '#btn', () => { items.value = []; });
 
     return () => {
-        disposers.forEach(d => d());
+        // wire* / effect() cleanup is auto-registered by the framework.
+        // Return cleanup for explicit resources like tracked events or timers.
         events.cleanup();
     };
 }
@@ -192,6 +192,8 @@ const label   = useState('Submit');
 this.bind(loading, '#spinner', 'hidden');    // elem.hidden = loading.value
 this.bind(label, '#btn');                    // elem.textContent = label.value
 this.bindAttr(loading, '#btn', 'disabled'); // elem.setAttribute('disabled', ...)
+this.bindClass(loading, '#btn', 'is-loading'); // elem.classList.toggle(...)
+this.bindStyle(progress, '.bar', 'width');   // elem.style.setProperty(...)
 
 // Multiple bindings at once
 this.bindAll({
@@ -211,7 +213,7 @@ this.model(this.rating, 'nc-rating', { event: 'nc-change', prop: 'value' }); // 
 Standalone utilities from `@core-utils/wires.js` that auto-register cleanup via the Page Cleanup Registry (no return value needed):
 
 ```javascript
-import { wireInputs, wireContents, wireAttributes } from '@core-utils/wires.js';
+import { wireInputs, wireContents, wireAttributes, wireClasses, wireStyles } from '@core-utils/wires.js';
 
 export async function tasksController() {
     // Two-way: [wire-input="key"] ↔ State<T>
@@ -222,10 +224,16 @@ export async function tasksController() {
 
     // Attribute: [wire-attribute="key:attr-name"] → State<string> (setAttribute)
     const { status, busy } = wireAttributes();
+    // Class: [wire-class="key:class-name"] -> State<boolean> (class toggle)
+    const { isSaving } = wireClasses();
+    // Style: [wire-style="key:css-prop"] -> State<string> (style.setProperty)
+    const { progressWidth } = wireStyles();
 
     heading.value = 'My Tasks';         // → <h1 wire-content="heading"> updates
     count.value   = String(items.length);
     status.value  = 'active';           // → setAttribute('data-status', 'active')
+    isSaving.value = true;              // → toggles class from wire-class
+    progressWidth.value = '72%';        // → updates inline style
     // title.value reflects user input two-way
 }
 ```
@@ -240,6 +248,8 @@ export async function tasksController() {
     <input  wire-input="done"   type="checkbox" />
     <div    wire-attribute="status:data-status">…</div>
     <button wire-attribute="busy:aria-busy">Save</button>
+    <button wire-class="isSaving:is-saving">Save</button>
+    <div    wire-style="progressWidth:width"></div>
 </div>
 ```
 

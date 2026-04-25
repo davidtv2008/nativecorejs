@@ -6,9 +6,9 @@
 
 A controller is an `async` function that is called when the router mounts a view. It receives route parameters, sets up reactive state and bindings, registers event listeners, and optionally returns a **cleanup function** that the router calls when the user navigates away.
 
-```typescript
+```javascript
 // The full type signature
-async function myController(params: RouteParams): Promise<() => void> {
+async function myController(params) => void> {
   // Setup ...
 
   // Optional — the framework auto-cleans effect(), computed(), and trackEvents()
@@ -31,48 +31,47 @@ Controllers are plain TypeScript functions — no class, no decorator, no lifecy
 npm run make:controller tasks
 ```
 
-This creates `src/controllers/tasks.controller.ts` with the correct boilerplate. If you already generated it with `make:view`, open the existing file.
+This creates `src/controllers/tasks.controller.js` with the correct boilerplate. If you already generated it with `make:view`, open the existing file.
 
 ---
 
 ## The Controller Structure
 
-A well-structured controller follows a consistent set of sections. The framework does not enforce this — it is a convention — but every generated controller includes these comment headers:
+A well-structured controller follows a consistent set of sections. The framework does not enforce this - it is a convention - and scaffolded controllers now default to a wire-first layout:
 
-```typescript
+```javascript
 import { dom }         from '@core-utils/dom.js';
 import { trackEvents } from '@core-utils/events.js';
 import { useState, computed, effect } from '@core/state.js';
 import { apiService }  from '@services/api.service.js';
-import type { RouteParams } from '@core/router.js';
 
-async function tasksController(params: RouteParams): Promise<() => void> {
+async function tasksController(params) => void> {
 
-  // ─── Setup ──────────────────────────────────────────────────────────────
-  const disposers: Array<() => void> = [];
+  // Setup
 
-  // ─── DOM Refs ───────────────────────────────────────────────────────────
+  // Wires
 
-  // ─── State ──────────────────────────────────────────────────────────────
+  // DOM refs
 
-  // ─── Data Fetch ─────────────────────────────────────────────────────────
+  // Local state / computed
 
-  // ─── Reactive Bindings ──────────────────────────────────────────────────
+  // Reactive bindings
 
-  // ─── Events ─────────────────────────────────────────────────────────────
+  // Data loading
 
-  // ─── Cleanup ────────────────────────────────────────────────────────────
+  // Events
+
+  // Cleanup
   return () => {
-    disposers.forEach(d => d());
+    // wire*, effect(), computed(), and trackEvents() auto-dispose.
+    // Keep explicit cleanup for custom resources only.
   };
 }
 
 export default tasksController;
 ```
 
-The `disposers` array collects every cleanup function the controller creates. The single returned cleanup function iterates it. You never forget to clean up a subscription because the pattern makes omission obvious.
-
-> **Auto-Cleanup:** Even if you omit the `return () => { ... }` block entirely, the framework is still safe. Every `effect()`, `computed()`, and `trackEvents()` call auto-registers its teardown with the **Page Cleanup Registry**. The router flushes the registry on every navigation after calling the controller's explicit cleanup function. The `disposers` pattern is recommended because it makes ownership explicit and lets you add custom teardown logic (e.g. clearing a timer) alongside the reactive primitives.
+> **Auto-Cleanup:** Even if you omit the `return () => { ... }` block entirely, the framework is still safe. Every `wire*`, `effect()`, `computed()`, and `trackEvents()` call auto-registers its teardown with the **Page Cleanup Registry**. The router flushes the registry on every navigation after calling the controller's explicit cleanup function.
 
 ---
 
@@ -80,7 +79,7 @@ The `disposers` array collects every cleanup function the controller creates. Th
 
 The `dom` utility provides scoped DOM queries that match the `data-view` / `data-hook` / `data-action` conventions from Chapter 05.
 
-```typescript
+```javascript
 const view = dom.view('tasks');
 ```
 
@@ -88,7 +87,7 @@ const view = dom.view('tasks');
 
 ### `.hook('name')` → `[data-hook="name"]`
 
-```typescript
+```javascript
 const taskList  = view.hook('task-list');   // → [data-hook="task-list"]
 const stats     = view.hook('stats');       // → [data-hook="stats"]
 const emptyMsg  = view.hook('empty-state'); // → [data-hook="empty-state"]
@@ -97,7 +96,7 @@ const taskCount = view.hook('task-count');  // → [data-hook="task-count"]
 
 ### `.actionSelector('name')` → CSS selector string
 
-```typescript
+```javascript
 view.actionSelector('new-task')  // → '[data-view="tasks"] [data-action="new-task"]'
 view.actionSelector('filter')    // → '[data-view="tasks"] [data-action="filter"]'
 ```
@@ -108,7 +107,7 @@ view.actionSelector('filter')    // → '[data-view="tasks"] [data-action="filte
 
 For elements outside any view scope (navigation, modals, etc.), use the global helper:
 
-```typescript
+```javascript
 const navBadge = dom.$('#nav-task-count');
 ```
 
@@ -118,7 +117,7 @@ const navBadge = dom.$('#nav-task-count');
 
 `trackEvents()` returns a tracker object whose methods wrap `addEventListener` and track every listener it registers. When the tracker's `cleanup()` method is called, it removes them all in one shot:
 
-```typescript
+```javascript
 const events = trackEvents();
 
 events.onClick(view.actionSelector('new-task'), handleNewTask);
@@ -127,11 +126,11 @@ events.onClick(view.actionSelector('filter'),   handleFilter);
 
 You no longer need to manually push `events.cleanup` into `disposers` — `trackEvents()` auto-registers its own teardown with the Page Cleanup Registry the moment it is called. On navigation the router flushes the registry, which calls `cleanup()` on every tracker that the controller created.
 
-If you want to be explicit (recommended for documentation), you can still push it:
+If you want to be explicit, you can still call `events.cleanup()` in the returned cleanup function:
 
-```typescript
+```javascript
 const events = trackEvents();
-disposers.push(() => events.cleanup()); // optional but self-documenting
+return () => events.cleanup(); // optional but self-documenting
 ```
 
 Because `cleanup()` zeroes out its internal array after the first call, calling it a second time (once by the explicit cleanup path, once by the registry) is always safe.
@@ -142,15 +141,15 @@ Because `cleanup()` zeroes out its internal array after the first call, calling 
 
 Inside a component you use `this.bind()`. Inside a controller there is no `this` — you use `effect()` instead. An effect is a function that re-runs automatically whenever the state it reads changes:
 
-```typescript
+```javascript
 import { effect } from '@core/state.js';
 
-disposers.push(effect(() => {
+effect(() => {
   taskCount.textContent = String(tasks.value.length);
-}));
+});
 ```
 
-`effect()` returns a stop function. Pushing it into `disposers` is optional but **recommended** — it makes ownership explicit. Either way, the framework auto-registers the stop function with the **Page Cleanup Registry** the moment `effect()` is called, so the effect is always torn down when the router leaves the page.
+`effect()` returns a stop function, but you do not need to store it for normal controller flow. The framework auto-registers cleanup with the **Page Cleanup Registry** the moment `effect()` is called, so the effect is torn down when the router leaves the page.
 
 > **Loop guard (default + override):** `effect()` includes a built-in loop guard to prevent runaway reactive cycles.
 >
@@ -160,15 +159,60 @@ disposers.push(effect(() => {
 >
 > If the threshold is exceeded, NativeCore logs a `console.warn`, auto-disposes that effect, and reports the event in Dev Tools under **LOOP GUARD**.
 
-```typescript
-disposers.push(effect(() => {
+```javascript
+effect(() => {
   taskCount.textContent = String(tasks.value.length);
-}, { maxRunsPerFlush: 1500 })); // optional override (default is 1000)
+}, { maxRunsPerFlush: 1500 }); // optional override (default is 1000)
 ```
 
 ### How stop functions are idempotent
 
-Whether the stop function runs via your explicit `disposers.forEach(d => d())` path or via the registry flush, the second call is a no-op: the internal dependency maps are already cleared after the first call, so nothing is double-freed.
+Whether the stop function runs via explicit cleanup or via the registry flush, the second call is a no-op: internal dependency maps are already cleared after the first call.
+
+---
+
+## Wire-First Best Practice
+
+For scaffolded controllers (`home`, `login`, `dashboard`), prefer a wire-first style:
+
+- `wireContents()` for display text
+- `wireAttributes()` for HTML attributes
+- `wireInputs()` for form values
+- `wireClasses()` for state-driven class toggles
+- `wireStyles()` for inline style properties
+
+```javascript
+import {
+  wireContents,
+  wireAttributes,
+  wireInputs,
+  wireClasses,
+  wireStyles
+} from '@core-utils/wires.js';
+
+export async function reportsController() => void> {
+  const events = trackEvents();
+
+  const { title, total } = wireContents();
+  const { busy } = wireAttributes();
+  const { search } = wireInputs();
+  const { loading } = wireClasses();
+  const { progressWidth } = wireStyles();
+
+  title.value = 'Reports';
+  busy.value = 'false';
+  loading.value = false;
+  progressWidth.value = '0%';
+
+  return () => {
+    // wire* + reactive primitives auto-clean.
+    // Keep explicit cleanup for tracked events, timers, observers, etc.
+    events.cleanup();
+  };
+}
+```
+
+Use manual DOM lookups only for cases that wires cannot express cleanly (complex innerHTML surfaces, third-party imperative widgets, canvas charts, etc.).
 
 ---
 
@@ -176,9 +220,9 @@ Whether the stop function runs via your explicit `disposers.forEach(d => d())` p
 
 The `params` argument carries URL parameters and query strings:
 
-```typescript
+```javascript
 // For route: /tasks/:projectId
-async function tasksController(params: RouteParams) {
+async function tasksController(params) {
   const projectId = params.projectId;   // URL segment
   const sort      = params.query.sort;  // ?sort=due-date
 }
@@ -197,58 +241,51 @@ Let's build the complete controller for the tasks view. It:
 5. Renders the task list.
 6. Handles filter button clicks and the "new task" button.
 
-```typescript
-// src/controllers/tasks.controller.ts
+```javascript
+// src/controllers/tasks.controller.js
 import { dom }         from '@core-utils/dom.js';
 import { trackEvents } from '@core-utils/events.js';
 import { useState, computed, effect } from '@core/state.js';
 import { apiService }  from '@services/api.service.js';
 import '@components/ui/task-card.ts';
 import '@components/ui/task-stats.ts';
-import type { RouteParams } from '@core/router.js';
 
-interface Task {
-  id: string;
-  title: string;
-  description: string;
-  status: 'pending' | 'in-progress' | 'done';
-  projectId: string;
-}
+// Task shape: { id, title, description, status, projectId }
 
-type Filter = 'all' | 'pending' | 'in-progress' | 'done';
+// Filter values: 'all' | 'pending' | 'in-progress' | 'done'
 
-async function tasksController(params: RouteParams): Promise<() => void> {
+async function tasksController(params) => void> {
 
   // ─── Setup ──────────────────────────────────────────────────────────────
-  const disposers: Array<() => void> = [];
+  const disposers = [];
   const { on, dispose: disposeEvents } = trackEvents();
   disposers.push(disposeEvents);
 
   // ─── DOM Refs ───────────────────────────────────────────────────────────
   const view      = dom.view('tasks');
-  const taskList  = view.hook('task-list')  as HTMLUListElement;
-  const statsEl   = view.hook('stats')      as HTMLElement;
-  const emptyMsg  = view.hook('empty-state') as HTMLElement;
-  const taskCount = view.hook('task-count') as HTMLElement;
+  const taskList  = view.hook('task-list');
+  const statsEl   = view.hook('stats');
+  const emptyMsg  = view.hook('empty-state');
+  const taskCount = view.hook('task-count');
 
   // ─── State ──────────────────────────────────────────────────────────────
-  const tasks  = useState<Task[]>([]);
-  const filter = useState<Filter>('all');
+  const tasks  = useState([]);
+  const filter = useState('all');
 
-  const filteredTasks = computed<Task[]>(() => {
+  const filteredTasks = computed(() => {
     const f = filter.value;
     return f === 'all' ? tasks.value : tasks.value.filter(t => t.status === f);
   });
   disposers.push(() => filteredTasks.dispose());
 
-  const completedCount = computed<number>(() =>
+  const completedCount = computed(() =>
     tasks.value.filter(t => t.status === 'done').length
   );
   disposers.push(() => completedCount.dispose());
 
   // ─── Data Fetch ─────────────────────────────────────────────────────────
   try {
-    const data = await apiService.get<Task[]>('/tasks');
+    const data = await apiService.get('/tasks');
     tasks.value = data;
   } catch (err) {
     console.error('Failed to load tasks', err);
@@ -272,7 +309,7 @@ async function tasksController(params: RouteParams): Promise<() => void> {
         const li   = document.createElement('li');
         li.className = 'task-list__item';
 
-        const card = document.createElement('task-card') as HTMLElement;
+        const card = document.createElement('task-card');
         card.setAttribute('title',       task.title);
         card.setAttribute('description', task.description);
         card.setAttribute('status',      task.status);
@@ -288,8 +325,8 @@ async function tasksController(params: RouteParams): Promise<() => void> {
   );
 
   // ─── Events ─────────────────────────────────────────────────────────────
-  on(document, 'click', view.actionSelector('filter'), (e: Event) => {
-    const btn = (e.target as HTMLElement).closest('[data-action="filter"]') as HTMLElement;
+  on(document, 'click', view.actionSelector('filter'), (e) => {
+    const btn = (e.target).closest('[data-action="filter"]');
     if (!btn) return;
 
     // Update active button styling
@@ -297,7 +334,7 @@ async function tasksController(params: RouteParams): Promise<() => void> {
       .forEach(b => b.classList.remove('filter-btn--active'));
     btn.classList.add('filter-btn--active');
 
-    filter.value = (btn.dataset.filter ?? 'all') as Filter;
+    filter.value = (btn.dataset.filter ?? 'all');
   });
 
   on(document, 'click', view.actionSelector('new-task'), () => {
@@ -305,8 +342,8 @@ async function tasksController(params: RouteParams): Promise<() => void> {
     window.history.pushState({}, '', '/tasks/new');
   });
 
-  on(document, 'click', '[data-action="delete-task"]', async (e: Event) => {
-    const card = (e.target as HTMLElement).closest('[data-task-id]') as HTMLElement | null;
+  on(document, 'click', '[data-action="delete-task"]', async (e) => {
+    const card = (e.target).closest('[data-task-id]');
     if (!card) return;
     const id = card.dataset.taskId!;
     await apiService.delete(`/tasks/${id}`);
@@ -363,9 +400,9 @@ This means the `return () => {}` block is your safety net for custom resources, 
 
 ## Formatting Data for Display
 
-The template ships with `src/utils/formatters.ts` and `src/utils/helpers.ts` — ready-to-use utility functions you will reach for in almost every controller. Import them with the `@utils/` alias:
+The template ships with `src/utils/formatters.js` and `src/utils/helpers.js` — ready-to-use utility functions you will reach for in almost every controller. Import them with the `@utils/` alias:
 
-```typescript
+```javascript
 import { formatDate, formatRelativeTime, formatCurrency, truncate } from '@utils/formatters.js';
 import { debounce, throttle, generateId, copyToClipboard } from '@utils/helpers.js';
 ```
@@ -405,10 +442,10 @@ import { debounce, throttle, generateId, copyToClipboard } from '@utils/helpers.
 
 Render task due dates with relative and absolute formatting side by side:
 
-```typescript
+```javascript
 import { formatRelativeTime, formatDate } from '@utils/formatters.js';
 
-function renderTaskRow(task: Task): string {
+function renderTaskRow(task) {
     const rel = task.dueDate ? formatRelativeTime(task.dueDate) : '—';
     const abs = task.dueDate ? formatDate(task.dueDate) : '';
     return `
@@ -432,8 +469,8 @@ A common pattern is to fetch API data inside a controller — but this means the
 
 Add a `loader` function to any `router.register()` call. It receives the same route `params` as the controller, plus an `AbortSignal` tied to the navigation's cancellation token — so in-flight requests are automatically cancelled if the user navigates away mid-load:
 
-```typescript
-// src/routes/routes.ts
+```javascript
+// src/routes/routes.js
 import router from '@core/router.js';
 import { tasksController } from '@controllers/index.js';
 import api from '@services/api.service.js';
@@ -449,16 +486,15 @@ router.register('/tasks', 'src/views/protected/tasks.html', tasksController, {
 
 The resolved loader value is passed as the **third argument** to the controller function:
 
-```typescript
-// src/controllers/tasks.controller.ts
-import type { Task } from '../types/index.js';
+```javascript
+// src/controllers/tasks.controller.js
 
 export async function tasksController(
     params: Record<string, string>,
     state: any = {},
     loaderData?: unknown
-): Promise<() => void> {
-    const tasks = (loaderData as Task[]) ?? [];
+) {
+    const tasks = (loaderData) ?? [];
 
     // DOM is already populated; render immediately without a loading state
     renderTasks(tasks);
@@ -476,8 +512,8 @@ The router emits two window events around the loader lifecycle that you can hook
 | `nc-route-loading` | Loader starts | `{ path, params }` |
 | `nc-route-loaded` | Loader resolves | `{ path, params, data }` |
 
-```typescript
-// In app.ts — show/hide a skeleton strip
+```javascript
+// In app.js — show/hide a skeleton strip
 window.addEventListener('nc-route-loading', () => {
     document.getElementById('page-skeleton')?.removeAttribute('hidden');
 });
@@ -502,9 +538,10 @@ window.addEventListener('nc-route-loaded', () => {
 
 ## Done Criteria
 
-- [ ] `tasks.controller.ts` follows the standard section structure (Setup, DOM Refs, State, Data Fetch, Reactive Bindings, Events).
+- [ ] `tasks.controller.js` follows the standard section structure (Setup, Wires, DOM Refs, Local State, Reactive Bindings, Data Loading, Events, Cleanup).
 - [ ] An `effect()` renders the task list DOM whenever `tasks.value` changes.
-- [ ] All `trackEvents()` bindings use the `disposers[]` array for cleanup.
+- [ ] Controller bindings prefer `wire*` utilities where possible, with manual DOM refs only for complex rendering surfaces.
+- [ ] Returned cleanup includes explicit resources (events/timers) and documents that reactive cleanup is automatic.
 - [ ] Navigating away from `/tasks` and back does not produce duplicate event listeners (verify in DevTools).
 
 ---

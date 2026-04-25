@@ -10,7 +10,7 @@ Almost every real application has protected pages. NativeCoreJS ships a first-cl
 
 `auth.service.ts` is a thin wrapper that stores credentials and exposes a handful of synchronous helpers.
 
-```typescript
+```javascript
 import { auth } from '@services/auth.service.js';
 
 auth.isAuthenticated();          // boolean — checks stored token
@@ -28,14 +28,14 @@ auth.logout();                   // wipes tokens + user, redirects to /login
 
 ## Protected Routes
 
-Open `src/routes.ts`. You will see two things: the route registry and the `protectedRoutes` array.
+Open `src/routes.js`. You will see two things: the route registry and the `protectedRoutes` array.
 
-```typescript
-// src/routes.ts
+```javascript
+// src/routes.js
 import { router } from '@core/router.js';
 import { lazyController } from '@core/lazy.js';
 
-export const protectedRoutes: string[] = [
+export const config = [
   '/dashboard',
   '/projects',
   '/projects/:id',
@@ -55,12 +55,12 @@ When the router is about to activate a route it checks whether the path is in `p
 1. Register the route as normal.
 2. Append its path to `protectedRoutes`.
 
-```typescript
+```javascript
 // 1. Register
 router.register('/settings', 'settings.html', lazyController('settingsController')).cache();
 
 // 2. Protect
-export const protectedRoutes: string[] = [
+export const config = [
   // ...existing paths...
   '/settings',
 ];
@@ -97,7 +97,7 @@ A robust NativeCoreJS login flow does this in order:
 
 When syncing auth-related user data into views (name, email, role), **always use `textContent` or `setAttribute()`** — never `innerHTML` with untrusted values:
 
-```typescript
+```javascript
 // ✅ Safe — textContent escapes HTML entities automatically
 welcomeEl.textContent = `Hello, ${user.name}`;
 
@@ -151,7 +151,7 @@ npm run make:view       login
 
 ### `loginController.ts`
 
-```typescript
+```javascript
 import { dom }  from '@core-utils/dom.js';
 import { auth } from '@services/auth.service.js';
 import { api }  from '@services/api.service.js';
@@ -159,7 +159,7 @@ import { router } from '@core/router.js';
 import { useState } from '@core/state.js';
 import { trackEvents } from '@core-utils/events.js';
 
-export async function loginController(): Promise<() => void> {
+export async function loginController() => void> {
   const scope     = dom.view('login');
   const { on, dispose } = trackEvents();
 
@@ -172,8 +172,8 @@ export async function loginController(): Promise<() => void> {
   });
 
   async function handleSubmit() {
-    const email    = (scope.$('#email') as any).value?.trim();
-    const password = (scope.$('#password') as any).value;
+    const email    = (scope.$('#email')).value?.trim();
+    const password = (scope.$('#password')).value;
 
     // Basic client-side guard
     if (!email || !password) {
@@ -202,8 +202,8 @@ export async function loginController(): Promise<() => void> {
     }
   }
 
-  function showError(message: string) {
-    const alert = scope.$('.login-error') as HTMLElement;
+  function showError(message) {
+    const alert = scope.$('.login-error');
     alert.setAttribute('message', message);
     alert.removeAttribute('hidden');
   }
@@ -215,7 +215,7 @@ export async function loginController(): Promise<() => void> {
   on('click', '#btn-login', handleSubmit);
 
   // Also submit on Enter inside the password field
-  on('keydown', '#password', (e: KeyboardEvent) => {
+  on('keydown', '#password', (e) => {
     if (e.key === 'Enter') handleSubmit();
   });
 
@@ -231,7 +231,7 @@ export async function loginController(): Promise<() => void> {
 
 Logout is a single call — typically wired to a button in the navigation component:
 
-```typescript
+```javascript
 on('click', '#btn-logout', () => auth.logout());
 ```
 

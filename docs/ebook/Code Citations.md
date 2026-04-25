@@ -10,8 +10,8 @@ Not a large undertaking at all. The implementation is about 10 lines. Here's exa
 
 The `html` tag already receives static parts and interpolated values as separate arguments — that's how tagged template literals work. You escape only the interpolated values; static strings written by the developer are trusted code:
 
-```typescript
-function escapeHtml(value: unknown): string {
+```javascript
+function escapeHtml(value) {
     return String(value)
         .replace(/&/g, '&amp;')
         .replace(/</g, '&lt;')
@@ -20,7 +20,7 @@ function escapeHtml(value: unknown): string {
         .replace(/'/g, '&#039;');
 }
 
-export const html = (strings: TemplateStringsArray, ...values: unknown[]): string => {
+export const html = (strings, ...values) => {
     let result = strings[0];
     for (let i = 0; i < values.length; i++) {
         result += escapeHtml(values[i]) + strings[i + 1];
@@ -43,8 +43,8 @@ Not a large undertaking at all. The implementation is about 10 lines. Here's exa
 
 The `html` tag already receives static parts and interpolated values as separate arguments — that's how tagged template literals work. You escape only the interpolated values; static strings written by the developer are trusted code:
 
-```typescript
-function escapeHtml(value: unknown): string {
+```javascript
+function escapeHtml(value) {
     return String(value)
         .replace(/&/g, '&amp;')
         .replace(/</g, '&lt;')
@@ -53,7 +53,7 @@ function escapeHtml(value: unknown): string {
         .replace(/'/g, '&#039;');
 }
 
-export const html = (strings: TemplateStringsArray, ...values: unknown[]): string => {
+export const html = (strings, ...values) => {
     let result = strings[0];
     for (let i = 0; i < values.length; i++) {
         result += escapeHtml(values[i]) + strings[i + 1];
@@ -76,8 +76,8 @@ Not a large undertaking at all. The implementation is about 10 lines. Here's exa
 
 The `html` tag already receives static parts and interpolated values as separate arguments — that's how tagged template literals work. You escape only the interpolated values; static strings written by the developer are trusted code:
 
-```typescript
-function escapeHtml(value: unknown): string {
+```javascript
+function escapeHtml(value) {
     return String(value)
         .replace(/&/g, '&amp;')
         .replace(/</g, '&lt;')
@@ -86,7 +86,7 @@ function escapeHtml(value: unknown): string {
         .replace(/'/g, '&#039;');
 }
 
-export const html = (strings: TemplateStringsArray, ...values: unknown[]): string => {
+export const html = (strings, ...values) => {
     let result = strings[0];
     for (let i = 0; i < values.length; i++) {
         result += escapeHtml(values[i]) + strings[i + 1];
@@ -109,8 +109,8 @@ Not a large undertaking at all. The implementation is about 10 lines. Here's exa
 
 The `html` tag already receives static parts and interpolated values as separate arguments — that's how tagged template literals work. You escape only the interpolated values; static strings written by the developer are trusted code:
 
-```typescript
-function escapeHtml(value: unknown): string {
+```javascript
+function escapeHtml(value) {
     return String(value)
         .replace(/&/g, '&amp;')
         .replace(/</g, '&lt;')
@@ -119,7 +119,7 @@ function escapeHtml(value: unknown): string {
         .replace(/'/g, '&#039;');
 }
 
-export const html = (strings: TemplateStringsArray, ...values: unknown[]): string => {
+export const html = (strings, ...values) => {
     let result = strings[0];
     for (let i = 0; i < values.length; i++) {
         result += escapeHtml(values[i]) + strings[i + 1];
@@ -130,4 +130,3 @@ export const html = (strings: TemplateStringsArray, ...values: unknown[]): strin
 
 **The
 ```
-

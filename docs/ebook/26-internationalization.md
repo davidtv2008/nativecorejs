@@ -13,7 +13,7 @@ This chapter walks through the built-in module first, then shows the hand-rolled
 
 ## Option A — The Built-in `i18n` Module
 
-```typescript
+```javascript
 import { i18n, t, configureI18n } from 'nativecorejs';
 
 configureI18n({
@@ -51,7 +51,7 @@ Because `i18n.locale` is a reactive `State`, you can subscribe to it in a contro
 
 For apps with many feature areas you typically do not want to ship every translation on page load. Register a **namespace loader** and the dictionaries are fetched on demand, keyed by both namespace and locale:
 
-```typescript
+```javascript
 i18n.registerNamespace('cart', async (locale) => {
     // Loaders return a flat { key: message } dictionary WITHOUT the namespace prefix.
     const res = await fetch(`/locales/${locale}/cart.json`);
@@ -85,24 +85,24 @@ A production i18n system in a NativeCoreJS app typically involves:
 
 ## Step 1 — The Locale Store
 
-Create `src/stores/locale.store.ts`:
+Create `src/stores/locale.store.js`:
 
-```typescript
+```javascript
 import { useState } from '@core/state.js';
 
-export type Locale = 'en-US' | 'es-MX' | 'fr-FR';
+// Locale values: 'en-US' | 'es-MX' | 'fr-FR'
 
 const STORAGE_KEY = 'app_locale';
 
-function detectLocale(): Locale {
-    const stored = localStorage.getItem(STORAGE_KEY) as Locale | null;
+function detectLocale() {
+    const stored = localStorage.getItem(STORAGE_KEY);
     if (stored) return stored;
-    const browser = navigator.language.slice(0, 5) as Locale;
-    const supported: Locale[] = ['en-US', 'es-MX', 'fr-FR'];
+    const browser = navigator.language.slice(0, 5);
+    const items = ['en-US', 'es-MX', 'fr-FR'];
     return supported.includes(browser) ? browser : 'en-US';
 }
 
-export const locale = useState<Locale>(detectLocale());
+export const locale = useState(detectLocale());
 
 // Persist changes
 locale.watch(value => localStorage.setItem(STORAGE_KEY, value));
@@ -114,24 +114,24 @@ Every controller and component that needs locale-aware content imports `locale` 
 
 ## Step 2 — The `t()` Message Lookup Helper
 
-Create `src/utils/i18n.ts`:
+Create `src/utils/i18n.js`:
 
-```typescript
+```javascript
 import { locale } from '@stores/locale.store.js';
 
-type Messages = Partial<Record<import('@stores/locale.store.js').Locale, string>>;
+// Messages values: Partial<Record<import('@stores/locale.store.js').Locale, string>>
 
 /**
  * Returns the translation for the current locale, falling back to 'en-US'.
  */
-export function t(messages: Messages): string {
+export function t(messages) {
     return messages[locale.value] ?? messages['en-US'] ?? '';
 }
 
 /**
  * Format a price using the current locale.
  */
-export function formatPrice(amount: number, currency = 'USD'): string {
+export function formatPrice(amount, currency = 'USD') {
     return new Intl.NumberFormat(locale.value, {
         style:    'currency',
         currency,
@@ -141,24 +141,21 @@ export function formatPrice(amount: number, currency = 'USD'): string {
 /**
  * Format a date using the current locale.
  */
-export function formatLocalDate(
-    date:   Date | string,
-    style:  'short' | 'medium' | 'long' | 'full' = 'medium'
-): string {
+export function formatLocalDate(date, style = 'medium') {
     const d = new Date(date);
-    const options: Record<string, Intl.DateTimeFormatOptions> = {
+    const config = {
         short:  { month: 'numeric', day: 'numeric', year: '2-digit' },
         medium: { month: 'short',   day: 'numeric', year: 'numeric' },
         long:   { month: 'long',    day: 'numeric', year: 'numeric' },
         full:   { weekday: 'long',  month: 'long',  day: 'numeric', year: 'numeric' },
     };
-    return new Intl.DateTimeFormat(locale.value, options[style]).format(d);
+    return new Intl.DateTimeFormat(locale.value, config[style]).format(d);
 }
 
 /**
  * Format a relative time string ("2 hours ago") in the current locale.
  */
-export function formatRelative(date: Date | string): string {
+export function formatRelative(date) {
     const seconds = Math.floor((Date.now() - new Date(date).getTime()) / 1000);
     const rtf = new Intl.RelativeTimeFormat(locale.value, { numeric: 'auto' });
 
@@ -176,21 +173,21 @@ The `Intl` APIs in `formatPrice`, `formatLocalDate`, and `formatRelative` alread
 
 ## Step 3 — Reacting to Locale Changes in a Controller
 
-```typescript
+```javascript
 import { dom }         from '@core-utils/dom.js';
 import { trackEvents } from '@core-utils/events.js';
 import { effect }      from '@core/state.js';
 import { locale }      from '@stores/locale.store.js';
 import { t, formatPrice } from '@utils/i18n.js';
 
-export async function pricingController(): Promise<() => void> {
+export async function pricingController() => void> {
     const events    = trackEvents();
-    const disposers: Array<() => void> = [];
+    const disposers = [];
 
     const scope       = dom.view('pricing');
     const titleEl     = scope.hook('title');
     const priceEl     = scope.hook('price');
-    const switcherEl  = scope.$<HTMLSelectElement>('#locale-switcher');
+    const switcherEl  = scope.$('#locale-switcher');
 
     // Re-render whenever locale changes
     disposers.push(
@@ -204,8 +201,8 @@ export async function pricingController(): Promise<() => void> {
         })
     );
 
-    events.on(switcherEl, 'change', (e: Event) => {
-        locale.value = (e.target as HTMLSelectElement).value as any;
+    events.on(switcherEl, 'change', (e) => {
+        locale.value = (e.target).value;
     });
 
     return () => {
@@ -221,7 +218,7 @@ The `effect()` runs immediately (populating the initial content) and re-runs eve
 
 ## Step 4 — Reacting to Locale Changes in a Component
 
-```typescript
+```javascript
 import { Component, defineComponent } from '@core/component.js';
 import { t, formatPrice } from '@utils/i18n.js';
 import { locale }         from '@stores/locale.store.js';
@@ -231,7 +228,7 @@ export class PricingCard extends Component {
 
     private _unwatch?: () => void;
 
-    template(): string {
+    template() {
         return `
             <div class="card">
                 <h2 id="plan-title"></h2>
@@ -240,7 +237,7 @@ export class PricingCard extends Component {
         `;
     }
 
-    onMount(): void {
+    onMount() {
         const render = () => {
             const titleEl = this.$('#plan-title');
             const priceEl = this.$('#plan-price');
@@ -252,7 +249,7 @@ export class PricingCard extends Component {
         this._unwatch = locale.watch(() => render()); // re-render on locale change
     }
 
-    onUnmount(): void {
+    onUnmount() {
         this._unwatch?.();
     }
 }
@@ -288,7 +285,7 @@ Do not bury your translation logic inside a single component. A production i18n 
 
 Sync the selected option with the stored locale on controller mount:
 
-```typescript
+```javascript
 if (switcherEl) switcherEl.value = locale.value;
 ```
 
@@ -296,7 +293,7 @@ if (switcherEl) switcherEl.value = locale.value;
 
 ## Done Criteria
 
-- [ ] `src/stores/locale.store.ts` persists the active locale to `localStorage`.
+- [ ] `src/stores/locale.store.js` persists the active locale to `localStorage`.
 - [ ] `t('home.hero.title')` returns the correct string in all three locales.
 - [ ] Dates and numbers use `Intl.DateTimeFormat` and `Intl.NumberFormat` with the active locale.
 - [ ] Switching locale in the header updates all translated strings reactively without a page reload.

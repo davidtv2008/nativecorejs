@@ -10,7 +10,7 @@ A NativeCoreJS application has four testable layers: state functions, stores, co
 
 The project template includes `vitest.config.ts` pre-configured with happy-dom:
 
-```typescript
+```javascript
 // vitest.config.ts (already in your project)
 import { defineConfig } from 'vitest/config';
 
@@ -50,7 +50,7 @@ Run all of them with `npm test`. Add your own files anywhere under `tests/`.
 
 State functions are pure in their interface: you set `.value`, you read `.value`. They require no DOM and no mocking:
 
-```typescript
+```javascript
 // tests/state/computed.test.ts
 import { describe, it, expect } from 'vitest';
 import { useState, computed } from '@core/state.js';
@@ -88,7 +88,7 @@ Always call `.dispose()` on computed states at the end of the test — this prev
 
 `batch()` is straightforward to test: assert that notifications are deferred until after the callback returns, and that each subscriber fires at most once.
 
-```typescript
+```javascript
 import { describe, it, expect, vi } from 'vitest';
 import { useState, batch } from '@core/state.js';
 
@@ -96,7 +96,7 @@ describe('batch', () => {
     it('defers notifications until the batch completes', () => {
         const a = useState(0);
         const b = useState(0);
-        const notifications: string[] = [];
+        const items = [];
 
         a.watch(() => notifications.push('a'));
         b.watch(() => notifications.push('b'));
@@ -135,18 +135,17 @@ The full reference test suite lives in `tests/unit/state.test.ts` in your projec
 
 Stores call `api` services. Mock the service at the module level so tests remain fast and deterministic:
 
-```typescript
+```javascript
 // tests/state/task-store.test.ts
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import api from '@services/api.service.js';
 import { taskStore } from '@stores/task.store.js';
-import type { Task } from '../../src/types/index.js';
 
 vi.mock('@services/api.service.js', () => ({
     default: { getCached: vi.fn() },
 }));
 
-const mockTasks: Task[] = [
+const items = [
     { id: '1', title: 'Write tests', status: 'in-progress', projectId: 'p1', priority: 'high' },
     { id: '2', title: 'Ship it',     status: 'todo',        projectId: 'p1', priority: 'medium' },
 ];
@@ -186,18 +185,17 @@ describe('taskStore', () => {
 
 Controllers interact with the DOM. happy-dom provides `document`, so you can set up the HTML, run the controller, and assert against DOM state:
 
-```typescript
+```javascript
 // tests/controllers/tasks-controller.test.ts
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import api from '@services/api.service.js';
 import { tasksController } from '@controllers/index.js';
-import type { Task } from '../../src/types/index.js';
 
 vi.mock('@services/api.service.js', () => ({
     default: { getCached: vi.fn() },
 }));
 
-const mockTasks: Task[] = [
+const items = [
     { id: '1', title: 'Write docs', status: 'todo', projectId: 'p1', priority: 'low' },
 ];
 
@@ -240,7 +238,7 @@ Always call `cleanup()` at the end of each test. Controllers attach event listen
 
 Testing components requires that they are registered as custom elements before you query them:
 
-```typescript
+```javascript
 // tests/components/task-card.test.ts
 import { describe, it, expect, beforeEach } from 'vitest';
 import { defineComponent } from 'nativecorejs';
@@ -256,7 +254,7 @@ describe('TaskCard', () => {
 
     it('renders the title in the shadow DOM', async () => {
         document.body.innerHTML = '<task-card title="Write tests"></task-card>';
-        const card = document.querySelector('task-card') as TaskCard;
+        const card = document.querySelector('task-card');
 
         // Wait for the custom element to upgrade
         await customElements.whenDefined('task-card');
@@ -267,7 +265,7 @@ describe('TaskCard', () => {
 
     it('updates title when attribute changes', async () => {
         document.body.innerHTML = '<task-card title="Original"></task-card>';
-        const card = document.querySelector('task-card') as TaskCard;
+        const card = document.querySelector('task-card');
         await customElements.whenDefined('task-card');
 
         card.setAttribute('title', 'Updated');
@@ -277,7 +275,7 @@ describe('TaskCard', () => {
 
     it('reflects status in the badge', async () => {
         document.body.innerHTML = '<task-card title="T" status="done"></task-card>';
-        const card = document.querySelector('task-card') as TaskCard;
+        const card = document.querySelector('task-card');
         await customElements.whenDefined('task-card');
 
         const badge = card.shadowRoot?.querySelector('[data-hook="status"]');
@@ -294,15 +292,15 @@ describe('TaskCard', () => {
 
 Verify that components dispatch custom events with the correct detail payload:
 
-```typescript
+```javascript
 it('dispatches task-selected with the correct taskId', async () => {
     document.body.innerHTML = '<task-card title="T" task-id="abc-123" status="todo"></task-card>';
-    const card = document.querySelector('task-card') as TaskCard;
+    const card = document.querySelector('task-card');
     await customElements.whenDefined('task-card');
 
     let receivedId = '';
-    document.addEventListener('task-selected', (e: Event) => {
-        receivedId = (e as CustomEvent<{ taskId: string }>).detail.taskId;
+    document.addEventListener('task-selected', (e) => {
+        receivedId = (e).detail.taskId;
     });
 
     card.click();
@@ -318,7 +316,7 @@ Use `document.addEventListener` rather than `card.addEventListener` because `com
 
 When testing a controller that calls `router.navigate()`, mock the router module to prevent actual navigation:
 
-```typescript
+```javascript
 vi.mock('@core/router.js', () => ({
     default: { navigate: vi.fn() },
     router:  { navigate: vi.fn() },
@@ -338,15 +336,15 @@ it('redirects to /tasks when id param is missing', async () => {
 
 An integration test renders an entire view, runs its controller, and asserts the full DOM state — mimicking what the router does at runtime:
 
-```typescript
+```javascript
 // tests/views/tasks-view.test.ts
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import api from '@services/api.service.js';
 import { tasksController } from '@controllers/index.js';
 
-vi.mock('@services/api.service.js', () => ({ default: { getCached: vi.fn() } }));
+vi.mock('@services/api.service.js', () => ({ default) } }));
 
-// Inline the view HTML (or import it as a string if your build supports it)
+// Inline the view HTML (or import it)
 const VIEW_HTML = `
   <section data-view="tasks">
     <header>
@@ -439,11 +437,11 @@ The NativeCoreJS runtime package ships a lightweight set of helpers in the `test
 
 Appends a custom element to `document.body`, optionally pre-setting attributes, and returns `{ element, cleanup }`:
 
-```typescript
+```javascript
 import { describe, it, expect, afterEach } from 'vitest';
 import { mountComponent, waitFor } from 'nativecorejs/testing';
 
-let cleanup: () => void;
+let dispose;
 afterEach(() => cleanup?.());
 
 it('renders a task-card with a title', async () => {
@@ -461,7 +459,7 @@ it('renders a task-card with a title', async () => {
 
 Polls `predicate()` every 10 ms until it returns truthy or `timeout` ms elapse (default 1000 ms). Flushes promise microtasks between checks, so reactive updates are visible before the next poll.
 
-```typescript
+```javascript
 // Wait for the shadow root to appear
 await waitFor(() => element.shadowRoot !== null);
 
@@ -475,12 +473,12 @@ await waitFor(() =>
 
 Dispatches a `CustomEvent` with `bubbles: true, composed: true`:
 
-```typescript
+```javascript
 import { fireEvent } from 'nativecorejs/testing';
 
-let received: string | null = null;
+const value = null;
 document.addEventListener('task-selected', (e) => {
-    received = (e as CustomEvent).detail.taskId;
+    received = (e).detail.taskId;
 });
 
 fireEvent(card, 'task-selected', { taskId: 'abc-123' });
@@ -489,12 +487,12 @@ expect(received).toBe('abc-123');
 
 ### Full component test with the utilities
 
-```typescript
+```javascript
 import { describe, it, expect, afterEach } from 'vitest';
 import { mountComponent, waitFor, fireEvent } from 'nativecorejs/testing';
 
 describe('task-card', () => {
-    let cleanup: () => void;
+    let dispose;
     afterEach(() => cleanup?.());
 
     it('reflects the status attribute', async () => {
@@ -518,7 +516,7 @@ describe('task-card', () => {
 
         let selectedId = '';
         document.addEventListener('task-selected', (e) => {
-            selectedId = (e as CustomEvent).detail.taskId;
+            selectedId = (e).detail.taskId;
         });
 
         await waitFor(() => element.shadowRoot !== null);
@@ -538,8 +536,8 @@ npm run make:component status-badge -- --with-tests
 
 Creates both:
 ```
-src/components/ui/status-badge.ts
-src/components/ui/__tests__/status-badge.test.ts
+src/components/ui/status-badge.js
+src/components/ui/__tests__/status-badge.test.js
 ```
 
 The generated test file includes `mountComponent`, `waitFor`, `afterEach` cleanup, and two starter tests you can build from immediately.

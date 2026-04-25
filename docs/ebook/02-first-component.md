@@ -26,7 +26,7 @@ Would you like to prefetch this component? (y/N):
 
 Answer **N** (or press Enter) for `task-card`. Prefetching is only worth enabling for layout-critical components that are needed on every page — things like `app-header` or `app-sidebar`. For feature components like `task-card`, lazy loading on first use is the right default.
 
-This creates `src/components/ui/task-card.ts` and registers it in `src/components/appRegistry.ts`. Open it — it has the scaffold already in place. We will build it out together in this chapter.
+This creates `src/components/ui/task-card.js` and registers it in `src/components/appRegistry.js`. Open it — it has the scaffold already in place. We will build it out together in this chapter.
 
 ---
 
@@ -34,7 +34,7 @@ This creates `src/components/ui/task-card.ts` and registers it in `src/component
 
 The first thing to understand about `Component` is how it handles encapsulation:
 
-```typescript
+```javascript
 import { Component, defineComponent } from '@core/component.js';
 
 export class TaskCard extends Component {
@@ -54,11 +54,10 @@ If you need a component that participates in the page's normal style cascade —
 
 The `template()` method returns the HTML string that is stamped into the shadow root on first mount:
 
-```typescript
+```javascript
 import { Component, defineComponent } from '@core/component.js';
 import { html } from '@core-utils/templates.js';
 import { useState, computed } from '@core/state.js';
-import type { State } from '@core/state.js';
 import '@components/core/nc-button.js';
 
 export class TaskCard extends Component {
@@ -67,7 +66,7 @@ export class TaskCard extends Component {
   // Attributes listed here appear in the dev tools sidebar and trigger onAttributeChange.
   static observedAttributes = ['title', 'description'];
 
-  // Internal state (not reflected as attributes) can be defined like this:
+  // Internal state (not reflected) can be defined like this:
   titleState: State<string> = useState('');
   descriptionState: State<string> = useState('');
   titleDescComputed = computed(() => `${this.titleState.value} - ${this.descriptionState.value}`);
@@ -97,7 +96,7 @@ export class TaskCard extends Component {
         `;
     }
 
-  attributeChangedCallback(name: string, oldValue: string | null, newValue: string | null): void {
+  attributeChangedCallback(name, oldValue, newValue) {
     if (oldValue === newValue || !this._mounted) return;
     if (name === 'title') this.titleState.value = newValue ?? '';
     if (name === 'description') this.descriptionState.value = newValue ?? '';
@@ -115,7 +114,7 @@ export class TaskCard extends Component {
     //   this.component.view('nested').hook('row') // re-scope to a nested [data-view]
     // nc-button emits 'nc-button-click' on itself — e.target is the <nc-button> element.
     this.on('nc-button-click', (e) => {
-      const action = (e.target as HTMLElement).getAttribute('data-action');
+      const action = (e.target).getAttribute('data-action');
       if (action) this.emitEvent('task-card-action', { action });
     });
 
@@ -140,14 +139,14 @@ This is the exact shape the generator starts from (including `nc-button`, `slot`
 
 > **Security — XSS protection:** The `html` tag auto-escapes every interpolated value by default. Numbers, strings, and booleans you interpolate directly are safe:
 >
-> ```typescript
+> ```javascript
 > return html`<div class="${variant}">${title}</div>`;
 > // variant and title are both escaped — XSS-safe
 > ```
 >
 > When you intentionally interpolate a developer-authored HTML string (icon markup, a `map().join('')` result, a sub-template), wrap it in `trusted()` to bypass escaping:
 >
-> ```typescript
+> ```javascript
 > import { html, trusted, escapeHtml } from '@core-utils/templates.js';
 >
 > // Build HTML sub-strings safely: escape user data inside, then mark the result as safe
@@ -163,14 +162,14 @@ This is the exact shape the generator starts from (including `nc-button`, `slot`
 
 Every component gets a built-in `this.component` getter. It returns a scoped accessor pre-bound to the component's own tag name, so you never have to repeat the name yourself. All queries are scoped inside the component's shadow root.
 
-```typescript
+```javascript
 // All of these query within [data-view="task-card"] inside this shadow root:
 this.component.hook('title')            // → [data-hook="title"]
 this.component.action('primary')        // → [data-action="primary"]
 this.component.query('.task-card__footer') // → arbitrary CSS selector
-this.component.input('search')          // → [data-hook="search"] typed as HTMLInputElement
-this.component.button('submit')         // → [data-action="submit"] typed as HTMLButtonElement
-this.component.form('checkout')         // → [data-hook="checkout"] typed as HTMLFormElement
+this.component.input('search')          // → [data-hook="search"] typed
+this.component.button('submit')         // → [data-action="submit"] typed
+this.component.form('checkout')         // → [data-hook="checkout"] typed
 
 // Re-scope to a nested [data-view] within the same shadow root:
 this.component.view('nested-panel').hook('row')
@@ -186,12 +185,12 @@ Use `this.component` any time you need a direct DOM reference in `onMount()`, `a
 
 Web Components receive data from the outside world through HTML attributes. Declare which attributes you want to observe, and the browser will call `attributeChangedCallback` whenever one of them changes:
 
-```typescript
+```javascript
 static observedAttributes = ['title', 'description', 'status'];
 
 statusState: State<string> = useState('');
 
-attributeChangedCallback(name: string, oldValue: string | null, newValue: string | null): void {
+attributeChangedCallback(name, oldValue, newValue) {
   if (oldValue === newValue || !this._mounted) return;
   if (name === 'title') this.titleState.value = newValue ?? '';
   if (name === 'description') this.descriptionState.value = newValue ?? '';
@@ -207,7 +206,7 @@ attributeChangedCallback(name: string, oldValue: string | null, newValue: string
 
 For attributes that only accept a fixed set of values, declare `static attributeOptions` to get validation warnings in development:
 
-```typescript
+```javascript
 static attributeOptions = {
   status: ['pending', 'in-progress', 'done'],
 };
@@ -221,8 +220,8 @@ In dev mode the framework will log a warning if a value outside this set is pass
 
 `onMount()` runs after the shadow root has been populated and the element has been connected to the document. Use it to set up subscriptions, fetch initial data, or register event listeners that need a real DOM reference:
 
-```typescript
-onMount(): void {
+```javascript
+onMount() {
   // The shadow root is ready; DOM queries will succeed here.
   console.log('task-card mounted');
 }
@@ -260,16 +259,16 @@ Any resource you open in a component must be explicitly closed. The framework au
 | `addEventListener` on `window`/`document` | Store the handler reference; call `removeEventListener` |
 | `ResizeObserver` / `IntersectionObserver` | Call `.disconnect()` |
 
-```typescript
+```javascript
 private _unwatch?: () => void;
 private _timer?: ReturnType<typeof setInterval>;
 
-onMount(): void {
+onMount() {
     this._unwatch = this.count.watch(v => this.render());
     this._timer   = setInterval(() => this.tick(), 1000);
 }
 
-onUnmount(): void {
+onUnmount() {
     this._unwatch?.();
     if (this._timer !== undefined) clearInterval(this._timer);
 }
@@ -294,7 +293,7 @@ A well-designed NativeCoreJS component has a small, explicit public surface. For
 
 **Variant attributes** give components predictable visual modes without exposing internals. Treat `variant` as a short, closed list of semantic names:
 
-```typescript
+```javascript
 // Good variant list — semantic, maintainable
 // variant="primary" | "secondary" | "danger" | "ghost" | "compact"
 
@@ -308,17 +307,17 @@ The variant value drives only CSS custom property choices or class toggles — n
 
 ## Firing Custom Events with `this.emitEvent()`
 
-Components communicate outward by dispatching custom events. The `Component` base class provides `this.emitEvent<T>(name, detail, options?)` as a typed shorthand over the native `dispatchEvent(new CustomEvent(...))`:
+Components communicate outward by dispatching custom events. The `Component` base class provides `this.emitEvent(name, detail, options?)` as a typed shorthand over the native `dispatchEvent(new CustomEvent(...))`:
 
-```typescript
+```javascript
 // Preferred shorthand — typed, bubbles + composed by default
-this.emitEvent<{ taskId: string; status: string }>(
+this.emitEvent(
     'task-status-changed',
     { taskId: this.getAttribute('task-id')!, status: newStatus }
 );
 
 // Equivalent manual form — more verbose, same result
-this.dispatchEvent(new CustomEvent<{ taskId: string; status: string }>(
+this.dispatchEvent(new CustomEvent(
     'task-status-changed',
     {
         detail: { taskId: this.getAttribute('task-id')!, status: newStatus },
@@ -332,9 +331,9 @@ this.dispatchEvent(new CustomEvent<{ taskId: string; status: string }>(
 
 Listen for the event in a controller (the `trackEvents` helper is covered in Chapter 07, but the plain form works today):
 
-```typescript
-document.addEventListener('task-status-changed', (e: Event) => {
-    const { taskId, status } = (e as CustomEvent<{ taskId: string; status: string }>).detail;
+```javascript
+document.addEventListener('task-status-changed', (e) => {
+    const { taskId, status } = (e; status: string }>).detail;
     console.log(taskId, status);
 });
 ```
@@ -347,8 +346,8 @@ document.addEventListener('task-status-changed', (e: Event) => {
 
 Shadow DOM's `<slot>` element lets consumers project light-DOM children into specific positions in your component's template. Add a slot to `<task-card>` for optional action buttons:
 
-```typescript
-template(): string {
+```javascript
+template() {
   return html`
     <style>
       :host { display: block; margin-bottom: 1rem; }
@@ -383,12 +382,11 @@ Here is the full file with everything assembled. Starting from the scaffold, we:
 - Remove the `titleDescComputed` example from the scaffold (it was illustrative noise for this use-case)
 - Swap the default `<slot>` for a named `slot name="actions"` to separate action buttons from body content
 
-```typescript
-// src/components/ui/task-card.ts
+```javascript
+// src/components/ui/task-card.js
 import { Component, defineComponent } from '@core/component.js';
 import { html } from '@core-utils/templates.js';
 import { useState } from '@core/state.js';
-import type { State } from '@core/state.js';
 import '@components/core/nc-button.js';
 
 export class TaskCard extends Component {
@@ -445,14 +443,14 @@ export class TaskCard extends Component {
     `;
   }
 
-  attributeChangedCallback(name: string, oldValue: string | null, newValue: string | null): void {
+  attributeChangedCallback(name, oldValue, newValue) {
     if (oldValue === newValue || !this._mounted) return;
     if (name === 'title') this.titleState.value = newValue ?? '';
     if (name === 'description') this.descriptionState.value = newValue ?? '';
     if (name === 'status') {
       const el = this.component.hook('status');
       if (!el) return;
-      const labels: Record<string, string> = {
+      const config = {
         'done':        '✓ Done',
         'in-progress': '↻ In Progress',
         'pending':     '● Pending',
@@ -472,7 +470,7 @@ export class TaskCard extends Component {
     const initialStatus = this.getAttribute('status') ?? 'pending';
     const statusEl = this.component.hook('status');
     if (statusEl) {
-      const labels: Record<string, string> = {
+      const config = {
         'done':        '✓ Done',
         'in-progress': '↻ In Progress',
         'pending':     '● Pending',
@@ -484,7 +482,7 @@ export class TaskCard extends Component {
     // nc-button emits 'nc-button-click' on itself (composed: true).
     // e.target is the <nc-button> element — read data-action directly from it.
     this.on('nc-button-click', (e) => {
-      const action = (e.target as HTMLElement).getAttribute('data-action');
+      const action = (e.target).getAttribute('data-action');
       if (action) this.emitEvent('task-card-action', { action });
     });
 
@@ -531,7 +529,7 @@ With the component registered, you can drop it into any HTML view. Open `src/vie
 </div>
 ```
 
-You do not need to import the component in your controller or view. Because you registered it in `src/components/appRegistry.ts` when you ran `make:component`, the framework's lazy loader will fetch and define the custom element automatically the first time it appears in a rendered view.
+You do not need to import the component in your controller or view. Because you registered it in `src/components/appRegistry.js` when you ran `make:component`, the framework's lazy loader will fetch and define the custom element automatically the first time it appears in a rendered view.
 
 Save and check the browser — you should see two styled task cards with correct status badges.
 
@@ -543,7 +541,7 @@ The lazy loader watches `document.body` with a `MutationObserver`. It sees every
 
 This means: if your component's `template()` uses another custom element (e.g. `<nc-button>`), the lazy loader will never see it. You must import it explicitly at the top of your component file:
 
-```typescript
+```javascript
 import { Component, defineComponent } from '@core/component.js';
 import { html } from '@core-utils/templates.js';
 import '@components/core/nc-button.js'; // ← explicit import required
@@ -568,12 +566,12 @@ The rule is simple:
 
 `nc-button` emits an `nc-button-click` custom event (not a plain `click`) so the parent component can respond without using inline `onclick` handlers:
 
-```typescript
+```javascript
 onMount() {
     // nc-button emits 'nc-button-click' on itself (composed: true), so
     // e.target is the <nc-button> element — read data-action from it directly.
     this.on('nc-button-click', (e) => {
-        const action = (e.target as HTMLElement).getAttribute('data-action');
+        const action = (e.target).getAttribute('data-action');
         if (action) this.emitEvent('task-card-action', { action });
     });
 }
@@ -596,7 +594,7 @@ Because nested custom elements live inside a shadow root, the dev tools overlay 
 
 ## Done Criteria
 
-- [ ] `src/components/ui/task-card.ts` exists and is registered in `src/components/appRegistry.ts`.
+- [ ] `src/components/ui/task-card.js` exists and is registered in `src/components/appRegistry.js`.
 - [ ] The component renders with `title`, `description`, and `status` attributes set from HTML.
 - [ ] Two static task cards appear in `src/views/protected/tasks.html`.
 - [ ] Each status badge shows the correct color (`done` = green, `in-progress` = blue, `pending` = amber).

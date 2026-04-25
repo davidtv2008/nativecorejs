@@ -111,26 +111,19 @@ A minimal, user-friendly fallback — no stack trace, no internal paths:
 
 The `NcErrorDetail` shape:
 
-```typescript
-interface NcErrorDetail {
-    error: unknown;
-    message: string;
-    stack?: string;
-    component?: string;   // tag name, when error came from a component
-    route?: string;       // pathname, when error came from the router
-    source?: 'component' | 'route' | 'global' | 'promise';
-}
+```javascript
+// NcErrorDetail shape: { error, message, stack, component, route, source }
 ```
 
 Listen to `nc-error` to forward errors to a monitoring service:
 
-```typescript
+```javascript
 // In a controller or app shell setup
 import { trackEvents } from '@core-utils/events.js';
 
 const events = trackEvents();
-events.on('nc-error-boundary', 'nc-error', (e: Event) => {
-    const detail = (e as CustomEvent<NcErrorDetail>).detail;
+events.on('nc-error-boundary', 'nc-error', (e) => {
+    const detail = (e).detail;
     monitoring.captureException(detail.error, {
         tags: { source: detail.source, route: detail.route }
     });
@@ -145,10 +138,10 @@ The boundary renders a **"Try again"** button in both modes. Clicking it calls `
 
 You can also call `reset()` from a controller:
 
-```typescript
+```javascript
 import { dom } from '@core-utils/dom.js';
 
-const boundary = dom.query<HTMLElement & { reset(): void }>('nc-error-boundary');
+const boundary = dom.query('nc-error-boundary');
 boundary?.reset();
 ```
 
@@ -159,13 +152,13 @@ boundary?.reset();
 Components can proactively report errors to the nearest boundary — useful for async failures that happen after `onMount()` returns:
 
 > **Apply to Taskflow — trigger a test error**
-> Open `src/components/ui/task-card.ts` and temporarily add `throw new Error('test boundary')` as the first line of `onMount()`. Save, and navigate to a route that renders `<task-card>`. You should see the dev panel appear with the error message and component name. Remove the throw when you're done — this is just a smoke test to confirm your boundaries are wired correctly.
+> Open `src/components/ui/task-card.js` and temporarily add `throw new Error('test boundary')` as the first line of `onMount()`. Save, and navigate to a route that renders `<task-card>`. You should see the dev panel appear with the error message and component name. Remove the throw when you're done — this is just a smoke test to confirm your boundaries are wired correctly.
 
 If `task-card` were loading its own data asynchronously (e.g. fetching task details by `task-id` attribute), you would catch async failures and forward them to the boundary manually, since `async onMount()` rejections are not caught automatically:
 
-```typescript
-// src/components/ui/task-card.ts
-async onMount(): Promise<void> {
+```javascript
+// src/components/ui/task-card.js
+async onMount() {
     const taskId = this.getAttribute('task-id');
     try {
         const task = await api.get(`/tasks/${taskId}`);
@@ -267,4 +260,3 @@ You never need to manually change the attribute — just leave `mode="dev"` in y
 
 **Back:** [Chapter 02 — First Component](./02-first-component.md)
 **Next:** [Chapter 04 — Reactive State](./04-reactive-state.md)
-

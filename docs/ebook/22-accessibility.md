@@ -20,8 +20,8 @@ Beyond the moral argument, accessibility has practical stakes:
 
 A `<task-card>` with `role="article"` inside its shadow template is fully announced by VoiceOver, NVDA, and JAWS. The flat tree flattens shadow roots so screen reader accessibility APIs see the composed output.
 
-```typescript
-template(): string {
+```javascript
+template() {
     return `
       <style>
         :host { display: block; }
@@ -39,8 +39,8 @@ template(): string {
 
 Update `attributeChangedCallback` to keep `aria-label` in sync:
 
-```typescript
-attributeChangedCallback(name: string, _old: string, value: string) {
+```javascript
+attributeChangedCallback(name, _old, value) {
     if (name === 'title') {
         this.titleState.value = value;
         this.$('[data-hook="article"]')?.setAttribute('aria-label', `Task: ${value}`);
@@ -86,9 +86,9 @@ Add a live region to the tasks view HTML:
 
 In the tasks controller, update the live region when status changes:
 
-```typescript
-function announceStatusChange(title: string, status: string) {
-    const region = document.querySelector<HTMLElement>('[data-hook="status-message"]');
+```javascript
+function announceStatusChange(title, status) {
+    const region = document.querySelector('[data-hook="status-message"]');
     if (region) region.textContent = `"${title}" moved to ${status}.`;
 }
 ```
@@ -101,8 +101,8 @@ Use `aria-live="polite"` for non-urgent updates (status changes, filter results)
 
 Custom elements receive no keyboard handling by default. If `<task-card>` responds to clicks it must also respond to `Enter` and `Space` — the standard keyboard equivalents for activation.
 
-```typescript
-onMount(): void {
+```javascript
+onMount() {
     this.bind(this.titleState, '[data-hook="title"]');
 
     // Make the host element keyboard-focusable and activatable
@@ -110,8 +110,8 @@ onMount(): void {
     this.setAttribute('role', 'button');
 
     this.on('click', ':host', this.activate.bind(this));
-    this.on('keydown', ':host', (e: Event) => {
-        const ke = e as KeyboardEvent;
+    this.on('keydown', ':host', (e) => {
+        const ke = e;
         if (ke.key === 'Enter' || ke.key === ' ') {
             ke.preventDefault();  // prevent page scroll on Space
             this.activate();
@@ -120,7 +120,7 @@ onMount(): void {
 }
 
 private activate() {
-    this.dispatchEvent(new CustomEvent<{ taskId: string }>('task-selected', {
+    this.dispatchEvent(new CustomEvent('task-selected', {
         detail: { taskId: this.getAttribute('task-id') ?? '' },
         bubbles: true,
         composed: true,
@@ -136,14 +136,14 @@ private activate() {
 
 When `<nc-modal>` opens, keyboard focus must move inside the modal. When it closes, focus must return to the element that triggered it. The built-in `<nc-modal>` handles this internally, but for custom dialog patterns:
 
-```typescript
+```javascript
 private triggerElement: HTMLElement | null = null;
 
-openDialog(trigger: HTMLElement) {
+openDialog(trigger) {
     this.triggerElement = trigger;
     this.removeAttribute('hidden');
     // Focus the first interactive element inside the dialog
-    const firstFocusable = this.$<HTMLElement>('input, button, [tabindex="0"]');
+    const firstFocusable = this.$('input, button, [tabindex="0"]');
     firstFocusable?.focus();
 }
 
@@ -157,8 +157,8 @@ closeDialog() {
 
 In `onUnmount()` (e.g., if the view navigates away while the dialog is open), always return focus:
 
-```typescript
-onUnmount(): void {
+```javascript
+onUnmount() {
     this.triggerElement?.focus();
 }
 ```
@@ -169,8 +169,8 @@ onUnmount(): void {
 
 Applying all the above, here is the complete accessibility-ready `<task-card>` template:
 
-```typescript
-template(): string {
+```javascript
+template() {
     return `
       <style>
         :host {
@@ -298,7 +298,7 @@ NativeCoreJS exports three composable helpers from `nativecorejs/a11y` (or `nati
 
 Constrains keyboard focus within `container` while it is open (e.g. a modal, drawer, or custom dialog). Tab and Shift+Tab cycle through focusable descendants only — focus cannot leave the container. The first focusable child receives focus immediately. Returns a **disposer** that removes the trap and restores the previously focused element.
 
-```typescript
+```javascript
 import { trapFocus } from 'nativecorejs/a11y';
 
 // When the modal opens:
@@ -314,7 +314,7 @@ The built-in `<nc-modal>` and `<nc-drawer>` components call `trapFocus` automati
 
 Posts a message to an ARIA live region so screen-reader users hear it without any visual change. Reuses a single hidden live region per politeness level so there is no DOM accumulation.
 
-```typescript
+```javascript
 import { announce } from 'nativecorejs/a11y';
 
 // Polite — waits until the user is idle (default)
@@ -330,7 +330,7 @@ This replaces the manual `aria-live` region pattern shown in §21.3 — use `ann
 
 Implements the **roving tabindex** pattern for widget groups: menus, toolbars, listboxes, radio groups. Only the currently focused item carries `tabindex="0"`; all others are `tabindex="-1"`. Arrow keys, Home, and End move focus within the group.
 
-```typescript
+```javascript
 import { roving } from 'nativecorejs/a11y';
 
 // In onMount() of a custom toolbar component

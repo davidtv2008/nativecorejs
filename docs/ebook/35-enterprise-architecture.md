@@ -14,14 +14,14 @@ The default `create-nativecore` scaffold organises code by type (`controllers/`,
 
 ```
 src/
-├── app.ts                              ← entry point
+├── app.js                              ← entry point
 ├── routes/
-│   └── routes.ts                       ← central route registry
+│   └── routes.js                       ← central route registry
 │
 ├── features/
 │   ├── auth/
-│   │   ├── auth.controller.ts
-│   │   ├── auth.store.ts
+│   │   ├── auth.controller.js
+│   │   ├── auth.store.js
 │   │   ├── auth.service.ts
 │   │   ├── components/
 │   │   │   └── login-form.ts
@@ -29,9 +29,9 @@ src/
 │   │       └── login.html
 │   │
 │   ├── tasks/
-│   │   ├── tasks.controller.ts
-│   │   ├── task-detail.controller.ts
-│   │   ├── tasks.store.ts
+│   │   ├── tasks.controller.js
+│   │   ├── task-detail.controller.js
+│   │   ├── tasks.store.js
 │   │   ├── components/
 │   │   │   ├── task-card.ts
 │   │   │   └── task-list.ts
@@ -40,8 +40,8 @@ src/
 │   │       └── task-detail.html
 │   │
 │   └── dashboard/
-│       ├── dashboard.controller.ts
-│       ├── dashboard.store.ts
+│       ├── dashboard.controller.js
+│       ├── dashboard.store.js
 │       └── views/
 │           └── dashboard.html
 │
@@ -57,10 +57,10 @@ Each feature owns its routes, controllers, views, components, and stores. Teams 
 
 ### Barrel Exports per Feature
 
-Each feature directory exports a single `index.ts` that registers its components and re-exports its store:
+Each feature directory exports a single `index.js` that registers its components and re-exports its store:
 
-```typescript
-// src/features/tasks/index.ts
+```javascript
+// src/features/tasks/index.js
 import { defineComponent } from 'nativecorejs';
 import { TaskCard } from './components/task-card.js';
 import { TaskList } from './components/task-list.js';
@@ -71,8 +71,8 @@ defineComponent('task-list', TaskList);
 export { taskStore } from './tasks.store.js';
 ```
 
-```typescript
-// src/app.ts — imports trigger registration
+```javascript
+// src/app.js — imports trigger registration
 import './features/auth/index.js';
 import './features/tasks/index.js';
 import './features/dashboard/index.js';
@@ -82,21 +82,20 @@ import './features/dashboard/index.js';
 
 ## Route Organisation at Scale
 
-`routes.ts` grows linearly with features. Keep it readable by grouping related routes and using a consistent `lazyController` helper:
+`routes.js` grows linearly with features. Keep it readable by grouping related routes and using a consistent `lazyController` helper:
 
-```typescript
-// src/routes/routes.ts
+```javascript
+// src/routes/routes.js
 import { bustCache } from '@core-utils/cacheBuster.js';
-import type { ControllerFunction } from '@core/router.js';
 
-function lazy(name: string, path: string): ControllerFunction {
-    return async (...args: any[]) => {
+function lazy(name, path) {
+    return async (...args) => {
         const m = await import(bustCache(path));
         return m[name](...args);
     };
 }
 
-export function registerRoutes(router: any): void {
+export function registerRoutes(router) {
     // ── Public ─────────────────────────────────────────────────────────────
     router.register('/', 'src/features/home/views/home.html',
         lazy('homeController', '../features/home/home.controller.js'))
@@ -131,17 +130,13 @@ export const protectedRoutes = ['/dashboard', '/tasks'];
 
 Use module-level `useState` exports for state that crosses feature boundaries (user session, notification queue, UI preferences):
 
-```typescript
-// src/shared/stores/user.store.ts
+```javascript
+// src/shared/stores/user.store.js
 import { useState } from 'nativecorejs';
 
-export interface UserState {
-    user: User | null;
-    role: 'admin' | 'member' | 'guest';
-    preferences: UserPreferences;
-}
+// UserState shape: { user, role, preferences }
 
-export const userStore = useState<UserState>({
+export const userStore = useState({
     user: null,
     role: 'guest',
     preferences: { theme: 'system', locale: 'en' }
@@ -150,7 +145,7 @@ export const userStore = useState<UserState>({
 
 Consuming in any controller:
 
-```typescript
+```javascript
 import { userStore } from '../shared/stores/user.store.js';
 
 const { role } = userStore.value;
@@ -162,8 +157,8 @@ const { role } = userStore.value;
 
 Layer middleware to separate concerns cleanly:
 
-```typescript
-// src/app.ts
+```javascript
+// src/app.js
 import { authMiddleware } from './middleware/auth.middleware.js';
 import { auditLogMiddleware } from './middleware/audit-log.middleware.js';
 import { maintenanceModeMiddleware } from './middleware/maintenance.middleware.js';
@@ -175,12 +170,11 @@ router.use(auditLogMiddleware);         // records navigations to server (non-bl
 
 Each middleware returns `true` (continue) or `false` (block):
 
-```typescript
-// src/middleware/audit-log.middleware.ts
-import type { MiddlewareFunction } from 'nativecorejs';
+```javascript
+// src/middleware/audit-log.middleware.js
 import api from '@services/api.service.js';
 
-export const auditLogMiddleware: MiddlewareFunction = async (route) => {
+export const config = async (route) => {
     // Non-blocking — fire and forget
     api.post('/api/audit', { route: route.path, ts: Date.now() })
         .catch(() => { /* don't fail navigation if audit log is unavailable */ });
@@ -194,8 +188,8 @@ export const auditLogMiddleware: MiddlewareFunction = async (route) => {
 
 NativeCoreJS does not have a DI container. Exported module-level singletons serve this role for shared configuration objects:
 
-```typescript
-// src/services/services.ts
+```javascript
+// src/services/services.js
 // ApiClient and EventBus are illustrative placeholders — implement or import
 // them according to your project's needs (e.g. a fetch wrapper or an event emitter).
 import { ApiClient } from './api-client.js';
@@ -207,7 +201,7 @@ export const eventBus = new EventBus();
 
 Use anywhere:
 
-```typescript
+```javascript
 import { api, eventBus } from '../services/services.js';
 ```
 
@@ -219,11 +213,11 @@ This pattern keeps service instances as singletons via the module cache, testabl
 
 Large projects often have per-team or per-tenant theming. NativeCoreJS uses CSS custom properties exclusively, making runtime theme switching straightforward:
 
-```typescript
-// src/shared/utils/theme.ts
+```javascript
+// src/shared/utils/theme.js
 const THEME_STORE_KEY = 'nc-theme';
 
-const themes: Record<string, Record<string, string>> = {
+const config = {
     default: {
         '--primary': '#0f766e',
         '--background': '#ffffff',
@@ -234,20 +228,20 @@ const themes: Record<string, Record<string, string>> = {
     },
 };
 
-export function applyTheme(name: string): void {
+export function applyTheme(name) {
     const vars = themes[name] ?? themes.default;
     const root = document.documentElement;
     Object.entries(vars).forEach(([key, value]) => root.style.setProperty(key, value));
     sessionStorage.setItem(THEME_STORE_KEY, name);
 }
 
-export function restoreTheme(): void {
+export function restoreTheme() {
     const saved = sessionStorage.getItem(THEME_STORE_KEY) ?? 'default';
     applyTheme(saved);
 }
 ```
 
-Call `restoreTheme()` in `app.ts` before `router.start()` to eliminate FOUC.
+Call `restoreTheme()` in `app.js` before `router.start()` to eliminate FOUC.
 
 ---
 
@@ -262,7 +256,7 @@ packages/
 │   ├── src/
 │   │   ├── acme-button.ts
 │   │   ├── acme-data-table.ts
-│   │   └── index.ts           ← re-exports all components
+│   │   └── index.js           ← re-exports all components
 │   └── package.json           ← peerDep: nativecorejs
 │
 ├── app-crm/                   ← app 1
@@ -271,8 +265,8 @@ packages/
 
 Each app imports and registers from `acme-components`:
 
-```typescript
-// src/components/registry.ts
+```javascript
+// src/components/registry.js
 import 'acme-components'; // barrel export triggers defineComponent() calls
 ```
 
@@ -307,8 +301,8 @@ return <nc-data-table ref={ref} />;
 
 Wrap the React render call in a NativeCoreJS component:
 
-```typescript
-// src/components/adapters/react-widget.ts
+```javascript
+// src/components/adapters/react-widget.js
 import { Component, defineComponent } from 'nativecorejs';
 import { createRoot } from 'react-dom/client';
 import { ReactWidget } from '../../legacy/ReactWidget.jsx';
@@ -316,12 +310,12 @@ import { ReactWidget } from '../../legacy/ReactWidget.jsx';
 class ReactWidgetAdapter extends Component {
     private _root: ReturnType<typeof createRoot> | null = null;
 
-    onMount(): void {
+    onMount() {
         this._root = createRoot(this);
         this._root.render(<ReactWidget />);
     }
 
-    onUnmount(): void {
+    onUnmount() {
         this._root?.unmount();
         this._root = null;
     }
@@ -342,11 +336,10 @@ Usage in any NativeCoreJS view:
 
 Enterprise applications often need an immutable audit trail. The cleanest approach is a dedicated plugin:
 
-```typescript
-// src/plugins/audit-trail.plugin.ts
-import type { NCPlugin } from 'nativecorejs';
+```javascript
+// src/plugins/audit-trail.plugin.js
 
-export const auditTrailPlugin: NCPlugin = {
+export const config = {
     name: 'audit-trail',
     onNavigated({ path, params }) {
         navigator.sendBeacon('/api/audit', JSON.stringify({
@@ -370,8 +363,8 @@ Organise tests by feature module, mirroring the source structure:
 
 ```
 src/features/tasks/
-├── tasks.controller.ts
-├── tasks.store.ts
+├── tasks.controller.js
+├── tasks.store.js
 └── __tests__/
     ├── tasks.controller.test.ts
     └── tasks.store.test.ts
@@ -379,7 +372,7 @@ src/features/tasks/
 
 Use `pausePageCleanupCollection()` in long-lived test suites to prevent the cleanup registry from firing between test cases:
 
-```typescript
+```javascript
 import { pausePageCleanupCollection, resumePageCleanupCollection } from '@core/pageCleanupRegistry.js';
 
 beforeAll(() => pausePageCleanupCollection());
@@ -391,8 +384,8 @@ afterAll(() => resumePageCleanupCollection());
 ## Done Criteria
 
 - [ ] `src/features/auth/`, `src/features/users/`, and `src/features/reports/` directories exist with their own controllers, stores, views, and components.
-- [ ] Each feature has a local `routes.ts` imported by the root `src/routes/routes.ts`.
-- [ ] Shared components live in `src/shared/components/` and are re-exported from an `index.ts` barrel.
+- [ ] Each feature has a local `routes.js` imported by the root `src/routes/routes.js`.
+- [ ] Shared components live in `src/shared/components/` and are re-exported from an `index.js` barrel.
 - [ ] No feature module file imports from another feature module (`features/auth` ↛ `features/users`).
 
 ---

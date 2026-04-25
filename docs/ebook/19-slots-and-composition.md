@@ -12,8 +12,8 @@ The answer is **slots** — the Shadow DOM's built-in content projection mechani
 
 Imagine naively writing a `<task-list>` like this:
 
-```typescript
-template(): string {
+```javascript
+template() {
     return `
       <div class="list">
         <task-card title="Buy milk"></task-card>
@@ -37,7 +37,7 @@ Always start with the generator:
 npm run make:component task-list
 ```
 
-This creates `src/components/ui/task-list.ts` with a shadow DOM template stub, `onMount`, and `onUnmount` already wired up. Open that file and work from there.
+This creates `src/components/ui/task-list.js` with a shadow DOM template stub, `onMount`, and `onUnmount` already wired up. Open that file and work from there.
 
 ---
 
@@ -45,8 +45,8 @@ This creates `src/components/ui/task-list.ts` with a shadow DOM template stub, `
 
 The simplest slot is an unnamed `<slot>` element placed inside the shadow template. Any light DOM children of the host element are projected into that slot at render time.
 
-```typescript
-template(): string {
+```javascript
+template() {
     return `
       <style>
         :host { display: block; }
@@ -78,8 +78,8 @@ The two `<task-card>` elements live in the **light DOM** of `<task-list>` but ar
 
 A single default slot is often not enough. `<task-list>` needs a header and optionally a footer. Add named slots:
 
-```typescript
-template(): string {
+```javascript
+template() {
     return `
       <style>
         :host { display: block; }
@@ -123,26 +123,26 @@ The `slot="header"` attribute tells the browser *which* named slot to project th
 
 Update `TaskList` to accept a `count` attribute and display it in the badge:
 
-```typescript
+```javascript
 class TaskList extends Component {
     static useShadowDOM = true;
     static observedAttributes = ['count'];
 
     private countState = useState('0');
 
-    template(): string { /* ... as above ... */ }
+    template() { /* ...... */ }
 
-    onMount(): void {
+    onMount() {
         this.bind(this.countState, '[data-hook="count"]');
         this.on('click', 'task-card', this.handleTaskClick.bind(this));
     }
 
-    attributeChangedCallback(name: string, _old: string, value: string) {
+    attributeChangedCallback(name, _old, value) {
         if (name === 'count') this.countState.value = value;
     }
 
-    private handleTaskClick(e: Event) {
-        const card = (e.target as HTMLElement).closest('task-card');
+    handleTaskClick(e) {
+        const card = (e.target).closest('task-card');
         const taskId = card?.getAttribute('task-id') ?? '';
         this.dispatchEvent(new CustomEvent('task-selected', {
             detail: { taskId },
@@ -186,8 +186,8 @@ npm run make:component project-panel
 
 `ProjectPanel` uses `<task-list>` as a sub-component, demonstrating that slot composition nests naturally:
 
-```typescript
-template(): string {
+```javascript
+template() {
     return `
       <style>
         :host { display: block; border: 1px solid var(--border); border-radius: var(--radius-md); overflow: hidden; box-shadow: var(--shadow-sm); }
@@ -240,11 +240,11 @@ Combined with CSS custom properties, `::part()` gives consumers two layers of th
 
 Sometimes you want a layout-only wrapper component that *intentionally* inherits global styles — grid containers, page sections, utility wrappers. In those cases, opt out:
 
-```typescript
+```javascript
 class PageSection extends Component {
     static useShadowDOM = false;
 
-    template(): string {
+    template() {
         return `<section class="page-section"><slot></slot></section>`;
     }
 }
@@ -258,12 +258,12 @@ With `useShadowDOM = false`, the component renders into the regular DOM and glob
 
 When you receive an array of task objects from a store and need to render them programmatically — rather than via static slot markup — use `effect()` combined with `innerHTML`:
 
-```typescript
+```javascript
 import { effect } from '@core/state.js';
 import { taskStore } from '@stores/task.store.js';
 import { escapeHTML } from '@core-utils/templates.js';
 
-onMount(): void {
+onMount() {
     const listEl = this.$('.list-body');
     const disposer = effect(() => {
         const tasks = taskStore.tasks.value;
@@ -276,7 +276,7 @@ onMount(): void {
     this._disposers = [disposer];
 }
 
-onUnmount(): void {
+onUnmount() {
     this._disposers?.forEach(d => d());
 }
 ```

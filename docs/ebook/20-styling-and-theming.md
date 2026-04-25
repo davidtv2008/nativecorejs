@@ -86,8 +86,8 @@ Import it first in `src/styles/main.css`:
 
 Because custom properties pierce shadow boundaries, every component can consume the token system without any extra setup:
 
-```typescript
-template(): string {
+```javascript
+template() {
     return `
       <style>
         :host {
@@ -166,11 +166,11 @@ Generate a toggle component:
 npm run make:component theme-toggle
 ```
 
-```typescript
+```javascript
 class ThemeToggle extends Component {
     static useShadowDOM = true;
 
-    template(): string {
+    template() {
         return `
           <style>
             button { cursor: pointer; background: none; border: 1px solid var(--border); border-radius: var(--radius-md); padding: var(--spacing-xs) var(--spacing-sm); color: var(--text-primary); }
@@ -179,7 +179,7 @@ class ThemeToggle extends Component {
         `;
     }
 
-    onMount(): void {
+    onMount() {
         this.on('click', '[data-hook="toggle"]', () => {
             const root = document.documentElement;
             const isDark = root.getAttribute('data-theme') === 'dark';
@@ -198,7 +198,7 @@ defineComponent('theme-toggle', ThemeToggle);
 
 `::part()` lets external CSS target a specific element inside a shadow root — as long as the component author has explicitly marked it with a `part` attribute:
 
-```typescript
+```javascript
 // Inside task-list template
 `<div class="list-header" part="header"> … </div>`
 `<div class="list-body"   part="body">   … </div>`
@@ -272,9 +272,9 @@ Override `--primary` and `--primary-hover` once in `tokens.css` to change every 
 
 Two `<task-card>` instances can visually differ without class name collisions. For example, overdue tasks can show a red border:
 
-```typescript
+```javascript
 // In TaskCard
-attributeChangedCallback(name: string, _old: string, value: string) {
+attributeChangedCallback(name, _old, value) {
     if (name === 'overdue') {
         this.style.setProperty('--card-border-color', value === 'true' ? 'var(--danger)' : 'var(--border)');
     }

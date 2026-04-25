@@ -23,5 +23,9 @@ export function registerRoutes(r: Router): void {
     });
 }
 
-export const protectedRoutes = router.getPathsForMiddleware('auth');
+/**
+ * Paths that use the `auth` middleware — always read via the router after
+ * `registerRoutes(router)` (for example in app shell / sidebar logic):
+ *   router.getPathsForMiddleware('auth')
+ */
 

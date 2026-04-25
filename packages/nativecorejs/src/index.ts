@@ -104,6 +104,25 @@ export {
 	trackEvents,
 	trackSubscriptions
 } from '../.nativecore/utils/events.js';
+export {
+	wireContents,
+	wireInputs,
+	wireAttributes,
+	wireClasses,
+	wireStyles
+} from '../.nativecore/utils/wires.js';
+export type {
+	WireContentsOptions,
+	WireContentsResult,
+	WireInputsOptions,
+	WireInputsResult,
+	WireAttributesOptions,
+	WireAttributesResult,
+	WireClassesOptions,
+	WireClassesResult,
+	WireStylesOptions,
+	WireStylesResult
+} from '../.nativecore/utils/wires.js';
 export { connectSSE } from '../.nativecore/core/sse.js';
 
 export { http, HttpClient, HttpError } from '../.nativecore/core/http.js';

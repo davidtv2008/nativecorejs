@@ -1,4 +1,5 @@
 ﻿<div class="dashboard-container" data-view="dashboard">
+    <!-- Hero / executive summary -->
     <nc-animation name="fade-in" trigger="mount" duration="420">
         <nc-card variant="secondary" class="dashboard-hero">
             <div class="dashboard-hero__content">
@@ -42,6 +43,7 @@
         </nc-card>
     </nc-animation>
 
+    <!-- KPI cards -->
     <section class="dashboard-kpi-grid" id="dashboard-stats">
         <nc-animation name="slide-up" trigger="visible" duration="420">
             <nc-card variant="secondary" class="dashboard-kpi-card">
@@ -88,6 +90,7 @@
         </nc-animation>
     </section>
 
+    <!-- Narrative panels -->
     <section class="dashboard-main-grid">
         <nc-animation name="slide-up" trigger="visible" duration="420">
             <nc-card variant="secondary" class="dashboard-panel dashboard-panel--wide">
@@ -148,6 +151,7 @@
         </nc-animation>
     </section>
 
+    <!-- Interactive showcase tabs -->
     <nc-animation name="slide-up" trigger="visible" duration="420" delay="180">
         <nc-card variant="secondary" class="dashboard-panel dashboard-panel--showcase">
             <div class="dashboard-panel__header">

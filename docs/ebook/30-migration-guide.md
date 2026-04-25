@@ -31,7 +31,7 @@ NativeCoreJS rewards explicit architecture. If you come from a framework that hi
 ### Translating a React Component
 
 **React:**
-```tsx
+```javascript
 import { useState, useEffect } from 'react';
 
 function Counter() {
@@ -51,7 +51,7 @@ function Counter() {
 ```
 
 **NativeCoreJS:**
-```typescript
+```javascript
 import { Component, defineComponent } from '@core/component.js';
 import { useState, effect }          from '@core/state.js';
 
@@ -61,7 +61,7 @@ class CounterCard extends Component {
     private count = useState(0);
     private _disposers: Array<() => void> = [];
 
-    template(): string {
+    template() {
         return `
             <div>
                 <p id="count"></p>
@@ -70,7 +70,7 @@ class CounterCard extends Component {
         `;
     }
 
-    onMount(): void {
+    onMount() {
         this._disposers.push(
             effect(() => {
                 const el = this.$('#count');
@@ -84,7 +84,7 @@ class CounterCard extends Component {
         });
     }
 
-    onUnmount(): void {
+    onUnmount() {
         this._disposers.forEach(d => d());
     }
 }
@@ -110,9 +110,9 @@ defineComponent('counter-card', CounterCard);
 | `ref(v)` / `reactive({})` | `useState(v)` |
 | `computed(() => derived)` | `computed(() => derived)` — same concept |
 | `watch(source, fn)` | `effect(() => { ... source.value ... })` — reads tracked automatically |
-| `onMounted(() => {})` | `onMount(): void { ... }` |
-| `onUnmounted(() => {})` | `onUnmount(): void { ... }` |
-| `<template>` single-file component | `template(): string { return \`...\`; }` |
+| `onMounted(() => {})` | `onMount() { ... }` |
+| `onUnmounted(() => {})` | `onUnmount() { ... }` |
+| `<template>` single-file component | `template() { return \`...\`; }` |
 | `<style scoped>` | Shadow DOM + `<style>` block inside `template()` |
 | `<slot>` / `<slot name="x">` | `<slot>` / `<slot name="x">` in the template — identical Web Component syntax |
 | `v-bind:attr` | `this.bindAttr(state, '#el', 'attr')` or `el.setAttribute(...)` in an effect |
@@ -169,7 +169,7 @@ Take a vanilla JS module and migrate it incrementally:
 
 Explicit is better than magic. When something goes wrong in a React or Vue app, the debugging path often goes through framework internals. In NativeCoreJS the debugging path goes through:
 
-1. The route registration in `routes.ts`
+1. The route registration in `routes.js`
 2. The controller function
 3. The component class
 

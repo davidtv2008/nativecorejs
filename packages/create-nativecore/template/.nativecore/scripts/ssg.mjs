@@ -7,7 +7,7 @@
  * first request.
  *
  * Key differences from the older build-for-bots.mjs:
- *  • Routes are read automatically from src/routes/routes.ts — no hardcoded list.
+ *  • Routes are read automatically from src/routes/routes.(ts|js) — no hardcoded list.
  *  • Protected routes and dynamic routes (:param, *) are skipped.
  *  • The app.js <script> is KEPT so the page hydrates in the browser.
  *  • Pre-rendered HTML is written to _deploy/ (not dist/bot/).
@@ -33,7 +33,12 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 const rootDir = path.resolve(__dirname, '../..');
 const deployDir = path.join(rootDir, '_deploy');
-const routesPath = path.join(rootDir, 'src', 'routes', 'routes.ts');
+let useTypeScript = true;
+try {
+    const ncConfig = JSON.parse(fs.readFileSync(path.join(rootDir, 'nativecore.config.json'), 'utf8'));
+    if (ncConfig.useTypeScript === false) useTypeScript = false;
+} catch { /* default to TypeScript */ }
+const routesPath = path.join(rootDir, 'src', 'routes', `routes.${useTypeScript ? 'ts' : 'js'}`);
 
 const SERVER_PORT = 8000;
 const SERVER_URL = `http://localhost:${SERVER_PORT}`;
@@ -347,7 +352,7 @@ async function runSsg(routes) {
 
     const routes = resolvePublicRoutes(src);
     if (routes.length === 0) {
-        console.log('ℹ️  No public static routes found in routes.ts — nothing to pre-render.\n');
+        console.log('ℹ️  No public static routes found in routes file — nothing to pre-render.\n');
         process.exit(0);
     }
 

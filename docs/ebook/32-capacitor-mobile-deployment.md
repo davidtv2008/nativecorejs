@@ -96,10 +96,9 @@ After `cap:init`, add the remaining `cap:*` scripts to your `package.json` manua
 
 ### TypeScript projects (`capacitor.config.ts`)
 
-```typescript
-import type { CapacitorConfig } from '@capacitor/cli';
+```javascript
 
-const config: CapacitorConfig = {
+const config = {
     appId: 'com.example.myapp',     // change to your reverse-domain ID
     appName: 'My App',
     webDir: '_deploy',              // NativeCoreJS build output folder
@@ -262,7 +261,7 @@ npm install @capacitor/camera
 npm run cap:sync
 ```
 
-```typescript
+```javascript
 import { Camera, CameraResultType } from '@capacitor/camera';
 
 const photo = await Camera.getPhoto({
@@ -417,10 +416,9 @@ When `npx cap init` asks for the web directory, enter `dist`. Then create `capac
 
 When you scaffold with `--capacitor`, the CLI generates this file for you:
 
-```typescript
-import type { CapacitorConfig } from '@capacitor/cli';
+```javascript
 
-const config: CapacitorConfig = {
+const config = {
     appId: 'com.example.myapp',        // change to your real reverse-domain ID
     appName: 'My App',
     webDir: 'dist',                    // must match your build output folder
@@ -550,12 +548,12 @@ npm run cap:sync   # sync the plugin to native projects
 
 Then import and use the plugin in your controller:
 
-```typescript
+```javascript
 import { Camera, CameraResultType } from '@capacitor/camera';
 
-export async function photoController(): Promise<() => void> {
+export async function photoController() => void> {
     const events = trackEvents();
-    const btn = document.querySelector<HTMLButtonElement>('#take-photo');
+    const btn = document.querySelector('#take-photo');
 
     events.on(btn, 'click', async () => {
         const photo = await Camera.getPhoto({

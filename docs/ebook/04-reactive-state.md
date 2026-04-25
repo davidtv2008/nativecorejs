@@ -6,7 +6,7 @@ Plain JavaScript variables are invisible to the framework. Assign a new value to
 
 NativeCoreJS provides three state primitives: `useState()`, `computed()`, and `effect()`. They all live in the same module:
 
-```typescript
+```javascript
 import { useState, computed, effect } from '@core/state.js';
 ```
 
@@ -16,7 +16,7 @@ import { useState, computed, effect } from '@core/state.js';
 
 `useState()` creates a `State<T>` object. Read the current value with `.value`. Write a new value by assigning to `.value`:
 
-```typescript
+```javascript
 const count = useState(0);
 
 console.log(count.value); // 0
@@ -30,7 +30,7 @@ Any reactive binding (a `bind()` call, a `computed()`, or an `effect()`) that re
 
 `State<T>` also has a `watch(callback)` method that fires the callback each time the value changes:
 
-```typescript
+```javascript
 const unwatch = count.watch((next, prev) => {
   console.log(`changed from ${prev} to ${next}`);
 });
@@ -47,7 +47,7 @@ unwatch();
 
 `computed()` creates a read-only `ComputedState<T>` whose value is derived from other state containers. The function you pass is called lazily and re-evaluated whenever any state it reads changes:
 
-```typescript
+```javascript
 const total     = useState(10);
 const completed = useState(4);
 
@@ -68,15 +68,15 @@ Unlike `useState()`, a `computed()` holds a subscription to its upstream state. 
 
 When you create a `computed()` inside a **component**, dispose it in `onUnmount()` because components can live across multiple page navigations:
 
-```typescript
+```javascript
 percentage: ComputedState<number>;
 
-onMount(): void {
+onMount() {
     this.percentage = computed(() => /* ... */);
     this.render();
 }
 
-onUnmount(): void {
+onUnmount() {
     this.percentage?.dispose();
 }
 ```
@@ -94,26 +94,25 @@ Let's build a component that shows a live summary: total tasks, completed tasks,
 npm run make:component task-stats
 ```
 
-Open `src/components/ui/task-stats.ts`.
+Open `src/components/ui/task-stats.js`.
 
 ### State and Computed Values
 
-```typescript
+```javascript
 import { Component, defineComponent } from '@core/component.js';
 import { html } from '@core-utils/templates.js';
 import { useState, computed } from '@core/state.js';
-import type { State, ComputedState } from '@core/state.js';
 
 export class TaskStats extends Component {
     static useShadowDOM = true;
 
     static observedAttributes = ['total', 'completed'];
 
-    total: State<number> = useState(0);
-    completed: State<number> = useState(0);
-    percentage: ComputedState<number>;
+    total = useState(0);
+    completed = useState(0);
+    percentage = null;
 
-    onMount(): void {
+    onMount() {
         // Seed state from initial HTML attributes.
         this.total.value = Number(this.getAttribute('total') ?? 0);
         this.completed.value = Number(this.getAttribute('completed') ?? 0);
@@ -128,18 +127,18 @@ export class TaskStats extends Component {
         this.render();
     }
 
-    onUnmount(): void {
+    onUnmount() {
         this.percentage?.dispose();
     }
 ```
 
-We declare `total` and `completed` as typed `State<number>` properties, initialized to `useState(0)`. No constructor is needed. `onMount()` seeds their values from HTML attributes and creates the `computed()` — then calls `this.render()` to update the DOM with the correct values. This ordering matters: the base class calls `render()` then `onMount()`, so the first automatic render shows zeros; the explicit `this.render()` at the end of `onMount()` corrects that once state is properly seeded.
+We declare `total` and `completed` as reactive state properties, initialized to `useState(0)`. No constructor is needed. `onMount()` seeds their values from HTML attributes and creates the `computed()` — then calls `this.render()` to update the DOM with the correct values. This ordering matters: the base class calls `render()` then `onMount()`, so the first automatic render shows zeros; the explicit `this.render()` at the end of `onMount()` corrects that once state is properly seeded.
 
 ### Template
 
 The `template()` method reads from state directly. When `this.render()` is called it re-evaluates `template()` and patches only the changed nodes:
 
-```typescript
+```javascript
   template() {
     return html`
       <style>
@@ -172,8 +171,8 @@ The `template()` method reads from state directly. When `this.render()` is calle
 
 ### Attribute Changes Drive State
 
-```typescript
-    attributeChangedCallback(name: string, oldValue: string | null, newValue: string | null): void {
+```javascript
+    attributeChangedCallback(name, oldValue, newValue) {
         if (oldValue === newValue || !this._mounted) return;
 
         const n = Number(newValue ?? 0);
@@ -214,12 +213,12 @@ The `attributeChangedCallback` fires, writes the new value into `this.completed`
 
 By default, every write to a state immediately notifies all subscribers synchronously. For simple cases this is ideal. But when you need to update several states at once — say, setting `total`, `completed`, and an `error` flag all in a single API response handler — each write would trigger a separate round of DOM updates. `batch()` defers all notifications until the function completes, so subscribers are called at most once per state, once the batch exits.
 
-```typescript
+```javascript
 import { batch } from '@core/state.js';
 
 const total     = useState(0);
 const completed = useState(0);
-const error     = useState<string | null>(null);
+const error     = useState(null);
 
 // Without batch: three separate re-renders
 total.value     = 12;
@@ -240,19 +239,19 @@ batch(() => {
 - **Store actions**: any action that writes more than one state belongs in a `batch()` — use the generated store template for a ready-made example.
 - **Optimistic UI rollbacks**: when reverting a failed mutation, batch the rollback writes so the UI jumps back atomically.
 
-```typescript
-// tasks.controller.ts — batch the success and failure paths
+```javascript
+// tasks.controller.js — batch the success and failure paths
 // (You'll build this controller fully in Chapter 07 — this snippet shows
 // where batch() fits inside a real controller's data-loading section.)
-export async function tasksController(): Promise<() => void> {
+export async function tasksController() => void> {
     const total     = useState(0);
     const completed = useState(0);
     const loading   = useState(true);
-    const error     = useState<string | null>(null);
+    const error     = useState(null);
 
     batch(() => { loading.value = true; error.value = null; });
     try {
-        const data = await api.getCached<Task[]>('/api/tasks', { ttl: 60_000 });
+        const data = await api.getCached('/api/tasks', { ttl: 60_000 });
         batch(() => {
             total.value     = data.length;
             completed.value = data.filter(t => t.status === 'done').length;
@@ -273,7 +272,7 @@ export async function tasksController(): Promise<() => void> {
 
 `batch()` calls can be nested. Notifications are deferred until the **outermost** batch exits:
 
-```typescript
+```javascript
 batch(() => {
     a.value = 1;
     batch(() => {
@@ -287,7 +286,7 @@ batch(() => {
 
 ## Done Criteria
 
-- [ ] `src/components/ui/task-stats.ts` exists and shows total, completed, and percentage.
+- [ ] `src/components/ui/task-stats.js` exists and shows total, completed, and percentage.
 - [ ] Setting the `total` and `completed` attributes from the browser console updates all three stats.
 - [ ] `batch()` is used whenever two or more state values are set together (e.g. in the data loader).
 - [ ] `this.percentage?.dispose()` is called in `onUnmount()` to release the computed subscription.

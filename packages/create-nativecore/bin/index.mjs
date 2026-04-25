@@ -6,7 +6,7 @@ import path from 'path';
 import { fileURLToPath } from 'url';
 import { createInterface } from 'readline/promises';
 import { stdin as input, stdout as output } from 'process';
-import esbuild from 'esbuild';
+import ts from 'typescript';
 
 const cliArgs = process.argv.slice(2);
 const rl = createInterface({ input, output });
@@ -99,17 +99,19 @@ async function replaceInFile(filePath, transform) {
 }
 
 /**
- * Use esbuild to strip TypeScript syntax from a .ts source string.
+ * Use TypeScript transpilation to strip TS syntax from source.
  * Returns plain JavaScript with all type annotations removed.
  */
 async function stripTypeScript(source) {
-    const result = await esbuild.transform(source, {
-        loader: 'ts',
-        target: 'esnext',
-        format: 'esm',
-        sourcemap: false,
+    const result = ts.transpileModule(source, {
+        compilerOptions: {
+            target: ts.ScriptTarget.ESNext,
+            module: ts.ModuleKind.ESNext,
+            removeComments: false,
+            sourceMap: false,
+        }
     });
-    return result.code;
+    return result.outputText;
 }
 
 /**
@@ -359,7 +361,10 @@ export function registerRoutes(router${config.useTypeScript ? ': Router' : ''})$
 ${loginRoute}${extraPublicRoutes}    });
 ${protectedGroup}}
 
-export const protectedRoutes = router.getPathsForMiddleware('auth');
+/**
+ * Paths that use the \`auth\` middleware — read at runtime after registerRoutes():
+ *   router.getPathsForMiddleware('auth')
+ */
 `;
 }
 
@@ -455,7 +460,7 @@ function appTsTemplate(config) {
  * Routes belong in ${routesComment}. Components belong in ${registryComment}.
  */
 import router from '@core/router.js';
-${authImports}import { registerRoutes, protectedRoutes } from '@routes/routes.js';
+${authImports}import { registerRoutes } from '@routes/routes.js';
 import { initSidebar } from '@utils/sidebar.js';
 import { initLazyComponents } from '@core/lazyComponents.js';
 import { dom } from '@core-utils/dom.js';
@@ -473,7 +478,8 @@ function isLocalhost()${isTs ? ': boolean' : ''} {
 function updateSidebarVisibility() {
 ${config.includeAuth ? `    const isAuthenticated = auth.isAuthenticated();` : '    const isAuthenticated = false;'}
     const currentPath = window.location.pathname;
-    const isProtectedRoute = protectedRoutes.some(route => currentPath.startsWith(route));
+    const authProtectedPaths = router.getPathsForMiddleware('auth');
+    const isProtectedRoute = authProtectedPaths.some(route => currentPath.startsWith(route));
     const app = dom.$('#app');
 
     if (isAuthenticated && isProtectedRoute) {
@@ -540,6 +546,7 @@ init();
 
 function homeControllerTemplate(config) {
     const authenticatedHref = config.includeDashboard ? '/dashboard' : '/';
+    const authenticatedLabel = config.includeDashboard ? 'Go to Dashboard' : 'Get Started';
     const unauthenticatedHref = config.includeAuth ? '/login' : authenticatedHref;
     const unauthenticatedLabel = config.includeAuth
         ? 'Sign In'
@@ -550,31 +557,39 @@ function homeControllerTemplate(config) {
 
     return `/**
  * Home Controller
- * Updates the primary landing CTA based on authentication status.
+ * Reactively updates the primary landing CTA based on authentication status.
  */
-import { trackEvents, trackSubscriptions } from '@core-utils/events.js';
-import { dom } from '@core-utils/dom.js';
+import { wireContents, wireAttributes, wireClasses, wireStyles } from '@core-utils/wires.js';
+import { trackEvents } from '@core-utils/events.js';
 import auth from '@services/auth.service.js';
 
 export async function homeController()${isTs ? ': Promise<() => void>' : ''} {
+    // Setup
     const events = trackEvents();
-    const subs = trackSubscriptions();
 
-    const getStartedBtn = dom.$${isTs ? '<HTMLAnchorElement>' : ''}('#get-started-btn');
+    // Wires
+    const { ctaText } = wireContents();
+    const { ctaHref } = wireAttributes();
+    const { ctaAuthed } = wireClasses();
+    const { ctaMinWidth } = wireStyles();
 
-    if (getStartedBtn) {
-        if (auth.isAuthenticated()) {
-            getStartedBtn.setAttribute('href', '${authenticatedHref}');
-            getStartedBtn.textContent = 'Go to Dashboard';
-        } else {
-            getStartedBtn.setAttribute('href', '${unauthenticatedHref}');
-            getStartedBtn.textContent = '${unauthenticatedLabel}';
-        }
-    }
+    // Behavior
+    const sync = () => {
+        const authed = auth.isAuthenticated();
+        ctaText.value = authed ? '${authenticatedLabel}' : '${unauthenticatedLabel}';
+        ctaHref.value = authed ? '${authenticatedHref}' : '${unauthenticatedHref}';
+        ctaAuthed.value = authed;
+        ctaMinWidth.value = authed ? '13rem' : '11rem';
+    };
 
+    sync();
+    events.add(${isTs ? 'window as any' : 'window'}, 'auth-change', sync);
+
+    // Cleanup
+    // wire* and effect() bindings auto-dispose via PageCleanupRegistry.
+    // Return cleanup only for tracked DOM events/listeners.
     return () => {
         events.cleanup();
-        subs.cleanup();
     };
 }
 `;
@@ -606,7 +621,15 @@ function homeViewTemplate(config) {
         </p>
 
         <div class="hero-actions">
-            <nc-a variant="hero-primary" href="${primaryHref}" id="get-started-btn" wire-content="ctaText" wire-attribute="ctaHref:href">${primaryLabel}</nc-a>
+            <nc-a
+                variant="hero-primary"
+                href="${primaryHref}"
+                id="get-started-btn"
+                wire-content="ctaText"
+                wire-attribute="ctaHref:href"
+                wire-class="ctaAuthed:hero-primary--authed"
+                wire-style="ctaMinWidth:min-width"
+            >${primaryLabel}</nc-a>
             <nc-a variant="hero-ghost" href="https://nativecorejs.com/docs" target="_blank" rel="noopener noreferrer">Read the Docs</nc-a>
             <nc-a variant="hero-ghost" href="https://nativecorejs.com/components">Component Library</nc-a>
         </div>
@@ -634,6 +657,7 @@ function homeViewTemplate(config) {
 function loginViewTemplate() {
     return `<div class="login-experience" data-view="login">
     <div class="login-shell">
+        <!-- Product context / value proposition -->
         <section class="login-showcase" aria-label="Demo access overview">
             <div class="login-showcase__eyebrow">Enterprise Demo Access</div>
             <h1 class="login-showcase__title">Demo sign in.</h1>
@@ -671,6 +695,7 @@ function loginViewTemplate() {
             </div>
         </section>
 
+        <!-- Auth form surface -->
         <section class="login-panel" aria-label="Sign in form">
             <div class="login-panel__header">
                 <p class="login-panel__eyebrow">Secure Workspace Sign In</p>
@@ -1044,11 +1069,7 @@ async function main() {
         : hasFlag('--no-capacitor') || useDefaults
             ? false
             : await askYesNo('Include Capacitor (Android/iOS packaging)?', false);
-    const shouldInstall = hasFlag('--skip-install') || hasFlag('--no-install')
-        ? false
-        : useDefaults
-            ? true
-            : await askYesNo('Install dependencies now?', true);
+    const shouldInstall = true;
 
     const config = {
         projectName,

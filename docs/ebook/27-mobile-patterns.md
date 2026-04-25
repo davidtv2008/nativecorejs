@@ -77,17 +77,17 @@ A practical mobile layout combines a drawer for deeper navigation and a bottom n
 </div>
 ```
 
-### Controller (`src/controllers/app-shell.controller.ts`)
+### Controller (`src/controllers/app-shell.controller.js`)
 
-```typescript
+```javascript
 import { dom }         from '@core-utils/dom.js';
 import { trackEvents } from '@core-utils/events.js';
 
-export async function appShellController(): Promise<() => void> {
+export async function appShellController() => void> {
     const events  = trackEvents();
     const scope   = dom.view('app-shell');
-    const drawer  = scope.$<HTMLElement & { open: boolean }>('#mobile-drawer');
-    const openBtn = scope.$<HTMLButtonElement>('#btn-open-nav');
+    const drawer  = scope.$('#mobile-drawer');
+    const openBtn = scope.$('#btn-open-nav');
 
     // Open drawer on hamburger click
     events.on(openBtn, 'click', () => {

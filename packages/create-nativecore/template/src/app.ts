@@ -20,7 +20,7 @@ import type { User } from '@services/auth.service.js';
 import api from '@services/api.service.js';
 import { createMiddleware } from '@core/createMiddleware.js';
 import { authMiddleware } from '@middleware/auth.middleware.js';
-import { registerRoutes, protectedRoutes } from '@routes/routes.js';
+import { registerRoutes } from '@routes/routes.js';
 import { initSidebar } from '@utils/sidebar.js';
 import { initLazyComponents } from '@core/lazyComponents.js';
 import { dom } from '@core-utils/dom.js';
@@ -46,7 +46,10 @@ function isLocalhost(): boolean {
 function updateSidebarVisibility() {
     const isAuthenticated = auth.isAuthenticated();
     const currentPath = window.location.pathname;
-    const isProtectedRoute = protectedRoutes.some(route => currentPath.startsWith(route));
+    // Must query the router after registerRoutes() — do not read a module-level snapshot
+    // at import time (it would be empty before routes are registered).
+    const authProtectedPaths = router.getPathsForMiddleware('auth');
+    const isProtectedRoute = authProtectedPaths.some(route => currentPath.startsWith(route));
     const app = dom.$('#app');
 
     if (isAuthenticated && isProtectedRoute) {

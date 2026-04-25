@@ -10,8 +10,8 @@ Forms are the primary way users create and update data. NativeCoreJS's `nc-*` in
 
 Every `nc-*` form element stores its current value in a `.value` property and mirrors it as a `value` attribute. Read them via `dom.$`:
 
-```typescript
-const input  = scope.$('#task-title') as any;
+```javascript
+const input  = scope.$('#task-title');
 const value  = input.value;          // current string value
 ```
 
@@ -47,7 +47,7 @@ Set `error` to a non-empty string to show the field in an error state with the m
 ></nc-select>
 ```
 
-Read the selected value the same way: `(scope.$('#task-priority') as any).value`.
+Read the selected value the same way: `scope.$('#task-priority').value`.
 
 ### `<nc-switch>`
 
@@ -57,8 +57,8 @@ A toggle for boolean fields:
 <nc-switch id="task-notify" label="Notify assignee"></nc-switch>
 ```
 
-```typescript
-const notify = (scope.$('#task-notify') as any).checked; // boolean
+```javascript
+const notify = (scope.$('#task-notify')).checked; // boolean
 ```
 
 ### `<nc-number-input>`
@@ -83,9 +83,9 @@ For numeric fields like estimated hours:
 
 `useForm()` is now exported directly from the `nativecorejs` package, alongside a set of composable validators (`required`, `minLength`, `maxLength`, `email`, `url`, `pattern`, `min`, `max`, `oneOf`, `compose`). It manages field state, dirty/touched tracking, computed validation, submit blocking, and a one-line `bindField()` helper for native and `<nc-*>` controls — all backed by the same reactive `useState`/`computed` primitives covered in earlier chapters.
 
-The `create-nativecore` template re-exports the same helper from `src/utils/form.ts` so your existing imports continue to work:
+The `create-nativecore` template re-exports the same helper from `src/utils/form.js` so your existing imports continue to work:
 
-```typescript
+```javascript
 // Either of these works:
 import { useForm, required, maxLength } from 'nativecorejs';
 import { useForm } from '@utils/form.js';
@@ -124,7 +124,7 @@ const form = useForm({
 
 **Using `submit()`** eliminates the boilerplate `e.preventDefault()` + validity check + error display pattern:
 
-```typescript
+```javascript
 const handleSubmit = form.submit(async (values) => {
     await api.post('/tasks', values);
     api.invalidateTags('tasks');
@@ -139,7 +139,7 @@ If `isValid` is `false` when `handleSubmit` fires, `submit()` marks all fields a
 
 **Binding reactive errors to `nc-*` fields:**
 
-```typescript
+```javascript
 const stopErrorEffect = effect(() => {
     const errs = form.errors.value;
     for (const id of ['title', 'projectId', 'hours']) {
@@ -151,7 +151,7 @@ disposers.push(stopErrorEffect);
 
 **Cleanup** — `useForm()` creates internal `computed()` nodes (`errors`, `isValid`, `isDirty`). Dispose them when the controller cleans up:
 
-```typescript
+```javascript
 return () => {
     form.errors.dispose();
     form.isValid.dispose();
@@ -165,13 +165,13 @@ return () => {
 
 For simpler forms you can write a plain validation function without `useForm()`:
 
-```typescript
-function validateTaskForm(scope: any) {
-  const errors: Record<string, string> = {};
+```javascript
+function validateTaskForm(scope) {
+  const config = {};
 
-  const title    = (scope.$('#task-title') as any).value?.trim() ?? '';
-  const priority = (scope.$('#task-priority') as any).value;
-  const hours    = parseFloat((scope.$('#task-hours') as any).value);
+  const title    = (scope.$('#task-title')).value?.trim() ?? '';
+  const priority = (scope.$('#task-priority')).value;
+  const hours    = parseFloat((scope.$('#task-hours')).value);
 
   if (!title)              errors['task-title']    = 'Title is required.';
   if (title.length > 80)   errors['task-title']    = 'Title must be 80 characters or fewer.';
@@ -186,7 +186,7 @@ function validateTaskForm(scope: any) {
 
 Whether you use `useForm()` or roll your own, the template's validators are composable building blocks:
 
-```typescript
+```javascript
 import {
     isRequired, minLength, maxLength,
     isValidEmail, isNumber, isInteger,
@@ -194,7 +194,7 @@ import {
     validateForm,
 } from '@utils/validation.js';
 
-// Use as validators in useForm rules:
+// Use
 rules: { email: [isRequired, isValidEmail] }
 
 // Or call validateForm() directly with an ad-hoc rules map:
@@ -209,10 +209,10 @@ const errors = validateForm(
 
 Apply or clear per-field errors in one loop (used by both approaches):
 
-```typescript
-function applyErrors(scope: any, errors: Record<string, string> | null, fieldIds: string[]) {
+```javascript
+function applyErrors(scope, errors, string> | null, fieldIds) {
   for (const id of fieldIds) {
-    (scope.$(`#${id}`) as HTMLElement).setAttribute('error', errors?.[id] ?? '');
+    (scope.$(`#${id}`)).setAttribute('error', errors?.[id] ?? '');
   }
 }
 ```
@@ -282,18 +282,18 @@ function applyErrors(scope: any, errors: Record<string, string> | null, fieldIds
 
 ### `tasksController.ts` — form handling excerpt
 
-```typescript
+```javascript
 import { dom }         from '@core-utils/dom.js';
 import { api }         from '@services/api.service.js';
 import { useState }    from '@core/state.js';
 import { trackEvents } from '@core-utils/events.js';
 
-export async function tasksController(): Promise<() => void> {
+export async function tasksController() => void> {
   const scope     = dom.view('tasks');
   const { on, dispose } = trackEvents();
 
-  const modal      = scope.$('#modal-create-task') as any;
-  const saveBtn    = scope.$('#btn-save-task')     as any;
+  const modal      = scope.$('#modal-create-task');
+  const saveBtn    = scope.$('#btn-save-task');
   const fieldIds   = ['task-title', 'task-project', 'task-priority', 'task-hours'];
 
   const isSaving = useState(false);
@@ -323,17 +323,17 @@ export async function tasksController(): Promise<() => void> {
 
     try {
       const payload = {
-        title:      (scope.$('#task-title')    as any).value.trim(),
-        projectId:  (scope.$('#task-project')  as any).value,
-        priority:   (scope.$('#task-priority') as any).value,
-        hours:      parseFloat((scope.$('#task-hours') as any).value),
-        notify:     (scope.$('#task-notify')   as any).checked,
+        title:      (scope.$('#task-title')).value.trim(),
+        projectId:  (scope.$('#task-project')).value,
+        priority:   (scope.$('#task-priority')).value,
+        hours:      parseFloat((scope.$('#task-hours')).value),
+        notify:     (scope.$('#task-notify')).checked,
       };
 
       const { error } = await api.post('/tasks', payload);
 
       if (error) {
-        const alert = scope.$('#task-form-error') as HTMLElement;
+        const alert = scope.$('#task-form-error');
         alert.setAttribute('message', error.message);
         alert.removeAttribute('hidden');
         return;
@@ -343,7 +343,7 @@ export async function tasksController(): Promise<() => void> {
       modal.close();
       await loadTasks(); // refresh the list
     } catch {
-      const alert = scope.$('#task-form-error') as HTMLElement;
+      const alert = scope.$('#task-form-error');
       alert.setAttribute('message', 'Unexpected error. Please try again.');
       alert.removeAttribute('hidden');
     } finally {
@@ -354,16 +354,16 @@ export async function tasksController(): Promise<() => void> {
   async function populateProjectSelect() {
     const { data } = await api.getCached('/projects', { tags: ['projects'] });
     if (!data) return;
-    const select = scope.$('#task-project') as any;
-    select.options = (data as any[]).map(p => ({ label: p.name, value: String(p.id) }));
+    const select = scope.$('#task-project');
+    select.options = (data).map(p => ({ label, value) }));
   }
 
   function clearForm() {
     for (const id of fieldIds) {
-      (scope.$(`#${id}`) as HTMLElement).setAttribute('error', '');
+      (scope.$(`#${id}`)).setAttribute('error', '');
     }
-    (scope.$('#task-title') as any).value = '';
-    (scope.$('#task-form-error') as HTMLElement).setAttribute('hidden', '');
+    (scope.$('#task-title')).value = '';
+    (scope.$('#task-form-error')).setAttribute('hidden', '');
   }
 
   // Initial load

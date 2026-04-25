@@ -10,9 +10,11 @@ Current exports:
 - extracted UI components from `nativecore/src/components/core`, including navigation, input, feedback, layout, picker, overlay, data-display, and utility `nc-*` elements
 - multi-tag component modules such as accordion, bottom nav, form, stepper, and timeline
 - state, computed, and effect primitives
+- declarative wire utilities (`wireInputs`, `wireContents`, `wireAttributes`, `wireClasses`, `wireStyles`)
 - lazy component registry
 - cache-busting utilities
 - controller event and subscription cleanup helpers
+- component bind helpers (`bind`, `bindAttr`, `bindClass`, `bindStyle`, `wires`)
 - base framework CSS at `nativecorejs/styles/base.css`
 
 ## Component event naming

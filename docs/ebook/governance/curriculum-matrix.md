@@ -19,7 +19,7 @@ This matrix maps every chapter to its core concept, the active project it applie
 | 03 | Error Boundaries | `<nc-error-boundary>`, fallback UI | P1 | Root + nested error boundaries | Dev panel shown on deliberate throw |
 | 04 | Reactive State | `useState`, `computed`, `batch` | P1 | `<task-stats>` live counter | Stats update from browser console |
 | 05 | The Bind API | `bind`, `bindAttr`, `bindAll` | P1 | Fine-grained DOM updates in `<task-stats>` + `<task-card>` | Only changed node updates in DevTools |
-| 06 | Views and Routing | `router.register`, `routes.ts`, `data-*` | P1 | `/404` wildcard + verified routing | All three routes + 404 load correctly |
+| 06 | Views and Routing | `router.register`, `routes.js`, `data-*` | P1 | `/404` wildcard + verified routing | All three routes + 404 load correctly |
 | 07 | Controllers | `effect`, `trackEvents`, cleanup | P1 | Full tasks controller | No duplicate listeners on back-navigation |
 | 08 | Authentication | `auth.service`, protected routes | P1 | Login + JWT session persistence | Unauthenticated redirect + post-login restore |
 | 09 | APIs and Async | `api.getCached`, loading/error states | P1 | Tasks loaded from API | Loading spinner, error state, and list update |

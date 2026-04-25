@@ -14,6 +14,15 @@ import { generateRouteRedirects } from './generate-route-redirects.mjs';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
+const ROOT = path.resolve(__dirname, '../..');
+
+let useTypeScript = true;
+try {
+  const ncConfig = JSON.parse(fs.readFileSync(path.join(ROOT, 'nativecore.config.json'), 'utf8'));
+  if (ncConfig.useTypeScript === false) useTypeScript = false;
+} catch { /* default to TypeScript */ }
+const ext = useTypeScript ? 'ts' : 'js';
+
 const rawViewPath = process.argv[2];
 
 if (!rawViewPath) {
@@ -125,18 +134,18 @@ async function removeView() {
   const controllerName = toControllerName(flatName);
   const summary = { removed: [], updated: [], skipped: [], failed: [] };
 
-  const publicViewPath = path.resolve(__dirname, '../..', 'src', 'views', 'public', `${normalizedViewPath}.html`);
-  const protectedViewPath = path.resolve(__dirname, '../..', 'src', 'views', 'protected', `${normalizedViewPath}.html`);
+  const publicViewPath = path.resolve(ROOT, 'src', 'views', 'public', `${normalizedViewPath}.html`);
+  const protectedViewPath = path.resolve(ROOT, 'src', 'views', 'protected', `${normalizedViewPath}.html`);
   const nestedSegments = normalizedViewPath.split('/');
   const nestedCleanupSegment = nestedSegments.length > 1 ? nestedSegments[0] : null;
-  const publicViewsRoot = path.resolve(__dirname, '../..', 'src', 'views', 'public');
-  const protectedViewsRoot = path.resolve(__dirname, '../..', 'src', 'views', 'protected');
-  const controllerPath = path.resolve(__dirname, '../..', 'src', 'controllers', `${flatName}.controller.ts`);
-  const controllersIndexPath = path.resolve(__dirname, '../..', 'src', 'controllers', 'index.ts');
-  const routesPath = path.resolve(__dirname, '../..', 'src', 'routes', 'routes.ts');
-  const indexPath = path.resolve(__dirname, '../..', 'index.html');
-  const headerPath = path.resolve(__dirname, '../..', 'src', 'components', 'app-header.ts');
-  const footerPath = path.resolve(__dirname, '../..', 'src', 'components', 'core', 'app-footer.ts');
+  const publicViewsRoot = path.resolve(ROOT, 'src', 'views', 'public');
+  const protectedViewsRoot = path.resolve(ROOT, 'src', 'views', 'protected');
+  const controllerPath = path.resolve(ROOT, 'src', 'controllers', `${flatName}.controller.${ext}`);
+  const controllersIndexPath = path.resolve(ROOT, 'src', 'controllers', `index.${ext}`);
+  const routesPath = path.resolve(ROOT, 'src', 'routes', `routes.${ext}`);
+  const indexPath = path.resolve(ROOT, 'index.html');
+  const headerPath = path.resolve(ROOT, 'src', 'components', 'core', `app-header.${ext}`);
+  const footerPath = path.resolve(ROOT, 'src', 'components', 'core', `app-footer.${ext}`);
 
   const publicViewRelative = `src/views/public/${normalizedViewPath}.html`;
   const protectedViewRelative = `src/views/protected/${normalizedViewPath}.html`;
@@ -151,7 +160,7 @@ async function removeView() {
     console.log(`No active files or route references were found for "${normalizedViewPath}".`);
     addSummary(summary, 'skipped', `View file already missing: ${publicViewRelative}`);
     addSummary(summary, 'skipped', `View file already missing: ${protectedViewRelative}`);
-    addSummary(summary, 'skipped', `Controller already missing: src/controllers/${flatName}.controller.ts`);
+    addSummary(summary, 'skipped', `Controller already missing: src/controllers/${flatName}.controller.${ext}`);
     addSummary(summary, 'skipped', `Route reference already missing for ${normalizedViewPath}`);
     printSummary(summary);
     rl.close();
@@ -201,7 +210,7 @@ async function removeView() {
       addSummary(summary, 'failed', `Could not remove ${path.relative(process.cwd(), controllerPath)}: ${error.message}`);
     }
   } else {
-    addSummary(summary, 'skipped', `Already missing: src/controllers/${flatName}.controller.ts`);
+    addSummary(summary, 'skipped', `Already missing: src/controllers/${flatName}.controller.${ext}`);
   }
 
   if (fs.existsSync(controllersIndexPath)) {
@@ -211,12 +220,12 @@ async function removeView() {
       const updatedContent = existingContent.replace(exportPattern, '');
       if (updatedContent !== existingContent) {
         fs.writeFileSync(controllersIndexPath, updatedContent);
-        addSummary(summary, 'updated', 'src/controllers/index.ts');
+        addSummary(summary, 'updated', `src/controllers/index.${ext}`);
       } else {
-        addSummary(summary, 'skipped', 'No controller export to remove in src/controllers/index.ts');
+        addSummary(summary, 'skipped', `No controller export to remove in src/controllers/index.${ext}`);
       }
     } catch (error) {
-      addSummary(summary, 'failed', `Could not update src/controllers/index.ts: ${error.message}`);
+      addSummary(summary, 'failed', `Could not update src/controllers/index.${ext}: ${error.message}`);
     }
   }
 
@@ -253,12 +262,12 @@ async function removeView() {
 
       if (nextRoutesContent !== originalRoutesContent) {
         fs.writeFileSync(routesPath, nextRoutesContent);
-        addSummary(summary, 'updated', 'src/routes/routes.ts');
+        addSummary(summary, 'updated', `src/routes/routes.${ext}`);
       } else {
         addSummary(summary, 'skipped', `No route entry to remove for ${normalizedViewPath}`);
       }
     } catch (error) {
-      addSummary(summary, 'failed', `Could not update src/routes/routes.ts: ${error.message}`);
+      addSummary(summary, 'failed', `Could not update src/routes/routes.${ext}: ${error.message}`);
     }
   }
 
@@ -295,12 +304,12 @@ async function removeView() {
       }
       if (updatedContent !== originalContent) {
         fs.writeFileSync(headerPath, updatedContent);
-        addSummary(summary, 'updated', 'src/components/app-header.ts');
+        addSummary(summary, 'updated', `src/components/core/app-header.${ext}`);
       } else {
         addSummary(summary, 'skipped', 'No app-header links to remove');
       }
     } catch (error) {
-      addSummary(summary, 'failed', `Could not update src/components/app-header.ts: ${error.message}`);
+      addSummary(summary, 'failed', `Could not update src/components/core/app-header.${ext}: ${error.message}`);
     }
   }
 
@@ -314,12 +323,12 @@ async function removeView() {
       }
       if (updatedContent !== originalContent) {
         fs.writeFileSync(footerPath, updatedContent);
-        addSummary(summary, 'updated', 'src/components/core/app-footer.ts');
+        addSummary(summary, 'updated', `src/components/core/app-footer.${ext}`);
       } else {
         addSummary(summary, 'skipped', 'No footer links to remove');
       }
     } catch (error) {
-      addSummary(summary, 'failed', `Could not update src/components/core/app-footer.ts: ${error.message}`);
+      addSummary(summary, 'failed', `Could not update src/components/core/app-footer.${ext}: ${error.message}`);
     }
   }
 
