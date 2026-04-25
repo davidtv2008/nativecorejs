@@ -1,39 +1,37 @@
 <div data-view="home">
 <section class="hero">
     <div class="hero-inner">
-        <div class="hero-badge">TypeScript-first. Web Components. Zero runtime production dependencies.</div>
+        <div class="hero-badge">${badge}</div>
 
-        <h1>Build serious web apps on web standards</h1>
+        <h1>NativeCoreJS</h1>
 
         <p class="hero-tagline">
-            NativeCore combines Web Components, Shadow DOM, reactive signals, lazy route controllers,
-            and auth-ready protected route patterns into one framework for teams that want platform-native architecture
-            without a virtual DOM runtime.
+            ${tagline}
         </p>
 
         <div class="hero-actions">
-            <nc-a variant="hero-primary" href="/docs" id="get-started-btn" wire-content="ctaText" wire-attribute="ctaHref:href">Read the Docs</nc-a>
-            <nc-a variant="hero-ghost" href="/components">Explore Components</nc-a>
-            <nc-a variant="hero-ghost" href="/login">Open Demo App</nc-a>
+            <nc-a variant="hero-primary" href="${primaryHref}" id="get-started-btn" wire-content="ctaText" wire-attribute="ctaHref:href">${primaryLabel}</nc-a>
+            <nc-a variant="hero-ghost" href="https://nativecorejs.com/docs" target="_blank" rel="noopener noreferrer">Read the Docs</nc-a>
+            <nc-a variant="hero-ghost" href="https://nativecorejs.com/components">Component Library</nc-a>
         </div>
 
         <div class="hero-stats">
             <div class="stat-item">
-                <span class="stat-number">60+</span>
-                <span class="stat-label">Core Components</span>
+                <span class="stat-number">Full</span>
+                <span class="stat-label">Project Template</span>
             </div>
             <div class="stat-item">
-                <span class="stat-number">0</span>
-                <span class="stat-label">Runtime Dependencies</span>
+                <span class="stat-number">Built-in</span>
+                <span class="stat-label">Dev Tools</span>
             </div>
-            
             <div class="stat-item">
-                <span class="stat-number">1</span>
-                <span class="stat-label">Framework Mental Model</span>
+                <span class="stat-number">Local</span>
+                <span class="stat-label">Mock API</span>
             </div>
         </div>
     </div>
 </section>
+
 
 <section class="why-section">
     <div class="section-head">

@@ -48,24 +48,7 @@ async function askTemplate(useDefaults) {
     // --template flag already resolved
     const fromFlag = getFlagValue('--template');
     if (fromFlag) return fromFlag;
-    if (useDefaults) return 'default';
-
-    console.log('\nStarter template:');
-    VALID_TEMPLATES.forEach((t, i) => {
-        console.log(`  [${i + 1}] ${t.padEnd(12)} ${TEMPLATE_DESCRIPTIONS[t]}`);
-    });
-    console.log('');
-
-    let chosen = 'default';
-    while (true) {
-        const answer = await ask('Choose a template (1-4 or name)', 'default');
-        const byIndex = VALID_TEMPLATES[parseInt(answer, 10) - 1];
-        const byName  = VALID_TEMPLATES.find(t => t === answer.toLowerCase());
-        if (byIndex) { chosen = byIndex; break; }
-        if (byName)  { chosen = byName;  break; }
-        console.error(`  Invalid choice. Enter a number 1-${VALID_TEMPLATES.length} or one of: ${VALID_TEMPLATES.join(', ')}`);
-    }
-    return chosen;
+    return 'default';
 }
 
 function toKebabCase(value) {
@@ -611,7 +594,8 @@ function homeViewTemplate(config) {
             not proprietary runtimes. NativeCoreJS keeps you close to the platform with Web Components,
             reactive state, and high-performance patterns that stay durable as the web evolves.`;
 
-    return `<section class="hero">
+    return `<div data-view="home">
+<section class="hero">
     <div class="hero-inner">
         <div class="hero-badge">${badge}</div>
 
@@ -622,9 +606,9 @@ function homeViewTemplate(config) {
         </p>
 
         <div class="hero-actions">
-            <nc-a variant="hero-primary" href="${primaryHref}" id="get-started-btn">${primaryLabel}</nc-a>
+            <nc-a variant="hero-primary" href="${primaryHref}" id="get-started-btn" wire-content="ctaText" wire-attribute="ctaHref:href">${primaryLabel}</nc-a>
             <nc-a variant="hero-ghost" href="https://nativecorejs.com/docs" target="_blank" rel="noopener noreferrer">Read the Docs</nc-a>
-            <nc-a variant="hero-ghost" href="https://nativecorejs.com/components" target="_blank" rel="noopener noreferrer">Component Library</nc-a>
+            <nc-a variant="hero-ghost" href="https://nativecorejs.com/components">Component Library</nc-a>
         </div>
 
         <div class="hero-stats">
@@ -643,43 +627,44 @@ function homeViewTemplate(config) {
         </div>
     </div>
 </section>
+</div>
 `;
 }
 
 function loginViewTemplate() {
-    return `<div class="login-experience">
+    return `<div class="login-experience" data-view="login">
     <div class="login-shell">
-        <section class="login-showcase" aria-label="Starter access overview">
-            <div class="login-showcase__eyebrow">Starter Auth Flow</div>
-            <h1 class="login-showcase__title">Sign in.</h1>
+        <section class="login-showcase" aria-label="Demo access overview">
+            <div class="login-showcase__eyebrow">Enterprise Demo Access</div>
+            <h1 class="login-showcase__title">Demo sign in.</h1>
             <p class="login-showcase__copy">
-                This starter includes a local mock authentication flow, protected routes, and dashboard handoff.
+                Simple access to the NativeCore dashboard demo.
             </p>
 
             <div class="login-showcase__grid">
                 <article class="login-showcase__card">
-                    <h2>What is included</h2>
+                    <h2>What this demo proves</h2>
                     <ul class="login-showcase__list">
                         <li>Protected route gating with dashboard handoff</li>
-                        <li>Mock API-backed authentication for local development</li>
+                        <li>API-backed authentication flow using seeded demo users</li>
                         <li>Component-driven UI built from NativeCore primitives</li>
                     </ul>
                 </article>
 
                 <article class="login-showcase__card login-showcase__card--accent">
-                    <h2>Starter defaults</h2>
+                    <h2>Included in the walkthrough</h2>
                     <div class="login-showcase__metrics">
                         <div>
-                            <strong>Demo email</strong>
-                            <span>demo@example.com</span>
+                            <strong>Public routes</strong>
+                            <span>Marketing site and docs entry</span>
                         </div>
                         <div>
-                            <strong>Demo password</strong>
-                            <span>pa$$w0rd</span>
+                            <strong>Protected routes</strong>
+                            <span>Dashboard access, auth state, and API data</span>
                         </div>
                         <div>
-                            <strong>Target route</strong>
-                            <span>/dashboard</span>
+                            <strong>Demo account</strong>
+                            <span>Pre-seeded credentials for fast validation</span>
                         </div>
                     </div>
                 </article>
@@ -688,9 +673,9 @@ function loginViewTemplate() {
 
         <section class="login-panel" aria-label="Sign in form">
             <div class="login-panel__header">
-                <p class="login-panel__eyebrow">Starter Access</p>
-                <h2>Access the dashboard</h2>
-                <p>Use the local demo credentials below.</p>
+                <p class="login-panel__eyebrow">Secure Workspace Sign In</p>
+                <h2>Access the NativeCore demo dashboard</h2>
+                <p>Use the demo credentials below.</p>
             </div>
 
             <div class="login-demo-credentials" aria-label="Demo credentials">
@@ -704,7 +689,7 @@ function loginViewTemplate() {
                 </div>
             </div>
 
-            <div id="login-error" class="login-alert alert alert-error" hidden aria-live="polite"></div>
+            <div id="login-error" class="login-alert alert alert-error" hidden aria-live="polite" wire-content="errorMessage"></div>
 
             <nc-form id="loginForm" class="login-form">
                 <nc-field class="login-field" label="Work Email" for="email" required>
@@ -735,13 +720,17 @@ function loginViewTemplate() {
 
                 <div class="login-form__utility">
                     <nc-checkbox id="rememberMe" name="rememberMe" label="Remember demo email" checked></nc-checkbox>
-                    <a href="/" data-link class="login-form__utility-link">Return home</a>
+                    <a href="/docs" data-link class="login-form__utility-link">Review the docs</a>
                 </div>
 
                 <nc-button id="loginBtn" type="submit" variant="primary" size="lg" full-width>
                     Access Dashboard
                 </nc-button>
             </nc-form>
+
+            <p class="login-panel__footer">
+                Demo account only. The credentials above are intentionally exposed for evaluation purposes.
+            </p>
         </section>
     </div>
 </div>
@@ -838,7 +827,7 @@ export default [
     },
     {
         // Ignore patterns
-        ignores: ['node_modules/**', 'dist/**', 'build/**']
+        ignores: ['node_modules/**', 'dist/**', 'build/**', 'src/constants/*.js']
     }
 ];
 `;

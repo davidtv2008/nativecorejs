@@ -90,6 +90,6 @@ export default tseslint.config(
     },
     {
         // Ignore patterns
-        ignores: ['node_modules/**', 'dist/**', 'build/**']
+        ignores: ['node_modules/**', 'dist/**', 'build/**', 'src/constants/*.js']
     }
 );
