@@ -6,8 +6,8 @@ A single-page reference for the 20 most common patterns.
 
 ## Reactive State
 
-```typescript
-import { useState, computed, effect, batch } from 'nativecorejs';
+```javascript
+import { useState, computed, effect, batch } from '@core/state.js';
 
 // Primitive state
 const count = useState(0);
@@ -35,11 +35,12 @@ batch(() => {
 
 ## Controllers
 
-```typescript
-import { effect, trackEvents } from 'nativecorejs';
+```javascript
+import { useState, effect } from '@core/state.js';
+import { trackEvents } from '@core-utils/events.js';
 
 export async function pageController(params, state, loaderData) {
-    const disposers: Array<() => void> = [];
+    const disposers = [];
     const events = trackEvents();
 
     const items = useState([]);
@@ -58,16 +59,15 @@ export async function pageController(params, state, loaderData) {
 
 ## Routing
 
-### `routes.ts` — declaring routes
+### `routes.js` — declaring routes
 
-```typescript
+```javascript
 import { createLazyController } from '@core/lazyController.js';
 import router from '@core/router.js';
-import type { Router } from '@core/router.js';
 
 const lazy = createLazyController(import.meta.url);
 
-export function registerRoutes(r: Router): void {
+export function registerRoutes(r) {
     // @group:public
     r.group({}, (r) => {
         r.register('/', 'src/views/public/home.html',
@@ -100,10 +100,10 @@ export const protectedRoutes = router.getPathsForMiddleware('auth');
 
 `r.group({ middleware: ['auth'] }, cb)` stamps every route in the callback with the `auth` tag. Groups can be nested; inner groups inherit ancestor tags. The optional `prefix` option prepends a path segment to every route in the group.
 
-### `app.ts` — middleware and boot
+### `app.js` — middleware and boot
 
-```typescript
-import { createMiddleware } from '@core/router.js';
+```javascript
+import { createMiddleware } from '@core/createMiddleware.js';
 import { authMiddleware } from './middleware/auth.middleware.js';
 import { registerRoutes } from './routes/routes.js';
 
@@ -119,11 +119,11 @@ router.start(); // call exactly once
 
 ### Middleware signature
 
-```typescript
-// src/middleware/auth.middleware.ts
-import type { RouteMatch } from '@core/router.js';
+```javascript
+// src/middleware/auth.middleware.js
+import router from '@core/router.js';
 
-export async function authMiddleware(route: RouteMatch, state?: unknown): Promise<boolean> {
+export async function authMiddleware(route, state) {
     if (!auth.isAuthenticated()) {
         router.replace('/login', { redirect: route.path }); // return false to cancel
         return false;
@@ -136,7 +136,7 @@ Return `true` to allow, `false` to cancel. Async middleware is supported — ret
 
 ### Navigation helpers
 
-```typescript
+```javascript
 router.navigate('/path');
 router.navigate('/items/42', { from: 'list' }); // state passed to middleware + controller
 router.replace('/login');                        // swap history entry (no back-stack entry)
@@ -152,27 +152,27 @@ const route = router.getCurrentRoute(); // { path, params, config }
 
 ## Components
 
-```typescript
-import { Component, defineComponent } from 'nativecorejs';
+```javascript
+import { Component, defineComponent } from '@core/component.js';
 
 class MyCard extends Component {
     static useShadowDOM = true;
     static get observedAttributes() { return ['title', 'variant']; }
 
-    template(): string {
+    template() {
         const title = this.getAttribute('title') ?? '';
         return `<div class="card">${escapeHTML(title)}</div>`;
     }
 
-    onMount(): void {
+    onMount() {
         this.on('click', '.card', () => this.emitEvent('nc-click'));
     }
 
-    onAttributeChange(name: string, oldValue: string | null, newValue: string | null): void {
+    onAttributeChange(name, oldValue, newValue) {
         if (name === 'title') this.render();
     }
 
-    onUnmount(): void {
+    onUnmount() {
         // event listeners added via this.on() are auto-removed
     }
 }
@@ -184,7 +184,7 @@ defineComponent('my-card', MyCard);
 
 ## Bind API (Fine-Grained Updates)
 
-```typescript
+```javascript
 // In a Component subclass — all subscriptions auto-disposed on unmount:
 const loading = useState(false);
 const label   = useState('Submit');
@@ -211,7 +211,7 @@ this.model(this.rating, 'nc-rating', { event: 'nc-change', prop: 'value' }); // 
 
 Standalone utilities from `@core-utils/wires.js` that auto-register cleanup via the Page Cleanup Registry (no return value needed):
 
-```typescript
+```javascript
 import { wireInputs, wireContents, wireAttributes } from '@core-utils/wires.js';
 
 export async function tasksController() {
@@ -246,7 +246,7 @@ export async function tasksController() {
 
 Optional overrides (non-standard events or an explicit root):
 
-```typescript
+```javascript
 const { rating } = wireInputs({ overrides: { rating: { event: 'nc-change', prop: 'value' } } });
 const { title }  = wireInputs({ root: document.querySelector('[data-view="tasks"]') });
 ```
@@ -257,7 +257,7 @@ const { title }  = wireInputs({ root: document.querySelector('[data-view="tasks"
 
 Same pattern inside a `Component` subclass — state property names must match attribute values:
 
-```typescript
+```javascript
 class TaskForm extends Component {
     static useShadowDOM = true;
 
@@ -289,13 +289,13 @@ All subscriptions are auto-disposed on unmount. Call each `wire*()` method **onc
 
 ## Global Stores
 
-```typescript
-// src/stores/task.store.ts
-import { useState } from 'nativecorejs';
+```javascript
+// src/stores/task.store.js
+import { useState } from '@core/state.js';
 
 export const taskStore = useState({
-    items: [] as Task[],
-    filter: 'all' as 'all' | 'open' | 'done'
+    items: [],
+    filter: 'all'
 });
 
 // In any controller or component:
@@ -310,17 +310,17 @@ taskStore.watch(state => render(state.items));             // subscribe
 
 ## API Calls and Caching
 
-```typescript
+```javascript
 import api from '@services/api.service.js';
 
 // Plain fetch (no cache)
-const data = await api.get<User[]>('/api/users');
+const data = await api.get('/api/users');
 await api.post('/api/users', { name: 'Alice' });
 await api.put('/api/users/1', { name: 'Alice B.' });
 await api.delete('/api/users/1');
 
 // Cached GET (ttl in seconds, tag-based invalidation)
-const tasks = await api.getCached<Task[]>('/api/tasks', {
+const tasks = await api.getCached('/api/tasks', {
     ttl: 60,
     tags: ['tasks']
 });
@@ -334,8 +334,8 @@ api.invalidateTags(['tasks']);
 
 ## Events
 
-```typescript
-import { trackEvents, on, delegate } from 'nativecorejs';
+```javascript
+import { trackEvents, on, delegate } from '@core-utils/events.js';
 
 // Inside a controller (auto-cleans up on navigation)
 const events = trackEvents();
@@ -352,14 +352,14 @@ off(); // remove listener
 
 ## Custom Events
 
-```typescript
+```javascript
 // Emit from inside a Component — bubbles + composed are true by default
 this.emitEvent('nc-task-complete', { taskId: 42 });
 // Override defaults only when needed
 this.emitEvent('nc-task-complete', { taskId: 42 }, { composed: false });
 
 // Listen anywhere in the tree
-document.addEventListener('nc-task-complete', (e: CustomEvent<{ taskId: number }>) => {
+document.addEventListener('nc-task-complete', (e) => {
     console.log(e.detail.taskId);
 });
 ```
@@ -409,7 +409,7 @@ Form inputs that keep standard event names: `nc-input`, `nc-checkbox`, `nc-radio
 
 ## Auth Service
 
-```typescript
+```javascript
 import auth from '@services/auth.service.js';
 
 auth.isAuthenticated();             // boolean
@@ -441,8 +441,8 @@ window.addEventListener('auth-change', () => updateUI());
 
 ## Accessibility Utilities
 
-```typescript
-import { trapFocus, announce, roving } from 'nativecorejs';
+```javascript
+import { trapFocus, announce, roving } from '@core-utils/a11y.js';
 
 trapFocus(modalEl);           // trap Tab/Shift+Tab inside el
 trapFocus(null);              // release trap
@@ -464,7 +464,7 @@ release(); // restore original tabindexes
 </nc-error-boundary>
 ```
 
-```typescript
+```javascript
 // Catch async errors manually
 const boundary = document.querySelector('nc-error-boundary');
 try {
@@ -479,11 +479,11 @@ try {
 ## CLI Generators
 
 ```bash
-npm run make:component <name>         # src/components/ui/<name>.ts
+npm run make:component <name>         # src/components/ui/<name>.js
 npm run make:view <path>              # src/views/<path>.html + optional controller
-npm run make:controller <name>        # src/controllers/<name>.controller.ts
-npm run make:store <name>             # src/stores/<name>.store.ts
-npm run make:middleware <name>        # src/middleware/<name>.middleware.ts + wires app.ts
+npm run make:controller <name>        # src/controllers/<name>.controller.js
+npm run make:store <name>             # src/stores/<name>.store.js
+npm run make:middleware <name>        # src/middleware/<name>.middleware.js + wires app.js
 npm run remove:component <name>       # removes component + registry entry
 npm run remove:view <path>            # removes view + controller + route entry
 ```
@@ -493,13 +493,12 @@ npm run remove:view <path>            # removes view + controller + route entry
 ## Build Commands
 
 ```bash
-npm run dev          # TypeScript watch + dev server + HMR
+npm run dev          # watch + dev server + HMR
 npm run build        # production build → _deploy/
 npm run build:ssg    # pre-render public routes → _deploy/<route>/index.html
 npm run build:full   # build + build:ssg (recommended for deployment)
 npm test             # Vitest unit tests
 npm run lint         # ESLint + HTMLHint
-npm run typecheck    # tsc --noEmit
 ```
 
 ---
