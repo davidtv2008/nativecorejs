@@ -1,4 +1,4 @@
-<div class="login-experience">
+<div class="login-experience" data-view="login">
     <div class="login-shell">
         <section class="login-showcase" aria-label="Demo access overview">
             <div class="login-showcase__eyebrow">Enterprise Demo Access</div>
@@ -55,7 +55,7 @@
                 </div>
             </div>
 
-            <div id="login-error" class="login-alert alert alert-error" hidden aria-live="polite"></div>
+            <div id="login-error" class="login-alert alert alert-error" hidden aria-live="polite" wire-content="errorMessage"></div>
 
             <nc-form id="loginForm" class="login-form">
                 <nc-field class="login-field" label="Work Email" for="email" required>
