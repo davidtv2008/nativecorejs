@@ -119,6 +119,37 @@
             head.appendChild(link);
         });
     })();</script>
+    <!-- Static preloads for framework internals (no version param — matches import paths) -->
+    <link rel="modulepreload" href="/dist/.nativecore/core/router.js">
+    <link rel="modulepreload" href="/dist/.nativecore/utils/cacheBuster.js">
+    <link rel="modulepreload" href="/dist/.nativecore/core/state.js">
+    <link rel="modulepreload" href="/dist/.nativecore/core/component.js">
+    <link rel="modulepreload" href="/dist/.nativecore/core/lazyController.js">
+    <link rel="modulepreload" href="/dist/.nativecore/core/lazyComponents.js">
+    <link rel="modulepreload" href="/dist/.nativecore/core/pageCleanupRegistry.js">
+    <link rel="modulepreload" href="/dist/.nativecore/core/createMiddleware.js">
+    <link rel="modulepreload" href="/dist/.nativecore/core/gpu-animation.js">
+    <link rel="modulepreload" href="/dist/.nativecore/utils/wires.js">
+    <link rel="modulepreload" href="/dist/.nativecore/utils/wireContents.js">
+    <link rel="modulepreload" href="/dist/.nativecore/utils/wireInputs.js">
+    <link rel="modulepreload" href="/dist/.nativecore/utils/wireAttributes.js">
+    <link rel="modulepreload" href="/dist/.nativecore/utils/wireClasses.js">
+    <link rel="modulepreload" href="/dist/.nativecore/utils/wireStyles.js">
+    <link rel="modulepreload" href="/dist/.nativecore/utils/wireActions.js">
+    <link rel="modulepreload" href="/dist/.nativecore/utils/events.js">
+    <link rel="modulepreload" href="/dist/.nativecore/utils/dom.js">
+    <link rel="modulepreload" href="/dist/.nativecore/utils/templates.js">
+    <link rel="modulepreload" href="/dist/src/services/auth.service.js">
+    <link rel="modulepreload" href="/dist/src/services/storage.service.js">
+    <link rel="modulepreload" href="/dist/src/services/api.service.js">
+    <link rel="modulepreload" href="/dist/src/middleware/auth.middleware.js">
+    <link rel="modulepreload" href="/dist/src/routes/routes.js">
+    <link rel="modulepreload" href="/dist/src/utils/sidebar.js">
+    <link rel="modulepreload" href="/dist/src/stores/uiStore.js">
+    <link rel="modulepreload" href="/dist/src/components/registry.js">
+    <link rel="modulepreload" href="/dist/src/components/appRegistry.js">
+    <link rel="modulepreload" href="/dist/src/components/frameworkRegistry.js">
+    <link rel="modulepreload" href="/dist/src/components/core/nc-avatar.js">
 </head>
 <body>
     <div id="page-progress" role="progressbar" aria-label="Page loading progress"></div>
