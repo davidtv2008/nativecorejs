@@ -2,7 +2,6 @@
  * Route Configuration
  */
 import { createLazyController } from '@core/lazyController.js';
-import router from '@core/router.js';
 import type { Router } from '@core/router.js';
 
 const lazyController = createLazyController(import.meta.url);

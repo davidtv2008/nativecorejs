@@ -10,7 +10,7 @@ import auth from '../services/auth.service.js';
 import router from '@core/router.js';
 import type { RouteMatch } from '@core/router.js';
 
-export async function authMiddleware(route: RouteMatch): Promise<boolean> {
+export async function authMiddleware(_route: RouteMatch): Promise<boolean> {
     const isAuthenticated = auth.isAuthenticated();
 
     if (!isAuthenticated) {
