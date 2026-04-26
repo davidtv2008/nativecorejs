@@ -29,7 +29,7 @@
  *   </nc-table>
  */
 import { Component, defineComponent } from '@core/component.js';
-import { html } from '@core-utils/templates.js';
+import { html, trusted } from '@core-utils/templates.js';
 
 type TableAlign = 'left' | 'center' | 'right';
 interface TableColumn {
@@ -135,7 +135,7 @@ export class NcTable extends Component {
                 <tr data-row-index="${rowIndex}">
                     ${columns.map(col => {
                         const align = col.align ?? 'left';
-                        return html`<td style="text-align:${align}">${this._fmt(row[col.key], col)}</td>`;
+                        return html`<td style="text-align:${align}">${trusted(this._fmt(row[col.key], col))}</td>`;
                     }).join('')}
                 </tr>
             `).join('');

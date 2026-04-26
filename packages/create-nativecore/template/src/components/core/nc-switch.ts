@@ -23,7 +23,7 @@
  */
 
 import { Component, defineComponent } from '@core/component.js';
-import { html } from '@core-utils/templates.js';
+import { html, trusted } from '@core-utils/templates.js';
 
 export class NcSwitch extends Component {
     static useShadowDOM = true;
@@ -219,9 +219,9 @@ export class NcSwitch extends Component {
                 value="${this.hasAttribute('checked') ? (this.getAttribute('value') || 'on') : ''}"
             />
             <span class="switch-wrapper">
-                ${labelPosition === 'left' ? labelEl : ''}
-                ${track}
-                ${labelPosition !== 'left' ? labelEl : ''}
+                ${trusted(labelPosition === 'left' ? labelEl : '')}
+                ${trusted(track)}
+                ${trusted(labelPosition !== 'left' ? labelEl : '')}
             </span>
         `;
     }

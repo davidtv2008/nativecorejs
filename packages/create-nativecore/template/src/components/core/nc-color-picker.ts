@@ -19,7 +19,7 @@
  */
 
 import { Component, defineComponent } from '@core/component.js';
-import { html } from '@core-utils/templates.js';
+import { html, trusted } from '@core-utils/templates.js';
 
 const DEFAULT_SWATCHES = [
     '#ef4444','#f97316','#f59e0b','#eab308',
@@ -142,7 +142,7 @@ export class NcColorPicker extends Component {
             </style>
             <div class="picker">
                 <div class="swatches" role="listbox" aria-label="Color swatches">
-                    ${swatches.map(color => {
+                    ${trusted(swatches.map(color => {
                         const isLight = this._isLight(color);
                         const active = color.toLowerCase() === value.toLowerCase();
                         return `<button
@@ -155,16 +155,16 @@ export class NcColorPicker extends Component {
                             type="button"
                             title="${color}"
                         ></button>`;
-                    }).join('')}
+                    }).join(''))}
                 </div>
 
-                ${showInput ? `
+                ${trusted(showInput ? `
                 <div class="input-row">
                     <div class="preview" style="background:${value}" title="Click to open color picker">
                         <input class="native-input" type="color" value="${value}" aria-label="Color picker" />
                     </div>
                     <input class="hex-input" type="text" value="${value}" maxlength="7" placeholder="#rrggbb" aria-label="Hex color value" />
-                </div>` : ''}
+                </div>` : '')}
 
                 <input type="hidden" name="${this.getAttribute('name') || ''}" value="${value}" />
             </div>

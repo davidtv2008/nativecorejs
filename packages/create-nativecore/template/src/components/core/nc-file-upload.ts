@@ -225,11 +225,11 @@ export class NcFileUpload extends Component {
                     </svg>
                 </span>
 
-                ${isCompact
+                ${trusted(isCompact
                     ? `<span class="drop-label"><span class="browse-link">Browse</span> or drop files here</span>`
                     : `<span class="drop-label">Drop files here or <span class="browse-link">browse</span></span>
                        <span class="drop-sub">${[accept ? `Accepted: ${accept}` : '', maxSize ? `Max ${maxSize} MB` : ''].filter(Boolean).join(' &bull; ') || 'Any file type accepted'}</span>`
-                }
+                )}
             </div>
 
             ${trusted(this._files.length ? `<div class="file-list">${fileList}</div>` : '')}

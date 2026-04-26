@@ -225,7 +225,7 @@ export class NcDatePicker extends Component {
             </div>
 
             <div class="calendar" role="dialog" aria-label="Date picker" aria-modal="false">
-                ${this._renderCalendar(dayLabels, firstDay)}
+                ${trusted(this._renderCalendar(dayLabels, firstDay))}
             </div>
 
             <input type="hidden" name="${this.getAttribute('name') || ''}" value="${this._selected ? toISO(this._selected) : ''}" />

@@ -78,12 +78,54 @@ export function renderMarkdown(markdown: string, options: MarkdownRenderOptions 
     let inUl = false;
     let inOl = false;
     let inBlockquote = false;
+    let tableBuffer: string[] = [];
 
     const flushParagraph = () => {
         if (paragraphBuffer.length === 0) return;
         const text = paragraphBuffer.join(' ').trim();
         if (text) html.push(`<p>${renderInline(text)}</p>`);
         paragraphBuffer = [];
+    };
+
+    const flushTable = () => {
+        if (tableBuffer.length === 0) return;
+
+        const rows = tableBuffer.map(row =>
+            row.replace(/^\||\|$/g, '').split('|').map(cell => cell.trim())
+        );
+
+        if (rows.length < 2) {
+            tableBuffer.forEach(r => paragraphBuffer.push(r));
+            tableBuffer = [];
+            return;
+        }
+
+        const separatorRow = rows[1];
+        const isSeparator = separatorRow.every(cell => /^:?-+:?$/.test(cell));
+        if (!isSeparator) {
+            tableBuffer.forEach(r => paragraphBuffer.push(r));
+            tableBuffer = [];
+            return;
+        }
+
+        const aligns = separatorRow.map(cell => {
+            if (cell.startsWith(':') && cell.endsWith(':')) return 'center';
+            if (cell.endsWith(':')) return 'right';
+            return 'left';
+        });
+
+        const headerHtml = rows[0].map((cell, i) =>
+            `<th style="text-align:${aligns[i] ?? 'left'}">${renderInline(cell)}</th>`
+        ).join('');
+
+        const bodyHtml = rows.slice(2).map(row =>
+            `<tr>${row.map((cell, i) =>
+                `<td style="text-align:${aligns[i] ?? 'left'}">${renderInline(cell)}</td>`
+            ).join('')}</tr>`
+        ).join('');
+
+        html.push(`<table><thead><tr>${headerHtml}</tr></thead><tbody>${bodyHtml}</tbody></table>`);
+        tableBuffer = [];
     };
 
     const closeLists = () => {
@@ -104,13 +146,18 @@ export function renderMarkdown(markdown: string, options: MarkdownRenderOptions 
         }
     };
 
+    const flushAll = () => {
+        flushParagraph();
+        flushTable();
+        closeLists();
+        closeBlockquote();
+    };
+
     for (const line of lines) {
         const trimmed = line.trim();
 
         if (trimmed.startsWith('```')) {
-            flushParagraph();
-            closeLists();
-            closeBlockquote();
+            flushAll();
 
             if (!inCodeBlock) {
                 inCodeBlock = true;
@@ -132,10 +179,22 @@ export function renderMarkdown(markdown: string, options: MarkdownRenderOptions 
         }
 
         if (!trimmed) {
+            flushAll();
+            continue;
+        }
+
+        // Table row — collect into buffer and flush when block ends
+        if (trimmed.startsWith('|')) {
             flushParagraph();
             closeLists();
             closeBlockquote();
+            tableBuffer.push(trimmed);
             continue;
+        }
+
+        // Non-table line after table rows — flush the table first
+        if (tableBuffer.length > 0) {
+            flushTable();
         }
 
         const headingMatch = /^(#{1,4})\s+(.+)$/.exec(trimmed);
@@ -143,7 +202,6 @@ export function renderMarkdown(markdown: string, options: MarkdownRenderOptions 
             flushParagraph();
             closeLists();
             closeBlockquote();
-
             const level = headingMatch[1].length;
             const text = headingMatch[2].trim();
             const baseId = slugify(text) || 'section';
@@ -211,6 +269,7 @@ export function renderMarkdown(markdown: string, options: MarkdownRenderOptions 
     }
 
     flushParagraph();
+    flushTable();
     closeLists();
     closeBlockquote();
 

@@ -148,7 +148,7 @@ export class NcTimelineItem extends Component {
             </style>
             <div class="col-dot">
                 <div class="dot">
-                    <slot name="icon">${dotContent}</slot>
+                    <slot name="icon">${trusted(dotContent)}</slot>
                 </div>
                 <div class="line"></div>
             </div>

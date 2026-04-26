@@ -272,11 +272,11 @@ export class NcTabs extends Component {
 
             <div class="nc-tabs nc-tabs--${variant}">
                 <div class="nc-tabs__bar-wrap">
-                    <button class="nc-tabs__scroll-btn nc-tabs__scroll-btn--prev" type="button" aria-label="Scroll tabs back" aria-hidden="true">
+                    <button class="nc-tabs__scroll-btn nc-tabs__scroll-btn--prev" type="button" aria-label="Scroll tabs back" inert>
                         <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 12 12" fill="none" width="10" height="10"><path d="M8 2L4 6l4 4" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
                     </button>
                     <div class="nc-tabs__bar" role="tablist" aria-label="Tabs"></div>
-                    <button class="nc-tabs__scroll-btn nc-tabs__scroll-btn--next" type="button" aria-label="Scroll tabs forward" aria-hidden="true">
+                    <button class="nc-tabs__scroll-btn nc-tabs__scroll-btn--next" type="button" aria-label="Scroll tabs forward" inert>
                         <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 12 12" fill="none" width="10" height="10"><path d="M4 2l4 4-4 4" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
                     </button>
                 </div>
@@ -495,8 +495,18 @@ export class NcTabs extends Component {
         const canScrollLeft  = bar.scrollLeft > 1;
         const canScrollRight = bar.scrollLeft < bar.scrollWidth - bar.clientWidth - 1;
 
+        // Move focus to the tab bar before inert-ing a button that currently has focus
+        const sr = this.shadowRoot!;
+        if (!canScrollLeft  && sr.activeElement === prevBtn) (this.$<HTMLElement>('.nc-tabs__bar') ?? this).focus();
+        if (!canScrollRight && sr.activeElement === nextBtn) (this.$<HTMLElement>('.nc-tabs__bar') ?? this).focus();
+
         prevBtn.style.display = canScrollLeft  ? 'flex' : 'none';
         nextBtn.style.display = canScrollRight ? 'flex' : 'none';
+
+        // inert removes the button from the accessibility tree and prevents focus
+        // when hidden — avoids the aria-hidden-on-focused-element browser warning
+        prevBtn.toggleAttribute('inert', !canScrollLeft);
+        nextBtn.toggleAttribute('inert', !canScrollRight);
     }
 
     /** Selects a tab by index — updates state, DOM, host attribute, and emits event. */

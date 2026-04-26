@@ -28,7 +28,7 @@
  */
 
 import { Component, defineComponent } from '@core/component.js';
-import { html } from '@core-utils/templates.js';
+import { html, trusted } from '@core-utils/templates.js';
 
 interface SelectOption {
     value: string;
@@ -276,12 +276,12 @@ export class NcSelect extends Component {
             </div>
 
             <div class="dropdown${this._open ? ' open' : ''}" role="listbox">
-                ${searchable ? `
+                ${trusted(searchable ? `
                 <div class="search-wrap">
                     <input class="search-input" type="text" placeholder="Search..." value="${this._filterText}" autocomplete="off" />
-                </div>` : ''}
+                </div>` : '')}
                 <div class="options-list">
-                    ${optionItems || `<div class="empty">No options</div>`}
+                    ${trusted(optionItems || `<div class="empty">No options</div>`)}
                 </div>
             </div>
         `;

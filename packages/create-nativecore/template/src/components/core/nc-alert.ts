@@ -108,12 +108,12 @@ export class NcAlert extends Component {
                     ${trusted(title ? `<strong class="alert__title">${title}</strong>` : '')}
                     <slot></slot>
                 </div>
-                ${dismissible ? `
+                ${trusted(dismissible ? `
                 <button class="alert__close" type="button" aria-label="Close alert">
                     <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 14 14" fill="none" width="14" height="14">
                         <path d="M2 2l10 10M12 2L2 12" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
                     </svg>
-                </button>` : ''}
+                </button>` : '')}
             </div>
         `;
     }

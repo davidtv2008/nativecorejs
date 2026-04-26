@@ -23,7 +23,7 @@
  */
 
 import { Component, defineComponent } from '@core/component.js';
-import { html } from '@core-utils/templates.js';
+import { html, trusted } from '@core-utils/templates.js';
 
 function pad2(n: number) { return String(n).padStart(2, '0'); }
 
@@ -232,20 +232,20 @@ export class NcTimePicker extends Component {
                     <!-- Hours -->
                     <div class="col" data-col="hour">
                         <div class="col-header">HH</div>
-                        ${hourOptions.map(h => {
+                        ${trusted(hourOptions.map(h => {
                             const isSelected = is12 ? to12(this._h).display === h : this._h === h;
                             return `<div class="col-item${isSelected ? ' selected' : ''}" data-col="hour" data-value="${h}">${pad2(h)}</div>`;
-                        }).join('')}
+                        }).join(''))}
                     </div>
                     <!-- Minutes -->
                     <div class="col" data-col="minute">
                         <div class="col-header">MM</div>
-                        ${minuteOptions.map(m => {
+                        ${trusted(minuteOptions.map(m => {
                             const isSelected = this._m === m;
                             return `<div class="col-item${isSelected ? ' selected' : ''}" data-col="minute" data-value="${m}">${pad2(m)}</div>`;
-                        }).join('')}
+                        }).join(''))}
                     </div>
-                    ${showSec ? `
+                    ${trusted(showSec ? `
                     <!-- Seconds -->
                     <div class="col" data-col="second">
                         <div class="col-header">SS</div>
@@ -253,14 +253,14 @@ export class NcTimePicker extends Component {
                             const isSelected = this._s === s;
                             return `<div class="col-item${isSelected ? ' selected' : ''}" data-col="second" data-value="${s}">${pad2(s)}</div>`;
                         }).join('')}
-                    </div>` : ''}
-                    ${is12 ? `
+                    </div>` : '')}
+                    ${trusted(is12 ? `
                     <!-- AM/PM -->
                     <div class="col" data-col="ampm">
                         <div class="col-header">AM/PM</div>
                         <div class="col-item${this._ampm === 'AM' ? ' selected' : ''}" data-col="ampm" data-value="AM">AM</div>
                         <div class="col-item${this._ampm === 'PM' ? ' selected' : ''}" data-col="ampm" data-value="PM">PM</div>
-                    </div>` : ''}
+                    </div>` : '')}
                 </div>
                 <div class="panel-footer">
                     <button class="panel-btn" data-action="clear" type="button">Clear</button>

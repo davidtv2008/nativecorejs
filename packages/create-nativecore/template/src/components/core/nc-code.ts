@@ -283,7 +283,7 @@ export class NcCode extends Component {
                     </button>` : ''}
                 </div>
             </div>
-            <pre><code id="code">${trusted(linesHtml)}</code></pre>
+            <pre><code id="code">${linesHtml}</code></pre>
             <div class="hidden-slot"><slot></slot></div>
         `;
     }
