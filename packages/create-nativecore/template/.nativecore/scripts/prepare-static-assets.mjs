@@ -13,8 +13,9 @@
 import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
+import * as esbuild from 'esbuild';
 
-const __filename = fileURLToPath(import.meta.url);
+const __filename
 const __dirname = path.dirname(__filename);
 const rootDir = path.resolve(__dirname, '../..');
 const distDir = path.join(rootDir, 'dist');
@@ -59,6 +60,37 @@ function copyDirectory(sourceDir, destinationDir, filter) {
     }
 }
 
+async function copyAndMinifyCSSDirectory(sourceDir, destinationDir) {
+    if (!fs.existsSync(sourceDir)) {
+        return;
+    }
+
+    ensureDir(destinationDir);
+
+    for (const entry of fs.readdirSync(sourceDir, { withFileTypes: true })) {
+        const sourcePath = path.join(sourceDir, entry.name);
+        const destinationPath = path.join(destinationDir, entry.name);
+
+        if (entry.isDirectory()) {
+            await copyAndMinifyCSSDirectory(sourcePath, destinationPath);
+        } else if (entry.name.endsWith('.css')) {
+            try {
+                const code = fs.readFileSync(sourcePath, 'utf8');
+                const result = await esbuild.transform(code, { loader: 'css', minify: true });
+                fs.mkdirSync(path.dirname(destinationPath), { recursive: true });
+                fs.writeFileSync(destinationPath, result.code, 'utf8');
+                const savings = ((1 - result.code.length / code.length) * 100).toFixed(1);
+                console.log(`  ✓ CSS minified: ${entry.name} (${savings}% smaller)`);
+            } catch (err) {
+                console.warn(`  ⚠ CSS minify failed for ${entry.name}, copying as-is: ${err.message}`);
+                copyFile(sourcePath, destinationPath);
+            }
+        } else {
+            copyFile(sourcePath, destinationPath);
+        }
+    }
+}
+
 /** Only compiled JS/JSON output — skip .d.ts, sourcemaps, and build info. */
 function isCompiledJS(name) {
     if (name === '.tsbuildinfo') return false;
@@ -68,7 +100,7 @@ function isCompiledJS(name) {
     return true;
 }
 
-function prepareDeployDirectory() {
+async function prepareDeployDirectory() {
     cleanDir(deployDir);
 
     // ---------------------------------------------------------------
@@ -102,9 +134,10 @@ function prepareDeployDirectory() {
     }
 
     // ---------------------------------------------------------------
-    // 3. CSS → _deploy/src/styles/  (matches runtime /src/styles/)
+    // 3. CSS → _deploy/src/styles/ — minified via esbuild at copy time
     // ---------------------------------------------------------------
-    copyDirectory(
+    console.log('\n🗜️  Minifying CSS files...');
+    await copyAndMinifyCSSDirectory(
         path.join(rootDir, 'src', 'styles'),
         path.join(deployDir, 'src', 'styles')
     );
@@ -126,11 +159,14 @@ function prepareDeployDirectory() {
     );
 
     // ---------------------------------------------------------------
-    // 6. Public static assets → _deploy/ root (robots.txt, etc.)
+    // 6. Public static assets → _deploy/ root (robots.txt, _headers, etc.)
     // ---------------------------------------------------------------
     copyDirectory(path.join(rootDir, 'public'), deployDir);
 
-    console.log('Deployment directory prepared: _deploy/');
+    console.log('\nDeployment directory prepared: _deploy/');
 }
 
-prepareDeployDirectory();
+prepareDeployDirectory().catch(err => {
+    console.error('prepare-static-assets failed:', err);
+    process.exit(1);
+});

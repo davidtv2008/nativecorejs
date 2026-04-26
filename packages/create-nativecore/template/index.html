@@ -81,16 +81,22 @@
     "keywords": "NativeCore, JavaScript framework, reactive signals, Web Components, vanilla JS"
     }
     </script>
-    <!-- Stylesheets (render-blocking — must stay as static link tags) -->
-    <link rel="stylesheet" href="/src/styles/core-variables.css">
-    <link rel="stylesheet" href="/src/styles/core.css">
-    <link rel="stylesheet" href="/src/styles/variables.css">
-    <link rel="stylesheet" href="/src/styles/main.css">
+    <!-- Stylesheets loaded via preload to eliminate render-blocking -->
+    <link rel="preload" href="/src/styles/core-variables.css" as="style" onload="this.onload=null;this.rel='stylesheet'">
+    <link rel="preload" href="/src/styles/core.css" as="style" onload="this.onload=null;this.rel='stylesheet'">
+    <link rel="preload" href="/src/styles/variables.css" as="style" onload="this.onload=null;this.rel='stylesheet'">
+    <link rel="preload" href="/src/styles/main.css" as="style" onload="this.onload=null;this.rel='stylesheet'">
+    <noscript>
+        <link rel="stylesheet" href="/src/styles/core-variables.css">
+        <link rel="stylesheet" href="/src/styles/core.css">
+        <link rel="stylesheet" href="/src/styles/variables.css">
+        <link rel="stylesheet" href="/src/styles/main.css">
+    </noscript>
     <!-- Module preloads with cache busting (JS only) -->
     <script>(function() {
-        var isDev = location.hostname === 'localhost' || location.hostname === '127.0.0.1';
-        var version = isDev ? Date.now() : '1.0.0-20260414231644';
-        var head = document.head;
+        const isDev = location.hostname === 'localhost' || location.hostname === '127.0.0.1';
+        const version = isDev ? Date.now() : '1.0.0-20260414231644';
+        const head = document.head;
 
         [
             '/dist/src/app.js',
