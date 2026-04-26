@@ -1,0 +1,93 @@
+/**
+ * Template Literal Helpers
+ */
+/**
+ * Container for developer-authored HTML that should bypass auto-escaping.
+ * Created via trusted() — never instantiate directly.
+ */
+export class TrustedHtml {
+    __html;
+    constructor(__html) {
+        this.__html = __html;
+    }
+}
+/**
+ * Mark a developer-authored HTML string as safe to insert without escaping.
+ *
+ * Use ONLY for strings you construct yourself in component code (sub-templates,
+ * icon markup, map/join results). NEVER pass user input through trusted().
+ *
+ * @example
+ * const itemsHtml = items.map(i => `<li>${escapeHtml(i.label)}</li>`).join('');
+ * return html`<ul>${trusted(itemsHtml)}</ul>`;
+ */
+export function trusted(value) {
+    return new TrustedHtml(value);
+}
+/**
+ * Escape a value for safe insertion as HTML text content.
+ * Use this inside inner template literals (not tagged with html) to sanitize
+ * user-supplied strings before combining them with markup.
+ *
+ * @example
+ * const itemsHtml = items.map(i => `<li>${escapeHtml(i.label)}</li>`).join('');
+ * return html`<ul>${trusted(itemsHtml)}</ul>`;
+ */
+export function escapeHtml(value) {
+    return String(value)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#039;');
+}
+/**
+ * HTML template literal tag.
+ *
+ * Automatically HTML-escapes every interpolated value UNLESS it is a TrustedHtml
+ * instance (created with trusted()). Use this for all component templates.
+ *
+ * - Plain values (string, number, boolean) → auto-escaped
+ * - trusted(htmlString)                     → inserted verbatim (developer responsibility)
+ *
+ * Provides syntax highlighting when the "lit-html" VS Code extension is installed.
+ *
+ * @example
+ * return html`<div class="${variant}">${trusted(listHtml)}</div>`;
+ */
+export const html = (strings, ...values) => {
+    let result = strings[0];
+    for (let i = 0; i < values.length; i++) {
+        const value = values[i];
+        result += value instanceof TrustedHtml ? value.__html : escapeHtml(value);
+        result += strings[i + 1];
+    }
+    return result;
+};
+/**
+ * CSS template literal tag for syntax highlighting.
+ * No-op at runtime.
+ */
+export const css = (strings, ...values) => String.raw({ raw: strings }, ...values);
+/**
+ * Validate a URL and block dangerous protocols.
+ * Returns the URL if safe, or an empty string if blocked.
+ * Allows: http, https, mailto, tel, relative paths, data:image/*
+ */
+export function sanitizeURL(url) {
+    if (!url)
+        return '';
+    const trimmed = url.trim();
+    if (trimmed === '')
+        return '';
+    // Block javascript:, vbscript:, data: (except images)
+    const lower = trimmed.toLowerCase().replace(/[\s\u0000-\u001F]+/g, '');
+    if (lower.startsWith('javascript:') || lower.startsWith('vbscript:')) {
+        return '';
+    }
+    // Allow data:image/* only
+    if (lower.startsWith('data:') && !lower.startsWith('data:image/')) {
+        return '';
+    }
+    return trimmed;
+}

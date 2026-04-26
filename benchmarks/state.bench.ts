@@ -4,7 +4,7 @@
  * Measures the throughput of useState, computed, effect, and
  * watch across a range of scenarios.
  *
- * Run: node --experimental-strip-types benchmarks/state.bench.ts
+ * Run: npm run bench
  */
 
 import {

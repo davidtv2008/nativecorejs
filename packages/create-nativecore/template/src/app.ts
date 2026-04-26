@@ -127,14 +127,7 @@ async function init(){
         if (!isAuth) {
             router.replace('/login');
             document.body.classList.remove('sidebar-enabled');
-            const app = dom.$('#app');
-            app?.classList.remove('sidebar-collapsed');
-            app?.classList.add('no-sidebar');
-            // Reset sidebar collapse state so the next login starts fresh
-            localStorage.removeItem('sidebar-collapsed');
-            const sidebar = dom.$('#appSidebar');
-            sidebar?.removeAttribute('collapsed');
-            dom.$('.app-layout')?.classList.remove('sidebar-collapsed');
+            dom.$('#app')?.classList.add('no-sidebar');
         } else {
             updateSidebarVisibility();
         }

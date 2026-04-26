@@ -1,0 +1,104 @@
+<div class="login-experience" data-view="login">
+    <div class="login-shell">
+        <!-- Product context / value proposition -->
+        <section class="login-showcase" aria-label="Demo access overview">
+            <div class="login-showcase__eyebrow">Enterprise Demo Access</div>
+            <h1 class="login-showcase__title">Demo sign in.</h1>
+            <p class="login-showcase__copy">
+                Simple access to the NativeCore dashboard demo.
+            </p>
+
+            <div class="login-showcase__grid">
+                <article class="login-showcase__card">
+                    <h2>What this demo proves</h2>
+                    <ul class="login-showcase__list">
+                        <li>Protected route gating with dashboard handoff</li>
+                        <li>API-backed authentication flow using seeded demo users</li>
+                        <li>Component-driven UI built from NativeCore primitives</li>
+                    </ul>
+                </article>
+
+                <article class="login-showcase__card login-showcase__card--accent">
+                    <h2>Included in the walkthrough</h2>
+                    <div class="login-showcase__metrics">
+                        <div>
+                            <strong>Public routes</strong>
+                            <span>Marketing site and docs entry</span>
+                        </div>
+                        <div>
+                            <strong>Protected routes</strong>
+                            <span>Dashboard access, auth state, and API data</span>
+                        </div>
+                        <div>
+                            <strong>Demo account</strong>
+                            <span>Pre-seeded credentials for fast validation</span>
+                        </div>
+                    </div>
+                </article>
+            </div>
+        </section>
+
+        <!-- Auth form surface -->
+        <section class="login-panel" aria-label="Sign in form">
+            <div class="login-panel__header">
+                <p class="login-panel__eyebrow">Secure Workspace Sign In</p>
+                <h2>Access the NativeCore demo dashboard</h2>
+                <p>Use the demo credentials below.</p>
+            </div>
+
+            <div class="login-demo-credentials" aria-label="Demo credentials">
+                <div class="login-demo-credentials__item">
+                    <span>Demo email</span>
+                    <strong>demo@example.com</strong>
+                </div>
+                <div class="login-demo-credentials__item">
+                    <span>Demo password</span>
+                    <strong>pa$$w0rd</strong>
+                </div>
+            </div>
+
+            <div id="login-error" class="login-alert alert alert-error" hidden aria-live="polite" wire-content="errorMessage"></div>
+
+            <nc-form id="loginForm" class="login-form">
+                <nc-field class="login-field" label="Work Email" for="email" required>
+                    <nc-input
+                        id="email"
+                        name="email"
+                        type="email"
+                        autocomplete="username email"
+                        placeholder="demo@example.com"
+                        value="demo@example.com"
+                        required
+                    ></nc-input>
+                </nc-field>
+
+                <nc-field class="login-field" label="Password" for="password" required>
+                    <nc-input
+                        id="password"
+                        name="password"
+                        type="password"
+                        autocomplete="current-password"
+                        placeholder="Enter your password"
+                        value="pa$$w0rd"
+                        required
+                        minlength="8"
+                        show-password-toggle
+                    ></nc-input>
+                </nc-field>
+
+                <div class="login-form__utility">
+                    <nc-checkbox id="rememberMe" name="rememberMe" label="Remember demo email" checked></nc-checkbox>
+                    <a href="/docs" data-link class="login-form__utility-link">Review the docs</a>
+                </div>
+
+                <nc-button id="loginBtn" type="submit" variant="primary" size="lg" full-width>
+                    Access Dashboard
+                </nc-button>
+            </nc-form>
+
+            <p class="login-panel__footer">
+                Demo account only. The credentials above are intentionally exposed for evaluation purposes.
+            </p>
+        </section>
+    </div>
+</div>

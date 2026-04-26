@@ -6,6 +6,8 @@
 import { effect } from './state.js';
 import type { State, ComputedState } from './state.js';
 import dom from '../utils/dom.js';
+import { pausePageCleanupCollection, resumePageCleanupCollection } from './pageCleanupRegistry.js';
+import type { WireAction } from '../utils/wireActions.js';
 
 // Types
 export interface ComponentState {
@@ -50,8 +52,15 @@ export class Component extends HTMLElement {
         try {
             this.render();
             this._mounted = true;
+            // Pause cleanup collection so that effects / computed states created
+            // inside onMount() (via bindClass, wires, etc.) are never flushed by
+            // the router's page cleanup. Web component teardown is handled by
+            // disconnectedCallback via this._bindings — not the page registry.
+            pausePageCleanupCollection();
             this.onMount();
+            resumePageCleanupCollection();
         } catch (error) {
+            resumePageCleanupCollection();
             console.error(`Error rendering ${this.tagName.toLowerCase()}:`, error);
             this.dispatchEvent(new CustomEvent('nativecore:component-error', {
                 bubbles: true,
@@ -455,6 +464,114 @@ export class Component extends HTMLElement {
         this.wireAttributes();
         this.wireClasses();
         this.wireStyles();
+    }
+
+    /**
+     * Declarative event binding. Scans the component for every
+     * [wire-action="name:eventType"] element and returns a map of named
+     * WireAction objects. Pass each to this.on() to bind a handler with
+     * automatic cleanup on component unmount.
+     *
+     * @example
+     * // template: <button wire-action="savebtn:click">Save</button>
+     * //           <nc-rating wire-action="rating:nc-change">…</nc-rating>
+     *
+     * onMount() {
+     *     const { savebtn, rating } = this.wireActions();
+     *     this.listen(savebtn, () => this.handleSave());
+     *     this.listen(rating,  (e) => this.score.value = e.detail.value);
+     * }
+     */
+    wireActions(): Record<string, WireAction> {
+        const root = this.shadowRoot ?? this;
+        const actions: Record<string, WireAction> = {};
+
+        root.querySelectorAll<HTMLElement>('[wire-action]').forEach(el => {
+            const raw = el.getAttribute('wire-action')!;
+            const colonIndex = raw.indexOf(':');
+
+            if (colonIndex === -1) {
+                console.warn(
+                    `[${this.tagName.toLowerCase()}] wireActions(): invalid wire-action value "${raw}" — ` +
+                    `expected format "name:eventType" (e.g. "savebtn:click")`
+                );
+                return;
+            }
+
+            const name      = raw.slice(0, colonIndex).trim();
+            const eventName = raw.slice(colonIndex + 1).trim();
+
+            if (actions[name]) {
+                console.warn(
+                    `[${this.tagName.toLowerCase()}] wireActions(): duplicate wire-action name "${name}" — ` +
+                    `each name must be unique per component.`
+                );
+                return;
+            }
+
+            actions[name] = { element: el, event: eventName };
+        });
+
+        return actions;
+    }
+
+    /**
+     * Bind a handler to a WireAction or an arbitrary element — with automatic
+     * cleanup on component unmount. The component-level equivalent of the
+     * controller's callable events() tracker.
+     *
+     * Two call signatures:
+     *
+     *   // WireAction from wireActions() — element and event already encoded
+     *   this.listen(wireAction, handler);
+     *
+     *   // Classic element + event name (auto-queries inside shadow/light root)
+     *   this.listen(element,  'eventName', handler);
+     *   this.listen(selector, 'eventName', handler);
+     *
+     * @example
+     * onMount() {
+     *     const { savebtn } = this.wireActions();
+     *     this.listen(savebtn,            () => this.handleSave());
+     *     this.listen(window, 'resize',   () => this.onResize());
+     *     this.listen('#closeBtn','click', () => this.close());
+     * }
+     */
+    listen<T = Event>(action: WireAction, handler: (event: T) => void): void;
+    listen<T = Event>(selectorOrElement: string | Element | EventTarget | null, eventName: string, handler: (event: T) => void): void;
+    listen<T = Event>(
+        first:  WireAction | string | Element | EventTarget | null,
+        second: string | ((event: T) => void),
+        third?: (event: T) => void
+    ): void {
+        if (
+            first !== null &&
+            typeof first === 'object' &&
+            'element' in first &&
+            'event' in first &&
+            typeof second === 'function'
+        ) {
+            // WireAction path
+            const { element, event } = first as WireAction;
+            element.addEventListener(event, second as EventListener);
+            this._bindings.push(() => element.removeEventListener(event, second as EventListener));
+        } else if (typeof second === 'string' && typeof third === 'function') {
+            // Classic element / selector / Window path
+            const el = typeof first === 'string' ? this.$(first) : first as EventTarget | null;
+            if (!el) {
+                console.warn(`[${this.tagName.toLowerCase()}] listen(): no element found for "${first}"`);
+                return;
+            }
+            el.addEventListener(second, third as EventListener);
+            this._bindings.push(() => el.removeEventListener(second, third as EventListener));
+        } else {
+            console.warn(`[${this.tagName.toLowerCase()}] listen(): unrecognised call signature.`);
+        }
+    }
+
+    /** @deprecated Use this.listen(wireAction, handler) instead. */
+    bindAction<T = Event>(action: WireAction, handler: (event: T) => void): void {
+        this.listen(action, handler);
     }
 
     /**

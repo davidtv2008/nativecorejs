@@ -45,6 +45,13 @@ export class Router {
     private currentRoute: RouteMatch | null = null;
     private middlewares: MiddlewareFunction[] = [];
     private htmlCache: Map<string, CacheEntry> = new Map();
+    /**
+     * Tracks the last file + HTML string written to each content container.
+     * Keyed by the target element so layout outlets and main-content are
+     * tracked independently. Skip innerHTML only when BOTH the file AND the
+     * HTML string match what is already in that specific container.
+     */
+    private renderedHtmlCache: WeakMap<Element, { file: string; html: string }> = new WeakMap();
     private pageScripts: Record<string, { cleanup?: () => void }> = {};
     private navigationController: AbortController | null = null;
     private isNavigating = false;
@@ -132,6 +139,7 @@ export class Router {
 
     /**
      * Manually bust the HTML cache for a specific path (or all paths).
+     * Also clears the rendered-HTML cache so the next visit always re-renders.
      */
     bustCache(path?: string): void {
         if (path) {
@@ -148,6 +156,8 @@ export class Router {
             }
         } else {
             this.htmlCache.clear();
+            // renderedHtmlCache is a WeakMap keyed by DOM elements;
+            // entries are released automatically when containers are replaced.
         }
     }
 
@@ -278,8 +288,11 @@ export class Router {
         if (this.navigationController) {
             this.navigationController.abort();
         }
-        // Force reload current path
-        const currentPath = window.location.pathname;
+        // renderedHtmlCache is a WeakMap — no manual clearing needed.
+        // When HMR triggers a reload it busts the htmlCache, so a fresh fetch
+        // will produce a new html string that won't match the recorded entry,
+        // and the container will always be re-rendered.
+
         this.handleRoute(currentPath, {});
     }
     
@@ -372,7 +385,26 @@ export class Router {
                 const contentTarget = await this.resolveContentTarget(mainContent, route);
                 const html = await this.fetchHTML(route.config.htmlFile, route.config.cachePolicy);
 
-                contentTarget.innerHTML = html;
+                // Skip the innerHTML write when the fetched HTML is identical to
+                // what was last rendered into this slot. The controller still runs
+                // and re-creates its reactive effects on the existing DOM nodes —
+                // wire bindings always re-apply their current state on first run,
+                // so the view is immediately consistent without a full re-render.
+                // Only skip the innerHTML write when this specific container
+                // already holds the same file AND the same HTML string.
+                // Keying by element (not file path) ensures that navigating
+                // A → B → A never skips the re-render — B overwrote the
+                // container, so the recorded entry no longer matches.
+                const lastRendered = this.renderedHtmlCache.get(contentTarget);
+                const shouldSkipRender =
+                    lastRendered?.file === route.config.htmlFile &&
+                    lastRendered?.html === html;
+
+                if (!shouldSkipRender) {
+                    contentTarget.innerHTML = html;
+                    this.renderedHtmlCache.set(contentTarget, { file: route.config.htmlFile, html });
+                }
+
                 mainContent.classList.remove('page-transition-exit');
                 mainContent.classList.add('page-transition-enter');
             }

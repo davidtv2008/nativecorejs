@@ -14,7 +14,53 @@ The route cache is distinct from the API data cache you'll meet in Chapter 16. I
 
 This makes back-navigation essentially free. If a user opens a task, returns to the list, opens another task, and hits back again, the task list HTML is served from memory every time after the first visit.
 
-> **Important:** The route cache stores the *template document*, not the rendered page. The controller always runs on navigation — it reads state, fetches API data, and populates the DOM. The cache only saves the HTML fetch.
+---
+
+## Two Cache Layers
+
+The router actually maintains two separate caches working in tandem:
+
+| Cache | Key | Stores | Saves |
+|---|---|---|---|
+| `htmlCache` | file path | Fetched HTML string + TTL | Network round-trip |
+| `renderedHtmlCache` | file path | Last HTML string written to DOM | DOM re-render |
+
+### Layer 1 — HTML Cache (network)
+
+The `htmlCache` stores the raw HTML string returned from the server. On subsequent navigations, the router serves this string from memory instead of making a network request. Controlled by `.cache({ ttl, revalidate })`.
+
+### Layer 2 — Rendered HTML Cache (DOM)
+
+The `renderedHtmlCache` tracks what was *last written to the DOM*. Before setting `innerHTML`, the router compares the incoming HTML string against what it already rendered:
+
+```
+fetchHTML()  →  html === lastRendered?
+                    YES → skip innerHTML, DOM already correct
+                    NO  → write innerHTML, update renderedHtmlCache
+```
+
+When the strings match, the `innerHTML` write is skipped entirely — no DOM traversal, no node creation, no style recalculation. The controller still runs and re-creates its reactive effects on the existing DOM nodes. Because wire bindings execute their effects immediately on creation (`wireClasses`, `wireContents`, `wireAttributes` etc. all run their initial sync pass), the view is instantly consistent whether or not the DOM was re-written.
+
+**This means a repeated visit to a cached route has two layers of savings:**
+1. No network fetch (HTML cache hit)
+2. No DOM re-render (rendered HTML cache hit)
+
+### Why it is safe
+
+Reactive effects always apply their current state when created. A `wireContents()` effect that drives a button label doesn't need the DOM to be reset first — it reads the current state value and writes it to the element immediately. The DOM could have been there for an hour; the effect still makes it correct.
+
+The only scenario where skipping `innerHTML` could show stale content is if a controller directly mutated the DOM *outside* the reactive system — setting `el.textContent = 'hello'` without a state binding. This is considered an anti-pattern in NativeCoreJS. Always drive DOM changes through reactive state, and the rendered HTML cache is always safe.
+
+### When re-render still happens
+
+The rendered HTML cache does not interfere with correctness:
+
+- **`router.bustCache(path)`** clears both caches — the next visit fetches fresh HTML *and* re-renders the DOM
+- **`router.bustCache()`** with no arguments clears everything
+- **HMR** (`router.reload()`) always clears the rendered cache for the current route so file changes are always reflected
+- **Changed HTML** — if the fetched HTML string differs from what was last rendered (a deploy happened, revalidation returned new markup), `innerHTML` is written normally
+
+> **Note:** The rendered HTML cache is session-only and lives in memory alongside the HTML cache. It requires no configuration — it is always active.
 
 ---
 
@@ -226,16 +272,17 @@ Here is the complete caching philosophy distilled into one table:
 
 ## Performance Impact
 
-Without caching, every back-navigation fetches the HTML again — even if the user was just on that page two seconds ago. With caching:
+Without caching, every back-navigation fetches the HTML again — even if the user was just on that page two seconds ago. With both cache layers active:
 
-- `/dashboard` on first visit: network fetch (~10–50ms)
-- `/tasks` on first visit: network fetch
-- User opens a task, presses back: `/tasks` served from memory in **< 1ms**
-- User presses back again: `/dashboard` served from memory in **< 1ms**
+- `/dashboard` on first visit: network fetch + DOM render (~10–50ms)
+- `/tasks` on first visit: network fetch + DOM render
+- User opens a task, presses back: `/tasks` — no network fetch, no DOM re-render, **< 1ms**
+- User presses back again: `/dashboard` — same, **< 1ms**
+- Controller always runs — reactive effects re-apply current state instantly
 
-On repeated navigation patterns — which are extremely common in task management apps — the cumulative saving is significant.
+On repeated navigation patterns — which are extremely common in task management apps — both layers compound: no network cost and no rendering cost. The only work remaining is the controller running and re-creating reactive bindings, which is measured in microseconds.
 
-> **Warning:** Omitting `.cache()` entirely means no caching — the HTML is fetched on every navigation. This is the safe default, but you should be *deliberate* about it. Don't leave routes without a cache policy by accident; decide consciously whether caching is appropriate.
+> **Warning:** Omitting `.cache()` entirely means no HTML caching — the template is fetched on every navigation. The rendered HTML cache still operates independently and skips `innerHTML` when the freshly-fetched HTML matches what was last rendered. But without `.cache()`, the network round-trip still happens on every visit. Don't leave routes without a cache policy by accident; decide consciously whether caching is appropriate.
 
 ---
 

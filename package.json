@@ -28,6 +28,6 @@
     "verify:runtime:pack": "npm run build && npm run pack:runtime",
     "verify:sample:packed": "npm run install:sample:packed && npm run compile:sample",
     "smoke:sample:packed": "npm run verify:runtime:pack && npm run create:sample:packed && npm run verify:sample:packed",
-    "bench": "node --experimental-strip-types benchmarks/state.bench.ts"
+    "bench": "npx --yes tsx benchmarks/state.bench.ts"
   }
 }
