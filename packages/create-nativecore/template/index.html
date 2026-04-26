@@ -44,6 +44,10 @@
     </style>
     <script>
     (function() {
+            var s = document.createElement('style');
+            s.id = 'nc-fouc-guard';
+            s.textContent = 'body{visibility:hidden}';
+            document.head.appendChild(s);
             const isRootPath = window.location.pathname === '/';
             if (!isRootPath) {
                 document.documentElement.setAttribute('data-public-route', 'pending');
@@ -85,7 +89,7 @@
     <link rel="preload" href="/src/styles/core-variables.css" as="style" onload="this.onload=null;this.rel='stylesheet'">
     <link rel="preload" href="/src/styles/core.css" as="style" onload="this.onload=null;this.rel='stylesheet'">
     <link rel="preload" href="/src/styles/variables.css" as="style" onload="this.onload=null;this.rel='stylesheet'">
-    <link rel="preload" href="/src/styles/main.css" as="style" onload="this.onload=null;this.rel='stylesheet'">
+    <link rel="preload" href="/src/styles/main.css" as="style" onload="this.onload=null;this.rel='stylesheet';var g=document.getElementById('nc-fouc-guard');if(g)g.parentNode.removeChild(g)">
     <noscript>
         <link rel="stylesheet" href="/src/styles/core-variables.css">
         <link rel="stylesheet" href="/src/styles/core.css">
