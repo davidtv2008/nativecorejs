@@ -5,6 +5,10 @@
  * best browser-suitable entry point from node_modules, and writes a
  * <script type="importmap"> block into index.html.
  *
+ * CJS packages are automatically pre-bundled to ESM using esbuild and saved
+ * to .nativecore/esm-shims/ so they work in the browser without any manual
+ * setup. The import map points at the shim instead of the raw node_modules file.
+ *
  * This runs automatically as part of `npm run dev` and `npm run compile` so
  * developers never have to manually edit the import map when adding an npm
  * package.
@@ -17,9 +21,6 @@
  *   5. package.json `browser`                  (string form)
  *   6. package.json `main`
  *
- * The resolved path is always written as `/node_modules/<pkg>/<file>` so the
- * dev server can serve it directly from disk without any bundling.
- *
  * The generated block is delimited by sentinel comments so subsequent runs
  * replace it cleanly rather than appending.
  *
@@ -27,13 +28,18 @@
  *   node .nativecore/scripts/sync-importmap.mjs
  */
 
-import fs   from 'fs';
-import path from 'path';
+import fs      from 'fs';
+import path    from 'path';
+import esbuild from 'esbuild';
 import { fileURLToPath } from 'url';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname  = path.dirname(__filename);
 const ROOT       = path.resolve(__dirname, '..', '..');
+
+// Shims are written here and served by the dev server at /.nativecore/esm-shims/
+const SHIMS_DIR     = path.join(ROOT, '.nativecore', 'esm-shims');
+const SHIMS_URL_BASE = '/.nativecore/esm-shims';
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
@@ -76,17 +82,55 @@ function resolveEntry(pkgJson) {
 }
 
 /**
- * Return true if the file at `absPath` looks like an ES module
- * (contains `export ` or `import ` statements).
- * Used to prefer ESM over CJS when both exist.
+ * Return true if the file looks like a native ES module.
  */
 function looksLikeESM(absPath) {
     try {
         const sample = fs.readFileSync(absPath, 'utf8').slice(0, 4096);
         return /\bexport\s+(default|const|function|class|\{)/.test(sample) ||
-               /\bimport\s+/.test(sample);
+               /^import\s+/m.test(sample);
     } catch {
         return false;
+    }
+}
+
+/**
+ * Pre-bundle a CJS package to ESM using esbuild and save it to the shims dir.
+ * Returns the URL path to serve the shim from, e.g. /.nativecore/esm-shims/crypto-js.js
+ * Returns null if bundling fails.
+ */
+async function prebundleCJS(name, absEntry) {
+    fs.mkdirSync(SHIMS_DIR, { recursive: true });
+
+    // Use a safe filename: scoped packages like @scope/pkg → scope__pkg.js
+    const safeName  = name.replace(/^@/, '').replace(/\//g, '__');
+    const shimFile  = path.join(SHIMS_DIR, `${safeName}.js`);
+    const shimUrl   = `${SHIMS_URL_BASE}/${safeName}.js`;
+
+    // Skip rebuild if shim is already newer than the source file
+    try {
+        const shimMtime   = fs.statSync(shimFile).mtimeMs;
+        const sourceMtime = fs.statSync(absEntry).mtimeMs;
+        if (shimMtime > sourceMtime) return shimUrl;
+    } catch {
+        // shim doesn't exist yet — build it
+    }
+
+    try {
+        await esbuild.build({
+            entryPoints:    [absEntry],
+            bundle:         true,
+            format:         'esm',
+            platform:       'browser',
+            outfile:        shimFile,
+            allowOverwrite: true,
+            logLevel:       'silent',
+        });
+        console.log(`[sync-importmap] pre-bundled CJS: ${name} -> ${SHIMS_URL_BASE}/${safeName}.js`);
+        return shimUrl;
+    } catch (err) {
+        console.warn(`[sync-importmap] could not pre-bundle ${name}: ${err.message}`);
+        return null;
     }
 }
 
@@ -154,21 +198,23 @@ for (const name of runtimeDeps) {
     }
 
     const entry = resolveEntry(depPkg);
-    if (!entry) {
-        console.warn(`[sync-importmap] ${name}: no resolvable entry point — skipping`);
-        continue;
-    }
+    if (!entry) continue;
 
     // Normalise — strip leading "./"
     const normalised = entry.replace(/^\.\//, '');
     const absEntry   = path.join(ROOT, 'node_modules', name, normalised);
 
-    if (!fs.existsSync(absEntry)) {
-        console.warn(`[sync-importmap] ${name}: resolved to "${normalised}" but file not found — skipping`);
-        continue;
-    }
+    if (!fs.existsSync(absEntry)) continue;
 
-    const url = `/node_modules/${name}/${normalised}`;
+    // If the resolved file is CJS, pre-bundle it to ESM so it works in the
+    // browser without any manual setup. Point the import map at the shim.
+    let url;
+    if (!looksLikeESM(absEntry)) {
+        const shimUrl = await prebundleCJS(name, absEntry);
+        url = shimUrl ?? `/node_modules/${name}/${normalised}`;
+    } else {
+        url = `/node_modules/${name}/${normalised}`;
+    }
     imports[name] = url;
 
     // Also register common sub-path aliases that packages document
@@ -190,6 +236,13 @@ for (const name of runtimeDeps) {
         const subKey = `${name}${sub.slice(1)}`; // "./auto" → "chart.js/auto"
         if (!imports[subKey]) {
             imports[subKey] = `/node_modules/${name}/${normSub}`;
+        }
+        // Also register without .js extension so both styles work:
+        //   import x from '@noble/hashes/sha256'    (no ext)
+        //   import x from '@noble/hashes/sha256.js' (with ext)
+        const subKeyNoExt = subKey.replace(/\.js$/, '');
+        if (subKeyNoExt !== subKey && !imports[subKeyNoExt]) {
+            imports[subKeyNoExt] = `/node_modules/${name}/${normSub}`;
         }
     }
 }
