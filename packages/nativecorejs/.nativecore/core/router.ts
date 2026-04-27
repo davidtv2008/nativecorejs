@@ -58,9 +58,9 @@ export class Router {
 
                 if (!href) return;
 
+                // Skip external links and let browser handle pure hash-only anchors
                 if (href.startsWith('http://') || href.startsWith('https://') ||
-                    href.startsWith('mailto:') || href.startsWith('tel:') ||
-                    href.startsWith('#')) {
+                    href.startsWith('mailto:') || href.startsWith('tel:')) {
                     return;
                 }
 
@@ -68,8 +68,26 @@ export class Router {
                     return;
                 }
 
+                // For hash-only links (e.g., #section), prevent default and handle manually
+                if (href.startsWith('#')) {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    // Manually update the URL hash while preserving current pathname
+                    window.history.pushState(null, '', window.location.pathname + window.location.search + href);
+                    queueMicrotask(() => this.scrollToHash(href.slice(1)));
+                    return;
+                }
+
+                // Handle route navigation (with optional hash)
                 e.preventDefault();
-                this.navigate(href);
+
+                const [pathname, hash] = href.split('#');
+                if (hash) {
+                    // Route+hash link: navigate to route and scroll to hash after load
+                    this.navigate(pathname, { scrollToHash: hash });
+                } else {
+                    this.navigate(pathname);
+                }
             }
         });
     }
@@ -262,6 +280,12 @@ export class Router {
 
             window.dispatchEvent(new CustomEvent('pageloaded', { detail: route }));
             this.resetScrollPosition(mainContent);
+
+            // Handle hash anchors — scroll to target if hash exists in URL or state
+            const hashToScroll = state?.scrollToHash || window.location.hash.slice(1);
+            if (hashToScroll) {
+                queueMicrotask(() => this.scrollToHash(hashToScroll));
+            }
 
             if (progressBar) {
                 setTimeout(() => progressBar.classList.remove('loading'), 200);
@@ -623,6 +647,15 @@ export class Router {
                 scrollContainer.scrollTop = 0;
                 scrollContainer.scrollLeft = 0;
             }
+        }
+    }
+
+    private scrollToHash(hash: string): void {
+        if (!hash) return;
+
+        const target = document.getElementById(hash);
+        if (target) {
+            target.scrollIntoView({ behavior: 'smooth', block: 'start' });
         }
     }
 }
