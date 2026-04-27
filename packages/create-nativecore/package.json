@@ -1,6 +1,6 @@
 {
   "name": "create-nativecore",
-  "version": "1.0.0-rc.10",
+  "version": "1.0.0-rc.11",
   "description": "Interactive CLI for scaffolding NativeCore applications",
   "keywords": [
     "nativecore",
