@@ -169,7 +169,7 @@ function packageJsonTemplate(config) {
         validate: config.useTypeScript
             ? 'npm run typecheck && npm run build:client && npm run test -- --run'
             : 'npm run build:client && npm run test -- --run',
-        dev: 'npm run compile && node .nativecore/scripts/inject-version.mjs && concurrently --kill-others --names "watch,server" -c "blue,green" "node .nativecore/scripts/watch-compile.mjs" "node server.js"',
+        dev: 'npm run compile && node .nativecore/scripts/inject-version.mjs && node .nativecore/scripts/sync-importmap.mjs && concurrently --kill-others --names "watch,server" -c "blue,green" "node .nativecore/scripts/watch-compile.mjs" "node server.js"',
         'dev:watch': 'node .nativecore/scripts/watch-compile.mjs',
         clean: 'node -e "const fs=require(\'fs\'); fs.rmSync(\'dist\',{recursive:true,force:true}); fs.rmSync(\'_deploy\',{recursive:true,force:true})"',
         prebuild: config.useTypeScript
@@ -179,7 +179,8 @@ function packageJsonTemplate(config) {
         'build:client': 'node .nativecore/scripts/inject-version.mjs && npm run compile:prod && node .nativecore/scripts/minify.mjs && node .nativecore/scripts/prepare-static-assets.mjs',
         'build:ssg': 'node .nativecore/scripts/ssg.mjs --yes',
         'build:full': 'npm run build && npm run build:ssg',
-        compile: 'node .nativecore/scripts/watch-compile.mjs --once',
+        compile: 'node .nativecore/scripts/watch-compile.mjs --once && node .nativecore/scripts/sync-importmap.mjs',
+        'sync:importmap': 'node .nativecore/scripts/sync-importmap.mjs',
         'compile:prod': 'node .nativecore/scripts/watch-compile.mjs --once && node .nativecore/scripts/remove-dev.mjs',
         'make:component': 'node .nativecore/scripts/make-component.mjs',
         'make:core-component': 'node .nativecore/scripts/make-core-component.mjs',
