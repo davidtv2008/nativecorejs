@@ -100,6 +100,82 @@ function isCompiledJS(name) {
     return true;
 }
 
+/**
+ * Detect bare specifier imports in a JS file (imports that don't start
+ * with '.', '/', or a known protocol). These are npm package references
+ * that the browser can't resolve without a bundler or import map.
+ */
+function hasBareSpecifierImports(filePath) {
+    try {
+        const code = fs.readFileSync(filePath, 'utf8');
+        return /(?:from|import)\s*["'](?![./\/]|https?:|node:)([^"']+)["']/m.test(code);
+    } catch {
+        return false;
+    }
+}
+
+/**
+ * Walk a directory and return all .js files that contain bare specifier imports.
+ */
+function collectFilesWithNpmImports(dir, results = []) {
+    if (!fs.existsSync(dir)) return results;
+    for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
+        const full = path.join(dir, entry.name);
+        if (entry.isDirectory()) {
+            collectFilesWithNpmImports(full, results);
+        } else if (entry.name.endsWith('.js') && hasBareSpecifierImports(full)) {
+            results.push(full);
+        }
+    }
+    return results;
+}
+
+/**
+ * For each deployed JS file that imports npm packages, re-bundle it with
+ * esbuild bundle:true so the npm deps are inlined. The framework's own
+ * relative imports (other dist/ files) are marked external so the
+ * unbundled module graph is preserved — only the npm packages get inlined.
+ */
+async function bundleNpmDeps(jsDeployDir) {
+    const filesWithNpm = collectFilesWithNpmImports(jsDeployDir);
+    if (filesWithNpm.length === 0) return;
+
+    console.log(`\n📦 Bundling npm dependencies into ${filesWithNpm.length} file${filesWithNpm.length === 1 ? '' : 's'}...`);
+
+    for (const filePath of filesWithNpm) {
+        try {
+            const code = fs.readFileSync(filePath, 'utf8');
+
+            // Collect all import specifiers that are relative (keep those external)
+            const relativeImports = [];
+            const allImports = code.matchAll(/(?:from|import)\s*["']([^"']+)["']/g);
+            for (const [, spec] of allImports) {
+                if (spec.startsWith('.') || spec.startsWith('/')) {
+                    relativeImports.push(spec);
+                }
+            }
+
+            await esbuild.build({
+                entryPoints:    [filePath],
+                bundle:         true,
+                format:         'esm',
+                platform:       'browser',
+                outfile:        filePath,
+                allowOverwrite: true,
+                // Keep relative imports external — only npm bare specifiers get inlined
+                external:       relativeImports,
+                logLevel:       'silent',
+            });
+
+            const rel = path.relative(deployDir, filePath).replace(/\\/g, '/');
+            console.log(`  bundled: ${rel}`);
+        } catch (err) {
+            const rel = path.relative(deployDir, filePath).replace(/\\/g, '/');
+            console.warn(`  warning: could not bundle npm deps in ${rel}: ${err.message}`);
+        }
+    }
+}
+
 async function prepareDeployDirectory() {
     cleanDir(deployDir);
 
@@ -162,6 +238,15 @@ async function prepareDeployDirectory() {
     // 6. Public static assets → _deploy/ root (robots.txt, _headers, etc.)
     // ---------------------------------------------------------------
     copyDirectory(path.join(rootDir, 'public'), deployDir);
+
+    // ---------------------------------------------------------------
+    // 7. Bundle npm deps inline for production (no node_modules on server)
+    //    Any deployed JS file that imports an npm package gets re-bundled
+    //    with esbuild so the dependency is inlined. Framework relative
+    //    imports remain as-is, preserving the unbundled module graph.
+    // ---------------------------------------------------------------
+    const jsDeployDir = path.join(deployDir, 'dist');
+    await bundleNpmDeps(jsDeployDir);
 
     console.log('\nDeployment directory prepared: _deploy/');
 }

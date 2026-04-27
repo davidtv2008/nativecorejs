@@ -98,15 +98,51 @@ if (!fs.existsSync(pkgPath)) {
     process.exit(0);
 }
 
-const appPkg      = JSON.parse(fs.readFileSync(pkgPath, 'utf8'));
-const dependencies = { ...appPkg.dependencies };
+// Recursively collect all runtime transitive dependencies starting from the
+// app's `dependencies` (NOT devDependencies). This picks up packages like
+// @kurkle/color that chart.js imports at runtime but are not listed in the
+// app's own package.json, while excluding dev-only tools (eslint, vitest, etc.)
+function collectRuntimeDeps(rootPkgPath, nodeModulesDir) {
+    const visited = new Set();
+    const queue   = [];
 
-// Remove nativecorejs itself — it is served via path aliases, not import map
-delete dependencies['nativecorejs'];
+    // Seed with direct dependencies only
+    try {
+        const root = JSON.parse(fs.readFileSync(rootPkgPath, 'utf8'));
+        for (const name of Object.keys(root.dependencies ?? {})) {
+            if (name !== 'nativecorejs') queue.push(name);
+        }
+    } catch {
+        return [];
+    }
+
+    while (queue.length > 0) {
+        const name = queue.shift();
+        if (visited.has(name)) continue;
+        visited.add(name);
+
+        const depPkgPath = path.join(nodeModulesDir, name, 'package.json');
+        if (!fs.existsSync(depPkgPath)) continue;
+
+        try {
+            const depPkg = JSON.parse(fs.readFileSync(depPkgPath, 'utf8'));
+            for (const transitive of Object.keys(depPkg.dependencies ?? {})) {
+                if (!visited.has(transitive)) queue.push(transitive);
+            }
+        } catch {
+            // unreadable package.json — skip transitive walk for this dep
+        }
+    }
+
+    return [...visited];
+}
+
+const nodeModulesDir = path.join(ROOT, 'node_modules');
+const runtimeDeps   = collectRuntimeDeps(pkgPath, nodeModulesDir);
 
 const imports = {};
 
-for (const [name] of Object.entries(dependencies)) {
+for (const name of runtimeDeps) {
     const depPkgPath = path.join(ROOT, 'node_modules', name, 'package.json');
     if (!fs.existsSync(depPkgPath)) continue;
 
@@ -194,12 +230,9 @@ fs.writeFileSync(htmlPath, html, 'utf8');
 
 const count = Object.keys(imports).length;
 if (count > 0) {
-    console.log(`[sync-importmap] wrote ${count} entr${count === 1 ? 'y' : 'ies'} to index.html import map`);
-    for (const [k, v] of Object.entries(imports)) {
-        console.log(`  ${k} → ${v}`);
-    }
+    console.log(`[sync-importmap] ${count} entr${count === 1 ? 'y' : 'ies'} mapped in index.html`);
 } else {
-    console.log('[sync-importmap] no dependencies to map — import map cleared');
+    console.log('[sync-importmap] no runtime dependencies found — import map cleared');
 }
 
 function escapeRegex(str) {
