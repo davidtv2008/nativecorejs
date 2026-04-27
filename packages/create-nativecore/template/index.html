@@ -81,11 +81,16 @@
     "keywords": "NativeCore, JavaScript framework, reactive signals, Web Components, vanilla JS"
     }
     </script>
-    <!-- Stylesheets (render-blocking) -->
-    <link rel="stylesheet" href="/src/styles/core-variables.css">
-    <link rel="stylesheet" href="/src/styles/core.css">
-    <link rel="stylesheet" href="/src/styles/variables.css">
-    <link rel="stylesheet" href="/src/styles/main.css">
+    <!-- Stylesheets (bundled for optimal loading) -->
+    <link rel="stylesheet" href="/dist/src/styles/bundle.css">
+    <!-- Critical CSS inline to prevent layout shift -->
+    <style>
+        /* Footer minimum height to prevent layout shift */
+        app-footer {
+            min-height: 132px;
+            display: block;
+        }
+    </style>
     <!-- Module preloads with cache busting (JS only) -->
     <script>(function() {
         const isDev = location.hostname === 'localhost' || location.hostname === '127.0.0.1';
