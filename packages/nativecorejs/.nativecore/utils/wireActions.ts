@@ -3,7 +3,7 @@
  *
  * Scans the active [data-view] for every [wire-action="name:eventType"] element,
  * pairs each one with its event name, and returns a map of named WireAction
- * objects ready to be handed to trackEvents().wire() or component this.on().
+ * objects ready to be passed directly to the events() callable returned by trackEvents().
  *
  * Nothing is bound automatically — you decide the handler in the controller:
  *
@@ -18,8 +18,8 @@
  *         const events = trackEvents();
  *         const { savebtn, rating } = wireActions();
  *
- *         events.wire(savebtn, (e) => handleSave());
- *         events.wire(rating,  (e) => score.value = e.detail.value);
+ *         events(savebtn, (e) => handleSave());
+ *         events(rating,  (e) => score.value = e.detail.value);
  *
  *         return events.cleanup;
  *     }
@@ -52,7 +52,7 @@ export type WireActionsResult = Record<string, WireAction>;
 
 /**
  * Scan [wire-action] elements in the active view and return a map of named
- * WireAction objects. Pass each action to trackEvents().wire() to bind a handler.
+ * WireAction objects. Pass each action to the events() callable (from trackEvents()) to bind a handler.
  * Listener cleanup is tracked automatically via the page cleanup registry.
  */
 export function wireActions(options: WireActionsOptions = {}): WireActionsResult {
