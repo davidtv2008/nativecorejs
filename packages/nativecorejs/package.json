@@ -1,6 +1,6 @@
 {
   "name": "nativecorejs",
-  "version": "1.0.0-rc.11",
+  "version": "1.0.0-rc.12",
   "description": "NativeCore framework runtime primitives and utilities",
   "keywords": [
     "nativecore",

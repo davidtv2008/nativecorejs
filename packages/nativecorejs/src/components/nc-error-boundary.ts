@@ -40,6 +40,9 @@ export interface NcErrorDetail {
     error: unknown;
     message: string;
     stack?: string;
+    file?: string;
+    line?: number;
+    column?: number;
     component?: string;
     route?: string;
     source?: 'component' | 'route' | 'global' | 'promise';
@@ -86,6 +89,9 @@ export class NcErrorBoundary extends Component {
             error: event.error,
             message: event.message,
             stack: event.error instanceof Error ? event.error.stack : undefined,
+            file: event.filename || undefined,
+            line: event.lineno || undefined,
+            column: event.colno || undefined,
             source: 'global',
         });
     };
@@ -136,6 +142,10 @@ export class NcErrorBoundary extends Component {
                 .map(l => `<span class="stack-line">${this._escapeHtml(l)}</span>`)
                 .join('\n')
             : '<span class="stack-line">(no stack available)</span>';
+
+        const locationLine = detail.file
+            ? `${detail.file}${detail.line ? `:${detail.line}${detail.column ? `:${detail.column}` : ''}` : ''}`
+            : undefined;
 
         return `
             <style>
@@ -192,6 +202,17 @@ export class NcErrorBoundary extends Component {
                     border: 1px solid #333;
                 }
                 .eb__tag span { color: #e5e5e5; }
+                .eb__loc-link {
+                    color: #60a5fa;
+                    text-decoration: underline;
+                    cursor: pointer;
+                    background: none;
+                    border: none;
+                    font: inherit;
+                    font-size: 0.75rem;
+                    padding: 0;
+                }
+                .eb__loc-link:hover { color: #93c5fd; }
                 .eb__stack {
                     background: #111;
                     border: 1px solid #333;
@@ -238,6 +259,7 @@ export class NcErrorBoundary extends Component {
                     <div class="eb__meta">
                         ${raw(detail.component ? `<div class="eb__tag">component <span>${this._escapeHtml(detail.component)}</span></div>` : '')}
                         ${raw(detail.route ? `<div class="eb__tag">route <span>${this._escapeHtml(detail.route)}</span></div>` : '')}
+                        ${raw(locationLine ? `<div class="eb__tag">location <button class="eb__loc-link" data-loc="${this._escapeHtml(locationLine)}" title="Open in editor">${this._escapeHtml(locationLine)}</button></div>` : '')}
                         <div class="eb__tag">url <span>${this._escapeHtml(window.location.pathname)}</span></div>
                     </div>
                     <div class="eb__stack">${raw(stackLines)}</div>
@@ -312,8 +334,19 @@ export class NcErrorBoundary extends Component {
 
     onMount(): void {
         this.shadowRoot!.addEventListener('click', (e: Event) => {
-            if ((e.target as HTMLElement).closest('[data-action="reset"]')) {
+            const target = e.target as HTMLElement;
+            if (target.closest('[data-action="reset"]')) {
                 this.reset();
+                return;
+            }
+            const locBtn = target.closest<HTMLElement>('[data-loc]');
+            if (locBtn) {
+                const loc = locBtn.dataset.loc ?? '';
+                // Vite / NativeCore dev server convention: open file in editor
+                const url = `/__open-in-editor?file=${encodeURIComponent(loc)}`;
+                fetch(url).catch(() => {
+                    // Silently ignore when the dev server endpoint is not available.
+                });
             }
         });
     }
@@ -346,9 +379,42 @@ export class NcErrorBoundary extends Component {
     }
 
     private _capture(detail: NcErrorDetail): void {
-        this._error = detail;
+        this._error = this._withLocation(detail);
         this.render();
-        this.emitEvent('nc-error', detail);
+        this.emitEvent('nc-error', this._error);
+    }
+
+    private _withLocation(detail: NcErrorDetail): NcErrorDetail {
+        if (detail.file || detail.line || detail.column) {
+            return detail;
+        }
+
+        const fromStack = this._parseLocationFromStack(detail.stack);
+        if (!fromStack) {
+            return detail;
+        }
+
+        return {
+            ...detail,
+            file: fromStack.file,
+            line: fromStack.line,
+            column: fromStack.column,
+        };
+    }
+
+    private _parseLocationFromStack(stack?: string): { file: string; line?: number; column?: number } | null {
+        if (!stack) return null;
+        const lines = stack.split('\n');
+        for (const line of lines) {
+            const match = line.match(/(?:\()?(https?:\/\/[^\s)]+|\/?[^\s()]+):(\d+):(\d+)(?:\))?/);
+            if (!match) continue;
+            return {
+                file: match[1],
+                line: Number(match[2]),
+                column: Number(match[3]),
+            };
+        }
+        return null;
     }
 
     private _escapeHtml(str: string): string {

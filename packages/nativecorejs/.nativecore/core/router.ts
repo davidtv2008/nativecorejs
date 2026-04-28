@@ -30,6 +30,40 @@ interface CacheEntry {
     ttl: number;
 }
 
+interface RouterCacheSnapshotEntry {
+    file: string;
+    ageMs: number;
+    ttlSec: number;
+    fresh: boolean;
+    stale: boolean;
+}
+
+interface RouterCacheSnapshot {
+    total: number;
+    fresh: number;
+    stale: number;
+    entries: RouterCacheSnapshotEntry[];
+}
+
+interface RouteDebugEntry {
+    path: string;
+    htmlFile: string;
+    hasCachePolicy: boolean;
+    ttlSec: number;
+    revalidate: boolean;
+    cacheStatus: 'uncached' | 'fresh' | 'stale' | 'no-policy';
+    ageMs: number;
+    hasLayout: boolean;
+    hasLoader: boolean;
+}
+
+interface RouteDebugInfo {
+    total: number;
+    cached: number;
+    currentPath: string | null;
+    routes: RouteDebugEntry[];
+}
+
 export class Router {
     private routes: Record<string, RouteConfig> = {};
     private currentRoute: RouteMatch | null = null;
@@ -41,6 +75,9 @@ export class Router {
     private renderedLayoutPath: string | null = null;
 
     constructor() {
+        // Expose the singleton instance so devtools can introspect route/cache state.
+        (globalThis as Record<string, unknown>).__NC_ROUTER__ = this;
+
         if ('scrollRestoration' in window.history) {
             window.history.scrollRestoration = 'manual';
         }
@@ -504,6 +541,75 @@ export class Router {
 
     getCurrentRoute(): RouteMatch | null {
         return this.currentRoute;
+    }
+
+    /**
+     * Debug helper for developer tooling to inspect route HTML cache health.
+     */
+    getCacheSnapshot(): RouterCacheSnapshot {
+        const now = Date.now();
+        const entries = Array.from(this.htmlCache.entries())
+            .map(([file, entry]) => {
+                const ttlSec = entry.ttl ?? 0;
+                const ttlMs = ttlSec * 1000;
+                const ageMs = Math.max(0, now - entry.cachedAt);
+                const fresh = ttlMs > 0 ? ageMs < ttlMs : true;
+                const stale = ttlMs > 0 && !fresh;
+                return { file, ageMs, ttlSec, fresh, stale };
+            })
+            .sort((a, b) => b.ageMs - a.ageMs);
+
+        return {
+            total: entries.length,
+            fresh: entries.filter(entry => entry.fresh).length,
+            stale: entries.filter(entry => entry.stale).length,
+            entries,
+        };
+    }
+
+    /**
+     * Debug helper for developer tooling — returns every registered route with
+     * its cache policy and current cache state. Used by the devtools Cache tab.
+     */
+    getRouteDebugInfo(): RouteDebugInfo {
+        const now = Date.now();
+        const routeEntries = Object.entries(this.routes).map(([path, config]) => {
+            const policy = config.cachePolicy;
+            const ttlSec = policy?.ttl ?? 0;
+            const ttlMs = ttlSec * 1000;
+            const cached = this.htmlCache.get(config.htmlFile);
+            const ageMs = cached ? Math.max(0, now - cached.cachedAt) : 0;
+            let cacheStatus: RouteDebugEntry['cacheStatus'] = 'no-policy';
+            if (policy) {
+                if (!cached) {
+                    cacheStatus = 'uncached';
+                } else if (ttlMs > 0 && ageMs < ttlMs) {
+                    cacheStatus = 'fresh';
+                } else if (ttlMs > 0) {
+                    cacheStatus = 'stale';
+                } else {
+                    cacheStatus = 'uncached';
+                }
+            }
+            return {
+                path,
+                htmlFile: config.htmlFile,
+                hasCachePolicy: !!policy,
+                ttlSec,
+                revalidate: policy?.revalidate ?? false,
+                cacheStatus,
+                ageMs,
+                hasLayout: !!config.layout,
+                hasLoader: typeof config.loader === 'function',
+            } satisfies RouteDebugEntry;
+        });
+
+        return {
+            total: routeEntries.length,
+            cached: routeEntries.filter(r => r.cacheStatus === 'fresh' || r.cacheStatus === 'stale').length,
+            currentPath: this.currentRoute?.path ?? null,
+            routes: routeEntries,
+        };
     }
 
     /**

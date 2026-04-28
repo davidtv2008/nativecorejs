@@ -22,6 +22,7 @@ export class MetricsPanel {
     private currentFps: number = 0;
     private routeStartTime: number = performance.now();
     private lastRouteDuration: number = 0;
+    private errorCount: number = 0;
 
     constructor() {
         this.injectStyles();
@@ -58,16 +59,16 @@ export class MetricsPanel {
         style.textContent = `
             .nc-metrics-panel {
                 position: fixed;
-                right: 0;
-                bottom: 0;
+                right: 12px;
+                bottom: 12px;
                 width: 260px;
                 background: #0f1520;
                 border-top: 1px solid #3a485b;
                 border-left: 1px solid #3a485b;
-                border-radius: 12px 0 0 0;
-                box-shadow: -2px -2px 10px rgba(0,0,0,0.35);
+                border-radius: 12px;
+                box-shadow: 0 6px 18px rgba(0,0,0,0.35);
                 z-index: 999997;
-                transition: transform 0.2s ease;
+                transition: width 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease;
                 display: flex;
                 flex-direction: column;
                 font-family: 'Fira Code', 'Courier New', monospace;
@@ -77,7 +78,26 @@ export class MetricsPanel {
             }
 
             .nc-metrics-panel.closed {
-                transform: translateY(calc(100% - 36px));
+                width: auto;
+                min-width: 110px;
+                border-radius: 999px;
+                border: 1px solid #3a485b;
+                box-shadow: 0 4px 14px rgba(0,0,0,0.3);
+            }
+
+            .nc-metrics-panel.closed .nc-metrics-body {
+                display: none;
+            }
+
+            .nc-metrics-panel.closed .nc-metrics-header {
+                border-bottom: none;
+                padding: 7px 11px;
+                background: #141d2c;
+            }
+
+            .nc-metrics-panel.has-errors {
+                border-color: rgba(239, 68, 68, 0.8);
+                box-shadow: 0 0 0 2px rgba(239, 68, 68, 0.18), 0 6px 18px rgba(0,0,0,0.35);
             }
 
             .nc-metrics-header {
@@ -112,6 +132,16 @@ export class MetricsPanel {
                 border-radius: 50%;
                 background: #22c55e;
                 animation: nc-metrics-pulse 2s ease-in-out infinite;
+            }
+
+            .nc-metrics-panel.has-errors .nc-metrics-title-dot {
+                background: #ef4444;
+            }
+
+            .nc-metrics-title-badge {
+                font-size: 10px;
+                color: #93a7bd;
+                margin-left: 4px;
             }
 
             @keyframes nc-metrics-pulse {
@@ -182,6 +212,7 @@ export class MetricsPanel {
                 <span class="nc-metrics-title">
                     <span class="nc-metrics-title-dot"></span>
                     METRICS
+                    <span class="nc-metrics-title-badge" id="nc-m-errors-badge">0</span>
                 </span>
                 <span class="nc-metrics-chevron">&#9650;</span>
             </div>
@@ -212,6 +243,15 @@ export class MetricsPanel {
                     <span class="nc-metric-label">Heap limit</span>
                     <span class="nc-metric-value" id="nc-m-heap-limit">—</span>
                 </div>
+                <div class="nc-metric-divider"></div>
+                <div class="nc-metric-row">
+                    <span class="nc-metric-label">Errors</span>
+                    <span class="nc-metric-value" id="nc-m-errors">0</span>
+                </div>
+                <div class="nc-metric-row">
+                    <span class="nc-metric-label">Router cache</span>
+                    <span class="nc-metric-value" id="nc-m-cache">—</span>
+                </div>
             </div>
         `;
 
@@ -220,8 +260,9 @@ export class MetricsPanel {
         this.panel.querySelector('#nc-metrics-toggle')!
             .addEventListener('click', () => this.toggleOpen());
 
-        // Start open so metrics are visible immediately
-        this.isOpen = true;
+        // Start as a compact badge; click to expand full metrics.
+        this.isOpen = false;
+        this.panel.classList.add('closed');
     }
 
     // ------------------------------------------------------------------
@@ -259,6 +300,15 @@ export class MetricsPanel {
         window.addEventListener('load', () => {
             this.updateDisplay();
         });
+
+        const onError = () => {
+            this.errorCount++;
+            this.updateDisplay();
+        };
+
+        window.addEventListener('error', onError);
+        window.addEventListener('unhandledrejection', onError);
+        window.addEventListener('nativecore:route-error', onError as EventListener);
     }
 
     private countComponents(): number {
@@ -286,7 +336,7 @@ export class MetricsPanel {
     }
 
     private updateDisplay(): void {
-        if (!this.panel || !this.isOpen) return;
+        if (!this.panel) return;
 
         const set = (id: string, text: string, cls: string = '') => {
             const el = this.panel!.querySelector<HTMLElement>(`#${id}`);
@@ -329,6 +379,31 @@ export class MetricsPanel {
         } else {
             set('nc-m-heap', 'n/a');
             set('nc-m-heap-limit', 'n/a');
+        }
+
+        // Error count + error badge state
+        const errorClass = this.errorCount > 0 ? 'bad' : this.errorCount === 0 ? 'good' : '';
+        set('nc-m-errors', String(this.errorCount), errorClass);
+        const badge = this.panel.querySelector<HTMLElement>('#nc-m-errors-badge');
+        if (badge) {
+            badge.textContent = this.errorCount > 0 ? `${this.errorCount} ERR` : 'OK';
+        }
+        this.panel.classList.toggle('has-errors', this.errorCount > 0);
+
+        // Router HTML cache summary (if router exposes debug snapshot)
+        const maybeRouter = (globalThis as Record<string, unknown>).__NC_ROUTER__ as {
+            getCacheSnapshot?: () => { total: number; fresh: number; stale: number };
+        } | undefined;
+        if (maybeRouter?.getCacheSnapshot) {
+            try {
+                const snapshot = maybeRouter.getCacheSnapshot();
+                const cls = snapshot.stale > 0 ? 'warn' : snapshot.total > 0 ? 'good' : '';
+                set('nc-m-cache', `${snapshot.total} (${snapshot.fresh}/${snapshot.stale})`, cls);
+            } catch {
+                set('nc-m-cache', 'n/a');
+            }
+        } else {
+            set('nc-m-cache', 'n/a');
         }
     }
 

@@ -58,6 +58,23 @@ interface ConsoleEntry {
     level: 'error' | 'warn';
     msg: string;
     ts: number;
+    source?: string;
+    line?: number;
+    column?: number;
+    stack?: string;
+}
+
+interface RouterCacheSnapshot {
+    total: number;
+    fresh: number;
+    stale: number;
+    entries: Array<{
+        file: string;
+        ageMs: number;
+        ttlSec: number;
+        fresh: boolean;
+        stale: boolean;
+    }>;
 }
 
 interface EffectGuardEntry {
@@ -99,6 +116,7 @@ const OVERLAY_ID  = '__nc_dev_overlay__';
 const MODAL_ID    = '__nc_dev_modal__';
 const STYLE_ID    = '__nc_dev_overlay_style__';
 const DEV_VISIBLE_KEY = 'nativecore-devtools-visible';
+const DEV_EXPANDED_KEY = 'nativecore-devtools-expanded';
 
 const MAX_API_LOG       = 20;
 const MAX_LONG_TASK_LOG = 50;
@@ -115,6 +133,7 @@ let paintObserver: PerformanceObserver | null = null;
 let lcpObserver: PerformanceObserver | null = null;
 let navStartTime: number = performance.now();
 let domBaselineNodes = 0;
+let cacheSampleInterval: ReturnType<typeof setInterval> | null = null;
 
 // ─── State ───────────────────────────────────────────────────────────────────
 
@@ -162,6 +181,13 @@ const state = {
     effectGuardTrips: 0,
     effectGuardLog: [] as EffectGuardEntry[],
 
+    // Cache visibility
+    routerCacheTotal: 0,
+    routerCacheFresh: 0,
+    routerCacheStale: 0,
+    browserCacheBuckets: 0,
+    browserCacheEntries: 0,
+
     // Components
     componentCount: 0,
     componentList: [] as string[],
@@ -170,6 +196,9 @@ const state = {
     seoScore: 0,
     seoChecks: [] as SeoCheckItem[],
     seoInputs: [] as SeoInputRow[],
+
+    // UI
+    overlayExpanded: false,
 };
 
 // ─── Formatters ──────────────────────────────────────────────────────────────
@@ -184,6 +213,53 @@ function formatTime(ts: number): string {
 
 function clamp(s: string, max: number): string {
     return s.length > max ? '...' + s.slice(-(max - 3)) : s;
+}
+
+function parseLocationFromStack(stack?: string): { source?: string; line?: number; column?: number } {
+    if (!stack) return {};
+    const lines = stack.split('\n');
+    for (const line of lines) {
+        const match = line.match(/(?:\()?(https?:\/\/[^\s)]+|\/?[^\s()]+):(\d+):(\d+)(?:\))?/);
+        if (!match) continue;
+        return {
+            source: match[1],
+            line: Number(match[2]),
+            column: Number(match[3]),
+        };
+    }
+    return {};
+}
+
+function formatLocation(entry: ConsoleEntry): string {
+    if (!entry.source) return '--';
+    if (entry.line == null) return entry.source;
+    return `${entry.source}:${entry.line}${entry.column != null ? `:${entry.column}` : ''}`;
+}
+
+function captureConsoleEntry(level: 'error' | 'warn', args: unknown[]): ConsoleEntry {
+    const firstError = args.find(a => a instanceof Error) as Error | undefined;
+    const message = args.map(a => {
+        if (a instanceof Error) return a.message;
+        if (typeof a === 'string') return a;
+        try {
+            return JSON.stringify(a);
+        } catch {
+            return String(a);
+        }
+    }).join(' ');
+
+    const stack = firstError?.stack;
+    const parsed = parseLocationFromStack(stack);
+
+    return {
+        level,
+        msg: message,
+        ts: Date.now(),
+        source: parsed.source,
+        line: parsed.line,
+        column: parsed.column,
+        stack,
+    };
 }
 
 // ─── Color helpers ───────────────────────────────────────────────────────────
@@ -243,9 +319,56 @@ function injectStyles(): void {
             cursor: move;
             pointer-events: all;
         }
+        #${OVERLAY_ID}.collapsed {
+            min-width: 0;
+            max-width: none;
+            padding: 0;
+            border: none;
+            background: transparent;
+            backdrop-filter: none;
+            cursor: default;
+        }
         #${OVERLAY_ID}:hover {
             background: rgba(0,0,0,0.78);
             border-color: rgba(0,255,136,0.45);
+        }
+        #${OVERLAY_ID}.collapsed:hover {
+            background: transparent;
+            border-color: transparent;
+        }
+        #${OVERLAY_ID} .nc-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 7px;
+            border-radius: 999px;
+            padding: 7px 11px;
+            background: rgba(0, 0, 0, 0.8);
+            border: 1px solid rgba(0,255,136,0.35);
+            color: #00ff88;
+            font-size: 10px;
+            cursor: pointer;
+            box-shadow: 0 3px 10px rgba(0,0,0,0.28);
+            user-select: none;
+        }
+        #${OVERLAY_ID} .nc-badge:hover {
+            border-color: rgba(0,255,136,0.55);
+            background: rgba(0, 0, 0, 0.9);
+        }
+        #${OVERLAY_ID} .nc-badge-error {
+            border-color: rgba(255, 68, 68, 0.9);
+            box-shadow: 0 0 0 2px rgba(255, 68, 68, 0.18), 0 3px 10px rgba(0,0,0,0.28);
+        }
+        #${OVERLAY_ID} .nc-badge-dot {
+            width: 7px;
+            height: 7px;
+            border-radius: 50%;
+            background: #00ff88;
+        }
+        #${OVERLAY_ID} .nc-badge-error .nc-badge-dot {
+            background: #ff4444;
+        }
+        #${OVERLAY_ID} .nc-badge-meta {
+            color: rgba(0,255,136,0.62);
         }
         #${OVERLAY_ID} .nc-hdr {
             color: #00ff88;
@@ -257,6 +380,14 @@ function injectStyles(): void {
             justify-content: space-between;
             align-items: center;
         }
+        #${OVERLAY_ID} .nc-collapse {
+            color: rgba(0,255,136,0.55);
+            cursor: pointer;
+            padding: 0 3px;
+            pointer-events: all;
+            font-size: 11px;
+        }
+        #${OVERLAY_ID} .nc-collapse:hover { color: #00ff88; }
         #${OVERLAY_ID} .nc-x {
             color: rgba(0,255,136,0.3);
             cursor: pointer;
@@ -904,14 +1035,14 @@ function patchConsole(): void {
 
     console.error = (...args: unknown[]) => {
         state.consoleErrors++;
-        state.consoleLog.unshift({ level: 'error', msg: args.map(String).join(' '), ts: Date.now() });
+        state.consoleLog.unshift(captureConsoleEntry('error', args));
         if (state.consoleLog.length > MAX_CONSOLE_LOG) state.consoleLog.pop();
         origError(...args);
     };
 
     console.warn = (...args: unknown[]) => {
         state.consoleWarns++;
-        state.consoleLog.unshift({ level: 'warn', msg: args.map(String).join(' '), ts: Date.now() });
+        state.consoleLog.unshift(captureConsoleEntry('warn', args));
         if (state.consoleLog.length > MAX_CONSOLE_LOG) state.consoleLog.pop();
         origWarn(...args);
     };
@@ -921,14 +1052,73 @@ function patchConsole(): void {
 
 function observeRejections(): void {
     window.addEventListener('unhandledrejection', (e) => {
+        const reason = e.reason;
+        const stack = reason instanceof Error ? reason.stack : undefined;
+        const parsed = parseLocationFromStack(stack);
         state.unhandledRejections++;
         state.consoleLog.unshift({
             level: 'error',
-            msg: `Unhandled rejection: ${e.reason}`,
+            msg: `Unhandled rejection: ${reason instanceof Error ? reason.message : String(reason)}`,
             ts: Date.now(),
+            source: parsed.source,
+            line: parsed.line,
+            column: parsed.column,
+            stack,
         });
         if (state.consoleLog.length > MAX_CONSOLE_LOG) state.consoleLog.pop();
     });
+}
+
+function observeWindowErrors(): void {
+    window.addEventListener('error', (event: ErrorEvent) => {
+        const stack = event.error instanceof Error ? event.error.stack : undefined;
+        const parsed = parseLocationFromStack(stack);
+        state.consoleErrors++;
+        state.consoleLog.unshift({
+            level: 'error',
+            msg: event.message || 'Unknown runtime error',
+            ts: Date.now(),
+            source: event.filename || parsed.source,
+            line: event.lineno || parsed.line,
+            column: event.colno || parsed.column,
+            stack,
+        });
+        if (state.consoleLog.length > MAX_CONSOLE_LOG) state.consoleLog.pop();
+    });
+}
+
+function refreshCacheMetrics(): void {
+    const maybeRouter = (globalThis as Record<string, unknown>).__NC_ROUTER__ as {
+        getCacheSnapshot?: () => RouterCacheSnapshot;
+    } | undefined;
+
+    if (maybeRouter?.getCacheSnapshot) {
+        try {
+            const snapshot = maybeRouter.getCacheSnapshot();
+            state.routerCacheTotal = snapshot.total;
+            state.routerCacheFresh = snapshot.fresh;
+            state.routerCacheStale = snapshot.stale;
+        } catch {
+            state.routerCacheTotal = 0;
+            state.routerCacheFresh = 0;
+            state.routerCacheStale = 0;
+        }
+    }
+
+    if ('caches' in window) {
+        caches.keys()
+            .then(names => Promise.all(names.map(name => caches.open(name).then(cache => cache.keys().then(keys => keys.length))
+                .catch(() => 0))).then(counts => ({ names, counts })))
+            .then(({ names, counts }) => {
+                state.browserCacheBuckets = names.length;
+                state.browserCacheEntries = counts.reduce((sum, value) => sum + value, 0);
+                if (document.getElementById(OVERLAY_ID)) updateOverlay();
+            })
+            .catch(() => {
+                state.browserCacheBuckets = 0;
+                state.browserCacheEntries = 0;
+            });
+    }
 }
 
 function observeEffectLoopGuards(): void {
@@ -1028,6 +1218,7 @@ function observeRouteChanges(): void {
         snapshotDom();
         snapshotComponents();
         runSeoScan();
+        refreshCacheMetrics();
         const duration = performance.now() - navStartTime;
         const path = window.location.pathname;
         state.routeTime = duration;
@@ -1090,6 +1281,18 @@ function renderOverlayHTML(): string {
     const warnCls  = state.consoleWarns > 0 ? 'nc-caution' : 'nc-muted';
     const effectGuardCls = state.effectGuardTrips > 0 ? 'nc-warn' : 'nc-muted';
 
+    if (!state.overlayExpanded) {
+        const badgeCls = totalErrors > 0 ? 'nc-badge nc-badge-error' : 'nc-badge';
+        return `
+            <div class="${badgeCls}" data-nc-toggle>
+                <span class="nc-badge-dot"></span>
+                <span>NC DEV</span>
+                <span class="nc-badge-meta">${state.fps} fps</span>
+                <span class="${totalErrors > 0 ? 'nc-warn' : 'nc-muted'}">${totalErrors}e</span>
+            </div>
+        `;
+    }
+
     const domDeltaStr = state.domDelta !== 0
         ? ` <span class="${state.domDelta > 100 ? 'nc-warn' : state.domDelta > 20 ? 'nc-caution' : 'nc-muted'}">(${state.domDelta > 0 ? '+' : ''}${state.domDelta})</span>`
         : '';
@@ -1100,10 +1303,16 @@ function renderOverlayHTML(): string {
         ? `<span style="color:${statusColor(lastApi.status)}">${lastApi.status}</span> <span class="nc-muted">${formatMs(lastApi.duration)}</span>`
         : '<span class="nc-muted">--</span>';
 
+    const cacheColorClass = state.routerCacheStale > 0 ? 'nc-caution' : state.routerCacheTotal > 0 ? 'nc-muted' : 'nc-muted';
+    const cacheSummary = `<span class="${cacheColorClass}">${state.routerCacheTotal}r</span> <span class="nc-muted">/ ${state.browserCacheEntries}b</span>`;
+
     let html = `
         <div class="nc-hdr">
             <span>nativecore dev</span>
-            <span class="nc-x" data-nc-close title="Close">&#x2715;</span>
+            <span>
+                <span class="nc-collapse" data-nc-collapse title="Collapse">&#x2212;</span>
+                <span class="nc-x" data-nc-close title="Close">&#x2715;</span>
+            </span>
         </div>
         ${row('FPS', `<span style="color:${fc}">${state.fps}</span>`, 'fps')}
     `;
@@ -1134,6 +1343,7 @@ function renderOverlayHTML(): string {
 
     html += `<hr class="nc-div">`;
     html += row('NET', netVal, 'net');
+    html += row('CACHE', cacheSummary, 'cache');
     html += row('ERRORS', `<span class="${errorCls}">${totalErrors}</span> <span class="${warnCls}">/ ${state.consoleWarns}w</span>`, 'errors');
     html += row('LOOP GUARD', `<span class="${effectGuardCls}">${state.effectGuardTrips}</span>`, 'effectguards');
 
@@ -1151,6 +1361,7 @@ function renderOverlayHTML(): string {
 function createOverlay(): HTMLElement {
     const el = document.createElement('div');
     el.id = OVERLAY_ID;
+    el.classList.toggle('collapsed', !state.overlayExpanded);
     el.innerHTML = renderOverlayHTML();
     document.body.appendChild(el);
     makeDraggable(el);
@@ -1162,6 +1373,7 @@ function updateOverlay(): void {
     const el = document.getElementById(OVERLAY_ID);
     if (!el) return;
     const { left, top, bottom, right } = el.style;
+    el.classList.toggle('collapsed', !state.overlayExpanded);
     el.innerHTML = renderOverlayHTML();
     el.style.left   = left;
     el.style.top    = top;
@@ -1171,6 +1383,21 @@ function updateOverlay(): void {
 }
 
 function bindOverlayEvents(el: HTMLElement): void {
+    el.querySelector('[data-nc-toggle]')?.addEventListener('click', (e) => {
+        e.stopPropagation();
+        state.overlayExpanded = true;
+        try { localStorage.setItem(DEV_EXPANDED_KEY, 'true'); } catch {}
+        updateOverlay();
+    });
+
+    el.querySelector('[data-nc-collapse]')?.addEventListener('click', (e) => {
+        e.stopPropagation();
+        state.overlayExpanded = false;
+        try { localStorage.setItem(DEV_EXPANDED_KEY, 'false'); } catch {}
+        closeModal();
+        updateOverlay();
+    });
+
     el.querySelector('[data-nc-close]')?.addEventListener('click', (e) => {
         e.stopPropagation();
         destroyOverlay();
@@ -1194,7 +1421,14 @@ function openModal(section: string): void {
     document.body.appendChild(backdrop);
 
     backdrop.addEventListener('click', (e) => {
-        if (e.target === backdrop) closeModal();
+        if (e.target === backdrop) { closeModal(); return; }
+        const locBtn = (e.target as HTMLElement).closest<HTMLElement>('[data-loc]');
+        if (locBtn) {
+            e.stopPropagation();
+            const loc = locBtn.dataset.loc ?? '';
+            // Vite / NativeCore dev server open-in-editor endpoint
+            fetch(`/__open-in-editor?file=${encodeURIComponent(loc)}`).catch(() => {});
+        }
     });
     backdrop.querySelector('.nc-m-close')?.addEventListener('click', closeModal);
     document.addEventListener('keydown', onEscClose);
@@ -1223,6 +1457,7 @@ function renderModalContent(section: string): string {
         case 'routes':     return modalRoutes();
         case 'longtasks':  return modalLongTasks();
         case 'net':        return modalNet();
+        case 'cache':      return modalCache();
         case 'errors':     return modalErrors();
         case 'effectguards': return modalEffectGuards();
         case 'conn':       return modalConn();
@@ -1378,14 +1613,51 @@ function modalNet(): string {
         sect(`Last ${state.apiLog.length} calls`, rows);
 }
 
+function modalCache(): string {
+    const maybeRouter = (globalThis as Record<string, unknown>).__NC_ROUTER__ as {
+        getCacheSnapshot?: () => RouterCacheSnapshot;
+    } | undefined;
+
+    const snapshot = maybeRouter?.getCacheSnapshot ? maybeRouter.getCacheSnapshot() : null;
+    const rows = snapshot?.entries?.length
+        ? snapshot.entries
+            .slice(0, 12)
+            .map(entry =>
+                `<div class="nc-m-log-row" style="grid-template-columns:1fr auto auto">
+                    <span style="word-break:break-all">${escapeModalText(entry.file)}</span>
+                    <span class="${entry.stale ? 'nc-caution' : 'nc-muted'}">${formatMs(entry.ageMs)}</span>
+                    <span class="nc-m-ts">ttl ${entry.ttlSec}s</span>
+                </div>`)
+            .join('')
+        : '<span class="nc-m-empty">no router cache entries</span>';
+
+    return modalHeader('Cache Insight') +
+        sect('Router cache',
+            kv('Entries', `<span class="nc-muted">${state.routerCacheTotal}</span>`) +
+            kv('Fresh / stale', `<span class="nc-muted">${state.routerCacheFresh} / ${state.routerCacheStale}</span>`)) +
+        sect('Browser cache storage',
+            kv('Cache buckets', `<span class="nc-muted">${state.browserCacheBuckets}</span>`) +
+            kv('Cached requests', `<span class="nc-muted">${state.browserCacheEntries}</span>`)) +
+        sect('Router cache files', rows);
+}
+
 // Errors modal
 function modalErrors(): string {
     const rows = state.consoleLog.length
-        ? state.consoleLog.map(e =>
-            `<div class="nc-m-log-row ${e.level} " style="grid-template-columns:1fr auto">
-                <span style="word-break:break-all">${e.msg.slice(0, 200)}</span>
+        ? state.consoleLog.map(e => {
+            const loc = formatLocation(e);
+            const locHtml = (e.source && loc !== '--')
+                ? `<button class="nc-loc-btn" data-loc="${escapeModalText(loc)}" style="color:#60a5fa;text-decoration:underline;background:none;border:none;font:inherit;font-size:10px;cursor:pointer;padding:0" title="Open in editor">${escapeModalText(loc)}</button>`
+                : `<span class="nc-m-ts">${escapeModalText(loc)}</span>`;
+            return `<div class="nc-m-log-row ${e.level} " style="grid-template-columns:1fr auto">
+                <span style="word-break:break-all">
+                    ${escapeModalText(e.msg.slice(0, 240))}
+                    <div style="margin-top:2px">${locHtml}</div>
+                    ${e.stack ? `<details style="margin-top:4px"><summary style="cursor:pointer;color:rgba(0,255,136,0.5)">stack</summary><pre style="white-space:pre-wrap;margin:6px 0 0 0;color:rgba(0,255,136,0.65)">${escapeModalText(e.stack.slice(0, 1200))}</pre></details>` : ''}
+                </span>
                 <span class="nc-m-ts">${formatTime(e.ts)}</span>
-            </div>`).join('')
+            </div>`;
+        }).join('')
         : '<span class="nc-m-empty">no errors or warnings</span>';
 
     return modalHeader('Errors & Warnings') +
@@ -1544,7 +1816,7 @@ function makeDraggable(el: HTMLElement): void {
 
     el.addEventListener('mousedown', (e: MouseEvent) => {
         const t = e.target as HTMLElement;
-        if (t.dataset.ncClose || t.classList.contains('nc-row')) return;
+        if (t.dataset.ncClose || t.dataset.ncToggle || t.dataset.ncCollapse || t.classList.contains('nc-row')) return;
         dragging = true;
         const rect = el.getBoundingClientRect();
         startX = e.clientX;
@@ -1569,6 +1841,10 @@ function makeDraggable(el: HTMLElement): void {
 
 function destroyOverlay(): void {
     if (fpsFrameId !== null) { cancelAnimationFrame(fpsFrameId); fpsFrameId = null; }
+    if (cacheSampleInterval) {
+        clearInterval(cacheSampleInterval);
+        cacheSampleInterval = null;
+    }
     longTaskObserver?.disconnect();
     paintObserver?.disconnect();
     lcpObserver?.disconnect();
@@ -1587,15 +1863,29 @@ function isDevModeOn(): boolean {
     }
 }
 
+function isOverlayExpandedByDefault(): boolean {
+    try {
+        return localStorage.getItem(DEV_EXPANDED_KEY) === 'true';
+    } catch {
+        return false;
+    }
+}
+
 function showOverlay(): void {
     if (document.getElementById(OVERLAY_ID)) return;
     injectStyles();
     snapshotDom();
     snapshotComponents();
     runSeoScan();
+    refreshCacheMetrics();
     domBaselineNodes = state.domNodes;
     createOverlay();
     startFpsLoop();
+    if (cacheSampleInterval === null) {
+        cacheSampleInterval = setInterval(() => {
+            refreshCacheMetrics();
+        }, 5000);
+    }
 }
 
 function hideOverlay(): void {
@@ -1607,9 +1897,12 @@ function hideOverlay(): void {
 export function initDevOverlay(): void {
     if (typeof window === 'undefined' || typeof document === 'undefined') return;
 
+    state.overlayExpanded = isOverlayExpandedByDefault();
+
     const start = () => {
         patchConsole();
         patchFetch();
+        observeWindowErrors();
         observeRejections();
         observeEffectLoopGuards();
         observePaintMetrics();

@@ -71,6 +71,14 @@ button.mini:hover { background:#4b5563; }
 .empty { color:#6b7280; padding: 12px; font-style: italic; }
 .component-row:hover { background:#1f2937; cursor:pointer; }
 .badge { background:#0f766e; color:white; padding:0 6px; border-radius:10px; font-size:10px; }
+.cache-fresh  { color: #34d399; }
+.cache-stale  { color: #fbbf24; }
+.cache-uncached { color: #6b7280; }
+.cache-no-policy { color: #374151; }
+.cache-current { background: rgba(99,102,241,0.12); border-radius: 4px; }
+.route-flag { font-size: 10px; color: #6b7280; margin-left: 4px; }
+.loc-link { color: #60a5fa; text-decoration: underline; cursor: pointer; background: none; border: none; font: inherit; padding: 0; }
+.loc-link:hover { color: #93c5fd; }
 `;
 
 function getStoreRegistry(): Map<string, State<unknown>> {
@@ -120,6 +128,69 @@ function safeStringify(value: unknown): string {
 
 function escape(s: string): string {
     return s.replace(/[&<>]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;' }[c] as string));
+}
+
+type RouterDebugEntry = {
+    path: string;
+    htmlFile: string;
+    hasCachePolicy: boolean;
+    ttlSec: number;
+    revalidate: boolean;
+    cacheStatus: 'uncached' | 'fresh' | 'stale' | 'no-policy';
+    ageMs: number;
+    hasLayout: boolean;
+    hasLoader: boolean;
+};
+
+type RouterDebugInfo = {
+    total: number;
+    cached: number;
+    currentPath: string | null;
+    routes: RouterDebugEntry[];
+};
+
+type RouterCacheEntry = {
+    file: string;
+    ageMs: number;
+    ttlSec: number;
+    fresh: boolean;
+    stale: boolean;
+};
+
+type RouterCacheSnapshot = {
+    total: number;
+    fresh: number;
+    stale: number;
+    entries: RouterCacheEntry[];
+};
+
+function getRouterCacheSnapshot(): RouterCacheSnapshot | null {
+    const maybeRouter = (globalThis as Record<string, unknown>).__NC_ROUTER__ as {
+        getCacheSnapshot?: () => RouterCacheSnapshot;
+        getRouteDebugInfo?: () => RouterDebugInfo;
+    } | undefined;
+
+    if (!maybeRouter?.getCacheSnapshot) return null;
+
+    try {
+        return maybeRouter.getCacheSnapshot();
+    } catch {
+        return null;
+    }
+}
+
+function getRouterDebugInfo(): RouterDebugInfo | null {
+    const maybeRouter = (globalThis as Record<string, unknown>).__NC_ROUTER__ as {
+        getRouteDebugInfo?: () => RouterDebugInfo;
+    } | undefined;
+
+    if (!maybeRouter?.getRouteDebugInfo) return null;
+
+    try {
+        return maybeRouter.getRouteDebugInfo();
+    } catch {
+        return null;
+    }
 }
 
 function findNcElements(): Element[] {
@@ -183,6 +254,7 @@ export function mountDevTools(options: DevToolsOptions = {}): DevToolsHandle {
             <button class="tab active" data-tab="stores">Stores</button>
             <button class="tab" data-tab="components">Components</button>
             <button class="tab" data-tab="router">Router</button>
+            <button class="tab" data-tab="cache">Cache</button>
             <button class="close" aria-label="Close">×</button>
         </div>
         <div class="body"></div>
@@ -192,7 +264,7 @@ export function mountDevTools(options: DevToolsOptions = {}): DevToolsHandle {
 
     const body = panel.querySelector('.body') as HTMLElement;
     const tabs = panel.querySelectorAll<HTMLButtonElement>('.tab');
-    let activeTab: 'stores' | 'components' | 'router' = 'stores';
+    let activeTab: 'stores' | 'components' | 'router' | 'cache' = 'stores';
     let storeDisposers: Array<() => void> = [];
     let registryPoll: ReturnType<typeof setInterval> | null = null;
 
@@ -253,10 +325,67 @@ export function mountDevTools(options: DevToolsOptions = {}): DevToolsHandle {
         }
     };
 
+    const renderCacheTab = () => {
+        clearStoreDisposers();
+        body.innerHTML = '';
+
+        const debug = getRouterDebugInfo();
+        if (!debug) {
+            body.innerHTML = `<div class="empty">Router not available or does not expose debug info.</div>`;
+            return;
+        }
+
+        // Summary header
+        const summary = document.createElement('div');
+        summary.className = 'row';
+        summary.innerHTML = `
+            <span class="name">routes</span>
+            <div class="value">
+                <pre style="margin:0">${escape(`${debug.total} registered • ${debug.cached} cached • current: ${debug.currentPath ?? '(none)'}`)}</pre>
+            </div>
+        `;
+        body.appendChild(summary);
+
+        const statusColors: Record<string, string> = {
+            fresh: 'cache-fresh',
+            stale: 'cache-stale',
+            uncached: 'cache-uncached',
+            'no-policy': 'cache-no-policy',
+        };
+
+        for (const route of debug.routes) {
+            const row = document.createElement('div');
+            const isCurrent = route.path === debug.currentPath;
+            row.className = `row${isCurrent ? ' cache-current' : ''}`;
+            const cls = statusColors[route.cacheStatus] ?? '';
+
+            const flags = [
+                route.hasLayout ? 'layout' : '',
+                route.hasLoader ? 'loader' : '',
+                route.revalidate ? 'swr' : '',
+            ].filter(Boolean).map(f => `<span class="route-flag">${f}</span>`).join('');
+
+            const ageText = route.ageMs > 0 ? `${Math.round(route.ageMs / 1000)}s` : '--';
+            const ttlText = route.ttlSec > 0 ? `ttl:${route.ttlSec}s` : 'no-cache';
+
+            row.innerHTML = `
+                <span class="name">${escape(route.path)}</span>
+                <div class="value">
+                    <span class="${cls}">${route.cacheStatus}</span>
+                    <span class="route-flag">${ageText}</span>
+                    <span class="route-flag">${ttlText}</span>
+                    ${flags}
+                </div>
+            `;
+            body.appendChild(row);
+        }
+    };
+
     const renderActive = () => {
         if (activeTab === 'stores') renderStoresTab();
         else if (activeTab === 'components') renderComponentsTab();
-        else renderRouterTab();
+        else if (activeTab === 'router') renderRouterTab();
+        else renderCacheTab();
     };
 
     tabs.forEach(tab => {
