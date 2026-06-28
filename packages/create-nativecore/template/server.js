@@ -338,11 +338,16 @@ function extractVariantOptions(sourceCode, attributeName) {
         const attrMatch = optionsBlock.match(attrRegex);
         
         if (attrMatch) {
-            const values = attrMatch[1].match(/['"]([^'"]+)['"]/g);
-            if (values) {
-                values.forEach(v => options.add(v.replace(/['"]/g, '')));
+            // Separate single/double quote patterns — prevents cross-boundary matches on adjacent empty strings like '' '_blank'
+            const pattern = /'([^']*)'|"([^"]*)"/g;
+            let m;
+            while ((m = pattern.exec(attrMatch[1])) !== null) {
+                const val = m[1] !== undefined ? m[1] : m[2];
+                options.add(val);
+            }
+            if (options.size > 0) {
                 console.log(`[DEBUG] Found attributeOptions for ${attributeName}:`, Array.from(options));
-                return options.size > 0 ? Array.from(options) : null; // Don't sort - preserve order
+                return Array.from(options);
             }
         }
     }
@@ -821,6 +826,86 @@ async function saveGlobalChanges({ tagName, filePath, defaultAttributes, styleCh
     }
 }
 
+/**
+ * Create a new UI component file and register it in appRegistry.
+ */
+async function createComponentAndRegister({ tag, className, code }) {
+    try {
+        const safeTag = String(tag || '').trim().toLowerCase();
+        if (!safeTag || !/^[a-z][a-z0-9-]*-[a-z0-9-]+$/.test(safeTag)) {
+            return { success: false, message: 'Invalid tag. Use kebab-case and include a dash (example: my-card).' };
+        }
+
+        const safeClassName = String(className || '').trim();
+        if (!safeClassName || !/^[A-Z][A-Za-z0-9]*$/.test(safeClassName)) {
+            return { success: false, message: 'Invalid className. Use PascalCase (example: MyCard).' };
+        }
+
+        const sourceCode = String(code || '').trim();
+        if (!sourceCode) {
+            return { success: false, message: 'Missing component code.' };
+        }
+
+        const uiDir = validatePath('src/components/ui');
+        if (!fs.existsSync(uiDir)) {
+            fs.mkdirSync(uiDir, { recursive: true });
+        }
+
+        const fullPath = validatePath(path.join('src/components/ui', `${safeTag}.ts`));
+        fs.writeFileSync(fullPath, `${sourceCode}\n`, 'utf-8');
+
+        const registryPath = validatePath('src/components/appRegistry.ts');
+        if (!fs.existsSync(registryPath)) {
+            return { success: false, message: 'appRegistry.ts not found at src/components/appRegistry.ts' };
+        }
+
+        const registryLine = `    componentRegistry.register('${safeTag}', './ui/${safeTag}.js');`;
+        let registrySource = fs.readFileSync(registryPath, 'utf-8');
+        let registryUpdated = false;
+
+        if (!registrySource.includes(registryLine)) {
+            const fnRegex = /(export\s+function\s+registerAppComponents\s*\(\)\s*:\s*void\s*\{)([\s\S]*?)(\n\})/m;
+            const fnMatch = registrySource.match(fnRegex);
+
+            if (fnMatch) {
+                const fnBody = fnMatch[2];
+                const hasBodyContent = fnBody.trim().length > 0;
+                const injectedBody = hasBodyContent
+                    ? `${fnBody}\n${registryLine}`
+                    : `\n${registryLine}`;
+
+                registrySource = registrySource.replace(fnRegex, `${fnMatch[1]}${injectedBody}${fnMatch[3]}`);
+            } else {
+                registrySource = `${registrySource.trimEnd()}\n\nexport function registerAppComponents(): void {\n${registryLine}\n}\n`;
+            }
+
+            fs.writeFileSync(registryPath, registrySource, 'utf-8');
+            registryUpdated = true;
+        }
+
+        console.log(`[DevTools] Created component <${safeTag}> at src/components/ui/${safeTag}.ts`);
+        if (registryUpdated) {
+            console.log(`[DevTools] Registered <${safeTag}> in src/components/appRegistry.ts`);
+        } else {
+            console.log(`[DevTools] Registry already contained <${safeTag}>`);
+        }
+
+        notifyHMRClients(fullPath);
+        notifyHMRClients(registryPath);
+
+        return {
+            success: true,
+            message: 'Component created and registered',
+            filePath: `src/components/ui/${safeTag}.ts`,
+            registryPath: 'src/components/appRegistry.ts',
+            registryUpdated,
+        };
+    } catch (error) {
+        console.error('[DevTools] Error creating component:', error);
+        return { success: false, message: error.message };
+    }
+}
+
 // Simple rate limiter for authentication endpoints
 const loginAttempts = new Map();
 const RATE_LIMIT_WINDOW = 60 * 1000; // 1 minute
@@ -1047,6 +1132,16 @@ async function proxyRemoteLogin(body) {
             const body = await parseBody(req);
             const result = await editComponentFile(body);
             
+            res.writeHead(result.success ? 200 : 400, { 'Content-Type': 'application/json' });
+            res.end(JSON.stringify(result));
+            return;
+        }
+
+        // POST /api/dev/component/create - Create component file in ui/ and register it
+        if (pathname === '/api/dev/component/create' && method === 'POST') {
+            const body = await parseBody(req);
+            const result = await createComponentAndRegister(body);
+
             res.writeHead(result.success ? 200 : 400, { 'Content-Type': 'application/json' });
             res.end(JSON.stringify(result));
             return;

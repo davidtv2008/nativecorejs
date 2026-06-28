@@ -19,11 +19,15 @@
  *   
  */
 
-import { Component, defineComponent } from '@core/component.js';
-import { html, trusted } from '@core-utils/templates.js';
+import { CoreComponent} from '@core/component.js';
+import { html, css, trusted } from '@core-utils/templates.js';
 
-export class NcButton extends Component {
+export class NcButton extends CoreComponent {
+
     static useShadowDOM = true;
+    static get observedAttributes() {
+        return ['variant', 'size', 'icon', 'icon-position', 'alt', 'disabled', 'loading', 'full-width'];
+    }
     
     // Dev tools will auto-detect these dropdown options
     static attributeOptions = {
@@ -37,29 +41,10 @@ export class NcButton extends Component {
         icon: '/icons/my-icon.svg or assets/image.png',
         alt: 'Icon description for accessibility'
     };
-    
-    static get observedAttributes() {
-        return ['variant', 'size', 'icon', 'icon-position', 'alt', 'disabled', 'loading', 'full-width'];
-    }
-    
-    constructor() {
-        super();
-    }
-    
-    template() {
-        const icon = this.getAttribute('icon');
-        const iconPosition = this.getAttribute('icon-position') || 'left';
-        const alt = this.getAttribute('alt') || '';
-        const disabled = this.hasAttribute('disabled');
-        const loading = this.hasAttribute('loading');
-        const fullWidth = this.hasAttribute('full-width');
-        
-        const iconHTML = icon ? `<img class="nc-button-icon" src="${icon}" alt="${alt}" />` : '';
-        
-        return html`
-            <style>
-                :host {
-                    display: ${fullWidth ? 'block' : 'inline-flex'};
+
+    static styles = css`
+        :host {
+                    display: inline-flex;
                     align-items: center;
                     justify-content: center;
                     gap: var(--nc-spacing-sm);
@@ -67,17 +52,17 @@ export class NcButton extends Component {
                     font-weight: var(--nc-font-weight-semibold);
                     border: none;
                     border-radius: var(--nc-button-radius);
-                    cursor: ${disabled || loading ? 'not-allowed' : 'pointer'};
+                    cursor: pointer;
                     transition: all var(--nc-transition-fast);
                     text-decoration: none;
                     outline: none;
                     position: relative;
-                    overflow: ${loading ? 'visible' : 'hidden'};
+                    overflow: hidden;
                     user-select: none;
                     box-sizing: border-box !important;
                     margin: 0 !important;
-                    flex-direction: ${iconPosition === 'top' ? 'column' : iconPosition === 'bottom' ? 'column-reverse' : iconPosition === 'right' ? 'row-reverse' : 'row'};
-                    
+                    flex-direction: row;
+
                     /* Default size (md) */
                     padding: var(--nc-spacing-sm) var(--nc-spacing-xl) !important;
                     font-size: var(--nc-font-size-base);
@@ -207,19 +192,27 @@ export class NcButton extends Component {
                 
                 /* Full Width */
                 :host([full-width]) {
+                    display: block;
                     width: 100%;
                 }
                 
+                /* Icon position */
+                :host([icon-position="right"])  { flex-direction: row-reverse; }
+                :host([icon-position="top"])    { flex-direction: column; }
+                :host([icon-position="bottom"]) { flex-direction: column-reverse; }
+
                 /* Disabled State */
                 :host([disabled]) {
                     opacity: 0.5;
                     pointer-events: none;
+                    cursor: not-allowed;
                 }
                 
                 /* Loading State */
                 :host([loading]) {
                     pointer-events: none;
-                    position: relative;
+                    cursor: not-allowed;
+                    overflow: visible;
                 }
                 
                 :host([loading])::after {
@@ -266,12 +259,23 @@ export class NcButton extends Component {
                     align-items: center;
                     justify-content: center;
                 }
-            </style>
-            ${trusted(iconHTML)}
+    `;
+ 
+    // --- TEMPLATE ---
+    template() {        
+        return html`
+            ${trusted(this._iconHTML)}
             <slot></slot>
         `;
     }
-    
+
+    // --- STATE ---
+    private _icon = this.getAttribute('icon');
+    private _alt = this.getAttribute('alt') || '';    
+    private _iconHTML = this._icon ? `<img class="nc-button-icon" src="${this._icon}" alt="${this._alt}" />` : '';
+    private _disabled = this.state(this.hasAttribute('disabled'));
+
+    // --- LIFECYCLE ---
     onMount() {
         // Set button role and tab index for accessibility
         this.setAttribute('role', 'button');
@@ -288,24 +292,21 @@ export class NcButton extends Component {
                 this.click();
             }
         });
-        
-        // Handle click - prevent when disabled/loading, emit custom event otherwise
-        this.addEventListener('click', (e) => {
-            if (this.hasAttribute('disabled') || this.hasAttribute('loading')) {
-                e.stopPropagation();
-                e.preventDefault();
-                return;
-            }
-            this.emitEvent('nc-button-click', { originalEvent: e });
+    }
+
+    events(){
+        this.on(this, 'click', (e: MouseEvent) => {
+            if(this._disabled.value) return e.preventDefault();
+
         });
     }
     
     attributeChangedCallback(name: string, oldValue: string, newValue: string) {
         if (oldValue !== newValue) {
-            this.render();
+            //this.render();
         }
     }
 }
 
-defineComponent('nc-button', NcButton);
+if (!customElements.get('nc-button')) customElements.define('nc-button', NcButton);
 

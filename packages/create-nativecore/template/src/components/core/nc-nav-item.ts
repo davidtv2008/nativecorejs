@@ -1,32 +1,32 @@
 /**
- * NcNavItem Component — sidebar / navigation link with icon, label, badge, active state
+ * NcNavItem Component â€” sidebar / navigation link with icon, label, badge, active state
  *
  * Attributes:
- *   href       — link URL; if omitted renders as a <button>
- *   label      — visible text (can also use default slot)
- *   icon       — preset icon name OR raw SVG string (see below)
- *   active     — boolean — mark as active
- *   disabled   — boolean
- *   badge      — badge count (number string); shown as a pill on the right
- *   badge-variant — 'primary'(default)|'success'|'danger'|'warning'
- *   indent     — indentation level for nested nav (default: 0)
- *   target     — anchor target (default: '_self')
- *   exact      — boolean — only activate on exact URL match (router integration)
+ *   href       â€” link URL; if omitted renders as a <button>
+ *   label      â€” visible text (can also use default slot)
+ *   icon       â€” preset icon name OR raw SVG string (see below)
+ *   active     â€” boolean â€” mark as active
+ *   disabled   â€” boolean
+ *   badge      â€” badge count (number string); shown as a pill on the right
+ *   badge-variant â€” 'primary'(default)|'success'|'danger'|'warning'
+ *   indent     â€” indentation level for nested nav (default: 0)
+ *   target     â€” anchor target (default: '_self')
+ *   exact      â€” boolean â€” only activate on exact URL match (router integration)
  *
  * Slots:
- *   icon   — custom icon (overrides icon attribute)
- *   (default) — label text (overrides label attribute)
- *   badge  — custom badge content
+ *   icon   â€” custom icon (overrides icon attribute)
+ *   (default) â€” label text (overrides label attribute)
+ *   badge  â€” custom badge content
  *
  * Events:
- *   nav-click — CustomEvent<{ href: string | null }> — bubbles from both <a> and <button>
+ *   nav-click â€” CustomEvent<{ href: string | null }> â€” bubbles from both <a> and <button>
  *
  * Usage:
  *   <nc-nav-item href="/dashboard" label="Dashboard" icon="home" active></nc-nav-item>
  *   <nc-nav-item href="/users" label="Users" icon="users" badge="14"></nc-nav-item>
  */
-import { Component, defineComponent } from '@core/component.js';
-import { html, trusted } from '@core-utils/templates.js';
+import { CoreComponent } from '@core/component.js';
+import { css } from '@core-utils/templates.js';
 
 const NAV_ICONS: Record<string, string> = {
     home:        `<path d="M3 9.5L12 3l9 6.5V20a1 1 0 0 1-1 1H14v-5h-4v5H4a1 1 0 0 1-1-1V9.5z"/>`,
@@ -46,108 +46,143 @@ const NAV_ICONS: Record<string, string> = {
 const svgWrap = (paths: string) =>
     `<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">${paths}</svg>`;
 
-export class NcNavItem extends Component {
+export class NcNavItem extends CoreComponent {
     static useShadowDOM = true;
+    static observedAttributes = ['active', 'disabled', 'badge', 'href', 'label', 'icon', 'badge-variant', 'indent'];
+    static attributeOptions   = { 'badge-variant': ['primary', 'success', 'danger', 'warning'] };
+    static attributeOrder     = ['href', 'label', 'icon', 'active', 'disabled', 'badge', 'badge-variant', 'indent'];
 
-    static get observedAttributes() { return ['active', 'disabled', 'badge', 'href']; }
+    // -- Refs -----------------------------------------------------------------
+    declare linkEl:  HTMLAnchorElement;
+    declare iconEl:  HTMLSpanElement;
+    declare labelEl: HTMLSpanElement;
+    declare badgeEl: HTMLSpanElement;
+
+    static styles = css`
+        :host { display: block; --_indent-px: 0px; }
+
+        /* Badge variant colours */
+        :host, :host([badge-variant="primary"]) { --_badge-bg: var(--nc-primary); --_badge-fg: var(--nc-white); }
+        :host([badge-variant="success"]) { --_badge-bg: var(--nc-success); --_badge-fg: var(--nc-white); }
+        :host([badge-variant="danger"])  { --_badge-bg: var(--nc-danger);  --_badge-fg: var(--nc-white); }
+        :host([badge-variant="warning"]) { --_badge-bg: var(--nc-warning); --_badge-fg: var(--nc-text); }
+
+        a {
+            display: flex; align-items: center; gap: var(--nc-spacing-sm);
+            width: 100%; padding: 9px var(--nc-spacing-md);
+            padding-left: calc(var(--nc-spacing-md) + var(--_indent-px));
+            border-radius: var(--nc-radius-md);
+            text-decoration: none;
+            font-family: var(--nc-font-family); font-size: var(--nc-font-size-sm);
+            font-weight: var(--nc-font-weight-normal);
+            color: var(--nc-text-secondary);
+            background: transparent;
+            border: none; cursor: pointer;
+            text-align: left; outline: none;
+            transition: background var(--nc-transition-fast), color var(--nc-transition-fast);
+            user-select: none; position: relative;
+            box-sizing: border-box;
+        }
+        :host([active]) a {
+            font-weight: var(--nc-font-weight-semibold);
+            color: var(--nc-primary);
+            background: rgba(var(--nc-primary-rgb, 99,102,241), 0.1);
+        }
+        :host([active]) a::before {
+            content: ''; position: absolute; left: 0; top: 20%; height: 60%;
+            width: 3px; background: var(--nc-primary); border-radius: 0 2px 2px 0;
+        }
+        :host([disabled]) a { cursor: not-allowed; opacity: 0.5; }
+        a:hover:not([aria-disabled="true"]) {
+            background: var(--nc-bg-secondary); color: var(--nc-text);
+        }
+        :host([active]) a:hover { background: rgba(var(--nc-primary-rgb, 99,102,241), 0.14); color: var(--nc-primary); }
+        a:focus-visible { outline: 2px solid var(--nc-primary); outline-offset: -2px; }
+
+        .icon { flex-shrink: 0; display: flex; opacity: 0.65; }
+        :host([active]) .icon { opacity: 1; }
+        [hidden] { display: none !important; }
+        .label { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+        .badge {
+            flex-shrink: 0;
+            background: var(--_badge-bg); color: var(--_badge-fg);
+            font-size: 10px; font-weight: var(--nc-font-weight-semibold);
+            line-height: 1; padding: 2px 6px; border-radius: 99px;
+            min-width: 18px; text-align: center;
+        }
+    `;
 
     template() {
+        return `            <a ref="linkEl" aria-current="false">
+                <span ref="iconEl" class="icon" hidden></span>
+                <slot name="icon"></slot>
+                <span ref="labelEl" class="label"></span>
+                <slot></slot>
+                <span ref="badgeEl" class="badge" hidden></span>
+                <slot name="badge"></slot>
+            </a>
+        `;
+    }
+
+    onMount() {
+        this._syncFromAttrs();
+        this.on(this.linkEl, 'click', (e: MouseEvent) => {
+            if (this.hasAttribute('disabled')) { e.preventDefault(); return; }
+            this.emit('nav-click', { href: this.getAttribute('href') });
+        });
+        this.on(this, 'keydown', (e: KeyboardEvent) => {
+            if ((e.key === ' ' || e.key === 'Enter') && !this.getAttribute('href') && !this.hasAttribute('disabled')) {
+                e.preventDefault();
+                this.emit('nav-click', { href: null });
+            }
+        });
+    }
+
+    protected _handleAttributeUpdate(_name: string, _val: string | null) {
+        this._syncFromAttrs();
+    }
+
+    private _syncFromAttrs() {
         const href         = this.getAttribute('href');
         const label        = this.getAttribute('label') ?? '';
         const iconName     = this.getAttribute('icon') ?? '';
         const active       = this.hasAttribute('active');
         const disabled     = this.hasAttribute('disabled');
         const badge        = this.getAttribute('badge') ?? '';
-        const badgeVariant = this.getAttribute('badge-variant') ?? 'primary';
         const indent       = parseInt(this.getAttribute('indent') ?? '0', 10);
         const target       = this.getAttribute('target') ?? '_self';
 
+        // Link / button semantics
+        if (href) {
+            this.linkEl.setAttribute('href', href);
+            this.linkEl.setAttribute('target', target);
+            this.linkEl.removeAttribute('role');
+            this.linkEl.removeAttribute('tabindex');
+        } else {
+            this.linkEl.removeAttribute('href');
+            this.linkEl.setAttribute('role', 'button');
+            this.linkEl.setAttribute('tabindex', disabled ? '-1' : '0');
+        }
+        this.linkEl.setAttribute('aria-current', active ? 'page' : 'false');
+        this.linkEl.setAttribute('aria-disabled', String(disabled));
+
+        // Indent
+        this.style.setProperty('--_indent-px', `${indent * 16}px`);
+
+        // Icon
         const iconHtml = NAV_ICONS[iconName]
             ? svgWrap(NAV_ICONS[iconName])
             : iconName.startsWith('<') ? iconName : '';
+        this.iconEl.hidden = !iconHtml;
+        if (iconHtml) this.iconEl.innerHTML = iconHtml;
 
-        const badgeColors: Record<string, [string,string]> = {
-            primary:  ['var(--nc-primary)', 'var(--nc-white)'],
-            success:  ['var(--nc-success)', 'var(--nc-white)'],
-            danger:   ['var(--nc-danger)',  'var(--nc-white)'],
-            warning:  ['var(--nc-warning)', 'var(--nc-text)'],
-        };
-        const [bgColor, textColor] = badgeColors[badgeVariant] ?? badgeColors.primary;
+        // Label
+        this.labelEl.textContent = label;
 
-        const paddingLeft = `calc(var(--nc-spacing-md) + ${indent * 16}px)`;
-        const tag = href ? 'a' : 'button';
-        const tagAttrs = href
-            ? `href="${href}" target="${target}"`
-            : `type="button"`;
-
-        return html`
-            <style>
-                :host { display: block; }
-                ${tag} {
-                    display: flex;
-                    align-items: center;
-                    gap: var(--nc-spacing-sm);
-                    width: 100%;
-                    padding: 9px ${paddingLeft === 'calc(var(--nc-spacing-md) + 0px)' ? 'var(--nc-spacing-md)' : `var(--nc-spacing-md) var(--nc-spacing-md) var(--nc-spacing-md) ${paddingLeft}`};
-                    border-radius: var(--nc-radius-md);
-                    text-decoration: none;
-                    font-family: var(--nc-font-family);
-                    font-size: var(--nc-font-size-sm);
-                    font-weight: ${active ? 'var(--nc-font-weight-semibold)' : 'var(--nc-font-weight-normal)'};
-                    color: ${active ? 'var(--nc-primary)' : disabled ? 'var(--nc-text-muted)' : 'var(--nc-text-secondary)'};
-                    background: ${active ? 'rgba(var(--nc-primary-rgb, 99,102,241), 0.1)' : 'transparent'};
-                    border: none;
-                    cursor: ${disabled ? 'not-allowed' : 'pointer'};
-                    opacity: ${disabled ? 0.5 : 1};
-                    text-align: left;
-                    outline: none;
-                    transition: background var(--nc-transition-fast), color var(--nc-transition-fast);
-                    user-select: none;
-                    position: relative;
-                }
-                ${active ? `${tag}::before { content: ''; position: absolute; left: 0; top: 20%; height: 60%; width: 3px; background: var(--nc-primary); border-radius: 0 2px 2px 0; }` : ''}
-                ${tag}:hover:not([disabled]) {
-                    background: ${active ? 'rgba(var(--nc-primary-rgb, 99,102,241), 0.14)' : 'var(--nc-bg-secondary)'};
-                    color: ${active ? 'var(--nc-primary)' : 'var(--nc-text)'};
-                }
-                ${tag}:focus-visible { outline: 2px solid var(--nc-primary); outline-offset: -2px; }
-                .icon { flex-shrink: 0; display: flex; opacity: ${active ? 1 : 0.65}; }
-                .label { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-                .badge {
-                    flex-shrink: 0;
-                    background: ${bgColor};
-                    color: ${textColor};
-                    font-size: 10px;
-                    font-weight: var(--nc-font-weight-semibold);
-                    line-height: 1;
-                    padding: 2px 6px;
-                    border-radius: 99px;
-                    min-width: 18px;
-                    text-align: center;
-                }
-            </style>
-            <${tag} ${tagAttrs} ${disabled ? (href ? 'aria-disabled="true"' : 'disabled') : ''} aria-current="${active ? 'page' : 'false'}">
-                ${trusted(iconHtml ? `<span class="icon">${iconHtml}<slot name="icon"></slot></span>` : '<slot name="icon"></slot>')}
-                <span class="label">${label}<slot></slot></span>
-                ${trusted(badge ? `<span class="badge">${badge}<slot name="badge"></slot></span>` : '<slot name="badge"></slot>')}
-            </${tag}>
-        `;
-    }
-
-    onMount() {
-        this.shadowRoot!.addEventListener('click', (e) => {
-            if (this.hasAttribute('disabled')) { e.preventDefault(); return; }
-            this.dispatchEvent(new CustomEvent('nav-click', {
-                detail: { href: this.getAttribute('href') },
-                bubbles: true, composed: true,
-            }));
-        });
-    }
-
-    attributeChangedCallback(n: string, o: string, v: string) {
-        if (o !== v && this._mounted) this.render();
+        // Badge
+        this.badgeEl.hidden = !badge;
+        if (badge) this.badgeEl.textContent = badge;
     }
 }
 
-defineComponent('nc-nav-item', NcNavItem);
-
+if (!customElements.get('nc-nav-item')) customElements.define('nc-nav-item', NcNavItem);

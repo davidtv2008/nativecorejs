@@ -15,6 +15,7 @@ import { ComponentOverlay } from './component-overlay.js';
 import { ComponentEditor } from './component-editor.js';
 import { OutlinePanel } from './outline-panel.js';
 import { DrawingOverlay } from './drawing-overlay.js';
+import { ComponentBuilder } from './component-builder.js';
 
 class DevTools {
     private static readonly TOGGLE_STORAGE_KEY = 'nativecore-devtools-visible';
@@ -22,6 +23,7 @@ class DevTools {
     private editor: ComponentEditor | null = null;
     private outlinePanel: OutlinePanel | null = null;
     private drawingOverlay: DrawingOverlay | null = null;
+    private builder: ComponentBuilder | null = null;
     private indicator: HTMLButtonElement | null = null;
     private enabled: boolean = false;
     private overlayVisible: boolean = true;
@@ -38,11 +40,13 @@ class DevTools {
 
         // console.log('[DevTools] Initializing NativeCore Dev Tools...');
         
-        this.overlay = new ComponentOverlay(this.onEditComponent.bind(this));
+        // Gear-click edits should open only the editor panel, not auto-expand outline.
+        this.overlay = new ComponentOverlay((element) => this.onEditComponent(element, true));
         this.editor = new ComponentEditor();
         this.outlinePanel = new OutlinePanel(this.onEditComponent.bind(this));
         this.drawingOverlay = new DrawingOverlay();
         this.drawingOverlay.init();
+        this.builder = new ComponentBuilder();
         this.enabled = true;
         this.overlayVisible = this.loadOverlayVisibilityPreference();
         this.overlay.setVisible(this.overlayVisible);
@@ -91,6 +95,25 @@ class DevTools {
             }
         } catch (error) {
             console.error('[DevTools] Failed to open editor:', error);
+
+            // Fallback: still open the editor drawer with minimal metadata.
+            // This keeps gear-click usable even when server-side parsing fails.
+            const fallback: ComponentMetadata = {
+                tagName,
+                filePath: '',
+                absoluteFilePath: '',
+                className: element.constructor?.name || 'Unknown',
+                attributes: [],
+                cssVariables: [],
+                slots: [],
+                sourceCode: '',
+            };
+
+            this.editor.open(element, fallback);
+
+            if (this.outlinePanel && !fromOutlineTree) {
+                this.outlinePanel.showAndExpandTo(element);
+            }
         }
     }
 
@@ -176,9 +199,31 @@ class DevTools {
                     background: rgba(255,200,0,0.35);
                     border-color: rgba(255,200,0,0.6);
                 }
+
+                #nativecore-denc-build-btn {
+                    background: rgba(255,255,255,0.15);
+                    border: 1px solid rgba(255,255,255,0.25);
+                    border-radius: 10px;
+                    color: white;
+                    font-size: 13px;
+                    cursor: pointer;
+                    padding: 1px 6px;
+                    line-height: 1.4;
+                    transition: background 0.15s;
+                    display: none;
+                }
+
+                #nativecore-denc-indicator:not(.is-off) #nativecore-denc-build-btn {
+                    display: inline-block;
+                }
+
+                #nativecore-denc-build-btn:hover {
+                    background: rgba(255,255,255,0.28);
+                }
             </style>
             <span id="nativecore-denc-label">DEV MODE: ${this.overlayVisible ? 'ON' : 'OFF'}</span>
             <button id="nativecore-denc-brush-btn" type="button" title="Toggle annotation drawing mode">🖌️</button>
+            <button id="nativecore-denc-build-btn" type="button" title="Open Component Builder (Ctrl+Shift+B)">⚡ Build</button>
         `;
         indicator.classList.toggle('is-off', !this.overlayVisible);
         indicator.addEventListener('click', () => this.toggleOverlayVisibility());
@@ -189,6 +234,13 @@ class DevTools {
             e.stopPropagation();
             this.drawingOverlay?.toggle();
             brushBtn.classList.toggle('drawing-on', this.drawingOverlay?.isOn ?? false);
+        });
+
+        // Build button — opens Component Builder
+        const buildBtn = indicator.querySelector('#nativecore-denc-build-btn') as HTMLButtonElement | null;
+        buildBtn?.addEventListener('click', (e) => {
+            e.stopPropagation();
+            this.builder?.toggle();
         });
         
         document.body.appendChild(indicator);
@@ -246,6 +298,9 @@ class DevTools {
         }
         if (this.drawingOverlay) {
             this.drawingOverlay.destroy();
+        }
+        if (this.builder) {
+            this.builder.destroy();
         }
         // Use dom.query for consistency
         const indicator = (window.dom?.query?.('#nativecore-denc-indicator') || document.getElementById('nativecore-denc-indicator')) as HTMLElement;

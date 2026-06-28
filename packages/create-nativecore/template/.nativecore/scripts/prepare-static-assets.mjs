@@ -15,7 +15,7 @@ import path from 'path';
 import { fileURLToPath } from 'url';
 import * as esbuild from 'esbuild';
 
-const __filename
+const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 const rootDir = path.resolve(__dirname, '../..');
 const distDir = path.join(rootDir, 'dist');
@@ -245,8 +245,7 @@ async function prepareDeployDirectory() {
     //    with esbuild so the dependency is inlined. Framework relative
     //    imports remain as-is, preserving the unbundled module graph.
     // ---------------------------------------------------------------
-    const jsDeployDir = path.join(deployDir, 'dist');
-    await bundleNpmDeps(jsDeployDir);
+    await bundleNpmDeps(path.join(deployDir, 'dist'));
 
     console.log('\nDeployment directory prepared: _deploy/');
 }

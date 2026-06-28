@@ -1,76 +1,68 @@
 /**
- * NcScrollTop Component — floating "back to top" button
+ * NcScrollTop Component â€” floating "back to top" button
  *
  * Appends itself to document.body so it always sits over all content.
  * Becomes visible after the user scrolls past `threshold` px.
  *
  * Attributes:
- *   threshold  — scroll distance in px before appearing (default: 300)
- *   position   — 'bottom-right'(default)|'bottom-left'|'bottom-center'
- *   smooth     — boolean — use smooth scrolling (default: true)
- *   label      — accessible aria-label (default: 'Back to top')
- *   offset     — distance from screen edge in px (default: 24)
- *   target     — optional CSS selector for the scroll container (default: window)
+ *   threshold  â€” scroll distance in px before appearing (default: 300)
+ *   position   â€” 'bottom-right'(default)|'bottom-left'|'bottom-center'
+ *   smooth     â€” boolean â€” use smooth scrolling (default: true)
+ *   label      â€” accessible aria-label (default: 'Back to top')
+ *   offset     â€” distance from screen edge in px (default: 24)
+ *   target     â€” optional CSS selector for the scroll container (default: window)
  *
  * Usage:
  *   <nc-scroll-top></nc-scroll-top>
  */
-import { Component, defineComponent } from '@core/component.js';
+import { CoreComponent } from '@core/component.js';
+import { css } from '@core-utils/templates.js';
 import { addPassiveListener } from '@core/gpu-animation.js';
 import { dom } from '@core-utils/dom.js';
-import { html } from '@core-utils/templates.js';
 
-export class NcScrollTop extends Component {
+export class NcScrollTop extends CoreComponent {
     static useShadowDOM = true;
 
-    private _visible = false;
+    // -- Refs -----------------------------------------------------------------
+    declare btnEl: HTMLButtonElement;
+
     private _removeScroll: (() => void) | null = null;
     private _scrollTarget: HTMLElement | Window = window;
 
+    static styles = css`
+        :host { display: contents; --_offset: 24px; }
+        button {
+            position: fixed;
+            bottom: var(--_offset);
+            right: var(--_offset);
+            z-index: 900;
+            width: 44px; height: 44px;
+            border-radius: 50%;
+            background: var(--nc-primary); color: var(--nc-white);
+            border: none; cursor: pointer;
+            display: flex; align-items: center; justify-content: center;
+            box-shadow: var(--nc-shadow-md);
+            opacity: 0; visibility: hidden;
+            transform: translateY(12px) scale(0.9);
+            pointer-events: none;
+            transition:
+                opacity var(--nc-transition-base),
+                transform var(--nc-transition-base),
+                visibility var(--nc-transition-base);
+            outline: none;
+        }
+        :host([data-pos="bottom-left"]) button  { right: auto; left: var(--_offset); }
+        :host([data-pos="bottom-center"]) button { right: auto; left: 50%; transform: translateX(-50%) translateY(12px) scale(0.9); }
+        :host([visible]) button              { opacity: 1; visibility: visible; transform: translateY(0) scale(1); pointer-events: auto; }
+        :host([visible][data-pos="bottom-center"]) button { transform: translateX(-50%) translateY(0) scale(1); }
+        button:hover  { opacity: 0.85; }
+        button:active { transform: scale(0.94); }
+        :host([visible][data-pos="bottom-center"]) button:active { transform: translateX(-50%) scale(0.94); }
+        button:focus-visible { outline: 2px solid var(--nc-primary); outline-offset: 3px; }
+    `;
+
     template() {
-        const pos    = this.getAttribute('position') ?? 'bottom-right';
-        const offset = parseInt(this.getAttribute('offset') ?? '24', 10);
-        const label  = this.getAttribute('label') ?? 'Back to top';
-        const v      = this._visible;
-
-        const posStyle =
-            pos === 'bottom-left'   ? `left:${offset}px;right:auto;` :
-            pos === 'bottom-center' ? `left:50%;transform:translateX(-50%);` :
-            `right:${offset}px;left:auto;`;
-
-        return html`
-            <style>
-                :host { display: contents; }
-                button {
-                    position: fixed;
-                    bottom: ${offset}px;
-                    ${posStyle}
-                    z-index: 900;
-                    width: 44px;
-                    height: 44px;
-                    border-radius: 50%;
-                    background: var(--nc-primary);
-                    color: var(--nc-white);
-                    border: none;
-                    cursor: pointer;
-                    display: flex;
-                    align-items: center;
-                    justify-content: center;
-                    box-shadow: var(--nc-shadow-md);
-                    opacity: ${v ? '1' : '0'};
-                    visibility: ${v ? 'visible' : 'hidden'};
-                    transform: ${v ? 'translateY(0) scale(1)' : 'translateY(12px) scale(0.9)'};
-                    pointer-events: ${v ? 'auto' : 'none'};
-                    transition:
-                        opacity var(--nc-transition-base),
-                        transform var(--nc-transition-base);
-                    outline: none;
-                }
-                button:hover  { opacity: 0.85; }
-                button:active { transform: scale(0.94); }
-                button:focus-visible { outline: 2px solid var(--nc-primary); outline-offset: 3px; }
-            </style>
-            <button type="button" aria-label="${label}" tabindex="${v ? '0' : '-1'}">
+        return `            <button ref="btnEl" type="button" tabindex="-1">
                 <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24"
                      fill="none" stroke="currentColor" stroke-width="2.5"
                      stroke-linecap="round" stroke-linejoin="round">
@@ -81,32 +73,36 @@ export class NcScrollTop extends Component {
     }
 
     onMount() {
+        const offset    = parseInt(this.getAttribute('offset')   ?? '24',  10);
+        const pos       = this.getAttribute('position') ?? 'bottom-right';
+        const label     = this.getAttribute('label')    ?? 'Back to top';
         const threshold = parseInt(this.getAttribute('threshold') ?? '300', 10);
-        const targetSelector = this.getAttribute('target');
-        this._scrollTarget = targetSelector
-            ? dom.query<HTMLElement>(targetSelector) ?? window
+        const targetSel = this.getAttribute('target');
+
+        this.style.setProperty('--_offset', `${offset}px`);
+        if (pos !== 'bottom-right') this.dataset.pos = pos;
+        this.btnEl.setAttribute('aria-label', label);
+
+        this._scrollTarget = targetSel
+            ? dom.query<HTMLElement>(targetSel) ?? window
             : window;
 
         const updateVisibility = () => {
-            const currentScroll = this._scrollTarget instanceof Window
+            const scroll = this._scrollTarget instanceof Window
                 ? this._scrollTarget.scrollY
-                : this._scrollTarget.scrollTop;
-            const shouldShow = currentScroll > threshold;
-            if (shouldShow !== this._visible) {
-                this._visible = shouldShow;
-                this.render();
-            }
+                : (this._scrollTarget as HTMLElement).scrollTop;
+            const visible = scroll > threshold;
+            this.toggleAttribute('visible', visible);
+            this.btnEl.tabIndex = visible ? 0 : -1;
         };
 
         this._removeScroll = addPassiveListener(this._scrollTarget, 'scroll', updateVisibility);
         updateVisibility();
 
-        this.shadowRoot!.addEventListener('click', () => this._scrollTop());
-    }
-
-    private _scrollTop() {
-        const smooth = this.getAttribute('smooth') !== 'false';
-        this._scrollTarget.scrollTo({ top: 0, behavior: smooth ? 'smooth' : 'auto' });
+        this.on(this.btnEl, 'click', () => {
+            const smooth = this.getAttribute('smooth') !== 'false';
+            this._scrollTarget.scrollTo({ top: 0, behavior: smooth ? 'smooth' : 'auto' });
+        });
     }
 
     onUnmount() {
@@ -114,5 +110,4 @@ export class NcScrollTop extends Component {
     }
 }
 
-defineComponent('nc-scroll-top', NcScrollTop);
-
+if (!customElements.get('nc-scroll-top')) customElements.define('nc-scroll-top', NcScrollTop);

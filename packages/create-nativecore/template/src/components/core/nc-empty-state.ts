@@ -22,8 +22,8 @@
  *     </div>
  *   </nc-empty-state>
  */
-import { Component, defineComponent } from '@core/component.js';
-import { html, trusted } from '@core-utils/templates.js';
+import { CoreComponent } from '@core/component.js';
+import { css, html } from '@core-utils/templates.js';
 
 const ICONS: Record<string, string> = {
     inbox: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" fill="none">
@@ -61,76 +61,89 @@ const ICONS: Record<string, string> = {
     </svg>`,
 };
 
-export class NcEmptyState extends Component {
+export class NcEmptyState extends CoreComponent {
     static useShadowDOM = true;
+    static observedAttributes = ['title', 'description', 'icon', 'size', 'variant'];
+    static attributeOptions = {
+        icon:    ['inbox', 'search', 'folder', 'data', 'error', 'lock', 'custom'],
+        size:    ['sm', 'md', 'lg'],
+        variant: ['default', 'bordered', 'filled'],
+    };
+    static attributeOrder = ['icon', 'title', 'description', 'variant', 'size'];
+
+    // -- Refs -----------------------------------------------------------------
+    declare iconWrapEl: HTMLDivElement;
+    declare titleEl:    HTMLParagraphElement;
+    declare descEl:     HTMLParagraphElement;
+
+    static styles = css`
+        :host { display: block; }
+        .wrap {
+            display: flex; flex-direction: column; align-items: center; text-align: center;
+            padding: var(--nc-spacing-xl, 40px);
+            font-family: var(--nc-font-family);
+        }
+        :host([size="sm"]) .wrap { padding: var(--nc-spacing-lg); }
+        :host([size="lg"]) .wrap { padding: var(--nc-spacing-2xl, 48px); }
+        :host([variant="bordered"]) .wrap { border: 1px dashed var(--nc-border); border-radius: var(--nc-radius-lg); }
+        :host([variant="filled"])   .wrap { background: var(--nc-bg-secondary); border-radius: var(--nc-radius-lg); }
+        .icon-wrap {
+            width: 72px; height: 72px;
+            color: var(--nc-text-muted); margin-bottom: var(--nc-spacing-md); opacity: 0.6;
+        }
+        :host([size="sm"]) .icon-wrap { width: 56px; height: 56px; }
+        :host([size="lg"]) .icon-wrap { width: 96px; height: 96px; }
+        .icon-wrap svg { width: 100%; height: 100%; }
+        .title {
+            font-size: var(--nc-font-size-lg); font-weight: var(--nc-font-weight-semibold);
+            color: var(--nc-text); margin: 0 0 var(--nc-spacing-xs);
+        }
+        :host([size="sm"]) .title { font-size: var(--nc-font-size-base); }
+        :host([size="lg"]) .title { font-size: var(--nc-font-size-xl); }
+        .desc {
+            font-size: var(--nc-font-size-sm); color: var(--nc-text-secondary);
+            margin: 0 0 var(--nc-spacing-md); max-width: 360px;
+            line-height: var(--nc-line-height-relaxed, 1.7);
+        }
+        .actions { display: flex; gap: var(--nc-spacing-sm); flex-wrap: wrap; justify-content: center; }
+        slot[name="title"]::slotted(*), slot[name="description"]::slotted(*) { margin: 0; }
+        [hidden] { display: none; }
+    `;
 
     template() {
-        const title       = this.getAttribute('title') ?? '';
-        const description = this.getAttribute('description') ?? '';
-        const icon        = this.getAttribute('icon') ?? 'inbox';
-        const size        = this.getAttribute('size') ?? 'md';
-        const variant     = this.getAttribute('variant') ?? 'default';
-
-        const iconSz  = size === 'sm' ? '56px' : size === 'lg' ? '96px' : '72px';
-        const titleFs = size === 'sm' ? 'var(--nc-font-size-base)' : size === 'lg' ? 'var(--nc-font-size-xl)' : 'var(--nc-font-size-lg)';
-        const padding = size === 'sm' ? 'var(--nc-spacing-lg)' : size === 'lg' ? 'var(--nc-spacing-2xl, 48px)' : 'var(--nc-spacing-xl, 40px)';
-
-        const variantStyle =
-            variant === 'bordered' ? 'border: 1px dashed var(--nc-border); border-radius: var(--nc-radius-lg);' :
-            variant === 'filled'   ? 'background: var(--nc-bg-secondary); border-radius: var(--nc-radius-lg);' :
-            '';
-
-        const hasCustomIcon = icon === 'custom';
-        const iconHtml = hasCustomIcon ? '' : (ICONS[icon] ?? ICONS.inbox);
-
-        return html`
-            <style>
-                :host { display: block; }
-                .wrap {
-                    display: flex;
-                    flex-direction: column;
-                    align-items: center;
-                    text-align: center;
-                    padding: ${padding};
-                    ${variantStyle}
-                    font-family: var(--nc-font-family);
-                }
-                .icon-wrap {
-                    width: ${iconSz};
-                    height: ${iconSz};
-                    color: var(--nc-text-muted);
-                    margin-bottom: var(--nc-spacing-md);
-                    opacity: 0.6;
-                }
-                .icon-wrap svg { width: 100%; height: 100%; }
-                .title {
-                    font-size: ${titleFs};
-                    font-weight: var(--nc-font-weight-semibold);
-                    color: var(--nc-text);
-                    margin: 0 0 var(--nc-spacing-xs);
-                }
-                .desc {
-                    font-size: var(--nc-font-size-sm);
-                    color: var(--nc-text-secondary);
-                    margin: 0 0 var(--nc-spacing-md);
-                    max-width: 360px;
-                    line-height: var(--nc-line-height-relaxed, 1.7);
-                }
-                .actions { display: flex; gap: var(--nc-spacing-sm); flex-wrap: wrap; justify-content: center; }
-                slot[name="title"]::slotted(*),
-                slot[name="description"]::slotted(*) { margin: 0; }
-            </style>
-            <div class="wrap">
-                <div class="icon-wrap">
-                    ${trusted(hasCustomIcon ? '<slot name="icon"></slot>' : iconHtml)}
-                </div>
-                ${trusted(title ? `<p class="title">${title}</p>` : '<slot name="title"></slot>')}
-                ${trusted(description ? `<p class="desc">${description}</p>` : '<slot name="description"></slot>')}
+        return html`            <div class="wrap">
+                <div ref="iconWrapEl" class="icon-wrap"></div>
+                <p ref="titleEl" class="title" hidden></p>
+                <slot name="title"></slot>
+                <p ref="descEl" class="desc" hidden></p>
+                <slot name="description"></slot>
                 <div class="actions"><slot name="actions"></slot></div>
             </div>
         `;
     }
+
+    onMount() { this._syncFromAttrs(); }
+
+    protected _handleAttributeUpdate(_name: string, _val: string | null) {
+        this._syncFromAttrs();
+    }
+
+    private _syncFromAttrs() {
+        const title       = this.getAttribute('title') ?? '';
+        const description = this.getAttribute('description') ?? '';
+        const icon        = this.getAttribute('icon') ?? 'inbox';
+
+        this.iconWrapEl.innerHTML = icon === 'custom'
+            ? '<slot name="icon"></slot>'
+            : (ICONS[icon] ?? ICONS.inbox);
+
+        if (title) { this.titleEl.textContent = title; this.titleEl.hidden = false; }
+        else        { this.titleEl.hidden = true; }
+
+        if (description) { this.descEl.textContent = description; this.descEl.hidden = false; }
+        else              { this.descEl.hidden = true; }
+    }
 }
 
-defineComponent('nc-empty-state', NcEmptyState);
+if (!customElements.get('nc-empty-state')) customElements.define('nc-empty-state', NcEmptyState);
 

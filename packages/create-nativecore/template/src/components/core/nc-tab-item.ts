@@ -24,116 +24,97 @@
  *   (none — nc-tabs owns all interaction events)
  */
 
-import { Component, defineComponent } from '@core/component.js';
-import { html } from '@core-utils/templates.js';
+import { CoreComponent } from '@core/component.js';
 
-export class NcTabItem extends Component {
+export class NcTabItem extends CoreComponent {
     static useShadowDOM = true;
+    static observedAttributes = ['label', 'active', 'disabled'];
 
-    static get observedAttributes() {
-        return ['label', 'active', 'disabled'];
-    }
+    static styles = css`
+        :host {
+            display: none;
+        }
+
+        :host([active]) {
+            display: block;
+        }
+
+        /* ── Animation variants driven by data-nc-transition set by nc-tabs ── */
+        :host([active]) .panel {
+            animation: nc-tab-fade 250ms ease both;
+        }
+
+        :host([data-nc-transition="fade"][active]) .panel {
+            animation: nc-tab-fade 250ms ease both;
+        }
+
+        :host([data-nc-transition="slide-up"][active]) .panel {
+            animation: nc-tab-slide-up 300ms ease both;
+        }
+
+        :host([data-nc-transition="slide-right"][active]) .panel {
+            animation: nc-tab-slide-right 300ms ease both;
+        }
+
+        :host([data-nc-transition="slide-left"][active]) .panel {
+            animation: nc-tab-slide-left 300ms ease both;
+        }
+
+        :host([data-nc-transition="slide-down"][active]) .panel {
+            animation: nc-tab-slide-down 300ms ease both;
+        }
+
+        :host([data-nc-transition="none"][active]) .panel {
+            animation: none;
+        }
+
+        /* ── Keyframes ───────────────────────────────────────────────── */
+        @keyframes nc-tab-fade {
+            from { opacity: 0; }
+            to   { opacity: 1; }
+        }
+
+        @keyframes nc-tab-slide-up {
+            from { opacity: 0; transform: translateY(20px); }
+            to   { opacity: 1; transform: translateY(0); }
+        }
+
+        @keyframes nc-tab-slide-right {
+            from { opacity: 0; transform: translateX(-24px); }
+            to   { opacity: 1; transform: translateX(0); }
+        }
+
+        @keyframes nc-tab-slide-left {
+            from { opacity: 0; transform: translateX(24px); }
+            to   { opacity: 1; transform: translateX(0); }
+        }
+
+        @keyframes nc-tab-slide-down {
+            from { opacity: 0; transform: translateY(-20px); }
+            to   { opacity: 1; transform: translateY(0); }
+        }
+
+        .panel {
+            box-sizing: border-box;
+            padding: var(--nc-spacing-lg);
+            background: var(--nc-bg-secondary);
+            border-radius: var(--nc-radius-lg);
+        }
+
+        @media (max-width: 640px) {
+            .panel {
+                padding: var(--nc-spacing-sm);
+                border-radius: var(--nc-radius-md);
+            }
+        }
+    `;
 
     template(): string {
-        return html`
-            <style>
-                :host {
-                    display: none;
-                }
-
-                :host([active]) {
-                    display: block;
-                }
-
-                /* ── Animation variants driven by data-nc-transition set by nc-tabs ── */
-                :host([active]) .panel {
-                    animation: nc-tab-fade 250ms ease both;
-                }
-
-                :host([data-nc-transition="fade"][active]) .panel {
-                    animation: nc-tab-fade 250ms ease both;
-                }
-
-                :host([data-nc-transition="slide-up"][active]) .panel {
-                    animation: nc-tab-slide-up 300ms ease both;
-                }
-
-                :host([data-nc-transition="slide-right"][active]) .panel {
-                    animation: nc-tab-slide-right 300ms ease both;
-                }
-
-                :host([data-nc-transition="slide-left"][active]) .panel {
-                    animation: nc-tab-slide-left 300ms ease both;
-                }
-
-                :host([data-nc-transition="slide-down"][active]) .panel {
-                    animation: nc-tab-slide-down 300ms ease both;
-                }
-
-                :host([data-nc-transition="none"][active]) .panel {
-                    animation: none;
-                }
-
-                /* ── Keyframes ───────────────────────────────────────────────── */
-                @keyframes nc-tab-fade {
-                    from { opacity: 0; }
-                    to   { opacity: 1; }
-                }
-
-                @keyframes nc-tab-slide-up {
-                    from { opacity: 0; transform: translateY(20px); }
-                    to   { opacity: 1; transform: translateY(0); }
-                }
-
-                @keyframes nc-tab-slide-right {
-                    from { opacity: 0; transform: translateX(-24px); }
-                    to   { opacity: 1; transform: translateX(0); }
-                }
-
-                @keyframes nc-tab-slide-left {
-                    from { opacity: 0; transform: translateX(24px); }
-                    to   { opacity: 1; transform: translateX(0); }
-                }
-
-                @keyframes nc-tab-slide-down {
-                    from { opacity: 0; transform: translateY(-20px); }
-                    to   { opacity: 1; transform: translateY(0); }
-                }
-
-                .panel {
-                    box-sizing: border-box;
-                    padding: var(--nc-spacing-lg);
-                    background: var(--nc-bg-secondary);
-                    border-radius: var(--nc-radius-lg);
-                }
-
-                @media (max-width: 640px) {
-                    .panel {
-                        padding: var(--nc-spacing-sm);
-                        border-radius: var(--nc-radius-md);
-                    }
-                }
-            </style>
-            <div class="panel"><slot></slot></div>
+        return `            <div class="panel"><slot></slot></div>
         `;
     }
-
-    /**
-     * Override to suppress re-renders — :host([active]) CSS handles show/hide,
-     * and label/disabled changes are handled by nc-tabs rebuilding its bar.
-     * A full re-render would needlessly flash slot content on every tab click.
-     */
-    attributeChangedCallback(
-        _name: string,
-        _oldValue: string | null,
-        _newValue: string | null
-    ): void {
-        // intentionally empty — CSS selectors handle all visual state
-    }
-
-    onMount(): void {}
-    onUnmount(): void {}
+    // _handleAttributeUpdate intentionally not defined — :host([active]) CSS handles all show/hide.
 }
 
-defineComponent('nc-tab-item', NcTabItem);
+if (!customElements.get('nc-tab-item')) customElements.define('nc-tab-item', NcTabItem);
 

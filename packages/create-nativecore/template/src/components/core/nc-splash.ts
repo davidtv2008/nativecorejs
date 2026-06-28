@@ -10,11 +10,9 @@
  * 
  * 
  */
-import { Component, defineComponent } from '@core/component.js';
-import { useState } from '@core/state.js';
+import { CoreComponent } from '@core/component.js';
+import { css } from '@core-utils/templates.js';
 import { createAnimationLoop, type AnimationLoop } from '@core/gpu-animation.js';
-import type { State } from '@core/state.js';
-import { html, trusted } from '@core-utils/templates.js';
 
 interface Particle {
     x: number;
@@ -28,142 +26,138 @@ interface Particle {
     rotationSpeed: number;
 }
 
-export class NcSplash extends Component {
+export class NcSplash extends CoreComponent {
     static useShadowDOM = true;
-    
-    private isComplete: State<boolean>;
+    static observedAttributes = ['particles', 'duration', 'delay', 'title', 'subtitle'];
+    static attributeOrder     = ['title', 'subtitle', 'particles', 'duration', 'delay'];
+
+    // -- Refs -----------------------------------------------------------------
+    declare overlayEl: HTMLDivElement;
+    declare contentEl: HTMLDivElement;
+    declare promptEl:  HTMLDivElement;
+
     private canvas?: HTMLCanvasElement;
     private animationLoop?: AnimationLoop;
     
-    static get observedAttributes() {
-        return ['particles', 'duration', 'delay', 'title', 'subtitle'];
-    }
-    
-    constructor() {
-        super();
-        this.isComplete = useState(false);
-    }
-    
+    static styles = css`
+        :host {
+            display: block;
+            position: fixed;
+            inset: 0;
+            width: auto;
+            height: auto;
+            z-index: 99999;
+        }
+
+        .splash-overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(135deg, rgba(15, 23, 42, 0.95) 0%, rgba(30, 41, 59, 0.98) 100%);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            transition: opacity 0.8s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        .splash-overlay.fade-out {
+            opacity: 0;
+            pointer-events: none;
+        }
+
+        .splash-overlay.hidden {
+            display: none;
+        }
+
+        .splash-content {
+            text-align: center;
+            z-index: 1;
+        }
+
+        .splash-prompt {
+            margin-top: 2.5rem;
+            font-size: 1.25rem;
+            color: #fff;
+            opacity: 0.85;
+            letter-spacing: 0.1em;
+            font-family: 'Fira Mono', 'Fira Code', monospace;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 0.5em;
+            user-select: none;
+        }
+
+        .splash-cursor {
+            display: inline-block;
+            width: 1ch;
+            height: 1.2em;
+            background: none;
+            border-right: 2px solid #fff;
+            animation: blink-cursor 1s steps(1) infinite;
+            margin-left: 0.1em;
+        }
+
+        @keyframes blink-cursor {
+            0%, 49% { opacity: 1; }
+            50%, 100% { opacity: 0; }
+        }
+
+        .splash-title {
+            font-size: clamp(3rem, 12vw, 8rem);
+            font-weight: 800;
+            background: linear-gradient(135deg, #10b981 0%, #3b82f6 50%, #06b6d4 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            letter-spacing: -0.02em;
+            margin: 0;
+            text-shadow: 0 0 80px rgba(16, 185, 129, 0.5);
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+        }
+
+        .splash-subtitle {
+            font-size: clamp(0.875rem, 2vw, 1.25rem);
+            color: rgba(255, 255, 255, 0.6);
+            margin-top: 1rem;
+            font-weight: 400;
+            letter-spacing: 0.2em;
+            text-transform: uppercase;
+        }
+
+        .splash-glow {
+            position: absolute;
+            width: 600px;
+            height: 600px;
+            background: radial-gradient(circle, rgba(16, 185, 129, 0.15) 0%, transparent 70%);
+            pointer-events: none;
+        }
+
+        .splash-canvas {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            z-index: 100000;
+        }
+    `;
+
     template() {
-        const title = this.attr('title', 'NativeCore');
-        const subtitle = this.attr('subtitle', '');
-        return html`
-            <style>
-                :host {
-                    display: block;
-                    position: fixed;
-                    inset: 0;
-                    width: auto;
-                    height: auto;
-                    z-index: 99999;
-                }
-                
-                .splash-overlay {
-                    position: absolute;
-                    top: 0;
-                    left: 0;
-                    width: 100%;
-                    height: 100%;
-                    background: linear-gradient(135deg, rgba(15, 23, 42, 0.95) 0%, rgba(30, 41, 59, 0.98) 100%);
-                    backdrop-filter: blur(20px);
-                    -webkit-backdrop-filter: blur(20px);
-                    display: flex;
-                    flex-direction: column;
-                    align-items: center;
-                    justify-content: center;
-                    transition: opacity 0.8s cubic-bezier(0.4, 0, 0.2, 1);
-                }
-                
-                .splash-overlay.fade-out {
-                    opacity: 0;
-                    pointer-events: none;
-                }
-                
-                .splash-overlay.hidden {
-                    display: none;
-                }
-                
-                .splash-content {
-                    text-align: center;
-                    z-index: 1;
-                }
-                
-                .splash-prompt {
-                    margin-top: 2.5rem;
-                    font-size: 1.25rem;
-                    color: #fff;
-                    opacity: 0.85;
-                    letter-spacing: 0.1em;
-                    font-family: 'Fira Mono', 'Fira Code', monospace;
-                    display: flex;
-                    align-items: center;
-                    justify-content: center;
-                    gap: 0.5em;
-                    user-select: none;
-                }
-                
-                .splash-cursor {
-                    display: inline-block;
-                    width: 1ch;
-                    height: 1.2em;
-                    background: none;
-                    border-right: 2px solid #fff;
-                    animation: blink-cursor 1s steps(1) infinite;
-                    margin-left: 0.1em;
-                }
-                
-                @keyframes blink-cursor {
-                    0%, 49% { opacity: 1; }
-                    50%, 100% { opacity: 0; }
-                }
-                
-                .splash-title {
-                    font-size: clamp(3rem, 12vw, 8rem);
-                    font-weight: 800;
-                    background: linear-gradient(135deg, #10b981 0%, #3b82f6 50%, #06b6d4 100%);
-                    -webkit-background-clip: text;
-                    -webkit-text-fill-color: transparent;
-                    background-clip: text;
-                    letter-spacing: -0.02em;
-                    margin: 0;
-                    text-shadow: 0 0 80px rgba(16, 185, 129, 0.5);
-                    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-                }
-                
-                .splash-subtitle {
-                    font-size: clamp(0.875rem, 2vw, 1.25rem);
-                    color: rgba(255, 255, 255, 0.6);
-                    margin-top: 1rem;
-                    font-weight: 400;
-                    letter-spacing: 0.2em;
-                    text-transform: uppercase;
-                }
-                
-                .splash-glow {
-                    position: absolute;
-                    width: 600px;
-                    height: 600px;
-                    background: radial-gradient(circle, rgba(16, 185, 129, 0.15) 0%, transparent 70%);
-                    pointer-events: none;
-                }
-                
-                .splash-canvas {
-                    position: absolute;
-                    top: 0;
-                    left: 0;
-                    width: 100%;
-                    height: 100%;
-                    pointer-events: none;
-                    z-index: 100000;
-                }
-            </style>
-            
-            <div class="splash-overlay" id="overlay">
+        const title    = this.getAttribute('title')    ?? 'NativeCore';
+        const subtitle = this.getAttribute('subtitle') ?? '';
+        return `            <div ref="overlayEl" class="splash-overlay" id="overlay">
                 <div class="splash-glow"></div>
-                <div class="splash-content" id="content">
-                    <h1 class="splash-title">${title}</h1>
-                    ${trusted(subtitle ? `<p class="splash-subtitle">${subtitle}</p>` : '')}
-                    <div class="splash-prompt" id="prompt">
+                <div ref="contentEl" class="splash-content" id="content">
+                    <h1 class="splash-title"></h1>
+                    <p class="splash-subtitle" style="display:none"></p>
+                    <div ref="promptEl" class="splash-prompt" id="prompt">
                         Click to start <span class="splash-cursor"></span>
                     </div>
                 </div>
@@ -172,7 +166,12 @@ export class NcSplash extends Component {
     }
 
     onMount() {
-        // Check if splash has already been shown this session
+        // Populate title/subtitle from attributes
+        const title    = this.getAttribute('title')    ?? 'NativeCore';
+        const subtitle = this.getAttribute('subtitle') ?? '';
+        this.contentEl.querySelector<HTMLElement>('.splash-title')!.textContent = title;
+        const subEl = this.contentEl.querySelector<HTMLElement>('.splash-subtitle')!;
+        if (subtitle) { subEl.style.display = ''; subEl.textContent = subtitle; }
         const splashShown = sessionStorage.getItem('splash-shown');
         const connection = (navigator as Navigator & { connection?: { saveData?: boolean } }).connection;
         const shouldSkipSplash =
@@ -181,42 +180,31 @@ export class NcSplash extends Component {
             connection?.saveData === true;
         
         if (splashShown === 'true' || shouldSkipSplash) {
-            // Skip splash, hide component but keep in DOM for dev tools
             this.style.display = 'none';
             return;
         }
-        
-        const overlay = this.$('#overlay') as HTMLElement;
-        const prompt = this.$('#prompt') as HTMLElement;
-        if (overlay && prompt) {
-            const clickHandler = () => {
-                prompt.style.opacity = '0.5';
-                prompt.style.pointerEvents = 'none';
-                setTimeout(() => {
-                    prompt.style.display = 'none';
-                }, 300);
-                this.startDissolve();
-                overlay.removeEventListener('click', clickHandler);
-                window.removeEventListener('keydown', keyHandler);
-            };
-            const keyHandler = (e: KeyboardEvent) => {
-                if (e.key === 'Enter' || e.key === ' ') {
-                    clickHandler();
-                }
-            };
-            overlay.addEventListener('click', clickHandler);
-            window.addEventListener('keydown', keyHandler);
-        }
+
+        const clickHandler = () => {
+            this.promptEl.style.opacity = '0.5';
+            this.promptEl.style.pointerEvents = 'none';
+            setTimeout(() => { this.promptEl.style.display = 'none'; }, 300);
+            this.startDissolve();
+            this.overlayEl.removeEventListener('click', clickHandler);
+            window.removeEventListener('keydown', keyHandler);
+        };
+        const keyHandler = (e: KeyboardEvent) => {
+            if (e.key === 'Enter' || e.key === ' ') clickHandler();
+        };
+        this.on(this.overlayEl, 'click', clickHandler);
+        this.on(window as unknown as EventTarget, 'keydown', keyHandler);
     }
     
     private startDissolve() {
-        const overlay = this.$('#overlay') as HTMLElement;
-        const content = this.$('#content') as HTMLElement;
-        
-        if (!overlay || !content) return;
-        
-        const particleCount = parseInt(this.attr('particles', '10000'), 10);
-        const duration = parseInt(this.attr('duration', '2500'), 10);
+        const overlay = this.overlayEl;
+        const content = this.contentEl;
+
+        const particleCount = parseInt(this.getAttribute('particles') ?? '10000', 10);
+        const duration      = parseInt(this.getAttribute('duration')  ?? '2500',  10);
         
         // Get content bounding rect
         const rect = content.getBoundingClientRect();
@@ -315,31 +303,23 @@ export class NcSplash extends Component {
             overlay.classList.add('fade-out');
         }, duration * 0.6);
         
-        // Complete cleanup - mark as shown and hide component
+        // Complete cleanup
         setTimeout(() => {
             this.animationLoop?.stop();
             this.canvas?.remove();
             overlay.classList.add('hidden');
-            this.isComplete.value = true;
-            
-            // Mark splash as shown in sessionStorage
+
             sessionStorage.setItem('splash-shown', 'true');
-            
-            this.dispatchEvent(new CustomEvent('splash-complete', {
-                bubbles: true,
-                composed: true
-            }));
-            
-            // Hide the component but keep in DOM for dev tools
+            this.emit('splash-complete');
             setTimeout(() => this.style.display = 'none', 100);
         }, duration + 800);
     }
-    
-    disconnectedCallback() {
+
+    onUnmount() {
         this.animationLoop?.stop();
         this.canvas?.remove();
     }
 }
 
-defineComponent('nc-splash', NcSplash);
+if (!customElements.get('nc-splash')) customElements.define('nc-splash', NcSplash);
 

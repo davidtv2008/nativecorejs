@@ -4,7 +4,7 @@
  * Attributes:
  *   - separator: string — separator character/text (default: '/')
  *
- * Usage — place nc-a or plain <a> children inside:
+ * Usage — place nc-a or plain <a> / <span> children inside:
  *   <nc-breadcrumb>
  *     <nc-a href="/">Home</nc-a>
  *     <nc-a href="/settings">Settings</nc-a>
@@ -12,72 +12,86 @@
  *   </nc-breadcrumb>
  */
 
-import { Component, defineComponent } from '@core/component.js';
-import { html } from '@core-utils/templates.js';
+import { CoreComponent } from '@core/component.js';
+import { css, html } from '@core-utils/templates.js';
 
-export class NcBreadcrumb extends Component {
+export class NcBreadcrumb extends CoreComponent {
     static useShadowDOM = true;
+    static observedAttributes = ['separator'];
+    static attributePlaceholders = { separator: '›' };
 
-    static get observedAttributes() { return ['separator']; }
+    private _observer: MutationObserver | null = null;
+    private _sep = this.state('/');
+    private _inserting = false;
+
+    static styles = css`
+        :host { display: block; font-family: var(--nc-font-family); }
+
+        nav {
+            display: flex;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 2px;
+        }
+
+        ::slotted(*) {
+            font-size: var(--nc-font-size-sm);
+            color: var(--nc-text-muted);
+            --nc-a-color: var(--nc-text-muted);
+            text-decoration: none;
+            white-space: nowrap;
+        }
+        ::slotted(*:last-child) {
+            color: var(--nc-text);
+            --nc-a-color: var(--nc-text);
+            font-weight: var(--nc-font-weight-medium);
+            pointer-events: none;
+        }
+        ::slotted(*:not(:last-child):hover) { color: var(--nc-primary); --nc-a-color: var(--nc-primary); }
+
+        ::slotted(.nc-breadcrumb-sep) {
+            color: var(--nc-text-muted);
+            font-size: var(--nc-font-size-sm);
+            padding: 0 4px;
+            user-select: none;
+            pointer-events: none;
+        }
+    `;
 
     template() {
-        return html`
-            <style>
-                :host { display: block; font-family: var(--nc-font-family); }
-
-                nav { display: flex; align-items: center; flex-wrap: wrap; gap: 2px; }
-
-                .sep {
-                    color: var(--nc-text-muted);
-                    font-size: var(--nc-font-size-sm);
-                    padding: 0 4px;
-                    user-select: none;
-                }
-
-                ::slotted(*) {
-                    font-size: var(--nc-font-size-sm);
-                    color: var(--nc-text-muted);
-                    text-decoration: none;
-                    white-space: nowrap;
-                }
-
-                ::slotted(*:last-child) {
-                    color: var(--nc-text);
-                    font-weight: var(--nc-font-weight-medium);
-                    pointer-events: none;
-                }
-
-                ::slotted(*:not(:last-child):hover) {
-                    color: var(--nc-primary);
-                }
-            </style>
-            <nav aria-label="Breadcrumb">
+        return html`            <nav aria-label="Breadcrumb">
                 <slot></slot>
             </nav>
         `;
     }
 
     onMount() {
-        this._insertSeparators();
-        // Re-apply when children change
-        const observer = new MutationObserver(() => this._insertSeparators());
-        observer.observe(this, { childList: true });
-        (this as any)._breadcrumbObserver = observer;
+        // effect re-runs whenever _sep changes (reactive tracking)
+        this.effect(() => this._insertSeparators(this._sep.value));
+
+        // MutationObserver handles slotted children being added/removed
+        this._observer = new MutationObserver(() => this._insertSeparators(this._sep.value));
+        this._observer.observe(this, { childList: true });
     }
 
     onUnmount() {
-        (this as any)._breadcrumbObserver?.disconnect();
+        this._observer?.disconnect();
+        this._observer = null;
     }
 
-    private _insertSeparators() {
-        const sep = this.getAttribute('separator') || '/';
-        const existing = Array.from(this.querySelectorAll('.nc-breadcrumb-sep'));
-        existing.forEach(s => s.remove());
+    protected _handleAttributeUpdate(name: string, val: string | null) {
+        if (name === 'separator') this._sep.value = val || '/';
+    }
+
+    private _insertSeparators(sep: string) {
+        if (this._inserting) return;
+        this._inserting = true;
+
+        this.querySelectorAll('.nc-breadcrumb-sep').forEach(el => el.remove());
 
         const children = Array.from(this.children).filter(
-            el => !el.classList.contains('nc-breadcrumb-sep')
+            el => !el.classList.contains('nc-breadcrumb-sep'),
         );
-
         children.slice(0, -1).forEach(child => {
             const span = document.createElement('span');
             span.className = 'nc-breadcrumb-sep';
@@ -85,14 +99,10 @@ export class NcBreadcrumb extends Component {
             span.textContent = sep;
             child.after(span);
         });
-    }
 
-    attributeChangedCallback(name: string, oldValue: string, newValue: string) {
-        if (oldValue !== newValue && this._mounted) {
-            this._insertSeparators();
-        }
+        this._inserting = false;
     }
 }
 
-defineComponent('nc-breadcrumb', NcBreadcrumb);
+if (!customElements.get('nc-breadcrumb')) customElements.define('nc-breadcrumb', NcBreadcrumb);
 

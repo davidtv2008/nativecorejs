@@ -17,6 +17,7 @@ import { spawn } from 'child_process';
 import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
+import { bundleCSS } from './bundle-css.mjs';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -160,6 +161,7 @@ function getEntryPoints() {
 
 let currentCtx = null;
 let distWatcherCleanup = null;
+let cssWatcherCleanup = null;
 
 async function startEsbuild() {
     if (currentCtx) {
@@ -204,6 +206,39 @@ async function startEsbuild() {
     });
 
     distWatcherCleanup = () => { try { distWatcher.close(); } catch { /* ignore */ } };
+}
+
+function watchCssBundle() {
+    const stylesDir = path.join(ROOT, 'src', 'styles');
+    if (!fs.existsSync(stylesDir)) {
+        return;
+    }
+
+    let cssDebounceTimer = null;
+
+    const runCssBundle = async () => {
+        try {
+            await bundleCSS();
+            try { fs.writeFileSync(SENTINEL_PATH, String(Date.now())); } catch { /* ignore */ }
+        } catch {
+            // bundle-css already logs actionable details.
+        }
+    };
+
+    // Initial bundle so dev mode always has the expected stylesheet.
+    void runCssBundle();
+
+    const cssWatcher = fs.watch(stylesDir, { recursive: true }, (_, filename) => {
+        if (!filename || !filename.endsWith('.css')) return;
+        clearTimeout(cssDebounceTimer);
+        cssDebounceTimer = setTimeout(() => {
+            void runCssBundle();
+        }, 120);
+    });
+
+    cssWatcherCleanup = () => {
+        try { cssWatcher.close(); } catch { /* ignore */ }
+    };
 }
 
 // ─── New-file watcher ─────────────────────────────────────────────────────────
@@ -280,12 +315,21 @@ if (isOnce) {
         process.exit(1);
     }
 } else {
-    process.on('SIGINT', async () => { if (currentCtx) await currentCtx.dispose(); process.exit(0); });
-    process.on('SIGTERM', async () => { if (currentCtx) await currentCtx.dispose(); process.exit(0); });
+    process.on('SIGINT', async () => {
+        if (currentCtx) await currentCtx.dispose();
+        if (cssWatcherCleanup) cssWatcherCleanup();
+        process.exit(0);
+    });
+    process.on('SIGTERM', async () => {
+        if (currentCtx) await currentCtx.dispose();
+        if (cssWatcherCleanup) cssWatcherCleanup();
+        process.exit(0);
+    });
 
     const tscProcess = startTypeChecker();
     await startEsbuild();
     watchForNewFiles();
+    watchCssBundle();
     if (tscProcess) {
         tscProcess.on('exit', () => process.exit(0));
     }

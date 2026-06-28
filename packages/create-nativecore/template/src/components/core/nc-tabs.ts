@@ -41,236 +41,222 @@
  *   });
  */
 
-import { Component, defineComponent } from '@core/component.js';
-import { html } from '@core-utils/templates.js';
+import { CoreComponent } from '@core/component.js';
 
-export class NcTabs extends Component {
+export class NcTabs extends CoreComponent {
     static useShadowDOM = true;
-
+    static observedAttributes = ['variant', 'active', 'transition', 'persist', 'persist-key'];
     static attributeOptions = {
-        variant: ['line', 'pills', 'boxed'],
+        variant:    ['line', 'pills', 'boxed'],
         transition: ['fade', 'slide-up', 'slide-down', 'slide-right', 'slide-left', 'none'],
     };
+    static attributeOrder = ['variant', 'active', 'transition', 'persist', 'persist-key'];
 
-    static get observedAttributes() {
-        return ['variant', 'active', 'transition', 'persist', 'persist-key'];
-    }
-
-    // ─── internal state ────────────────────────────────────────────────────────
+    // ─── internal state ──────────────────────────────────────────────────────
     private _activeIndex: number = 0;
 
-    // ─── cleanup refs ──────────────────────────────────────────────────────────
-    private _onSlotChange: (() => void) | null = null;
-    private _onShadowClick: ((e: Event) => void) | null = null;
-    private _onShadowKeydown: ((e: Event) => void) | null = null;
-
-    // ─── scroll arrow state ────────────────────────────────────────────────────
+    // ─── scroll arrow state ──────────────────────────────────────────────────
     private _scrollListenerSet = false;
     private _resizeObserver: ResizeObserver | null = null;
 
-    // ────────────────────────────────────────────────────────────────────────────
+    static styles = css`
+        /* ── Host layout ─────────────────────────────────────────────── */
+        :host {
+            display: block;
+            width: 100%;
+            font-family: var(--nc-font-family);
+            box-sizing: border-box;
+        }
+
+        .nc-tabs {
+            width: 100%;
+        }
+
+        /* ── Tab bar ─────────────────────────────────────────────────── */
+        .nc-tabs__bar {
+            display: flex;
+            align-items: flex-end;
+            position: relative;
+            /* line variant default: bottom border */
+            border-bottom: 2px solid var(--nc-border);
+            gap: 0;
+            /* — critical for scroll: width must be bounded, not grow to content — */
+            width: 100%;
+            overflow-x: auto;
+            scrollbar-width: none;
+            -webkit-overflow-scrolling: touch;
+        }
+
+        .nc-tabs__bar::-webkit-scrollbar {
+            display: none;
+        }
+
+        /* ── Tab buttons ─────────────────────────────────────────────── */
+        .nc-tabs__btn {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: var(--nc-spacing-xs);
+            background: transparent;
+            border: none;
+            cursor: pointer;
+            font-family: inherit;
+            font-size: var(--nc-font-size-sm);
+            font-weight: var(--nc-font-weight-medium);
+            color: var(--nc-text-secondary);
+            padding: var(--nc-spacing-sm) var(--nc-spacing-md);
+            position: relative;
+            margin-bottom: -2px;
+            white-space: nowrap;
+            outline: none;
+            transition:
+                color var(--nc-transition-fast),
+                background var(--nc-transition-fast);
+            border-radius: var(--nc-radius-sm) var(--nc-radius-sm) 0 0;
+            user-select: none;
+        }
+
+        /* Sliding underline indicator (line variant) */
+        .nc-tabs__btn::after {
+            content: '';
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            height: 2px;
+            background: var(--nc-primary);
+            border-radius: 2px 2px 0 0;
+            transform: scaleX(0);
+            transition: transform var(--nc-transition-fast) var(--nc-ease-out);
+        }
+
+        .nc-tabs__btn:hover:not([disabled]) {
+            color: var(--nc-text);
+            background: rgba(0, 0, 0, 0.03);
+        }
+
+        .nc-tabs__btn--active {
+            color: var(--nc-primary);
+            font-weight: var(--nc-font-weight-semibold);
+        }
+
+        .nc-tabs__btn--active::after {
+            transform: scaleX(1);
+        }
+
+        .nc-tabs__btn--disabled {
+            opacity: 0.4;
+            cursor: not-allowed;
+            pointer-events: none;
+        }
+
+        .nc-tabs__btn:focus-visible {
+            outline: 2px solid var(--nc-primary);
+            outline-offset: -2px;
+            border-radius: var(--nc-radius-sm);
+        }
+
+        /* ── Pills variant ───────────────────────────────────────────── */
+        :host([variant="pills"]) .nc-tabs__bar {
+            border-bottom: none;
+            gap: var(--nc-spacing-xs);
+            padding: var(--nc-spacing-xs);
+            background: var(--nc-bg-secondary);
+            border-radius: var(--nc-radius-lg);
+            /* width: 100% inherited from base — pills scrolls rather than spills */
+        }
+
+        :host([variant="pills"]) .nc-tabs__btn {
+            border-radius: var(--nc-radius-md);
+            margin-bottom: 0;
+        }
+
+        :host([variant="pills"]) .nc-tabs__btn::after {
+            display: none;
+        }
+
+        :host([variant="pills"]) .nc-tabs__btn--active {
+            background: var(--nc-primary);
+            color: var(--nc-white);
+        }
+
+        :host([variant="pills"]) .nc-tabs__btn:hover:not([disabled]):not(.nc-tabs__btn--active) {
+            background: var(--nc-bg-tertiary);
+        }
+
+        /* ── Boxed variant ───────────────────────────────────────────── */
+        :host([variant="boxed"]) .nc-tabs__bar {
+            border-bottom: 1px solid var(--nc-border);
+            gap: 2px;
+        }
+
+        :host([variant="boxed"]) .nc-tabs__btn {
+            border: 1px solid transparent;
+            border-bottom: none;
+            border-radius: var(--nc-radius-md) var(--nc-radius-md) 0 0;
+            margin-bottom: -1px;
+        }
+
+        :host([variant="boxed"]) .nc-tabs__btn::after {
+            display: none;
+        }
+
+        :host([variant="boxed"]) .nc-tabs__btn--active {
+            border-color: var(--nc-border);
+            background: var(--nc-bg);
+            color: var(--nc-primary);
+        }
+
+        /* ── Content panels ──────────────────────────────────────────── */
+        .nc-tabs__panels {
+            padding-top: var(--nc-spacing-sm);
+        }
+
+        /* ── Bar wrapper (anchors scroll arrows) ─────────────────────── */
+        .nc-tabs__bar-wrap {
+            position: relative;
+            /* contain the bar so overflow-x:auto has a definite boundary */
+            min-width: 0;
+            overflow: hidden;
+        }
+
+        /* ── Scroll arrow buttons ────────────────────────────────────── */
+        .nc-tabs__scroll-btn {
+            display: none; /* JS sets to flex when scrollable */
+            position: absolute;
+            top: 0;
+            bottom: 0;
+            width: 36px;
+            align-items: center;
+            justify-content: center;
+            border: none;
+            padding: 0;
+            cursor: pointer;
+            z-index: 2;
+            color: var(--nc-text-muted);
+            transition: color var(--nc-transition-fast);
+        }
+        .nc-tabs__scroll-btn:hover { color: var(--nc-text); }
+
+        .nc-tabs__scroll-btn--prev {
+            left: 0;
+            background: linear-gradient(to right, var(--nc-bg) 45%, transparent 100%);
+        }
+        .nc-tabs__scroll-btn--next {
+            right: 0;
+            background: linear-gradient(to left, var(--nc-bg) 45%, transparent 100%);
+        }
+
+        /* ── Responsive ──────────────────────────────────────────────── */
+        @media (max-width: 640px) {
+            .nc-tabs__panels {
+                padding-top: 0;
+            }
+        }
+    `;
 
     template(): string {
-        const variant = this.attr('variant', 'line');
-
-        return html`
-            <style>
-                /* ── Host layout ─────────────────────────────────────────────── */
-                :host {
-                    display: block;
-                    width: 100%;
-                    font-family: var(--nc-font-family);
-                    box-sizing: border-box;
-                }
-
-                .nc-tabs {
-                    width: 100%;
-                }
-
-                /* ── Tab bar ─────────────────────────────────────────────────── */
-                .nc-tabs__bar {
-                    display: flex;
-                    align-items: flex-end;
-                    position: relative;
-                    /* line variant default: bottom border */
-                    border-bottom: 2px solid var(--nc-border);
-                    gap: 0;
-                    /* — critical for scroll: width must be bounded, not grow to content — */
-                    width: 100%;
-                    overflow-x: auto;
-                    scrollbar-width: none;
-                    -webkit-overflow-scrolling: touch;
-                }
-
-                .nc-tabs__bar::-webkit-scrollbar {
-                    display: none;
-                }
-
-                /* ── Tab buttons ─────────────────────────────────────────────── */
-                .nc-tabs__btn {
-                    display: inline-flex;
-                    align-items: center;
-                    justify-content: center;
-                    gap: var(--nc-spacing-xs);
-                    background: transparent;
-                    border: none;
-                    cursor: pointer;
-                    font-family: inherit;
-                    font-size: var(--nc-font-size-sm);
-                    font-weight: var(--nc-font-weight-medium);
-                    color: var(--nc-text-secondary);
-                    padding: var(--nc-spacing-sm) var(--nc-spacing-md);
-                    position: relative;
-                    margin-bottom: -2px;
-                    white-space: nowrap;
-                    outline: none;
-                    transition:
-                        color var(--nc-transition-fast),
-                        background var(--nc-transition-fast);
-                    border-radius: var(--nc-radius-sm) var(--nc-radius-sm) 0 0;
-                    user-select: none;
-                }
-
-                /* Sliding underline indicator (line variant) */
-                .nc-tabs__btn::after {
-                    content: '';
-                    position: absolute;
-                    bottom: 0;
-                    left: 0;
-                    right: 0;
-                    height: 2px;
-                    background: var(--nc-primary);
-                    border-radius: 2px 2px 0 0;
-                    transform: scaleX(0);
-                    transition: transform var(--nc-transition-fast) var(--nc-ease-out);
-                }
-
-                .nc-tabs__btn:hover:not([disabled]) {
-                    color: var(--nc-text);
-                    background: rgba(0, 0, 0, 0.03);
-                }
-
-                .nc-tabs__btn--active {
-                    color: var(--nc-primary);
-                    font-weight: var(--nc-font-weight-semibold);
-                }
-
-                .nc-tabs__btn--active::after {
-                    transform: scaleX(1);
-                }
-
-                .nc-tabs__btn--disabled {
-                    opacity: 0.4;
-                    cursor: not-allowed;
-                    pointer-events: none;
-                }
-
-                .nc-tabs__btn:focus-visible {
-                    outline: 2px solid var(--nc-primary);
-                    outline-offset: -2px;
-                    border-radius: var(--nc-radius-sm);
-                }
-
-                /* ── Pills variant ───────────────────────────────────────────── */
-                :host([variant="pills"]) .nc-tabs__bar {
-                    border-bottom: none;
-                    gap: var(--nc-spacing-xs);
-                    padding: var(--nc-spacing-xs);
-                    background: var(--nc-bg-secondary);
-                    border-radius: var(--nc-radius-lg);
-                    /* width: 100% inherited from base — pills scrolls rather than spills */
-                }
-
-                :host([variant="pills"]) .nc-tabs__btn {
-                    border-radius: var(--nc-radius-md);
-                    margin-bottom: 0;
-                }
-
-                :host([variant="pills"]) .nc-tabs__btn::after {
-                    display: none;
-                }
-
-                :host([variant="pills"]) .nc-tabs__btn--active {
-                    background: var(--nc-primary);
-                    color: var(--nc-white);
-                }
-
-                :host([variant="pills"]) .nc-tabs__btn:hover:not([disabled]):not(.nc-tabs__btn--active) {
-                    background: var(--nc-bg-tertiary);
-                }
-
-                /* ── Boxed variant ───────────────────────────────────────────── */
-                :host([variant="boxed"]) .nc-tabs__bar {
-                    border-bottom: 1px solid var(--nc-border);
-                    gap: 2px;
-                }
-
-                :host([variant="boxed"]) .nc-tabs__btn {
-                    border: 1px solid transparent;
-                    border-bottom: none;
-                    border-radius: var(--nc-radius-md) var(--nc-radius-md) 0 0;
-                    margin-bottom: -1px;
-                }
-
-                :host([variant="boxed"]) .nc-tabs__btn::after {
-                    display: none;
-                }
-
-                :host([variant="boxed"]) .nc-tabs__btn--active {
-                    border-color: var(--nc-border);
-                    background: var(--nc-bg);
-                    color: var(--nc-primary);
-                }
-
-                /* ── Content panels ──────────────────────────────────────────── */
-                .nc-tabs__panels {
-                    padding-top: var(--nc-spacing-sm);
-                }
-
-                /* ── Bar wrapper (anchors scroll arrows) ─────────────────────── */
-                .nc-tabs__bar-wrap {
-                    position: relative;
-                    /* contain the bar so overflow-x:auto has a definite boundary */
-                    min-width: 0;
-                    overflow: hidden;
-                }
-
-                /* ── Scroll arrow buttons ────────────────────────────────────── */
-                .nc-tabs__scroll-btn {
-                    display: none; /* JS sets to flex when scrollable */
-                    position: absolute;
-                    top: 0;
-                    bottom: 0;
-                    width: 36px;
-                    align-items: center;
-                    justify-content: center;
-                    border: none;
-                    padding: 0;
-                    cursor: pointer;
-                    z-index: 2;
-                    color: var(--nc-text-muted);
-                    transition: color var(--nc-transition-fast);
-                }
-                .nc-tabs__scroll-btn:hover { color: var(--nc-text); }
-
-                .nc-tabs__scroll-btn--prev {
-                    left: 0;
-                    background: linear-gradient(to right, var(--nc-bg) 45%, transparent 100%);
-                }
-                .nc-tabs__scroll-btn--next {
-                    right: 0;
-                    background: linear-gradient(to left, var(--nc-bg) 45%, transparent 100%);
-                }
-
-                /* ── Responsive ──────────────────────────────────────────────── */
-                @media (max-width: 640px) {
-                    .nc-tabs__panels {
-                        padding-top: 0;
-                    }
-                }
-            </style>
-
-            <div class="nc-tabs nc-tabs--${variant}">
+        return `            <div class="nc-tabs">
                 <div class="nc-tabs__bar-wrap">
                     <button class="nc-tabs__scroll-btn nc-tabs__scroll-btn--prev" type="button" aria-label="Scroll tabs back" inert>
                         <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 12 12" fill="none" width="10" height="10"><path d="M8 2L4 6l4 4" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
@@ -288,7 +274,7 @@ export class NcTabs extends Component {
     }
 
     onMount(): void {
-        this._activeIndex = parseInt(this.attr('active', '0') ?? '0', 10);
+        this._activeIndex = parseInt(this.getAttribute('active') ?? '0', 10);
 
         const persistedIndex = this._readPersistedIndex();
         if (persistedIndex !== null) {
@@ -296,48 +282,35 @@ export class NcTabs extends Component {
             this.setAttribute('active', String(persistedIndex));
         }
 
-        // Defer first build one tick — child nc-tab-item elements upgrade after parent
         Promise.resolve().then(() => this._buildTabBar());
 
-        // Re-build when tab items are added or removed dynamically
         const slot = this.$<HTMLSlotElement>('slot');
         if (slot) {
-            this._onSlotChange = () => this._buildTabBar();
-            slot.addEventListener('slotchange', this._onSlotChange);
+            this.on(slot as unknown as EventTarget, 'slotchange', () => this._buildTabBar());
         }
 
-        // Click delegation on shadow root — handles all tab button clicks
-        this._onShadowClick = (e: Event) => {
+        this.on(this.shadowRoot!, 'click', (e: Event) => {
             const btn = (e.target as HTMLElement).closest<HTMLElement>('[data-tab-index]');
             if (!btn || btn.hasAttribute('disabled')) return;
-            const index = parseInt(btn.dataset.tabIndex!, 10);
+            const index = parseInt((btn as HTMLElement & { dataset: DOMStringMap }).dataset.tabIndex!, 10);
             if (!isNaN(index)) this._selectTab(index);
-        };
-        this.shadowRoot!.addEventListener('click', this._onShadowClick);
+        });
 
-        // Keyboard navigation on the tab bar
-        this._onShadowKeydown = (e: Event) => {
+        this.on(this.shadowRoot!, 'keydown', (e: Event) => {
             const ke = e as KeyboardEvent;
             if (!['ArrowRight', 'ArrowLeft', 'Home', 'End'].includes(ke.key)) return;
             ke.preventDefault();
 
             const tabs = this._getTabItems();
-            const len = tabs.length;
+            const len  = tabs.length;
             if (len === 0) return;
 
             let next = this._activeIndex;
+            if (ke.key === 'ArrowRight') next = (this._activeIndex + 1) % len;
+            else if (ke.key === 'ArrowLeft') next = (this._activeIndex - 1 + len) % len;
+            else if (ke.key === 'Home') next = 0;
+            else if (ke.key === 'End')  next = len - 1;
 
-            if (ke.key === 'ArrowRight') {
-                next = (this._activeIndex + 1) % len;
-            } else if (ke.key === 'ArrowLeft') {
-                next = (this._activeIndex - 1 + len) % len;
-            } else if (ke.key === 'Home') {
-                next = 0;
-            } else if (ke.key === 'End') {
-                next = len - 1;
-            }
-
-            // Skip disabled tabs
             let attempts = 0;
             while (tabs[next]?.hasAttribute('disabled') && attempts < len) {
                 next = ke.key === 'ArrowLeft'
@@ -347,45 +320,19 @@ export class NcTabs extends Component {
             }
 
             this._selectTab(next);
-
-            // Focus the newly active button
-            const activeBtn = this.shadowRoot?.querySelector<HTMLElement>(
-                `[data-tab-index="${next}"]`
-            );
+            const activeBtn = this.shadowRoot?.querySelector<HTMLElement>(`[data-tab-index="${next}"]`);
             activeBtn?.focus();
-        };
-        this.shadowRoot!.addEventListener('keydown', this._onShadowKeydown);
+        });
     }
 
     onUnmount(): void {
-        const slot = this.$<HTMLSlotElement>('slot');
-        if (slot && this._onSlotChange) {
-            slot.removeEventListener('slotchange', this._onSlotChange);
-        }
-        if (this._onShadowClick) {
-            this.shadowRoot?.removeEventListener('click', this._onShadowClick);
-        }
-        if (this._onShadowKeydown) {
-            this.shadowRoot?.removeEventListener('keydown', this._onShadowKeydown);
-        }
-        this._onSlotChange = null;
-        this._onShadowClick = null;
-        this._onShadowKeydown = null;
+        // this.on() listeners cleaned up by CoreComponent._unsubs automatically
         this._resizeObserver?.disconnect();
         this._resizeObserver = null;
         this._scrollListenerSet = false;
     }
 
-    /**
-     * Attribute changes from outside (e.g. setting active="2" programmatically).
-     * variant change is handled automatically by :host([variant]) CSS selectors.
-     */
-    attributeChangedCallback(
-        name: string,
-        oldValue: string | null,
-        newValue: string | null
-    ): void {
-        if (!this._mounted || oldValue === newValue) return;
+    protected _handleAttributeUpdate(name: string, newValue: string | null): void {
         if (name === 'active') {
             const index = parseInt(newValue ?? '0', 10);
             if (!isNaN(index) && index !== this._activeIndex) {
@@ -393,7 +340,7 @@ export class NcTabs extends Component {
                 this._buildTabBar();
             }
         }
-        // variant + transition: :host([attr="..."]) CSS handles appearance — no JS needed
+        // variant + transition: :host([attr="..."]) CSS handles appearance
     }
 
     // ─── Private helpers ────────────────────────────────────────────────────────
@@ -523,7 +470,7 @@ export class NcTabs extends Component {
         // Use setAttribute silently — attributeChangedCallback guard (oldValue !== newValue) prevents loops
         this.setAttribute('active', String(index));
 
-        this.emitEvent<{ index: number; label: string | null }>('nc-tab-change', {
+        this.emit('nc-tab-change', {
             index,
             label: tabs[index].getAttribute('label'),
         });
@@ -561,5 +508,5 @@ export class NcTabs extends Component {
     }
 }
 
-defineComponent('nc-tabs', NcTabs);
+if (!customElements.get('nc-tabs')) customElements.define('nc-tabs', NcTabs);
 

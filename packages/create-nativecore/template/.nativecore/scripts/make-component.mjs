@@ -77,13 +77,13 @@ if (fs.existsSync(componentFile)) {
 }
 
 // ─── TypeScript template ────────────────────────────────────────────────────
-const tsTemplate = `import { Component, defineComponent } from '@core/component.js';
+const tsTemplate = `import { CoreComponent, defineComponent } from '@core/component.js';
 import { html } from '@core-utils/templates.js';
 import { useState, computed } from '@core/state.js';
 import type { State } from '@core/state.js';
 import '@components/core/nc-button.js';
 
-export class ${className} extends Component {
+export class ${className} extends CoreComponent {
     static useShadowDOM = true;
 
     // Attributes listed here appear in the dev tools sidebar and trigger onAttributeChange.
@@ -159,12 +159,12 @@ defineComponent('${componentName}', ${className});
 `;
 
 // ─── JavaScript template ────────────────────────────────────────────────────
-const jsTemplate = `import { Component, defineComponent } from '@core/component.js';
+const jsTemplate = `import { CoreComponent, defineComponent } from '@core/component.js';
 import { html } from '@core-utils/templates.js';
 import { useState, computed } from '@core/state.js';
 import '@components/core/nc-button.js';
 
-export class ${className} extends Component {
+export class ${className} extends CoreComponent {
     static useShadowDOM = true;
 
     // Attributes listed here appear in the dev tools sidebar and trigger onAttributeChange.
@@ -430,3 +430,4 @@ describe('${componentName}', () => {
 
   rl.close();
 });
+

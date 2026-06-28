@@ -22,19 +22,79 @@
  *     <p>Hidden content revealed on click.</p>
  *   </nc-collapsible>
  */
-import { Component, defineComponent } from '@core/component.js';
-import { html, trusted } from '@core-utils/templates.js';
+import { CoreComponent } from '@core/component.js';
+import { css, html, trusted } from '@core-utils/templates.js';
 
-export class NcCollapsible extends Component {
+export class NcCollapsible extends CoreComponent {
     static useShadowDOM = true;
+    static observedAttributes = ['open', 'disabled', 'duration', 'icon'];
 
-    static get observedAttributes() { return ['open', 'disabled']; }
+    static attributeOptions  = { icon: ['chevron', 'plus', 'arrow', 'none'] };
+    static attributePlaceholders = { duration: '300' };
+    static attributeOrder = ['icon', 'duration', 'open', 'disabled'];
+
+    // -- Refs -----------------------------------------------------------------
+    declare triggerBtn: HTMLButtonElement;
+    declare bodyEl:     HTMLDivElement;
+
+    static styles = css`
+        :host { display: block; border: 1px solid var(--nc-border); border-radius: var(--nc-radius-md); overflow: hidden; font-family: var(--nc-font-family); }
+
+        .trigger {
+            width: 100%;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: var(--nc-spacing-sm);
+            padding: var(--nc-spacing-md) var(--nc-spacing-lg);
+            background: var(--nc-bg);
+            border: none;
+            cursor: pointer;
+            text-align: left;
+            font-family: inherit;
+            font-size: var(--nc-font-size-base);
+            font-weight: var(--nc-font-weight-medium);
+            color: var(--nc-text);
+            transition: background var(--nc-transition-fast);
+            user-select: none;
+            outline: none;
+        }
+        :host([disabled]) .trigger { cursor: not-allowed; color: var(--nc-text-muted); opacity: 0.5; }
+        .trigger:hover:not(:disabled) { background: var(--nc-bg-secondary); }
+        .trigger:focus-visible { outline: 2px solid var(--nc-primary); outline-offset: -2px; }
+
+        .icon {
+            flex-shrink: 0;
+            color: var(--nc-text-muted);
+            transform: rotate(0deg);
+            transition: transform ${dur}ms var(--nc-ease-out);
+        }
+        :host([open]) .icon           { transform: rotate(180deg); }
+        :host([icon="arrow"]) .icon    { transform: rotate(0deg); }
+        :host([icon="arrow"][open]) .icon { transform: rotate(90deg); }
+        /* Plus icon: hide horizontal bar when open */
+        :host([open]) .plus-h { display: none; }
+
+        .body {
+            display: grid;
+            grid-template-rows: 0fr;
+            transition: grid-template-rows ${dur}ms var(--nc-ease-out);
+        }
+        :host([open]) .body { grid-template-rows: 1fr; }
+
+        .body-inner { overflow: hidden; }
+        .body-content {
+            padding: var(--nc-spacing-md) var(--nc-spacing-lg) var(--nc-spacing-lg);
+            color: var(--nc-text-secondary);
+            font-size: var(--nc-font-size-sm);
+            line-height: var(--nc-line-height-relaxed, 1.7);
+            border-top: 1px solid var(--nc-border);
+        }
+    `;
 
     template() {
-        const open     = this.hasAttribute('open');
-        const disabled = this.hasAttribute('disabled');
-        const dur      = parseInt(this.getAttribute('duration') ?? '250', 10);
-        const icon     = this.getAttribute('icon') ?? 'chevron';
+        const dur  = parseInt(this.getAttribute('duration') ?? '250', 10);
+        const icon = this.getAttribute('icon') ?? 'chevron';
 
         const iconSvg: Record<string, string> = {
             chevron: `<svg class="icon" xmlns="http://www.w3.org/2000/svg" width="16" height="16"
@@ -46,7 +106,7 @@ export class NcCollapsible extends Component {
                            viewBox="0 0 24 24" fill="none" stroke="currentColor"
                            stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                           <line x1="12" y1="5" x2="12" y2="19"/>
-                          ${open ? '' : '<line x1="5" y1="12" x2="19" y2="12"/>'}
+                          <line class="plus-h" x1="5" y1="12" x2="19" y2="12"/>
                       </svg>`,
             arrow:   `<svg class="icon" xmlns="http://www.w3.org/2000/svg" width="14" height="14"
                            viewBox="0 0 24 24" fill="none" stroke="currentColor"
@@ -56,72 +116,16 @@ export class NcCollapsible extends Component {
             none:    '',
         };
 
-        return html`
-            <style>
-                :host {
-                    display: block;
-                    border: 1px solid var(--nc-border);
-                    border-radius: var(--nc-radius-md);
-                    overflow: hidden;
-                    font-family: var(--nc-font-family);
-                }
-                .trigger {
-                    width: 100%;
-                    display: flex;
-                    align-items: center;
-                    justify-content: space-between;
-                    gap: var(--nc-spacing-sm);
-                    padding: var(--nc-spacing-md) var(--nc-spacing-lg);
-                    background: var(--nc-bg);
-                    border: none;
-                    cursor: ${disabled ? 'not-allowed' : 'pointer'};
-                    text-align: left;
-                    font-family: inherit;
-                    font-size: var(--nc-font-size-base);
-                    font-weight: var(--nc-font-weight-medium);
-                    color: ${disabled ? 'var(--nc-text-muted)' : 'var(--nc-text)'};
-                    opacity: ${disabled ? 0.5 : 1};
-                    transition: background var(--nc-transition-fast);
-                    user-select: none;
-                    outline: none;
-                }
-                .trigger:hover:not(:disabled) { background: var(--nc-bg-secondary); }
-                .trigger:focus-visible { outline: 2px solid var(--nc-primary); outline-offset: -2px; }
-                .icon {
-                    flex-shrink: 0;
-                    color: var(--nc-text-muted);
-                    transform: rotate(${open ? '180' : '0'}deg);
-                    transition: transform ${dur}ms var(--nc-ease-out);
-                }
-                :host([icon="arrow"]) .icon {
-                    transform: rotate(${open ? '90' : '0'}deg);
-                }
-                .body {
-                    display: grid;
-                    grid-template-rows: ${open ? '1fr' : '0fr'};
-                    transition: grid-template-rows ${dur}ms var(--nc-ease-out);
-                }
-                .body-inner {
-                    overflow: hidden;
-                }
-                .body-content {
-                    padding: var(--nc-spacing-md) var(--nc-spacing-lg) var(--nc-spacing-lg);
-                    color: var(--nc-text-secondary);
-                    font-size: var(--nc-font-size-sm);
-                    line-height: var(--nc-line-height-relaxed, 1.7);
-                    border-top: 1px solid var(--nc-border);
-                }
-            </style>
-            <button
+        return html`            <button
+                ref="triggerBtn"
                 class="trigger"
                 type="button"
-                aria-expanded="${open}"
-                ${disabled ? 'disabled' : ''}
+                aria-expanded="false"
             >
                 <slot name="trigger"></slot>
                 ${trusted(iconSvg[icon] ?? iconSvg.chevron)}
             </button>
-            <div class="body" role="region">
+            <div ref="bodyEl" class="body" role="region">
                 <div class="body-inner">
                     <div class="body-content">
                         <slot></slot>
@@ -132,10 +136,16 @@ export class NcCollapsible extends Component {
     }
 
     onMount() {
-        this.shadowRoot!.addEventListener('click', (e) => {
-            if ((e.target as HTMLElement).closest('.trigger') && !this.hasAttribute('disabled')) {
-                this._toggle();
-            }
+        // Sync trigger state reactively from host attribute
+        this.effect(() => {
+            const open = this.hasAttribute('open');
+            this.triggerBtn.setAttribute('aria-expanded', String(open));
+            this.triggerBtn.disabled = this.hasAttribute('disabled');
+        });
+
+        this.on(this.triggerBtn, 'click', () => {
+            if (this.hasAttribute('disabled')) return;
+            this._toggle();
         });
     }
 
@@ -143,14 +153,15 @@ export class NcCollapsible extends Component {
         const nowOpen = !this.hasAttribute('open');
         if (nowOpen) this.setAttribute('open', '');
         else this.removeAttribute('open');
-        this.dispatchEvent(new CustomEvent('toggle', { detail: { open: nowOpen }, bubbles: true, composed: true }));
-        this.dispatchEvent(new CustomEvent(nowOpen ? 'open' : 'close', { bubbles: true, composed: true }));
+        this.emit('toggle', { open: nowOpen });
+        this.emit(nowOpen ? 'open' : 'close');
     }
 
-    attributeChangedCallback(name: string, oldVal: string, newVal: string) {
-        if (oldVal !== newVal && this._mounted) this.render();
+    protected _handleAttributeUpdate(name: string, _val: string | null) {
+        // icon or duration changed — re-render so the correct SVG + duration appear
+        if (name === 'icon' || name === 'duration') this.render();
     }
 }
 
-defineComponent('nc-collapsible', NcCollapsible);
+if (!customElements.get('nc-collapsible')) customElements.define('nc-collapsible', NcCollapsible);
 

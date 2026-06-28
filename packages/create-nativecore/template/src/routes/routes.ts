@@ -9,7 +9,7 @@ const lazyController = createLazyController(import.meta.url);
 export function registerRoutes(r: Router): void {
     // @group:public
     r.group({}, (r) => {
-        r.register('/', 'src/views/public/home.html', lazyController('homeController', '../controllers/home.controller.js'))
+        r.register('/', 'src/views/public/home.html', lazyController('HomeController', '../controllers/home.controller.js'))
          .cache({ ttl: 300, revalidate: true });
 
         r.register('/login', 'src/views/public/login.html', lazyController('loginController', '../controllers/login.controller.js'));

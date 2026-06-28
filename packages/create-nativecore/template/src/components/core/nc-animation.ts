@@ -72,7 +72,7 @@
  */
 
 import { Component, defineComponent } from '@core/component.js';
-import { html } from '@core-utils/templates.js';
+import { css, html } from '@core-utils/templates.js';
 import {
     animate,
     prepareForAnimation,
@@ -456,23 +456,24 @@ export class NcAnimation extends Component {
     // track whether IntersectionObserver already fired
     private _visibleFired = false;
 
+    static styles = css`
+        :host {
+            display: contents;
+        }
+        .wrap {
+            display: contents;
+        }
+        .canvas-layer {
+            position: absolute;
+            inset: 0;
+            pointer-events: none;
+            z-index: 10;
+        }
+        /* Will be extended dynamically per CSS preset */
+    `;
+
     template() {
         return html`
-            <style>
-                :host {
-                    display: contents;
-                }
-                .wrap {
-                    display: contents;
-                }
-                .canvas-layer {
-                    position: absolute;
-                    inset: 0;
-                    pointer-events: none;
-                    z-index: 10;
-                }
-                /* Will be extended dynamically per CSS preset */
-            </style>
             <div class="wrap"><slot></slot></div>
         `;
     }

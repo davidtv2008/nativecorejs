@@ -304,33 +304,28 @@ function injectStyles(): void {
             bottom: 12px;
             left: 12px;
             z-index: 2147483646;
-            background: rgba(0,0,0,0.52);
-            border: 1px solid rgba(0,255,136,0.22);
-            border-radius: 6px;
-            padding: 7px 10px 8px;
             font-family: 'Cascadia Code','Fira Code','Consolas',monospace;
             font-size: 10px;
             line-height: 1.65;
             color: #00ff88;
-            backdrop-filter: blur(6px);
-            min-width: 192px;
-            max-width: 230px;
+            background: transparent;
+            border: none;
+            border-radius: 0;
+            padding: 0;
+            backdrop-filter: none;
+            min-width: 0;
+            max-width: none;
             user-select: none;
-            cursor: move;
+            cursor: default;
+            overflow: visible;
             pointer-events: all;
         }
         #${OVERLAY_ID}.collapsed {
-            min-width: 0;
-            max-width: none;
-            padding: 0;
-            border: none;
-            background: transparent;
-            backdrop-filter: none;
             cursor: default;
         }
         #${OVERLAY_ID}:hover {
-            background: rgba(0,0,0,0.78);
-            border-color: rgba(0,255,136,0.45);
+            background: transparent;
+            border-color: transparent;
         }
         #${OVERLAY_ID}.collapsed:hover {
             background: transparent;
@@ -370,6 +365,20 @@ function injectStyles(): void {
         #${OVERLAY_ID} .nc-badge-meta {
             color: rgba(0,255,136,0.62);
         }
+        #${OVERLAY_ID} .nc-drawer {
+            position: absolute;
+            left: 0;
+            bottom: calc(100% + 8px);
+            min-width: 192px;
+            max-width: 230px;
+            background: rgba(0,0,0,0.84);
+            border: 1px solid rgba(0,255,136,0.28);
+            border-radius: 8px;
+            padding: 7px 10px 8px;
+            backdrop-filter: blur(6px);
+            box-shadow: 0 8px 22px rgba(0,0,0,0.34);
+            transform-origin: bottom left;
+        }
         #${OVERLAY_ID} .nc-hdr {
             color: #00ff88;
             font-size: 9px;
@@ -388,13 +397,6 @@ function injectStyles(): void {
             font-size: 11px;
         }
         #${OVERLAY_ID} .nc-collapse:hover { color: #00ff88; }
-        #${OVERLAY_ID} .nc-x {
-            color: rgba(0,255,136,0.3);
-            cursor: pointer;
-            padding: 0 2px;
-            pointer-events: all;
-        }
-        #${OVERLAY_ID} .nc-x:hover { color: #ff4444; }
         #${OVERLAY_ID} .nc-row {
             display: flex;
             justify-content: space-between;
@@ -415,11 +417,9 @@ function injectStyles(): void {
         }
         #${OVERLAY_ID} .nc-warn {
             color: #ff4444;
-            animation: nc-blink .6s steps(1) infinite;
         }
         #${OVERLAY_ID} .nc-caution { color: #ffcc00; }
         #${OVERLAY_ID} .nc-muted { color: #00ff88; }
-        @keyframes nc-blink { 50% { opacity:0; } }
 
         /* ── Modal backdrop ── */
         #${MODAL_ID} {
@@ -1311,7 +1311,6 @@ function renderOverlayHTML(): string {
             <span>nativecore dev</span>
             <span>
                 <span class="nc-collapse" data-nc-collapse title="Collapse">&#x2212;</span>
-                <span class="nc-x" data-nc-close title="Close">&#x2715;</span>
             </span>
         </div>
         ${row('FPS', `<span style="color:${fc}">${state.fps}</span>`, 'fps')}
@@ -1353,33 +1352,116 @@ function renderOverlayHTML(): string {
         html += row('CONN', `<span class="nc-muted">${conn.effectiveType ?? '--'}</span>`, 'conn');
     }
 
-    return html;
+    return `<div class="nc-drawer">${html}</div>`;
 }
 
 // ─── Overlay element ─────────────────────────────────────────────────────────
+
+// Track the last overlay expanded state to detect structure changes
+let lastOverlayExpanded = false;
 
 function createOverlay(): HTMLElement {
     const el = document.createElement('div');
     el.id = OVERLAY_ID;
     el.classList.toggle('collapsed', !state.overlayExpanded);
     el.innerHTML = renderOverlayHTML();
+    lastOverlayExpanded = state.overlayExpanded;
     document.body.appendChild(el);
-    makeDraggable(el);
     bindOverlayEvents(el);
     return el;
+}
+
+/**
+ * Surgically update only the changed text nodes/attributes.
+ * Instead of replacing full innerHTML every 500ms, parse new HTML
+ * and update only what's different. This keeps the inspector calm
+ * and reduces unnecessary DOM churn.
+ */
+function updateDOMSurgically(container: HTMLElement, newHtml: string): void {
+    const temp = document.createElement('div');
+    temp.innerHTML = newHtml;
+    const newDrawer = temp.firstElementChild as HTMLElement;
+    if (!newDrawer) return;
+
+    const oldRows = Array.from(container.querySelectorAll('.nc-row')) as HTMLElement[];
+    const newRows = Array.from(newDrawer.querySelectorAll('.nc-row')) as HTMLElement[];
+
+    // Update value spans for rows that exist in both
+    for (let i = 0; i < Math.min(oldRows.length, newRows.length); i++) {
+        const oldRow = oldRows[i];
+        const newRow = newRows[i];
+
+        // Compare and update the value span (last child)
+        const oldValue = oldRow.querySelector('span:last-child') as HTMLElement | null;
+        const newValue = newRow.querySelector('span:last-child') as HTMLElement | null;
+
+        if (oldValue && newValue && oldValue.innerHTML !== newValue.innerHTML) {
+            oldValue.innerHTML = newValue.innerHTML;
+        }
+    }
+
+    // If row count changed, replace the entire drawer
+    if (oldRows.length !== newRows.length) {
+        container.innerHTML = newHtml;
+    }
 }
 
 function updateOverlay(): void {
     const el = document.getElementById(OVERLAY_ID);
     if (!el) return;
-    const { left, top, bottom, right } = el.style;
-    el.classList.toggle('collapsed', !state.overlayExpanded);
-    el.innerHTML = renderOverlayHTML();
-    el.style.left   = left;
-    el.style.top    = top;
-    el.style.bottom = bottom;
-    el.style.right  = right;
-    bindOverlayEvents(el);
+
+    // If overlay expanded state changed, do full replacement (structure change)
+    if (lastOverlayExpanded !== state.overlayExpanded) {
+        lastOverlayExpanded = state.overlayExpanded;
+        el.classList.toggle('collapsed', !state.overlayExpanded);
+        el.innerHTML = renderOverlayHTML();
+        bindOverlayEvents(el);
+        return;
+    }
+
+    // Normal update: surgically update only changed values
+    if (state.overlayExpanded) {
+        // Update drawer metrics rows
+        const drawer = el.querySelector('.nc-drawer') as HTMLElement;
+        if (drawer) {
+            updateDOMSurgically(drawer, renderOverlayHTML());
+        }
+    } else {
+        // Update badge elements (fps, error count)
+        const badge = el.querySelector('.nc-badge') as HTMLElement;
+        if (badge) {
+            updateBadgeSurgically(badge, renderOverlayHTML());
+        }
+    }
+}
+
+/**
+ * Surgically update badge elements (collapsed state).
+ * Updates only the FPS and error count spans.
+ */
+function updateBadgeSurgically(container: HTMLElement, newHtml: string): void {
+    const temp = document.createElement('div');
+    temp.innerHTML = newHtml;
+    const newBadge = temp.firstElementChild as HTMLElement;
+    if (!newBadge) return;
+
+    // Update badge-meta (FPS) and error count spans
+    const oldMeta = container.querySelector('.nc-badge-meta') as HTMLElement | null;
+    const newMeta = newBadge.querySelector('.nc-badge-meta') as HTMLElement | null;
+    if (oldMeta && newMeta && oldMeta.textContent !== newMeta.textContent) {
+        oldMeta.textContent = newMeta.textContent;
+    }
+
+    // Update error count span (last child with possible nc-warn/nc-muted class)
+    const oldErrorSpan = container.lastElementChild as HTMLElement | null;
+    const newErrorSpan = newBadge.lastElementChild as HTMLElement | null;
+    if (oldErrorSpan && newErrorSpan && oldErrorSpan.textContent !== newErrorSpan.textContent) {
+        oldErrorSpan.textContent = newErrorSpan.textContent;
+        // Also update class if needed
+        if (oldErrorSpan.className !== newErrorSpan.className) {
+            oldErrorSpan.className = newErrorSpan.className;
+        }
+    }
 }
 
 function bindOverlayEvents(el: HTMLElement): void {
@@ -1398,10 +1480,6 @@ function bindOverlayEvents(el: HTMLElement): void {
         updateOverlay();
     });
 
-    el.querySelector('[data-nc-close]')?.addEventListener('click', (e) => {
-        e.stopPropagation();
-        destroyOverlay();
-    });
     el.querySelectorAll('.nc-row[data-nc-section]').forEach(row => {
         row.addEventListener('click', (e) => {
             e.stopPropagation();
@@ -1806,35 +1884,6 @@ function initSeoModal(backdrop: HTMLElement): void {
         closeModal();
         openModal('seo');
     });
-}
-
-// ─── Draggable ───────────────────────────────────────────────────────────────
-
-function makeDraggable(el: HTMLElement): void {
-    let dragging = false;
-    let startX = 0, startY = 0, origLeft = 0, origTop = 0;
-
-    el.addEventListener('mousedown', (e: MouseEvent) => {
-        const t = e.target as HTMLElement;
-        if (t.dataset.ncClose || t.dataset.ncToggle || t.dataset.ncCollapse || t.classList.contains('nc-row')) return;
-        dragging = true;
-        const rect = el.getBoundingClientRect();
-        startX = e.clientX;
-        startY = e.clientY;
-        origLeft = rect.left;
-        origTop  = rect.top;
-        e.preventDefault();
-    });
-
-    document.addEventListener('mousemove', (e: MouseEvent) => {
-        if (!dragging) return;
-        el.style.left   = `${origLeft + (e.clientX - startX)}px`;
-        el.style.top    = `${origTop  + (e.clientY - startY)}px`;
-        el.style.bottom = 'auto';
-        el.style.right  = 'auto';
-    });
-
-    document.addEventListener('mouseup', () => { dragging = false; });
 }
 
 // ─── Destroy ─────────────────────────────────────────────────────────────────

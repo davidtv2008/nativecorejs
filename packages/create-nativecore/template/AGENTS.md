@@ -449,4 +449,25 @@ uiStore.removeNotification(id)
 - Writing `import { X } from '@core/component'` without `.js` — module not found at runtime
 - Adding a component to `registry.ts` with wrong path prefix — all UI components use `'./ui/'`
 
+## Component Quality Standard
+
+Use this standard for every new or refactored component.
+
+1. Include a concise component header comment: attributes, events, methods, and a short usage example.
+2. Prefer clear sectioning and line breaks: state fields, event handlers, helpers, lifecycle hooks, and public API.
+3. Keep runtime state deterministic:
+    - Attribute values are defaults.
+    - Properties are runtime source of truth.
+    - Runtime property writes must not be clobbered during first render.
+4. Ensure custom inputs behave like native controls for wires/model bindings:
+    - `get value()` returns current runtime value.
+    - `set value(v)` updates internal state and visible control.
+    - `input` / `change` events emit composable payloads.
+5. Use framework utilities first (`@core-utils/wires.js`, `trackEvents`, `dom` helpers) instead of ad-hoc DOM plumbing.
+6. Keep cleanup explicit and complete in `onUnmount`.
+7. Keep component code readable over clever:
+    - small helpers for repeated logic,
+    - meaningful names,
+    - guard clauses for edge cases.
+
 

@@ -179,9 +179,10 @@ function packageJsonTemplate(config) {
         'build:client': 'node .nativecore/scripts/inject-version.mjs && npm run compile:prod && node .nativecore/scripts/minify.mjs && node .nativecore/scripts/prepare-static-assets.mjs',
         'build:ssg': 'node .nativecore/scripts/ssg.mjs --yes',
         'build:full': 'npm run build && npm run build:ssg',
-        compile: 'node .nativecore/scripts/watch-compile.mjs --once && node .nativecore/scripts/sync-importmap.mjs',
+        compile: 'node .nativecore/scripts/watch-compile.mjs --once && node .nativecore/scripts/bundle-css.mjs && node .nativecore/scripts/sync-importmap.mjs',
+        'bundle:css': 'node .nativecore/scripts/bundle-css.mjs',
         'sync:importmap': 'node .nativecore/scripts/sync-importmap.mjs',
-        'compile:prod': 'node .nativecore/scripts/watch-compile.mjs --once && node .nativecore/scripts/remove-dev.mjs',
+        'compile:prod': 'node .nativecore/scripts/watch-compile.mjs --once && node .nativecore/scripts/bundle-css.mjs && node .nativecore/scripts/remove-dev.mjs',
         'make:component': 'node .nativecore/scripts/make-component.mjs',
         'make:core-component': 'node .nativecore/scripts/make-core-component.mjs',
         'make:controller': 'node .nativecore/scripts/make-controller.mjs',
@@ -550,42 +551,68 @@ function homeControllerTemplate(config) {
             : 'Get Started';
     const isTs = config.useTypeScript;
 
-    return `/**
- * Home Controller
- * Reactively updates the primary landing CTA based on authentication status.
- */
-import { wireContents, wireAttributes, wireClasses, wireStyles } from '@core-utils/wires.js';
-import { trackEvents } from '@core-utils/events.js';
+    if (isTs) {
+        return `import { CoreController } from '@core/controller.js';
+import auth from '@services/auth.service.js';
+import type { State } from '@core/controller.js';
+
+export class HomeController extends CoreController {
+
+    // --- REFS ---
+    private ctaBtn!: HTMLElement;
+
+    // --- STATE ---
+    // Initialized in onMount() — class field initializers run after super(),
+    // which already calls onMount(), so state must be created here instead.
+    private authed!: State<boolean>;
+
+    // --- LIFECYCLE ---
+    onMount() {
+        this.authed = this.state(false);
+        this.bind(this.authed, this.ctaBtn, '.hero-primary--authed');
+        this._sync();
+        this.on(window, 'auth-change', () => this._sync());
+    }
+
+    // --- PRIVATE ---
+    private _sync(): void {
+        const authed = auth.isAuthenticated();
+        this.ctaBtn.setAttribute('href', authed ? '${authenticatedHref}' : '${unauthenticatedHref}');
+        this.ctaBtn.textContent = authed ? '${authenticatedLabel}' : '${unauthenticatedLabel}';
+        this.authed.value = authed;
+    }
+}
+
+// Factory — called by the router via lazyController('homeController', ...)
+export function homeController(): () => void {
+    const ctrl = new HomeController();
+    return () => ctrl.destroy();
+}
+`;
+    }
+
+    return `import { CoreController } from '@core/controller.js';
 import auth from '@services/auth.service.js';
 
-export async function homeController()${isTs ? ': Promise<() => void>' : ''} {
-    // Setup
-    const events = trackEvents();
+export class HomeController extends CoreController {
 
-    // Wires
-    const { ctaText } = wireContents();
-    const { ctaHref } = wireAttributes();
-    const { ctaAuthed } = wireClasses();
-    const { ctaMinWidth } = wireStyles();
+    onMount() {
+        this._sync();
+        this.on(window, 'auth-change', () => this._sync());
+    }
 
-    // Behavior
-    const sync = () => {
+    _sync() {
         const authed = auth.isAuthenticated();
-        ctaText.value = authed ? '${authenticatedLabel}' : '${unauthenticatedLabel}';
-        ctaHref.value = authed ? '${authenticatedHref}' : '${unauthenticatedHref}';
-        ctaAuthed.value = authed;
-        ctaMinWidth.value = authed ? '13rem' : '11rem';
-    };
+        const ctaBtn = this.el.querySelector('[ref="ctaBtn"]');
+        if (!ctaBtn) return;
+        ctaBtn.setAttribute('href', authed ? '${authenticatedHref}' : '${unauthenticatedHref}');
+        ctaBtn.textContent = authed ? '${authenticatedLabel}' : '${unauthenticatedLabel}';
+    }
+}
 
-    sync();
-    events.add(${isTs ? 'window as any' : 'window'}, 'auth-change', sync);
-
-    // Cleanup
-    // wire* and effect() bindings auto-dispose via PageCleanupRegistry.
-    // Return cleanup only for tracked DOM events/listeners.
-    return () => {
-        events.cleanup();
-    };
+export function homeController() {
+    const ctrl = new HomeController();
+    return () => ctrl.destroy();
 }
 `;
 }
@@ -616,15 +643,7 @@ function homeViewTemplate(config) {
         </p>
 
         <div class="hero-actions">
-            <nc-a
-                variant="hero-primary"
-                href="${primaryHref}"
-                id="get-started-btn"
-                wire-content="ctaText"
-                wire-attribute="ctaHref:href"
-                wire-class="ctaAuthed:hero-primary--authed"
-                wire-style="ctaMinWidth:min-width"
-            >${primaryLabel}</nc-a>
+            <nc-a ref="ctaBtn" variant="outline" href="${primaryHref}">${primaryLabel}</nc-a>
             <nc-a variant="hero-ghost" href="https://nativecorejs.com/docs" target="_blank" rel="noopener noreferrer">Read the Docs</nc-a>
             <nc-a variant="hero-ghost" href="https://nativecorejs.com/components">Component Library</nc-a>
         </div>

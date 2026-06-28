@@ -1,9 +1,19 @@
-import { bustCache } from '../utils/cacheBuster.js';
-import { escapeHTML } from '../utils/templates.js';
-import { flushPageCleanups } from './pageCleanupRegistry.js';
+/**
+ * SPA Router - Handles navigation without page reloads
+ * Uses History API to manage URLs dynamically
+ */
 
+import { bustCache } from '../utils/cacheBuster.js';
+import { flushPageCleanups } from '../core/pageCleanupRegistry.js';
+
+// Types
 export interface CachePolicy {
+    /** Seconds before the cached HTML is considered stale. Default: 0 (no cache). */
     ttl: number;
+    /**
+     * When true, serve stale HTML instantly while refreshing in the background.
+     * When false (default), block navigation until fresh HTML is fetched.
+     */
     revalidate?: boolean;
 }
 
@@ -13,6 +23,8 @@ export interface RouteConfig {
     loader?: (params: Record<string, string>, signal: AbortSignal) => Promise<unknown>;
     cachePolicy?: CachePolicy;
     layout?: string;
+    /** Disable page enter/exit animation for this route. */
+    disableTransition?: boolean;
 }
 
 export interface RouteMatch {
@@ -69,76 +81,108 @@ export class Router {
     private currentRoute: RouteMatch | null = null;
     private middlewares: MiddlewareFunction[] = [];
     private htmlCache: Map<string, CacheEntry> = new Map();
+    /**
+     * Tracks the last file + HTML string written to each content container.
+     * Keyed by the target element so layout outlets and main-content are
+     * tracked independently. Skip innerHTML only when BOTH the file AND the
+     * HTML string match what is already in that specific container.
+     */
+    private renderedHtmlCache: WeakMap<Element, { file: string; html: string }> = new WeakMap();
     private pageScripts: Record<string, { cleanup?: () => void }> = {};
     private navigationController: AbortController | null = null;
     private isNavigating = false;
     private renderedLayoutPath: string | null = null;
-
+    private _groupMiddlewares: string[] = [];
+    private _groupPrefix: string = '';
+    private _routeMiddlewares: Map<string, string[]> = new Map();
+    
     constructor() {
-        // Expose the singleton instance so devtools can introspect route/cache state.
+        // Expose the singleton instance so dev overlays can introspect cache state.
         (globalThis as Record<string, unknown>).__NC_ROUTER__ = this;
 
         if ('scrollRestoration' in window.history) {
             window.history.scrollRestoration = 'manual';
         }
 
+        // Listen for browser back/forward buttons
         window.addEventListener('popstate', (e: PopStateEvent) => {
+            // Abort any in-flight navigation so the guard in handleRoute doesn't
+            // silently drop this popstate (back/forward) navigation.
+            if (this.navigationController) {
+                this.navigationController.abort();
+            }
+            this.isNavigating = false;
+            this.navigationController = new AbortController();
             this.handleRoute(window.location.pathname, e.state);
         });
-
+        
+        // Intercept all link clicks for SPA navigation
         document.addEventListener('click', (e: MouseEvent) => {
-            const target = e.target as HTMLElement;
-            const link = target.closest('a') as HTMLAnchorElement;
-
+            // e.composedPath() walks through shadow DOM boundaries before retargeting,
+            // so clicks inside Shadow DOM components are handled correctly.
+            const path = e.composedPath() as HTMLElement[];
+            const link = path.find(el => el.tagName === 'A') as HTMLAnchorElement | undefined;
+            
+            // Check if it's a link
             if (link && link.tagName === 'A') {
+                // If a component (e.g. nc-a) already handled this click and called
+                // e.preventDefault() + router.navigate(), skip it here to avoid
+                // pushing a duplicate history entry.
+                if (e.defaultPrevented) return;
+
                 const href = link.getAttribute('href');
-
+                
+                // Skip if no href
                 if (!href) return;
-
-                // Skip external links and let browser handle pure hash-only anchors
-                if (href.startsWith('http://') || href.startsWith('https://') ||
-                    href.startsWith('mailto:') || href.startsWith('tel:')) {
+                
+                // Skip external links (http://, https://, mailto:, tel:, etc.)
+                if (href.startsWith('http://') || href.startsWith('https://') || 
+                    href.startsWith('mailto:') || href.startsWith('tel:') || 
+                    href.startsWith('#')) {
                     return;
                 }
-
+                
+                // Skip if target="_blank" or data-external attribute
                 if (link.target === '_blank' || link.hasAttribute('data-external')) {
                     return;
                 }
-
-                // For hash-only links (e.g., #section), prevent default and handle manually
-                if (href.startsWith('#')) {
-                    e.preventDefault();
-                    e.stopPropagation();
-                    // Manually update the URL hash while preserving current pathname
-                    window.history.pushState(null, '', window.location.pathname + window.location.search + href);
-                    queueMicrotask(() => this.scrollToHash(href.slice(1)));
-                    return;
-                }
-
-                // Handle route navigation (with optional hash)
+                
+                // Handle as SPA navigation
                 e.preventDefault();
-
-                const [pathname, hash] = href.split('#');
-                if (hash) {
-                    // Route+hash link: navigate to route and scroll to hash after load
-                    this.navigate(pathname, { scrollToHash: hash });
-                } else {
-                    this.navigate(pathname);
-                }
+                this.navigate(href);
             }
         });
     }
-
+    
+    /**
+     * Register a route
+     */
     register(
         path: string,
         htmlFile: string,
         controller: ControllerFunction | null = null,
         options: Partial<RouteConfig> = {}
     ): this {
-        this.routes[path] = { htmlFile, controller, ...options };
+        const fullPath = this._groupPrefix ? `${this._groupPrefix}${path}` : path;
+        this.routes[fullPath] = { htmlFile, controller, ...options };
+        if (this._groupMiddlewares.length > 0) {
+            this._routeMiddlewares.set(fullPath, [...this._groupMiddlewares]);
+        }
         return this;
     }
 
+    /**
+     * Set a cache policy for the last registered route.
+     *
+     * @example
+     * router
+     *   .register('/about', 'views/about.html')
+     *   .cache({ ttl: 300 })                        // cache 5 minutes, block on stale
+     *
+     * @example
+     *   .register('/home', 'views/home.html', homeController)
+     *   .cache({ ttl: 60, revalidate: true })        // serve stale instantly, refresh in bg
+     */
     cache(policy: CachePolicy): this {
         const paths = Object.keys(this.routes);
         const last = paths[paths.length - 1];
@@ -146,6 +190,10 @@ export class Router {
         return this;
     }
 
+    /**
+     * Manually bust the HTML cache for a specific path (or all paths).
+     * Also clears the rendered-HTML cache so the next visit always re-renders.
+     */
     bustCache(path?: string): void {
         if (path) {
             const config = this.routes[path];
@@ -161,9 +209,14 @@ export class Router {
             }
         } else {
             this.htmlCache.clear();
+            // renderedHtmlCache is a WeakMap keyed by DOM elements;
+            // entries are released automatically when containers are replaced.
         }
     }
 
+    /**
+     * Prefetch a route's HTML (and layout HTML when applicable) without navigating.
+     */
     async prefetch(path: string): Promise<void> {
         const route = this.matchRoute(path);
         if (!route) return;
@@ -179,64 +232,162 @@ export class Router {
 
         await Promise.allSettled(requests);
     }
-
+    
+    /**
+     * Add middleware
+     */
     use(middleware: MiddlewareFunction): this {
         this.middlewares.push(middleware);
         return this;
     }
 
+    /**
+     * Group routes under shared options (middleware names, path prefix).
+     * Routes registered inside the callback inherit the group's middleware tags
+     * and prefix. Groups can be nested.
+     *
+     * @example
+     * router.group({ middleware: ['auth'] }, (r) => {
+     *     // @group:protected
+     *     r.register('/dashboard', 'src/views/protected/dashboard.html', lazyController(...));
+     *     r.register('/tasks',     'src/views/protected/tasks.html',     lazyController(...));
+     * });
+     */
+    group(options: { middleware?: string[]; prefix?: string }, callback: (router: this) => void): this {
+        const prevMiddlewares = this._groupMiddlewares;
+        const prevPrefix = this._groupPrefix;
+
+        this._groupMiddlewares = [...prevMiddlewares, ...(options.middleware ?? [])];
+        this._groupPrefix = prevPrefix + (options.prefix ?? '');
+
+        callback(this);
+
+        this._groupMiddlewares = prevMiddlewares;
+        this._groupPrefix = prevPrefix;
+
+        return this;
+    }
+
+    /**
+     * Returns all middleware tags registered on a specific path.
+     * Use this inside middleware functions to check whether a tag applies.
+     *
+     * @example
+     * const tags = router.getTagsForPath(route.path);
+     * if (tags.includes('auth')) { ... }
+     */
+    getTagsForPath(path: string): string[] {
+        return this._routeMiddlewares.get(path) ?? [];
+    }
+
+    /**
+     * Returns all route paths that carry the given middleware tag.
+     * Use this to derive protectedRoutes (or any middleware-gated set) without
+     * maintaining a separate array.
+     *
+     * @example
+     * export const protectedRoutes = router.getPathsForMiddleware('auth');
+     */
+    getPathsForMiddleware(middlewareName: string): string[] {
+        return Array.from(this._routeMiddlewares.entries())
+            .filter(([, tags]) => tags.includes(middlewareName))
+            .map(([path]) => path);
+    }
+    
+    /**
+     * Navigate to a new route
+     */
     navigate(path: string, state: any = {}): void {
         const browserPath = this.normalizeBrowserPath(path);
 
+        // Abort any previous navigation
         if (this.navigationController) {
             this.navigationController.abort();
         }
-
+        
+        // Create new abort controller for this navigation
         this.navigationController = new AbortController();
-
+        
         window.history.pushState(state, '', browserPath);
         this.handleRoute(browserPath, state);
     }
-
+    
+    /**
+     * Replace current route
+     */
     replace(path: string, state: any = {}): void {
         const browserPath = this.normalizeBrowserPath(path);
         window.history.replaceState(state, '', browserPath);
-        this.handleRoute(browserPath, state);
-    }
 
+        // Allow redirects triggered during an in-flight navigation, such as
+        // auth middleware or logout handlers, to schedule a new route load.
+        if (this.navigationController) {
+            this.navigationController.abort();
+        }
+        this.isNavigating = false;
+        this.navigationController = new AbortController();
+
+        queueMicrotask(() => {
+            void this.handleRoute(browserPath, state);
+        });
+    }
+    
+    /**
+     * Force reload current route (for HMR)
+     */
     reload(): void {
+        // Reset navigation state
         this.isNavigating = false;
         if (this.navigationController) {
             this.navigationController.abort();
         }
-        const currentPath = window.location.pathname;
+        // renderedHtmlCache is a WeakMap — no manual clearing needed.
+        // When HMR triggers a reload it busts the htmlCache, so a fresh fetch
+        // will produce a new html string that won't match the recorded entry,
+        // and the container will always be re-rendered.
+
         this.handleRoute(currentPath, {});
     }
-
+    
+    /**
+     * Go back
+     */
     back(): void {
         window.history.back();
     }
-
+    
+    /**
+     * Handle route
+     */
     private async handleRoute(path: string, state: any = {}): Promise<void> {
-        if (this.isNavigating && this.navigationController?.signal.aborted === false) {
+        // Capture THIS navigation's own signal at call time.
+        // this.navigationController is replaced on every new navigate() / popstate,
+        // so checking this.navigationController inside later awaits would test the
+        // WRONG (newer) signal and allow stale navigations to overwrite new ones.
+        const signal = this.navigationController?.signal ?? null;
+
+        // Prevent concurrent navigations that haven't been superseded
+        if (this.isNavigating && signal && !signal.aborted) {
             return;
         }
-
+        
         this.isNavigating = true;
-
+        
         const route = this.matchRoute(path);
-
+        
         if (!route) {
             this.handle404(path);
             this.isNavigating = false;
             return;
         }
-
-        if (this.navigationController?.signal.aborted) {
+        
+        // Check if this navigation was aborted
+        if (signal?.aborted) {
             this.isNavigating = false;
             return;
         }
-
+        
+        // Run middlewares
         for (const middleware of this.middlewares) {
             const result = await middleware(route, state);
             if (result === false) {
@@ -244,32 +395,41 @@ export class Router {
                 return;
             }
         }
-
-        if (this.navigationController?.signal.aborted) {
+        
+        // Check if aborted during middleware
+        if (signal?.aborted) {
             this.isNavigating = false;
             return;
         }
-
+        
         const previousRoute = this.currentRoute;
         this.currentRoute = route;
-        await this.loadPage(route, state, previousRoute);
+        await this.loadPage(route, state, previousRoute, signal);
         this.isNavigating = false;
     }
-
-    private async loadPage(route: RouteMatch, state: any = {}, previousRoute: RouteMatch | null = null): Promise<void> {
+    
+    /**
+     * Load page
+     */
+    private async loadPage(route: RouteMatch, state: any = {}, previousRoute: RouteMatch | null = null, signal?: AbortSignal | null): Promise<void> {
         const mainContent = document.getElementById('main-content');
         const progressBar = document.getElementById('page-progress');
-
+        
         if (!mainContent) {
             console.error('main-content element not found');
             return;
         }
-
+        
         try {
             const isPrerenderedInitialRoute =
                 previousRoute === null &&
                 mainContent.getAttribute('data-prerendered-route') === route.path &&
                 !route.config.layout;
+            const hasWarmHtmlCache = this.htmlCache.has(route.config.htmlFile);
+            const shouldAnimateTransition =
+                !isPrerenderedInitialRoute &&
+                hasWarmHtmlCache &&
+                route.config.disableTransition !== true;
 
             if (progressBar) {
                 progressBar.classList.add('loading');
@@ -278,61 +438,92 @@ export class Router {
             this.resetScrollPosition(mainContent);
 
             if (previousRoute?.path && this.pageScripts[previousRoute.path]?.cleanup) {
-                this.pageScripts[previousRoute.path].cleanup?.();
+                this.pageScripts[previousRoute.path].cleanup!();
             }
             flushPageCleanups();
 
-            if (!isPrerenderedInitialRoute) {
+            if (shouldAnimateTransition) {
                 mainContent.classList.add('page-transition-exit');
                 await new Promise(resolve => setTimeout(resolve, 50));
+
+                // After the animation await, bail out if this navigation was superseded.
+                // Without this check, a stale navigation resuming here would overwrite
+                // whatever the newer navigation already rendered into the DOM.
+                if (signal?.aborted) {
+                    mainContent.classList.remove('page-transition-exit');
+                    if (progressBar) progressBar.classList.remove('loading');
+                    return;
+                }
 
                 const contentTarget = await this.resolveContentTarget(mainContent, route);
                 const html = await this.fetchHTML(route.config.htmlFile, route.config.cachePolicy);
 
-                // Trusted framework template loaded via fetchHTML
-                contentTarget.innerHTML = html;
+                // Bail again after the async fetch in case navigation was superseded
+                if (signal?.aborted) {
+                    mainContent.classList.remove('page-transition-exit');
+                    if (progressBar) progressBar.classList.remove('loading');
+                    return;
+                }
+
+                // Skip the innerHTML write when the fetched HTML is identical to
+                // what was last rendered into this slot. The controller still runs
+                // and re-creates its reactive effects on the existing DOM nodes —
+                // wire bindings always re-apply their current state on first run,
+                // so the view is immediately consistent without a full re-render.
+                // Only skip the innerHTML write when this specific container
+                // already holds the same file AND the same HTML string.
+                // Keying by element (not file path) ensures that navigating
+                // A → B → A never skips the re-render — B overwrote the
+                // container, so the recorded entry no longer matches.
+                const lastRendered = this.renderedHtmlCache.get(contentTarget);
+                const shouldSkipRender =
+                    lastRendered?.file === route.config.htmlFile &&
+                    lastRendered?.html === html;
+
+                if (!shouldSkipRender) {
+                    contentTarget.innerHTML = html;
+                    this.renderedHtmlCache.set(contentTarget, { file: route.config.htmlFile, html });
+                }
+
                 mainContent.classList.remove('page-transition-exit');
                 mainContent.classList.add('page-transition-enter');
             }
-
+            
             if (route.config.controller) {
                 let loaderData: unknown;
 
                 if (route.config.loader) {
-                    const signal = this.navigationController?.signal ?? new AbortController().signal;
+                    const loaderSignal = signal ?? this.navigationController?.signal ?? new AbortController().signal;
                     window.dispatchEvent(new CustomEvent('nc-route-loading', { detail: { path: route.path, params: route.params } }));
-                    loaderData = await route.config.loader(route.params, signal);
+                    loaderData = await route.config.loader(route.params, loaderSignal);
                     window.dispatchEvent(new CustomEvent('nc-route-loaded', { detail: { path: route.path, params: route.params, data: loaderData } }));
                 }
 
                 const cleanup = await route.config.controller(route.params, state, loaderData);
-                this.pageScripts[route.path] = {
-                    cleanup: typeof cleanup === 'function' ? cleanup : undefined
+                this.pageScripts[route.path] = { 
+                    cleanup: typeof cleanup === 'function' ? cleanup : undefined 
                 };
             }
 
             if (isPrerenderedInitialRoute) {
                 mainContent.removeAttribute('data-prerendered-route');
             }
-
+            
             window.dispatchEvent(new CustomEvent('pageloaded', { detail: route }));
+            
+            // Scroll to top on page navigation
             this.resetScrollPosition(mainContent);
-
-            // Handle hash anchors — scroll to target if hash exists in URL or state
-            const hashToScroll = state?.scrollToHash || window.location.hash.slice(1);
-            if (hashToScroll) {
-                queueMicrotask(() => this.scrollToHash(hashToScroll));
-            }
-
+            
             if (progressBar) {
                 setTimeout(() => progressBar.classList.remove('loading'), 200);
             }
-
-            if (!isPrerenderedInitialRoute) {
+            
+            if (shouldAnimateTransition) {
                 setTimeout(() => {
                     mainContent.classList.remove('page-transition-enter');
                 }, 150);
             }
+            
         } catch (error) {
             console.error('Error loading page:', error);
             if (progressBar) {
@@ -345,10 +536,15 @@ export class Router {
                     controller: route.config.htmlFile,
                 }
             }));
+            
+            // Show 404 page when file doesn't exist
             this.handle404(route.path);
         }
     }
-
+    
+    /**
+     * Fetch HTML with TTL-aware caching.
+     */
     private async fetchHTML(file: string, policy?: CachePolicy, allowPrefetchCache = false): Promise<string> {
         const entry = this.htmlCache.get(file);
         const now = Date.now();
@@ -356,14 +552,17 @@ export class Router {
         const isFresh = entry && ttlMs > 0 && now - entry.cachedAt < ttlMs;
         const isStale = entry && ttlMs > 0 && !isFresh;
 
+        // Serve stale immediately and kick off a background refresh
         if (isStale && policy?.revalidate) {
             this.refreshInBackground(file, policy.ttl);
             return entry.html;
         }
 
+        // Serve fresh from cache
         if (isFresh) return entry.html;
 
-        const response = await fetch(bustCache(file), { cache: 'no-store' });
+        // Fetch from network
+    const response = await fetch(bustCache(file), { cache: 'no-store' });
         if (!response.ok) throw new Error(`Failed to load ${file}`);
         const html = await response.text();
 
@@ -385,26 +584,35 @@ export class Router {
             const html = await response.text();
             this.htmlCache.set(file, { html, cachedAt: Date.now(), ttl });
         } catch {
+            // silently ignore background refresh failures
         }
     }
-
+    
+    /**
+     * Match route
+     */
     private matchRoute(path: string): RouteMatch | null {
         const normalizedPath = this.normalizeRoutePath(path);
 
+        // Exact match
         if (this.routes[normalizedPath]) {
             return { path: normalizedPath, params: {}, config: this.routes[normalizedPath] };
         }
-
+        
+        // Dynamic match
         for (const [routePath, config] of Object.entries(this.routes)) {
             const params = this.extractParams(routePath, normalizedPath);
             if (params) {
                 return { path: routePath, params, config };
             }
         }
-
+        
         return null;
     }
-
+    
+    /**
+     * Extract params
+     */
     private extractParams(routePath: string, actualPath: string): Record<string, string> | null {
         const routeParts = this.splitPath(routePath);
         const actualParts = this.splitPath(actualPath);
@@ -455,10 +663,19 @@ export class Router {
 
         return actualIndex === actualParts.length ? params : null;
     }
-
+    
+    /**
+     * Handle 404
+     */
     private handle404(path: string): void {
         const mainContent = document.getElementById('main-content');
         if (mainContent) {
+            // Invalidate the rendered-HTML cache for this container. handle404 overwrites
+            // mainContent.innerHTML directly, so the cache entry (if any) no longer reflects
+            // what is in the DOM. Without this, the next navigation to the previously-rendered
+            // route sees a matching cache entry and skips the innerHTML write, leaving the
+            // 404 HTML in place.
+            this.renderedHtmlCache.delete(mainContent);
             this.resetScrollPosition(mainContent);
             mainContent.innerHTML = `
                 <div style="
@@ -468,67 +685,69 @@ export class Router {
                     justify-content: center;
                     min-height: 60vh;
                     text-align: center;
-                    padding: var(--spacing-xl, 2rem);
+                    padding: var(--spacing-xl);
                 ">
                     <div style="
                         font-size: 8rem;
                         font-weight: 700;
-                        color: var(--primary, #0f766e);
+                        color: var(--primary);
                         line-height: 1;
-                        margin-bottom: var(--spacing-md, 1rem);
+                        margin-bottom: var(--spacing-md);
                     ">404</div>
+                    
                     <h1 style="
                         font-size: 2rem;
                         font-weight: 600;
-                        color: var(--text-primary, #111827);
-                        margin-bottom: var(--spacing-sm, 0.75rem);
+                        color: var(--text-primary);
+                        margin-bottom: var(--spacing-sm);
                     ">Page Not Found</h1>
+                    
                     <p style="
                         font-size: 1.1rem;
-                        color: var(--text-secondary, #4b5563);
+                        color: var(--text-secondary);
                         max-width: 500px;
-                        margin-bottom: var(--spacing-lg, 1.5rem);
+                        margin-bottom: var(--spacing-lg);
                     ">
                         The page <code style="
-                            background: var(--background-secondary, #f3f4f6);
+                            background: var(--background-secondary);
                             padding: 0.2rem 0.5rem;
-                            border-radius: var(--radius-sm, 0.375rem);
-                            color: var(--primary, #0f766e);
-                        ">${escapeHTML(path)}</code> could not be found.
+                            border-radius: var(--radius-sm);
+                            color: var(--primary);
+                        ">${path}</code> could not be found.
                     </p>
-                    <button id="nc-404-back" style="
+                    
+                    <button onclick="window.history.back()" style="
                         display: inline-flex;
                         align-items: center;
                         gap: 0.5rem;
-                        padding: var(--spacing-sm, 0.75rem) var(--spacing-lg, 1.5rem);
-                        background: var(--primary, #0f766e);
+                        padding: var(--spacing-sm) var(--spacing-lg);
+                        background: var(--primary);
                         color: white;
                         border: none;
-                        border-radius: var(--radius-md, 0.5rem);
+                        border-radius: var(--radius-md);
                         font-weight: 500;
                         font-size: 1rem;
                         cursor: pointer;
                         transition: all 0.2s ease;
-                    ">
-                        <span><</span> Go Back
+                    " onmouseover="this.style.transform='translateY(-2px)'; this.style.boxShadow='var(--shadow-md)'" 
+                       onmouseout="this.style.transform='translateY(0)'; this.style.boxShadow='none'">
+                        <span>←</span> Go Back
                     </button>
                 </div>
             `;
-            const backBtn = mainContent.querySelector<HTMLButtonElement>('#nc-404-back');
-            if (backBtn) {
-                backBtn.addEventListener('click', () => window.history.back());
-                backBtn.addEventListener('mouseenter', () => {
-                    backBtn.style.transform = 'translateY(-2px)';
-                    backBtn.style.boxShadow = 'var(--shadow-md, 0 10px 20px rgba(0,0,0,0.12))';
-                });
-                backBtn.addEventListener('mouseleave', () => {
-                    backBtn.style.transform = 'translateY(0)';
-                    backBtn.style.boxShadow = 'none';
-                });
-            }
+
+            window.dispatchEvent(new CustomEvent('pageloaded', {
+                detail: {
+                    path,
+                    notFound: true,
+                },
+            }));
         }
     }
-
+    
+    /**
+     * Start router
+     */
     start(): void {
         const browserPath = this.normalizeBrowserPath(window.location.pathname + window.location.search + window.location.hash);
 
@@ -538,7 +757,10 @@ export class Router {
 
         this.handleRoute(browserPath);
     }
-
+    
+    /**
+     * Get current route
+     */
     getCurrentRoute(): RouteMatch | null {
         return this.currentRoute;
     }
@@ -613,9 +835,8 @@ export class Router {
     }
 
     /**
-     * Parsed query-string of the current URL as a plain object. When a key
-     * appears more than once, the values are returned as an array; single
-     * occurrences are returned as strings.
+     * Parsed query-string of the current URL as a plain object. Keys that
+     * appear more than once become arrays.
      */
     getQuery(): Record<string, string | string[]> {
         const params = new URLSearchParams(window.location.search);
@@ -631,19 +852,14 @@ export class Router {
         return result;
     }
 
-    /**
-     * Returns a single query-string value (or a default when missing).
-     */
+    /** Returns a single query-string value (or a default when missing). */
     getQueryParam(name: string, fallback = ''): string {
         return new URLSearchParams(window.location.search).get(name) ?? fallback;
     }
 
     /**
      * Updates the query-string on the current URL without triggering a
-     * navigation. Keys set to `null` / `undefined` are removed.
-     *
-     * @param patch A partial record of query-string values to merge in.
-     * @param options.replace When true, replaces the history entry instead of pushing a new one. Defaults to `true` so query-string tweaks do not pollute the back stack.
+     * navigation. `null`/`undefined` values remove the key.
      */
     setQuery(
         patch: Record<string, string | number | boolean | null | undefined>,
@@ -651,11 +867,8 @@ export class Router {
     ): void {
         const params = new URLSearchParams(window.location.search);
         for (const [key, value] of Object.entries(patch)) {
-            if (value === null || value === undefined) {
-                params.delete(key);
-            } else {
-                params.set(key, String(value));
-            }
+            if (value === null || value === undefined) params.delete(key);
+            else params.set(key, String(value));
         }
         const search = params.toString();
         const url = `${window.location.pathname}${search ? `?${search}` : ''}${window.location.hash}`;
@@ -676,7 +889,6 @@ export class Router {
 
         if (needsLayoutRender) {
             const layoutHtml = await this.fetchHTML(layoutRoute.config.htmlFile, layoutRoute.config.cachePolicy);
-            // Trusted framework template loaded via fetchHTML
             mainContent.innerHTML = layoutHtml;
             this.renderedLayoutPath = layoutRoute.path;
         }
@@ -684,7 +896,7 @@ export class Router {
         const outlet = mainContent.querySelector<HTMLElement>('#route-outlet');
         if (!outlet) {
             // Graceful fallback: warn loudly in dev tools but keep the app
-            // navigable by rendering directly into the layout root.  Throwing
+            // navigable by rendering directly into the layout root. Throwing
             // here used to nuke the whole page on a single missing element.
             console.error(
                 `[router] Layout route "${layoutRoute.path}" is missing a #route-outlet element. ` +
@@ -713,6 +925,9 @@ export class Router {
         };
     }
 
+    /**
+     * Split a route path into normalized segments while ignoring leading/trailing slashes.
+     */
     private splitPath(path: string): string[] {
         const trimmed = path.replace(/^\/+|\/+$/g, '');
         return trimmed ? trimmed.split('/') : [];
@@ -753,15 +968,6 @@ export class Router {
                 scrollContainer.scrollTop = 0;
                 scrollContainer.scrollLeft = 0;
             }
-        }
-    }
-
-    private scrollToHash(hash: string): void {
-        if (!hash) return;
-
-        const target = document.getElementById(hash);
-        if (target) {
-            target.scrollIntoView({ behavior: 'smooth', block: 'start' });
         }
     }
 }

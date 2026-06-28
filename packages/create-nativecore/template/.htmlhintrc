@@ -10,5 +10,6 @@
   "src-not-empty": true,
   "alt-require": true,
   "space-tab-mixed-disabled": "space",
-  "attr-unsafe-chars": true
+  "attr-unsafe-chars": true,
+  "custom-attr-list": ["ref"]
 }

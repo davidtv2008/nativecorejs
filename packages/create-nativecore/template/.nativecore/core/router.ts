@@ -23,6 +23,8 @@ export interface RouteConfig {
     loader?: (params: Record<string, string>, signal: AbortSignal) => Promise<unknown>;
     cachePolicy?: CachePolicy;
     layout?: string;
+    /** Disable page enter/exit animation for this route. */
+    disableTransition?: boolean;
 }
 
 export interface RouteMatch {
@@ -104,16 +106,30 @@ export class Router {
 
         // Listen for browser back/forward buttons
         window.addEventListener('popstate', (e: PopStateEvent) => {
+            // Abort any in-flight navigation so the guard in handleRoute doesn't
+            // silently drop this popstate (back/forward) navigation.
+            if (this.navigationController) {
+                this.navigationController.abort();
+            }
+            this.isNavigating = false;
+            this.navigationController = new AbortController();
             this.handleRoute(window.location.pathname, e.state);
         });
         
         // Intercept all link clicks for SPA navigation
         document.addEventListener('click', (e: MouseEvent) => {
-            const target = e.target as HTMLElement;
-            const link = target.closest('a') as HTMLAnchorElement;
+            // e.composedPath() walks through shadow DOM boundaries before retargeting,
+            // so clicks inside Shadow DOM components are handled correctly.
+            const path = e.composedPath() as HTMLElement[];
+            const link = path.find(el => el.tagName === 'A') as HTMLAnchorElement | undefined;
             
             // Check if it's a link
             if (link && link.tagName === 'A') {
+                // If a component (e.g. nc-a) already handled this click and called
+                // e.preventDefault() + router.navigate(), skip it here to avoid
+                // pushing a duplicate history entry.
+                if (e.defaultPrevented) return;
+
                 const href = link.getAttribute('href');
                 
                 // Skip if no href
@@ -344,8 +360,14 @@ export class Router {
      * Handle route
      */
     private async handleRoute(path: string, state: any = {}): Promise<void> {
-        // Prevent concurrent navigations
-        if (this.isNavigating && this.navigationController?.signal.aborted === false) {
+        // Capture THIS navigation's own signal at call time.
+        // this.navigationController is replaced on every new navigate() / popstate,
+        // so checking this.navigationController inside later awaits would test the
+        // WRONG (newer) signal and allow stale navigations to overwrite new ones.
+        const signal = this.navigationController?.signal ?? null;
+
+        // Prevent concurrent navigations that haven't been superseded
+        if (this.isNavigating && signal && !signal.aborted) {
             return;
         }
         
@@ -360,7 +382,7 @@ export class Router {
         }
         
         // Check if this navigation was aborted
-        if (this.navigationController?.signal.aborted) {
+        if (signal?.aborted) {
             this.isNavigating = false;
             return;
         }
@@ -375,21 +397,21 @@ export class Router {
         }
         
         // Check if aborted during middleware
-        if (this.navigationController?.signal.aborted) {
+        if (signal?.aborted) {
             this.isNavigating = false;
             return;
         }
         
         const previousRoute = this.currentRoute;
         this.currentRoute = route;
-        await this.loadPage(route, state, previousRoute);
+        await this.loadPage(route, state, previousRoute, signal);
         this.isNavigating = false;
     }
     
     /**
      * Load page
      */
-    private async loadPage(route: RouteMatch, state: any = {}, previousRoute: RouteMatch | null = null): Promise<void> {
+    private async loadPage(route: RouteMatch, state: any = {}, previousRoute: RouteMatch | null = null, signal?: AbortSignal | null): Promise<void> {
         const mainContent = document.getElementById('main-content');
         const progressBar = document.getElementById('page-progress');
         
@@ -403,6 +425,11 @@ export class Router {
                 previousRoute === null &&
                 mainContent.getAttribute('data-prerendered-route') === route.path &&
                 !route.config.layout;
+            const hasWarmHtmlCache = this.htmlCache.has(route.config.htmlFile);
+            const shouldAnimateTransition =
+                !isPrerenderedInitialRoute &&
+                hasWarmHtmlCache &&
+                route.config.disableTransition !== true;
 
             if (progressBar) {
                 progressBar.classList.add('loading');
@@ -415,12 +442,28 @@ export class Router {
             }
             flushPageCleanups();
 
-            if (!isPrerenderedInitialRoute) {
+            if (shouldAnimateTransition) {
                 mainContent.classList.add('page-transition-exit');
                 await new Promise(resolve => setTimeout(resolve, 50));
 
+                // After the animation await, bail out if this navigation was superseded.
+                // Without this check, a stale navigation resuming here would overwrite
+                // whatever the newer navigation already rendered into the DOM.
+                if (signal?.aborted) {
+                    mainContent.classList.remove('page-transition-exit');
+                    if (progressBar) progressBar.classList.remove('loading');
+                    return;
+                }
+
                 const contentTarget = await this.resolveContentTarget(mainContent, route);
                 const html = await this.fetchHTML(route.config.htmlFile, route.config.cachePolicy);
+
+                // Bail again after the async fetch in case navigation was superseded
+                if (signal?.aborted) {
+                    mainContent.classList.remove('page-transition-exit');
+                    if (progressBar) progressBar.classList.remove('loading');
+                    return;
+                }
 
                 // Skip the innerHTML write when the fetched HTML is identical to
                 // what was last rendered into this slot. The controller still runs
@@ -450,9 +493,9 @@ export class Router {
                 let loaderData: unknown;
 
                 if (route.config.loader) {
-                    const signal = this.navigationController?.signal ?? new AbortController().signal;
+                    const loaderSignal = signal ?? this.navigationController?.signal ?? new AbortController().signal;
                     window.dispatchEvent(new CustomEvent('nc-route-loading', { detail: { path: route.path, params: route.params } }));
-                    loaderData = await route.config.loader(route.params, signal);
+                    loaderData = await route.config.loader(route.params, loaderSignal);
                     window.dispatchEvent(new CustomEvent('nc-route-loaded', { detail: { path: route.path, params: route.params, data: loaderData } }));
                 }
 
@@ -475,7 +518,7 @@ export class Router {
                 setTimeout(() => progressBar.classList.remove('loading'), 200);
             }
             
-            if (!isPrerenderedInitialRoute) {
+            if (shouldAnimateTransition) {
                 setTimeout(() => {
                     mainContent.classList.remove('page-transition-enter');
                 }, 150);
@@ -627,6 +670,12 @@ export class Router {
     private handle404(path: string): void {
         const mainContent = document.getElementById('main-content');
         if (mainContent) {
+            // Invalidate the rendered-HTML cache for this container. handle404 overwrites
+            // mainContent.innerHTML directly, so the cache entry (if any) no longer reflects
+            // what is in the DOM. Without this, the next navigation to the previously-rendered
+            // route sees a matching cache entry and skips the innerHTML write, leaving the
+            // 404 HTML in place.
+            this.renderedHtmlCache.delete(mainContent);
             this.resetScrollPosition(mainContent);
             mainContent.innerHTML = `
                 <div style="

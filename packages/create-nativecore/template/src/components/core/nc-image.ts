@@ -22,8 +22,8 @@
  * Usage:
  *   <nc-image src="/photo.jpg" alt="Mountain view" aspect="16/9" radius="md"></nc-image>
  */
-import { Component, defineComponent } from '@core/component.js';
-import { html, trusted, escapeHtml, sanitizeURL } from '@core-utils/templates.js';
+import { CoreComponent } from '@core/component.js';
+import { css, sanitizeURL } from '@core-utils/templates.js';
 
 const RADIUS: Record<string, string> = {
     none: '0',
@@ -33,154 +33,158 @@ const RADIUS: Record<string, string> = {
     full: '9999px',
 };
 
-export class NcImage extends Component {
+export class NcImage extends CoreComponent {
     static useShadowDOM = true;
+    static observedAttributes = ['src', 'alt', 'width', 'height', 'fit', 'radius', 'aspect', 'fallback', 'caption', 'position', 'placeholder', 'loading'];
+    static attributeOptions = {
+        fit:         ['cover', 'contain', 'fill', 'none', 'scale-down'],
+        radius:      ['none', 'sm', 'md', 'lg', 'full'],
+        placeholder: ['skeleton', 'blur', 'none'],
+        loading:     ['lazy', 'eager'],
+    };
+    static attributePlaceholders = { src: 'https://example.com/img.jpg', alt: 'Description', aspect: '16/9' };
+    static attributeOrder = ['src', 'alt', 'aspect', 'width', 'height', 'fit', 'radius', 'placeholder', 'loading', 'position', 'fallback', 'caption'];
+
+    // -- Refs -----------------------------------------------------------------
+    declare figureEl:     HTMLElement;
+    declare imgEl:        HTMLImageElement;
+    declare skeletonEl:   HTMLDivElement;
+    declare errorPlateEl: HTMLDivElement;
+    declare captionEl:    HTMLElement;
 
     private _loaded  = false;
     private _errored = false;
 
-    static get observedAttributes() { return ['src', 'alt', 'width', 'height', 'fit', 'radius', 'aspect', 'fallback']; }
+    static styles = css`
+        :host { display: inline-block; }
+        figure {
+            margin: 0; padding: 0; display: block;
+            border-radius: var(--img-radius, 0); overflow: hidden; position: relative;
+        }
+        .skeleton {
+            position: absolute; inset: 0;
+            background: linear-gradient(90deg, var(--nc-bg-secondary) 25%, var(--nc-bg-tertiary, #e2e8f0) 50%, var(--nc-bg-secondary) 75%);
+            background-size: 200% 100%;
+            animation: nc-img-shimmer 1.4s infinite linear;
+            border-radius: inherit;
+        }
+        @keyframes nc-img-shimmer {
+            0%   { background-position: -200% 0; }
+            100% { background-position:  200% 0; }
+        }
+        img {
+            display: block; width: 100%; height: 100%;
+            object-fit: var(--img-fit, cover);
+            object-position: var(--img-pos, center);
+            border-radius: inherit;
+            opacity: 0; transition: opacity var(--nc-transition-base);
+        }
+        .error-plate {
+            display: none; align-items: center; justify-content: center;
+            position: absolute; inset: 0;
+            background: var(--nc-bg-secondary); color: var(--nc-text-muted);
+            font-size: var(--nc-font-size-xs); font-family: var(--nc-font-family);
+            flex-direction: column; gap: 4px;
+        }
+        figcaption {
+            font-family: var(--nc-font-family); font-size: var(--nc-font-size-xs);
+            color: var(--nc-text-muted); text-align: center; padding-top: 4px; line-height: 1.4;
+        }
+    `;
 
     template() {
-        const src         = this.getAttribute('src') ?? '';
-        const alt         = this.getAttribute('alt') ?? '';
-        const width       = this.getAttribute('width') ?? '';
-        const height      = this.getAttribute('height') ?? '';
-        const fit         = this.getAttribute('fit') ?? 'cover';
-        const pos         = this.getAttribute('position') ?? 'center';
-        const radius      = this.getAttribute('radius') ?? 'none';
-        const loading     = this.getAttribute('loading') ?? 'lazy';
-        const placeholder = this.getAttribute('placeholder') ?? 'skeleton';
-        const aspect      = this.getAttribute('aspect') ?? '';
-        const caption     = this.getAttribute('caption') ?? '';
-
-        const radVal = RADIUS[radius] ?? radius;
-        const aspectStyle = aspect ? `aspect-ratio: ${aspect.replace('/', '/')};` : '';
-        const wStyle  = width  ? `width:${/^\d+$/.test(width)  ? width  + 'px' : width};`  : '';
-        const hStyle  = height ? `height:${/^\d+$/.test(height) ? height + 'px' : height};` : '';
-        const showSkeleton = !this._loaded && !this._errored && placeholder === 'skeleton';
-
-        return html`
-            <style>
-                :host { display: inline-block; }
-                figure {
-                    margin: 0;
-                    padding: 0;
-                    display: block;
-                    ${wStyle} ${hStyle}
-                    border-radius: ${radVal};
-                    overflow: hidden;
-                    position: relative;
-                    ${aspectStyle}
-                }
-                .skeleton {
-                    position: absolute;
-                    inset: 0;
-                    background: linear-gradient(
-                        90deg,
-                        var(--nc-bg-secondary) 25%,
-                        var(--nc-bg-tertiary, #e2e8f0) 50%,
-                        var(--nc-bg-secondary) 75%
-                    );
-                    background-size: 200% 100%;
-                    animation: nc-img-shimmer 1.4s infinite linear;
-                    border-radius: inherit;
-                    display: ${showSkeleton ? 'block' : 'none'};
-                }
-                @keyframes nc-img-shimmer {
-                    0%   { background-position: -200% 0; }
-                    100% { background-position:  200% 0; }
-                }
-                img {
-                    display: block;
-                    width: 100%;
-                    height: 100%;
-                    object-fit: ${fit};
-                    object-position: ${pos};
-                    border-radius: inherit;
-                    opacity: ${this._loaded ? 1 : 0};
-                    transition: opacity var(--nc-transition-base);
-                }
-                .error-plate {
-                    display: ${this._errored ? 'flex' : 'none'};
-                    align-items: center;
-                    justify-content: center;
-                    position: absolute;
-                    inset: 0;
-                    background: var(--nc-bg-secondary);
-                    color: var(--nc-text-muted);
-                    font-size: var(--nc-font-size-xs);
-                    font-family: var(--nc-font-family);
-                    flex-direction: column;
-                    gap: 4px;
-                }
-                figcaption {
-                    font-family: var(--nc-font-family);
-                    font-size: var(--nc-font-size-xs);
-                    color: var(--nc-text-muted);
-                    text-align: center;
-                    padding-top: 4px;
-                    line-height: 1.4;
-                }
-            </style>
-            <figure>
-                <div class="skeleton"></div>
-                <img
-                    id="img"
-                    src="${sanitizeURL(src)}"
-                    alt="${alt}"
-                    loading="${loading}"
-                    decoding="async"
-                    ${width  ? `width="${width}"`   : ''}
-                    ${height ? `height="${height}"` : ''}
-                />
-                <div class="error-plate" aria-hidden="true">
+        return `            <figure ref="figureEl">
+                <div ref="skeletonEl" class="skeleton"></div>
+                <img ref="imgEl" src="" alt="" loading="lazy" decoding="async"/>
+                <div ref="errorPlateEl" class="error-plate" aria-hidden="true" style="display:none;">
                     <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
                         <rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/>
                     </svg>
                     <span>Image not found</span>
                 </div>
             </figure>
-            ${trusted(caption ? `<figcaption>${escapeHtml(caption)}</figcaption>` : '')}
+            <figcaption ref="captionEl" style="display:none;"></figcaption>
         `;
     }
 
     onMount() {
-        const img = this.$<HTMLImageElement>('#img');
-        if (!img) return;
+        this._syncFromAttrs();
+        this._attachImageEvents();
+    }
 
-        if (img.complete && img.naturalWidth > 0) {
-            this._loaded = true;
-            this.render();
+    protected _handleAttributeUpdate(name: string, _val: string | null) {
+        if (name === 'src') {
+            this._loaded  = false;
+            this._errored = false;
+            this._updateVisuals();
+            this._attachImageEvents();
+        }
+        this._syncFromAttrs();
+    }
+
+    private _attachImageEvents() {
+        if (this.imgEl.complete && this.imgEl.naturalWidth > 0) {
+            this._loaded = true; this._errored = false;
+            this._updateVisuals();
             return;
         }
-
-        img.addEventListener('load', () => {
-            this._loaded  = true;
-            this._errored = false;
-            this.render();
-            this.dispatchEvent(new CustomEvent('load', { bubbles: true, composed: true }));
+        this.imgEl.addEventListener('load', () => {
+            this._loaded = true; this._errored = false;
+            this._updateVisuals();
+            this.emit('load');
         }, { once: true });
-
-        img.addEventListener('error', () => {
+        this.imgEl.addEventListener('error', () => {
             const fallback = this.getAttribute('fallback');
-            if (fallback && img.src !== fallback) {
-                img.src = fallback;
+            if (fallback && !this.imgEl.src.endsWith(fallback)) {
+                this.imgEl.src = fallback;
                 return;
             }
-            this._errored = true;
-            this._loaded  = false;
-            this.render();
-            this.dispatchEvent(new CustomEvent('error', { bubbles: true, composed: true }));
+            this._errored = true; this._loaded = false;
+            this._updateVisuals();
+            this.emit('error');
         }, { once: true });
     }
 
-    attributeChangedCallback(n: string, o: string, v: string) {
-        if (o === v || !this._mounted) return;
-        if (n === 'src') { this._loaded = false; this._errored = false; }
-        this.render();
+    private _syncFromAttrs() {
+        const src     = this.getAttribute('src')      ?? '';
+        const alt     = this.getAttribute('alt')      ?? '';
+        const width   = this.getAttribute('width')    ?? '';
+        const height  = this.getAttribute('height')   ?? '';
+        const fit     = this.getAttribute('fit')      ?? 'cover';
+        const pos     = this.getAttribute('position') ?? 'center';
+        const radius  = this.getAttribute('radius')   ?? 'none';
+        const loading = this.getAttribute('loading')  ?? 'lazy';
+        const aspect  = this.getAttribute('aspect')   ?? '';
+        const caption = this.getAttribute('caption')  ?? '';
+
+        const radVal  = RADIUS[radius] ?? radius;
+        const safeSrc = sanitizeURL(src);
+
+        this.figureEl.style.setProperty('--img-fit',    fit);
+        this.figureEl.style.setProperty('--img-pos',    pos);
+        this.figureEl.style.setProperty('--img-radius', radVal);
+        if (width)  this.figureEl.style.width       = /^\d+$/.test(width)  ? width  + 'px' : width;
+        if (height) this.figureEl.style.height      = /^\d+$/.test(height) ? height + 'px' : height;
+        if (aspect) this.figureEl.style.aspectRatio = aspect;
+
+        if (this.imgEl.getAttribute('src') !== safeSrc) this.imgEl.src = safeSrc;
+        this.imgEl.alt     = alt;
+        this.imgEl.loading = loading as 'lazy' | 'eager';
+
+        if (caption) { this.captionEl.textContent = caption; this.captionEl.style.display = ''; }
+        else          { this.captionEl.style.display = 'none'; }
+
+        this._updateVisuals();
+    }
+
+    private _updateVisuals() {
+        const placeholder  = this.getAttribute('placeholder') ?? 'skeleton';
+        const showSkeleton = !this._loaded && !this._errored && placeholder === 'skeleton';
+        this.imgEl.style.opacity        = this._loaded  ? '1' : '0';
+        this.skeletonEl.style.display   = showSkeleton  ? 'block' : 'none';
+        this.errorPlateEl.style.display = this._errored ? 'flex'  : 'none';
     }
 }
 
-defineComponent('nc-image', NcImage);
+if (!customElements.get('nc-image')) customElements.define('nc-image', NcImage);
 

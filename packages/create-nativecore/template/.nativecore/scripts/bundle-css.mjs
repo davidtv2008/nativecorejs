@@ -23,7 +23,7 @@ const cssFiles = [
 
 const outputPath = path.join(rootDir, 'dist/src/styles/bundle.css');
 
-async function bundleCSS() {
+export async function bundleCSS() {
     try {
         // Ensure output directory exists
         const outputDir = path.dirname(outputPath);
@@ -61,4 +61,6 @@ async function bundleCSS() {
     }
 }
 
-bundleCSS();
+if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
+    bundleCSS();
+}

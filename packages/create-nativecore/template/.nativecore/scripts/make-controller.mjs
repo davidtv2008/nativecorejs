@@ -59,102 +59,54 @@ async function main() {
     }
     
     // ─── TypeScript template ─────────────────────────────────────────────────
-    const tsTemplate = `/**
- * ${titleName} Controller
- * Handles dynamic behavior for the ${titleName.toLowerCase()} route.
- */
-import { trackEvents } from '@core-utils/events.js';
-import { dom } from '@core-utils/dom.js';
-import { wireContents, wireInputs, wireAttributes, wireClasses, wireStyles } from '@core-utils/wires.js';
-import auth from '@services/auth.service.js';
+    const pascalName = camelName.charAt(0).toUpperCase() + camelName.slice(1);
+    const tsTemplate = `import { CoreController } from '@core/controller.js';
+import type { State } from '@core/controller.js';
 
-export async function ${camelName}Controller(params: Record<string, string> = {}): Promise<() => void> {
+export class ${pascalName}Controller extends CoreController {
 
-    // Setup
-    const events = trackEvents();
-    void params;
+    // ── Refs (auto-wired from ref attributes in the view) ────────────────
+    private titleEl!: HTMLElement;
 
-    // Wires
-    const { title, summary } = wireContents();
-    const { cardStatus } = wireAttributes();
-    const { email } = wireInputs();
-    const { cardActive } = wireClasses();
-    const { cardOpacity } = wireStyles();
+    // ── State ─────────────────────────────────────────────────────────────────
+    private title!: State<string>;
 
-    // Behavior
-    title.value   = auth.getUser()?.name
-        ? '${titleName} — ' + auth.getUser()!.name
-        : '${titleName}';
-    summary.value = 'Your controller is wired up and ready.';
-    cardStatus.value = 'ready';
-    email.value = '';
-    cardActive.value = false;
-    cardOpacity.value = '1';
+    // ── Lifecycle ─────────────────────────────────────────────────────────────
+    onMount() {
+        // Refs are auto-wired by _bootstrap(): ref="titleEl" → this.titleEl
+        this.title = this.state('${titleName}');
+        this.bind(this.title, this.titleEl);
+    }
+}
 
-    // Events
-    events.onClick(dom.view('${kebabName}').actionSelector('primary-action'), () => {
-        title.value      = auth.getUser()?.name ? '${titleName} — ' + auth.getUser()!.name : '${titleName}';
-        cardStatus.value = 'active';
-        cardActive.value = true;
-        cardOpacity.value = '0.95';
-    });
-
-    // Cleanup
-    // wire* and reactive bindings auto-dispose via PageCleanupRegistry.
-    // Return cleanup only for tracked DOM events/listeners.
-    return () => {
-        events.cleanup();
-    };
+// Factory ─ called by the router via lazyController('${camelName}Controller', ...)
+export function ${camelName}Controller(
+    _params?: Record<string, string>,
+    _state?: unknown,
+    _loaderData?: unknown,
+    rootElement?: HTMLElement
+): () => void {
+    const ctrl = new ${pascalName}Controller(rootElement);
+    return () => ctrl.destroy();
 }
 `;
 
     // ─── JavaScript template ─────────────────────────────────────────────────
-    const jsTemplate = `/**
- * ${titleName} Controller
- * Handles dynamic behavior for the ${titleName.toLowerCase()} route.
- */
-import { trackEvents } from '@core-utils/events.js';
-import { dom } from '@core-utils/dom.js';
-import { wireContents, wireInputs, wireAttributes, wireClasses, wireStyles } from '@core-utils/wires.js';
-import auth from '@services/auth.service.js';
+    const jsTemplate = `import { CoreController } from '@core/controller.js';
 
-export async function ${camelName}Controller(params = {}) {
+export class ${pascalName}Controller extends CoreController {
 
-    // Setup
-    const events = trackEvents();
-    void params;
+    onMount() {
+        // Refs are auto-wired by _bootstrap(): ref="titleEl" → this.titleEl
+        this.title = this.state('${titleName}');
+        this.bind(this.title, this.titleEl);
+    }
+}
 
-    // Wires
-    const { title, summary } = wireContents();
-    const { cardStatus } = wireAttributes();
-    const { email } = wireInputs();
-    const { cardActive } = wireClasses();
-    const { cardOpacity } = wireStyles();
-
-    // Behavior
-    title.value   = auth.getUser()?.name
-        ? '${titleName} — ' + auth.getUser()?.name
-        : '${titleName}';
-    summary.value = 'Your controller is wired up and ready.';
-    cardStatus.value = 'ready';
-    email.value = '';
-    cardActive.value = false;
-    cardOpacity.value = '1';
-
-    // Events
-    events.onClick(dom.view('${kebabName}').actionSelector('primary-action'), () => {
-        title.value      = auth.getUser()?.name ? '${titleName} — ' + auth.getUser()?.name : '${titleName}';
-        cardStatus.value = 'active';
-        cardActive.value = true;
-        cardOpacity.value = '0.95';
-    });
-
-    // Cleanup
-    // wire* and reactive bindings auto-dispose via PageCleanupRegistry.
-    // Return cleanup only for tracked DOM events/listeners.
-    return () => {
-        events.cleanup();
-    };
+// Factory ─ called by the router via lazyController('${camelName}Controller', ...)
+export function ${camelName}Controller(_params, _state, _loaderData, rootElement) {
+    const ctrl = new ${pascalName}Controller(rootElement);
+    return () => ctrl.destroy();
 }
 `;
 
@@ -195,3 +147,4 @@ main().catch(err => {
     rl.close();
     process.exit(1);
 });
+

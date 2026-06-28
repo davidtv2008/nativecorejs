@@ -97,34 +97,28 @@ function createViewTemplate({ accessLabel, flatName, viewTitle, withController }
     <div class="scaffold-hero">
         <div class="scaffold-hero__inner">
             <span class="page-eyebrow">${accessLabel}</span>
-            <h1 class="scaffold-hero__title" wire-content="title">${viewTitle}</h1>
-            <p class="scaffold-hero__desc" wire-content="summary">Your controller is wired up and ready.</p>
+            <h1 class="scaffold-hero__title" ref="titleEl">${viewTitle}</h1>
+            <p class="scaffold-hero__desc" ref="summaryEl">Your controller is wired up and ready.</p>
         </div>
     </div>
 
     <div class="scaffold-body container">
         <div class="card-grid">
-            <article class="card" wire-attribute="cardStatus:data-status" wire-class="cardActive:card--wired-active" wire-style="cardOpacity:opacity">
+            <article class="card">
                 <div class="card__icon">&#9670;</div>
-                <h3 class="card__title">Display via <code>wire-content</code></h3>
-                <p class="card__body">The heading and description above are driven by <code>wire-content</code>. Set <code>title.value</code> or <code>summary.value</code> in the controller to update them instantly. This card also pairs <code>wire-attribute</code>, <code>wire-class</code>, and <code>wire-style</code> with the generated controller.</p>
+                <h3 class="card__title">Reactive State with <code>ref=""</code></h3>
+                <p class="card__body">Elements with <code>ref="fieldName"</code> auto-wire to <code>this.fieldName</code> in the controller. Combine with <code>this.state()</code> and <code>this.bind()</code> for reactive updates.</p>
             </article>
             <article class="card">
                 <div class="card__icon">&#10022;</div>
-                <h3 class="card__title">Attributes via <code>wire-attribute</code></h3>
-                <p class="card__body">The first card carries <code>wire-attribute="cardStatus:data-status"</code>. Set <code>cardStatus.value = 'active'</code> in the controller to toggle CSS state.</p>
-            </article>
-            <article class="card">
-                <div class="card__icon">&#9632;</div>
-                <h3 class="card__title">Inputs via <code>wire-input</code></h3>
-                <p class="card__body">Use <code>wire-input</code> on <code>&lt;input&gt;</code>, <code>&lt;select&gt;</code>, and <code>&lt;textarea&gt;</code> for two-way binding. Call <code>wireInputs()</code> once in the controller.</p>
+                <h3 class="card__title">Event Listeners via <code>this.on()</code></h3>
+                <p class="card__body">Attach listeners in <code>onMount()</code> using <code>this.on(this.primaryBtn, 'click', handler)</code>. Auto-cleanup on destroy.</p>
             </article>
         </div>
 
         <div class="page-actions">
-            <nc-button data-action="primary-action" variant="primary">Primary Action</nc-button>
-            <nc-button data-action="secondary-action" variant="outline">Learn More</nc-button>
-            <nc-input name="email" type="email" wire-input="email" placeholder="you@example.com"></nc-input>
+            <nc-button ref="primaryBtn" data-action="primary-action" variant="primary">Primary Action</nc-button>
+            <nc-button data-action="secondary-action" variant="outline">Secondary Action</nc-button>
         </div>
     </div>
 </div>
@@ -159,102 +153,83 @@ function createViewTemplate({ accessLabel, flatName, viewTitle, withController }
 }
 
 function createControllerTemplate({ flatName, viewTitle, controllerName }) {
+  const PascalName = controllerName.charAt(0).toUpperCase() + controllerName.slice(1);
   if (useTypeScript) {
-    return `/**
- * ${viewTitle} Controller
- * Handles dynamic behavior for the ${viewTitle.toLowerCase()} page.
- */
-import { trackEvents } from '@core-utils/events.js';
-import { dom } from '@core-utils/dom.js';
-import { wireContents, wireInputs, wireAttributes, wireClasses, wireStyles } from '@core-utils/wires.js';
-import auth from '@services/auth.service.js';
+    return `import { CoreController } from '@core/controller.js';
+import type { State } from '@core/controller.js';
 
-export async function ${controllerName}Controller(params: Record<string, string> = {}): Promise<() => void> {
+export class ${PascalName}Controller extends CoreController {
 
-    // Setup
-    const events = trackEvents();
-    void params;
+  // ── Refs (auto-wired from ref attributes in the view) ────────────────────
+    private titleEl!: HTMLElement;
+    private summaryEl!: HTMLElement;
+    private primaryBtn!: HTMLElement;
 
-    // Wires
-    const { title, summary } = wireContents();
-    const { cardStatus } = wireAttributes();
-    const { email } = wireInputs();
-    const { cardActive } = wireClasses();
-    const { cardOpacity } = wireStyles();
+    // ── State ─────────────────────────────────────────────────────────────────
+    private title!: State<string>;
+    private summary!: State<string>;
 
-    // Behavior
-    title.value   = auth.getUser()?.name
-        ? '${viewTitle} \u2014 ' + auth.getUser()!.name
-        : '${viewTitle}';
-    summary.value = 'Your controller is wired up and ready.';
-    cardStatus.value = 'ready';
-    email.value = '';
-    cardActive.value = false;
-    cardOpacity.value = '1';
+    // ── Lifecycle ─────────────────────────────────────────────────────────────
+    onMount() {
+      this.assertRefs('titleEl', 'summaryEl', 'primaryBtn');
 
-    // Events
-    events.onClick(dom.view('${flatName}').actionSelector('primary-action'), () => {
-        title.value      = auth.getUser()?.name ? '${viewTitle} \u2014 ' + auth.getUser()!.name : '${viewTitle}';
-        cardStatus.value = 'active';
-        cardActive.value = true;
-        cardOpacity.value = '0.95';
-    });
+        // Reactive state
+        this.title   = this.state('${viewTitle}');
+        this.summary = this.state('Your controller is wired up and ready.');
 
-    // Cleanup
-    // wire* and reactive bindings auto-dispose via PageCleanupRegistry.
-    // Return cleanup only for tracked DOM events/listeners.
-    return () => {
-        events.cleanup();
-    };
+        // Bindings — state → DOM, auto-updated on every .value change
+        this.bind(this.title,   this.titleEl);
+        this.bind(this.summary, this.summaryEl);
+
+        // Event listeners (setup here after refs are wired, not in events())
+        this.on(this.primaryBtn, 'click', () => {
+            this.title.value   = '${viewTitle} — clicked!';
+            this.summary.value = 'Primary action fired.';
+        });
+    }
+
+    // ── Cleanup ───────────────────────────────────────────────────────────────
+    onUnmount() {
+        // this.on() listeners are auto-removed. Add manual teardown here if needed.
+    }
+}
+
+// Factory — called by the router via lazyController('${controllerName}Controller', ...)
+export function ${controllerName}Controller(
+    _params?: Record<string, string>,
+    _state?: unknown,
+    _loaderData?: unknown,
+    rootElement?: HTMLElement
+): () => void {
+    const ctrl = new ${PascalName}Controller(rootElement);
+    return () => ctrl.destroy();
 }
 `;
   }
-  return `/**
- * ${viewTitle} Controller
- * Handles dynamic behavior for the ${viewTitle.toLowerCase()} page.
- */
-import { trackEvents } from '@core-utils/events.js';
-import { dom } from '@core-utils/dom.js';
-import { wireContents, wireInputs, wireAttributes, wireClasses, wireStyles } from '@core-utils/wires.js';
-import auth from '@services/auth.service.js';
+  return `import { CoreController } from '@core/controller.js';
 
-export async function ${controllerName}Controller(params = {}) {
+export class ${PascalName}Controller extends CoreController {
 
-    // Setup
-    const events = trackEvents();
-    void params;
+    onMount() {
+    this.assertRefs('titleEl', 'summaryEl', 'primaryBtn');
+        this.title   = this.state('${viewTitle}');
+        this.summary = this.state('Your controller is wired up and ready.');
 
-    // Wires
-    const { title, summary } = wireContents();
-    const { cardStatus } = wireAttributes();
-    const { email } = wireInputs();
-    const { cardActive } = wireClasses();
-    const { cardOpacity } = wireStyles();
+        this.bind(this.title,   this.titleEl);
+        this.bind(this.summary, this.summaryEl);
 
-    // Behavior
-    title.value   = auth.getUser()?.name
-        ? '${viewTitle} \u2014 ' + auth.getUser()?.name
-        : '${viewTitle}';
-    summary.value = 'Your controller is wired up and ready.';
-    cardStatus.value = 'ready';
-    email.value = '';
-    cardActive.value = false;
-    cardOpacity.value = '1';
+        this.on(this.primaryBtn, 'click', () => {
+            this.title.value   = '${viewTitle} — clicked!';
+            this.summary.value = 'Primary action fired.';
+        });
+    }
 
-    // Events
-    events.onClick(dom.view('${flatName}').actionSelector('primary-action'), () => {
-        title.value      = auth.getUser()?.name ? '${viewTitle} \u2014 ' + auth.getUser()?.name : '${viewTitle}';
-        cardStatus.value = 'active';
-        cardActive.value = true;
-        cardOpacity.value = '0.95';
-    });
+    onUnmount() {}
+}
 
-    // Cleanup
-    // wire* and reactive bindings auto-dispose via PageCleanupRegistry.
-    // Return cleanup only for tracked DOM events/listeners.
-    return () => {
-        events.cleanup();
-    };
+export function ${controllerName}Controller(_params, _state, _loaderData, rootElement) {
+    const ctrl = new ${PascalName}Controller(rootElement);
+    return () => ctrl.destroy();
 }
 `;
 }
@@ -361,6 +336,21 @@ async function generateView() {
 
       fs.writeFileSync(routesPath, routesContent);
       generateRouteRedirects();
+
+      // ── Sync server.js viewsMap (dev server DevTools + static file serving) ──
+      const serverJsPath = path.resolve(ROOT, 'server.js');
+      if (fs.existsSync(serverJsPath)) {
+        let serverContent = fs.readFileSync(serverJsPath, 'utf8');
+        const viewsMapEntry = `        '${routePath}': '${viewFileRelative}',`;
+        if (!serverContent.includes(`'${routePath}'`) && !serverContent.includes(`"${routePath}"`)) {
+          serverContent = serverContent.replace(
+            /(const viewsMap = \{[^}]+)(\n    \};)/,
+            (_, body, closing) => `${body}\n${viewsMapEntry}${closing}`
+          );
+          fs.writeFileSync(serverJsPath, serverContent);
+          console.log('Updated: server.js (viewsMap)');
+        }
+      }
     }
 
     const isStaticRoute = !routePath.includes(':') && !routePath.includes('*');

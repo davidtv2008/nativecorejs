@@ -24,195 +24,112 @@
  *   <nc-textarea name="notes" maxlength="200" autoresize></nc-textarea>
  */
 
-import { Component, defineComponent } from '@core/component.js';
-import { html, trusted } from '@core-utils/templates.js';
+import { CoreComponent } from '@core/component.js';
+import { css } from '@core-utils/templates.js';
 
-export class NcTextarea extends Component {
+export class NcTextarea extends CoreComponent {
     static useShadowDOM = true;
+    static observedAttributes = ['name', 'value', 'placeholder', 'rows', 'disabled', 'readonly', 'maxlength', 'autoresize', 'size', 'variant'];
+    static attributeOptions = { variant: ['default', 'filled'], size: ['sm', 'md', 'lg'] };
+    static attributeOrder   = ['name', 'value', 'placeholder', 'rows', 'maxlength', 'size', 'variant', 'autoresize', 'disabled', 'readonly'];
 
-    static attributeOptions = {
-        variant: ['default', 'filled'],
-        size: ['sm', 'md', 'lg']
-    };
+    // -- Refs -----------------------------------------------------------------
+    declare textareaEl: HTMLTextAreaElement;
+    declare counterEl:  HTMLSpanElement;
 
-    static get observedAttributes() {
-        return ['name', 'value', 'placeholder', 'rows', 'disabled', 'readonly', 'maxlength', 'autoresize', 'size', 'variant'];
-    }
-
-    constructor() {
-        super();
-    }
+    static styles = css`
+        :host { display: block; font-family: var(--nc-font-family); width: 100%; }
+        .wrap { position: relative; display: flex; flex-direction: column; gap: var(--nc-spacing-xs); }
+        textarea {
+            width: 100%; box-sizing: border-box;
+            padding: var(--nc-spacing-sm) var(--nc-spacing-md);
+            background: var(--nc-bg); border: var(--nc-input-border);
+            border-radius: var(--nc-input-radius);
+            color: var(--nc-text); font-size: var(--nc-font-size-base);
+            font-family: var(--nc-font-family); line-height: var(--nc-line-height-normal);
+            resize: vertical; transition: border-color var(--nc-transition-fast), box-shadow var(--nc-transition-fast);
+            outline: none; min-height: 80px;
+        }
+        :host([autoresize]) textarea { resize: none; }
+        :host([disabled]) textarea   { opacity: 0.5; cursor: not-allowed; }
+        :host([size="sm"]) textarea  { padding: var(--nc-spacing-xs) var(--nc-spacing-sm); font-size: var(--nc-font-size-sm); }
+        :host([size="lg"]) textarea  { padding: var(--nc-spacing-md) var(--nc-spacing-lg); font-size: var(--nc-font-size-lg); }
+        :host([variant="filled"]) textarea { background: var(--nc-bg-tertiary); border-color: transparent; }
+        :host([variant="filled"]) textarea:hover:not(:disabled) { background: var(--nc-bg-secondary); }
+        textarea:hover:not(:disabled) { border-color: var(--nc-input-focus-border); }
+        textarea:focus { border-color: var(--nc-input-focus-border); box-shadow: 0 0 0 3px rgba(16,185,129,.15); }
+        textarea::placeholder { color: var(--nc-text-muted); }
+        .counter { align-self: flex-end; font-size: var(--nc-font-size-xs); color: var(--nc-text-muted); line-height: 1; }
+        .counter.over { color: var(--nc-danger); font-weight: var(--nc-font-weight-semibold); }
+        [hidden] { display: none !important; }
+    `;
 
     template() {
-        const value = this.getAttribute('value') || '';
-        const placeholder = this.getAttribute('placeholder') || '';
-        const rows = this.getAttribute('rows') || '4';
-        const disabled = this.hasAttribute('disabled');
-        const readonly = this.hasAttribute('readonly');
-        const maxlength = this.getAttribute('maxlength');
-        const autoresize = this.hasAttribute('autoresize');
-        const charCount = value.length;
-
-        return html`
-            <style>
-                :host {
-                    display: block;
-                    font-family: var(--nc-font-family);
-                    width: 100%;
-                }
-
-                .wrap {
-                    position: relative;
-                    display: flex;
-                    flex-direction: column;
-                    gap: var(--nc-spacing-xs);
-                }
-
-                textarea {
-                    width: 100%;
-                    box-sizing: border-box;
-                    padding: var(--nc-spacing-sm) var(--nc-spacing-md);
-                    background: var(--nc-bg);
-                    border: var(--nc-input-border);
-                    border-radius: var(--nc-input-radius);
-                    color: var(--nc-text);
-                    font-size: var(--nc-font-size-base);
-                    font-family: var(--nc-font-family);
-                    line-height: var(--nc-line-height-normal);
-                    resize: ${autoresize ? 'none' : 'vertical'};
-                    transition: border-color var(--nc-transition-fast), box-shadow var(--nc-transition-fast);
-                    outline: none;
-                    min-height: 80px;
-                    opacity: ${disabled ? '0.5' : '1'};
-                    cursor: ${disabled ? 'not-allowed' : 'auto'};
-                }
-
-                :host([size="sm"]) textarea {
-                    padding: var(--nc-spacing-xs) var(--nc-spacing-sm);
-                    font-size: var(--nc-font-size-sm);
-                }
-
-                :host([size="lg"]) textarea {
-                    padding: var(--nc-spacing-md) var(--nc-spacing-lg);
-                    font-size: var(--nc-font-size-lg);
-                }
-
-                :host([variant="filled"]) textarea {
-                    background: var(--nc-bg-tertiary);
-                    border-color: transparent;
-                }
-
-                :host([variant="filled"]) textarea:hover:not(:disabled) {
-                    background: var(--nc-bg-secondary);
-                }
-
-                textarea:hover:not(:disabled) {
-                    border-color: var(--nc-input-focus-border);
-                }
-
-                textarea:focus {
-                    border-color: var(--nc-input-focus-border);
-                    box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.15);
-                }
-
-                textarea::placeholder {
-                    color: var(--nc-text-muted);
-                }
-
-                .counter {
-                    align-self: flex-end;
-                    font-size: var(--nc-font-size-xs);
-                    color: var(--nc-text-muted);
-                    line-height: 1;
-                }
-
-                .counter.over {
-                    color: var(--nc-danger);
-                    font-weight: var(--nc-font-weight-semibold);
-                }
-            </style>
-
-            <div class="wrap">
-                <textarea
-                    rows="${rows}"
-                    ${maxlength ? `maxlength="${maxlength}"` : ''}
-                    ${disabled ? 'disabled' : ''}
-                    ${readonly ? 'readonly' : ''}
-                    placeholder="${placeholder}"
-                    name="${this.getAttribute('name') || ''}"
-                    aria-multiline="true"
-                >${value}</textarea>
-                ${trusted(maxlength ? `
-                <span class="counter${charCount > Number(maxlength) ? ' over' : ''}">${charCount} / ${maxlength}</span>` : '')}
+        return `            <div class="wrap">
+                <textarea ref="textareaEl" aria-multiline="true"></textarea>
+                <span ref="counterEl" class="counter" hidden></span>
             </div>
         `;
     }
 
     onMount() {
-        this._bindEvents();
+        this._syncFromAttrs();
+
+        this.on(this.textareaEl, 'input', () => {
+            if (this.hasAttribute('autoresize')) this._autoResize();
+            this._updateCounter(this.textareaEl.value);
+            this.emit('input', { value: this.textareaEl.value, name: this.getAttribute('name') || '' });
+        });
+
+        this.on(this.textareaEl, 'change', () => {
+            this.setAttribute('value', this.textareaEl.value);
+            this.emit('change', { value: this.textareaEl.value, name: this.getAttribute('name') || '' });
+        });
     }
 
-    private _bindEvents() {
-        const ta = this.shadowRoot!.querySelector<HTMLTextAreaElement>('textarea');
-        if (!ta) return;
-
-        if (this.hasAttribute('autoresize')) {
-            this._autoResize(ta);
+    protected _handleAttributeUpdate(name: string, val: string | null) {
+        if (name === 'value') {
+            this.textareaEl.value = val || '';
+            this._updateCounter(this.textareaEl.value);
+            if (this.hasAttribute('autoresize')) this._autoResize();
+            return;
         }
-
-        ta.addEventListener('input', () => {
-            if (this.hasAttribute('autoresize')) this._autoResize(ta);
-            this._updateCounter(ta.value);
-
-            this.dispatchEvent(new CustomEvent('input', {
-                bubbles: true, composed: true,
-                detail: { value: ta.value, name: this.getAttribute('name') || '' }
-            }));
-        });
-
-        ta.addEventListener('change', () => {
-            this.setAttribute('value', ta.value);
-            this.dispatchEvent(new CustomEvent('change', {
-                bubbles: true, composed: true,
-                detail: { value: ta.value, name: this.getAttribute('name') || '' }
-            }));
-        });
+        this._syncFromAttrs();
     }
 
-    private _autoResize(ta: HTMLTextAreaElement) {
-        ta.style.height = 'auto';
-        ta.style.height = `${ta.scrollHeight}px`;
+    private _syncFromAttrs() {
+        const ta = this.textareaEl;
+        ta.value       = this.getAttribute('value') || '';
+        ta.placeholder = this.getAttribute('placeholder') || '';
+        ta.rows        = Number(this.getAttribute('rows') || 4);
+        ta.name        = this.getAttribute('name') || '';
+        ta.disabled    = this.hasAttribute('disabled');
+        ta.readOnly    = this.hasAttribute('readonly');
+        const maxlength = this.getAttribute('maxlength');
+        if (maxlength) {
+            ta.maxLength = Number(maxlength);
+        } else {
+            ta.removeAttribute('maxlength');
+        }
+        if (this.hasAttribute('autoresize')) this._autoResize();
+        this._updateCounter(ta.value);
+    }
+
+    private _autoResize() {
+        this.textareaEl.style.height = 'auto';
+        this.textareaEl.style.height = `${this.textareaEl.scrollHeight}px`;
     }
 
     private _updateCounter(value: string) {
         const maxlength = this.getAttribute('maxlength');
-        if (!maxlength) return;
-        const counter = this.shadowRoot!.querySelector('.counter');
-        if (!counter) return;
+        if (!maxlength) { this.counterEl.hidden = true; return; }
         const count = value.length;
-        const max = Number(maxlength);
-        counter.textContent = `${count} / ${maxlength}`;
-        counter.classList.toggle('over', count > max);
-    }
-
-    attributeChangedCallback(name: string, oldValue: string, newValue: string) {
-        if (oldValue === newValue) return;
-        // Don't rebuild DOM for live value changes — the textarea manages its own value
-        if (name === 'value' && this._mounted) {
-            const ta = this.shadowRoot!.querySelector<HTMLTextAreaElement>('textarea');
-            if (ta) {
-                ta.value = newValue || '';
-                this._updateCounter(ta.value);
-                if (this.hasAttribute('autoresize')) this._autoResize(ta);
-            }
-            return;
-        }
-        if (this._mounted) {
-            this.render();
-            this._bindEvents();
-        }
+        const max   = Number(maxlength);
+        this.counterEl.textContent = `${count} / ${maxlength}`;
+        this.counterEl.classList.toggle('over', count > max);
+        this.counterEl.hidden = false;
     }
 }
 
-defineComponent('nc-textarea', NcTextarea);
+if (!customElements.get('nc-textarea')) customElements.define('nc-textarea', NcTextarea);
 
