@@ -427,10 +427,14 @@ export class NcTabs extends CoreComponent {
         }
 
         this._updateScrollBtns();
-        // Scroll the active tab into view after rebuilding the bar
+        // Keep the active tab visible inside the bar only — never scroll the page
+        // (scrollIntoView would jump long catalog pages when tabs mount below the fold).
         requestAnimationFrame(() => {
-            this.shadowRoot?.querySelector<HTMLElement>('.nc-tabs__btn--active')
-                ?.scrollIntoView({ block: 'nearest', inline: 'nearest' });
+            const bar = this.$<HTMLElement>('.nc-tabs__bar');
+            const active = this.shadowRoot?.querySelector<HTMLElement>('.nc-tabs__btn--active');
+            if (!bar || !active) return;
+            const left = active.offsetLeft - (bar.clientWidth / 2) + (active.clientWidth / 2);
+            bar.scrollTo({ left: Math.max(0, left) });
         });
     }
 

@@ -107,6 +107,40 @@ npm.cmd run make:controller -- tasks
 
 Wire it in routes if needed (view generator usually does this).
 
+## Listening for events (preview)
+
+Controllers hear the DOM through `this.on(target, type, handler)`.
+
+```js
+// Native events on built-ins / HTML
+this.on(this.primaryBtn, 'click', () => {
+    this.title.value = 'Updated';
+});
+
+// Custom events from YOUR components (chapter 05)
+// this.on(this.listEl, 'task-card-toggle', (e) => {
+//     console.log(e.detail);
+// });
+```
+
+Rules:
+
+1. First argument is an **EventTarget** (a ref element, `this.el`, `window`, …)
+2. `this.on` auto-removes the listener in `destroy()` — do not double-bind
+3. For lists of custom elements, prefer **one** listener on the parent (delegation)
+
+You will practice the custom-event half fully in [Chapter 05](./05-first-component.md).
+
+## Challenges
+
+**Bronze** — On `/tasks`, clicking the primary button changes a bound title.
+
+**Silver** — Disable the button when a text field (or state) is empty using
+`this.bind(state, btn, '?disabled')`.
+
+**Gold** — Navigate away and back: handlers must not stack (no double-firing).
+`destroy()` + `this.on` should already give you this.
+
 ## Verify
 
 - [ ] Navigating away and back does not duplicate click handlers
@@ -118,6 +152,7 @@ Wire it in routes if needed (view generator usually does this).
 | Mistake | Fix |
 |---------|-----|
 | Forgetting cleanup return | Always return destroy |
+| `this.on('click', fn)` | Use `this.on(target, 'click', fn)` |
 | `trackEvents` as the only taught pattern | Prefer CoreController for new pages |
 | Binding with CSS selectors as primary API | Use `ref` elements |
 

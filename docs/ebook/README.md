@@ -7,6 +7,20 @@ not shipped, the chapter says so and shows how to add it yourself.
 You will build one progressive app: **Deskflow** — a small personal task desk
 (list, detail, settings). Concepts are introduced only when Deskflow needs them.
 
+### How to read each chapter (Big Nerd Ranch style)
+
+1. **Read the short mental model** — what problem this chapter solves.
+2. **Do the lab** — type the code; do not only skim.
+3. **Hit Verify** — checkboxes before you move on.
+4. **Try Challenges** when present:
+   - **Bronze** — follow the steps
+   - **Silver** — extend the feature
+   - **Gold** — stretch without peeking ahead
+
+Custom components (`make:component` + events into controllers) are the heart of
+the framework — spend extra time on [Chapter 05](./05-first-component.md) and
+[Chapter 07](./07-deskflow-tasks.md).
+
 ---
 
 ## Accuracy rules (this edition)

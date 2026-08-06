@@ -574,11 +574,11 @@ export class Router {
             }
             
             window.dispatchEvent(new CustomEvent('pageloaded', { detail: route }));
-            
-            // Scroll to top on client navigations only (SSG first paint keeps scroll).
-            if (!isPrerenderedInitialRoute) {
-                this.resetScrollPosition(mainContent);
-            }
+
+            // Always settle scroll after the controller runs. Hash targets win;
+            // otherwise jump to top (including SSG boot — scrollTo(0,0) is a no-op
+            // when already at top, and fixes mid-page jumps from upgrading demos).
+            this.settleScrollPosition(mainContent);
             
             if (progressBar && !isPrerenderedInitialRoute) {
                 setTimeout(() => progressBar.classList.remove('loading'), 200);
@@ -1054,6 +1054,8 @@ export class Router {
 
     private resetScrollPosition(mainContent?: HTMLElement | null): void {
         window.scrollTo(0, 0);
+        document.documentElement.scrollTop = 0;
+        document.body.scrollTop = 0;
 
         if (mainContent) {
             mainContent.scrollTop = 0;
@@ -1065,6 +1067,34 @@ export class Router {
                 scrollContainer.scrollLeft = 0;
             }
         }
+    }
+
+    /**
+     * After a route (and its controller) finishes: scroll to `#hash` if present,
+     * otherwise reset to top. A second rAF pass catches late scrollIntoView calls
+     * from custom elements that upgrade after the controller returns.
+     */
+    private settleScrollPosition(mainContent?: HTMLElement | null): void {
+        const hash = window.location.hash;
+        if (hash && hash.length > 1) {
+            requestAnimationFrame(() => {
+                const id = decodeURIComponent(hash.slice(1));
+                const el = document.getElementById(id) ||
+                    document.querySelector(`[name="${id.replace(/"/g, '\\"')}"]`);
+                if (el) {
+                    el.scrollIntoView({ block: 'start' });
+                } else {
+                    this.resetScrollPosition(mainContent);
+                }
+            });
+            return;
+        }
+
+        this.resetScrollPosition(mainContent);
+        requestAnimationFrame(() => {
+            this.resetScrollPosition(mainContent);
+            requestAnimationFrame(() => this.resetScrollPosition(mainContent));
+        });
     }
 }
 

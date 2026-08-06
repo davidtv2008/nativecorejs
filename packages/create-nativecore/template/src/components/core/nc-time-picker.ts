@@ -263,7 +263,7 @@ export class NcTimePicker extends CoreComponent {
         if (!this._initialized) this._initFromAttr();
         this._updateDisplay();
         this._bindEvents();
-        this._scrollToSelected();
+        // Panel starts closed — scrolling selected rows only matters when opened.
     }
 
     private _bindEvents() {
@@ -424,10 +424,13 @@ export class NcTimePicker extends CoreComponent {
     }
 
     private _scrollToSelected() {
+        if (!this._open) return;
         requestAnimationFrame(() => {
             this.panelEl.querySelectorAll<HTMLElement>('.col').forEach(col => {
                 const selected = col.querySelector<HTMLElement>('.selected');
-                if (selected) selected.scrollIntoView({ block: 'nearest' });
+                if (!selected) return;
+                // Scroll within the column only — scrollIntoView can move the page.
+                col.scrollTop = selected.offsetTop - (col.clientHeight / 2) + (selected.clientHeight / 2);
             });
         });
     }

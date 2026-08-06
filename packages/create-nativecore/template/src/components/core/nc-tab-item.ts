@@ -99,7 +99,14 @@ export class NcTabItem extends CoreComponent {
             box-sizing: border-box;
             padding: var(--nc-spacing-lg);
             background: var(--nc-bg-secondary);
+            color: var(--nc-text);
+            font-family: var(--nc-font-family);
+            font-size: var(--nc-font-size-base);
             border-radius: var(--nc-radius-lg);
+        }
+
+        .panel ::slotted(*) {
+            color: inherit;
         }
 
         @media (max-width: 640px) {

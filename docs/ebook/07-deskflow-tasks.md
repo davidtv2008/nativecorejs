@@ -99,12 +99,37 @@ export function tasksController(_p, _s, _l, root) {
 
 Adapt attribute names to match your `task-card` implementation from Chapter 05.
 
-## Apply to Deskflow
+## Apply to Deskflow (step by step)
 
-1. Ensure `/tasks` route + controller exist (`make:view`).
-2. Ensure `<task-card>` exists (`make:component`).
-3. Replace generated placeholders with the sketches above (or equivalent).
-4. Keep `npm run dev` running and exercise the page.
+1. Ensure `/tasks` route + controller exist (`make:view` if needed).
+2. Ensure `<task-card>` exists from [Chapter 05](./05-first-component.md).
+3. Paste / adapt the view + controller sketches above.
+4. Confirm each card gets `data-id` so `onToggle` can find the task.
+5. Keep `npm run dev` running and exercise Add + Toggle.
+
+### How the event reaches the controller
+
+```
+User clicks Toggle inside task-card
+  → component emit('task-card-toggle', { done, title })
+  → event bubbles + crosses shadow (composed: true)
+  → this.on(this.listEl, 'task-card-toggle', …) runs
+  → you update this.tasks.value
+  → effect re-renders the list
+```
+
+That is the whole app loop. Forms, stores, and APIs later replace `prompt` and
+the in-memory array — the event bridge stays the same.
+
+## Challenges
+
+**Bronze** — Add + toggle work; open count updates.
+
+**Silver** — Add a delete control (button in the card or a second emit like
+`task-card-delete`) and remove the task from the array.
+
+**Gold** — Persist `this.tasks.value` to `sessionStorage` on change and restore
+it in `onMount` (preview of stores in Chapter 10).
 
 ## Verify
 

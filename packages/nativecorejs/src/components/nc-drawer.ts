@@ -29,7 +29,7 @@
 
 import { CoreComponent } from '../../.nativecore/core/component.js';
 import { css, html, trusted } from '../../.nativecore/utils/templates.js';
-import { trapFocus } from '../a11y/index.js';
+import { lockBodyScroll, trapFocus } from '../a11y/index.js';
 
 export class NcDrawer extends CoreComponent {
     static useShadowDOM = true;
@@ -44,6 +44,7 @@ export class NcDrawer extends CoreComponent {
     declare overlayEl:  HTMLDivElement;
     declare closeBtnEl: HTMLButtonElement;
     private _releaseFocus: (() => void) | null = null;
+    private _releaseScroll: (() => void) | null = null;
 
     static styles = css`
         :host { display: contents; }
@@ -56,6 +57,8 @@ export class NcDrawer extends CoreComponent {
         .panel {
             position: fixed;
             background: var(--nc-bg);
+            color: var(--nc-text);
+            font-family: var(--nc-font-family);
             box-shadow: var(--nc-shadow-xl, 0 20px 60px rgba(0,0,0,.3));
             z-index: 901; display: flex; flex-direction: column;
             overflow: hidden;
@@ -70,8 +73,18 @@ export class NcDrawer extends CoreComponent {
             font-family: var(--nc-font-family); font-weight: var(--nc-font-weight-semibold);
             font-size: var(--nc-font-size-lg); color: var(--nc-text); flex-shrink: 0;
         }
-        .panel__body { flex: 1; overflow-y: auto; padding: var(--nc-spacing-lg); }
-        .panel__footer { padding: var(--nc-spacing-md) var(--nc-spacing-lg); border-top: 1px solid var(--nc-border); flex-shrink: 0; }
+        .panel__body {
+            flex: 1; overflow-y: auto; padding: var(--nc-spacing-lg);
+            color: var(--nc-text);
+            font-family: var(--nc-font-family);
+            font-size: var(--nc-font-size-base);
+            line-height: var(--nc-line-height-relaxed, 1.7);
+        }
+        /* Slotted light-DOM nodes inherit page color unless forced (esp. :host { display: contents }). */
+        .panel__header ::slotted(*),
+        .panel__body ::slotted(*),
+        .panel__footer ::slotted(*) { color: inherit; }
+        .panel__footer { padding: var(--nc-spacing-md) var(--nc-spacing-lg); border-top: 1px solid var(--nc-border); flex-shrink: 0; color: var(--nc-text); }
         .panel__footer:empty { display: none; }
         .close-btn {
             background: none; border: none; cursor: pointer; padding: 4px;
@@ -126,14 +139,16 @@ export class NcDrawer extends CoreComponent {
             this.panelEl.style.transform = open ? 'none' : (translates[placement] ?? 'translateX(100%)');
             this.panelEl.setAttribute('aria-hidden', String(!open));
             if (open) {
-                document.body.style.overflow = 'hidden';
+                this._releaseScroll?.();
+                this._releaseScroll = lockBodyScroll();
                 this._releaseFocus?.();
                 this._releaseFocus = trapFocus(this.panelEl);
                 this.emit('open');
             } else {
                 this._releaseFocus?.();
                 this._releaseFocus = null;
-                document.body.style.overflow = '';
+                this._releaseScroll?.();
+                this._releaseScroll = null;
                 this.emit('close');
             }
         } else {
@@ -169,7 +184,8 @@ export class NcDrawer extends CoreComponent {
     onUnmount() {
         this._releaseFocus?.();
         this._releaseFocus = null;
-        document.body.style.overflow = '';
+        this._releaseScroll?.();
+        this._releaseScroll = null;
     }
 }
 

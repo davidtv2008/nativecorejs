@@ -38,7 +38,7 @@
 
 import { CoreComponent } from '@core/component.js';
 import { css, html, trusted } from '@core-utils/templates.js';
-import { trapFocus } from '../../a11y/index.js';
+import { lockBodyScroll, trapFocus } from '../../a11y/index.js';
 
 export class NcModal extends CoreComponent {
     static useShadowDOM = true;
@@ -54,6 +54,7 @@ export class NcModal extends CoreComponent {
     declare dialogEl:   HTMLDivElement;
     declare closeBtnEl: HTMLButtonElement;
     private _releaseFocus: (() => void) | null = null;
+    private _releaseScroll: (() => void) | null = null;
 
     static styles = css`
         :host { display: block; position: fixed; inset: 0; z-index: 1000; pointer-events: none; }
@@ -69,6 +70,8 @@ export class NcModal extends CoreComponent {
         :host([open]) .overlay { opacity: 1; pointer-events: auto; }
         .dialog {
             background: var(--nc-bg);
+            color: var(--nc-text);
+            font-family: var(--nc-font-family);
             border-radius: var(--nc-radius-lg, 12px);
             box-shadow: var(--nc-shadow-xl, 0 25px 60px rgba(0,0,0,.35));
             width: 100%; max-width: var(--modal-max-width, 560px);
@@ -91,10 +94,14 @@ export class NcModal extends CoreComponent {
             font-family: var(--nc-font-family); font-size: var(--nc-font-size-base);
             color: var(--nc-text); line-height: var(--nc-line-height-relaxed, 1.7);
         }
+        .dialog__header ::slotted(*),
+        .dialog__body ::slotted(*),
+        .dialog__footer ::slotted(*) { color: inherit; }
         .dialog__footer {
             padding: var(--nc-spacing-md) var(--nc-spacing-lg);
             border-top: 1px solid var(--nc-border); flex-shrink: 0;
             display: flex; justify-content: flex-end; gap: var(--nc-spacing-sm);
+            color: var(--nc-text);
         }
         .dialog__footer:empty { display: none; }
         .close-btn {
@@ -146,14 +153,17 @@ export class NcModal extends CoreComponent {
         if (name === 'open') {
             const open = this.hasAttribute('open');
             this.overlayEl.setAttribute('aria-hidden', String(!open));
-            document.body.style.overflow = open ? 'hidden' : '';
             if (open) {
+                this._releaseScroll?.();
+                this._releaseScroll = lockBodyScroll();
                 this._releaseFocus?.();
                 this._releaseFocus = trapFocus(this.overlayEl);
                 this.emit('open');
             } else {
                 this._releaseFocus?.();
                 this._releaseFocus = null;
+                this._releaseScroll?.();
+                this._releaseScroll = null;
                 this.emit('close');
             }
         } else {
@@ -175,7 +185,8 @@ export class NcModal extends CoreComponent {
     onUnmount() {
         this._releaseFocus?.();
         this._releaseFocus = null;
-        document.body.style.overflow = '';
+        this._releaseScroll?.();
+        this._releaseScroll = null;
     }
 }
 
