@@ -1,6 +1,6 @@
 {
   "name": "create-nativecore",
-  "version": "1.0.0-rc.18",
+  "version": "2.0.0",
   "description": "Official CLI to scaffold NativeCoreJS SPA apps (vendors framework under .nativecore/)",
   "keywords": [
     "nativecore",
