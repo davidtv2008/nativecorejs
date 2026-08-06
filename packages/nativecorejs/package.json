@@ -41,6 +41,7 @@
     "./styles/base.css": "./src/styles/base.css"
   },
   "files": [
+    "README.md",
     "dist",
     "src/styles"
   ],
