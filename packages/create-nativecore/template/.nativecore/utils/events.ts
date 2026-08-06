@@ -5,20 +5,6 @@
 
 import { registerPageCleanup } from '../core/pageCleanupRegistry.js';
 
-/** Legacy shape formerly returned by deleted wireActions(); kept for events() overload. */
-type WireAction = { element: Element; event: string };
-
-// ── Internal helper to detect a WireAction object ────────────────────────────
-
-function isWireAction(v: unknown): v is WireAction {
-    return (
-        typeof v === 'object' &&
-        v !== null &&
-        'element' in v &&
-        'event' in v
-    );
-}
-
 /**
  * Generic event listener with cleanup
  *
@@ -131,16 +117,12 @@ export function delegate<T = Event>(
  * It is both callable and has named shorthand methods — all paths push into
  * the same cleanup list and are removed together on navigation.
  *
- * Call signatures:
- *   events(wireAction, handler)              — WireAction from wireActions()
+ * Call signature:
  *   events(element, 'eventName', handler)    — any element / selector / Window
  */
 export interface EventTracker {
-    // ── Callable overloads ────────────────────────────────────────────────────
-    <T = Event>(action: WireAction, handler: (event: T) => void): void;
     <T = Event>(selectorOrElement: string | Element | EventTarget | null, eventName: string, handler: (event: T) => void): void;
 
-    // ── Named methods ─────────────────────────────────────────────────────────
     on<T = Event>(selectorOrElement: string | Element | null, eventName: string, handler: (event: T) => void): void;
     /** Alias for on() */
     add<T = Event>(selectorOrElement: string | Element | null, eventName: string, handler: (event: T) => void): void;
@@ -165,44 +147,28 @@ export interface EventTracker {
 /**
  * Event scope tracker — automatically collects all listeners for cleanup.
  *
- * Returns a callable EventTracker that accepts two call styles:
- *
- *   // Style 1 — WireAction from wireActions()
- *   const { savebtn } = wireActions();
- *   events(savebtn, (e) => handleSave(e));
- *
- *   // Style 2 — classic element / selector / Window + event name
+ *   const events = trackEvents();
  *   events(window,   'auth-change', sync);
  *   events('#myBtn', 'click',       handleClick);
- *
- * Named shorthands are still available on the same object:
  *   events.onClick('#btn', handler);
- *   events.onKeydown('#input', handler);
  *
- * All paths push into the same cleanup list.
  * Cleanup is auto-registered with the page registry — removed on navigation.
  */
 export function trackEvents(): EventTracker {
     const cleanupFunctions: Array<() => void> = [];
 
-    // ── Core dispatcher ───────────────────────────────────────────────────────
     function tracker(
-        first:  WireAction | string | Element | EventTarget | null,
-        second: string | ((event: any) => void),
-        third?: (event: any) => void
+        first: string | Element | EventTarget | null,
+        second: string,
+        third: (event: any) => void
     ): void {
-        if (isWireAction(first) && typeof second === 'function') {
-            // events(wireAction, handler)
-            cleanupFunctions.push(on(first.element, first.event, second));
-        } else if (typeof second === 'string' && typeof third === 'function') {
-            // events(element | selector | Window, 'eventName', handler)
-            cleanupFunctions.push(on(first as string | Element | null, second, third));
+        if (typeof second === 'string' && typeof third === 'function') {
+            cleanupFunctions.push(on(first, second, third));
         } else {
-            console.warn('[trackEvents] Unrecognised call signature. Use events(wireAction, handler) or events(element, eventName, handler).');
+            console.warn('[trackEvents] Use events(element, eventName, handler).');
         }
     }
 
-    // ── Named shorthand methods ───────────────────────────────────────────────
     tracker.on = function<T = Event>(sel: string | Element | null, eventName: string, handler: (e: T) => void) {
         cleanupFunctions.push(on(sel, eventName, handler));
     };

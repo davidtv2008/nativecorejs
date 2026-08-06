@@ -1,13 +1,15 @@
 {
   "name": "create-nativecore",
-  "version": "1.0.0-rc.16",
-  "description": "Interactive CLI for scaffolding NativeCore applications",
+  "version": "1.0.0-rc.17",
+  "description": "Official CLI to scaffold NativeCoreJS SPA apps (vendors framework under .nativecore/)",
   "keywords": [
     "nativecore",
+    "nativecorejs",
     "cli",
     "scaffold",
     "starter",
-    "web-components"
+    "web-components",
+    "spa"
   ],
   "homepage": "https://github.com/davidtv2008/nativecorejs#readme",
   "bugs": {

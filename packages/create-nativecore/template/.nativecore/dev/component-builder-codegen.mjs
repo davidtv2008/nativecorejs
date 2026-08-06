@@ -196,9 +196,9 @@ export function generateBuilderCode(state, lang = 'ts') {
         if (ev.cancelable) options.push('cancelable: true');
         const optionsArg = options.length ? `, { ${options.join(', ')} }` : '';
         if (ev.trigger && ev.triggerTag) {
-            return `        this.on('${ev.trigger}', '${ev.triggerTag}', () => {\n            this.emitEvent('${ev.name}', ${payloadArg}${optionsArg});\n        });`;
+            return `        this.on('${ev.trigger}', '${ev.triggerTag}', () => {\n            this.emit('${ev.name}', ${payloadArg}${optionsArg});\n        });`;
         }
-        return `        // TODO: wire '${ev.name}'\n        // this.emitEvent('${ev.name}', ${payloadArg}${optionsArg});`;
+        return `        // TODO: wire '${ev.name}'\n        // this.emit('${ev.name}', ${payloadArg}${optionsArg});`;
     }).join('\n\n');
 
     const onMountBlock = onMountListeners
@@ -292,7 +292,7 @@ export function parseBuilderSource(code) {
         state.children = parseChildrenHTML(body);
     }
 
-    const eventRegex = /this\.on\(\s*['"]([^'"]+)['"]\s*,\s*['"]([^'"]+)['"]\s*,\s*\(\)\s*=>\s*\{\s*this\.emitEvent\(\s*['"]([^'"]+)['"]\s*,\s*\{([^}]*)\}([\s\S]*?)\)\s*;/g;
+    const eventRegex = /this\.on\(\s*['"]([^'"]+)['"]\s*,\s*['"]([^'"]+)['"]\s*,\s*\(\)\s*=>\s*\{\s*this\.emit\(\s*['"]([^'"]+)['"]\s*,\s*\{([^}]*)\}([\s\S]*?)\)\s*;/g;
     let evMatch;
     while ((evMatch = eventRegex.exec(src)) !== null) {
         const [, trigger, triggerTag, name, payloadBody, optionsTail] = evMatch;

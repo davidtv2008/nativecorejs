@@ -136,10 +136,10 @@ const tsComponentTemplate = `/**
  *   - disabled: Disabled state
  */
 
-import { Component, defineComponent } from '@core/component.js';
+import { CoreComponent, defineComponent } from '@core/component.js';
 import { html } from '@core-utils/templates.js';
 
-export class ${className} extends Component {
+export class ${className} extends CoreComponent {
     static useShadowDOM = true;
     
     // ═══ Define dropdown options for dev tools (auto-detected) ═══
@@ -253,10 +253,10 @@ const jsComponentTemplate = `/**
  *   <${tagName} variant="secondary" size="lg"></${tagName}>
  */
 
-import { Component, defineComponent } from '@core/component.js';
+import { CoreComponent, defineComponent } from '@core/component.js';
 import { html } from '@core-utils/templates.js';
 
-export class ${className} extends Component {
+export class ${className} extends CoreComponent {
     static useShadowDOM = true;
     
     static attributeOptions = {

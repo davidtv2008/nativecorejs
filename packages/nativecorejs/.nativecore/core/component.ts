@@ -308,58 +308,7 @@ export abstract class CoreComponent extends HTMLElement {
     protected events?(): void;
 }
 
-// ---------------------------------------------------------------------------
-// Backward-compat shim — keeps un-migrated components compiling and running
-// while they are converted to CoreComponent one by one.
-// ---------------------------------------------------------------------------
-
-/**
- * @deprecated Extend CoreComponent directly. This shim remains only for
- * external consumers mid-migration and will be removed in a future major.
- */
-export abstract class Component extends CoreComponent {
-    /** @deprecated Use this._hasSetup or onMount() instead. */
-    protected _mounted = false;
-
-    /** querySelector shorthand on shadowRoot (or host for light-DOM). */
-    protected $<T extends Element = Element>(selector: string): T | null {
-        return (this.shadowRoot ?? this).querySelector<T>(selector);
-    }
-
-    /** querySelectorAll shorthand on shadowRoot (or host for light-DOM). */
-    protected $$<T extends Element = Element>(selector: string): NodeListOf<T> {
-        return (this.shadowRoot ?? this).querySelectorAll<T>(selector);
-    }
-
-    /** getAttribute shorthand; optional fallback when attribute is missing. */
-    protected attr(name: string): string | null;
-    protected attr(name: string, fallback: string): string;
-    protected attr(name: string, fallback?: string): string | null {
-        const value = this.getAttribute(name);
-        if (fallback !== undefined) return value ?? fallback;
-        return value;
-    }
-
-    /** @deprecated Use this.emit() instead. */
-    protected emitEvent(name: string, detail: any = {}, options: EventInit = {}): boolean {
-        return this.emit(name, detail, options);
-    }
-
-    /**
-     * @deprecated Templates are now cached and stamped once on connect.
-     * Calling render() is a no-op in the new CoreComponent architecture.
-     * Migrate the component to use refs + state binding or _handleAttributeUpdate.
-     */
-    protected render(): void {
-        // no-op — see CoreComponent._setup()
-    }
-
-    onMount() {
-        this._mounted = true;
-    }
-}
-
-/** @deprecated Use customElements.define() with a guard instead. */
+/** Register a custom element once (no-op if the tag is already defined). */
 export function defineComponent(tag: string, cls: CustomElementConstructor): void {
     if (!customElements.get(tag)) customElements.define(tag, cls);
 }

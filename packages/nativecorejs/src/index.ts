@@ -1,7 +1,6 @@
 import './install-template-globals.js';
 export {
 	CoreComponent,
-	Component,
 	defineComponent
 } from '../.nativecore/core/component.js';
 export { CoreController } from '../.nativecore/core/controller.js';

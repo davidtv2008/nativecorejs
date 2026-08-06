@@ -1862,7 +1862,7 @@ export class ComponentBuilder {
 
         const hint = document.createElement('div');
         hint.className = 'nc-builder-hint';
-        hint.textContent = `Each event is wired using this.on() inside onMount(). The emitEvent() call will bubble + compose by default.`;
+        hint.textContent = `Each event is wired using this.on() inside onMount(). The emit() call will bubble + compose by default.`;
         root.appendChild(hint);
 
         for (const ev of this.state.events) {

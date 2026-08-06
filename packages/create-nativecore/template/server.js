@@ -262,7 +262,7 @@ async function getComponentMetadata(tagName) {
     const lines = sourceCode.split('\n');
     
     // Parse class name
-    const classMatch = sourceCode.match(/export class (\w+) extends Component/);
+    const classMatch = sourceCode.match(/export class (\w+) extends (?:Core)?Component/);
     const className = classMatch ? classMatch[1] : 'Unknown';
     
     // Parse attributes from getAttribute calls

@@ -1,24 +1,16 @@
 # create-nativecore
 
-Official CLI for generating NativeCore applications.
+Official CLI for scaffolding **NativeCoreJS** applications.
 
-## Goals
+NativeCoreJS is a browser-native SPA framework: HTML views, `CoreController`,
+reactive `signal` / `state`, `CoreComponent` Web Components, router, generators,
+and a shipped `nc-*` UI library — without a virtual DOM.
 
-- scaffold a full NativeCore project with framework bulk, components, HMR, and dev tools
-- ship a calm enterprise starter home page only — no login flow, dashboard, or component showcase
-- use a minimal HTML shell by default (no header/footer/sidebar); chrome components remain available for opt-in
-- leave protected-route APIs in place so users can add their own auth model
+This package is the **app generator**. It copies a full project template and
+vendors the framework runtime under `.nativecore/`. New apps do **not** need a
+runtime `nativecorejs` dependency (use that package only for library-style imports).
 
-## Current starter behavior
-
-- generates a JavaScript project by default; pass `--ts` for TypeScript
-- uses npm for dependency installation by default
-- scaffolds the full NativeCore-style source tree: `src/components`, `constants`, `core`, `dev`, `middleware`, `routes`, `services`, `stores`, `styles`, `types`, `utils`, and `views`
-- includes `api/`, `scripts/`, test setup, lint config, HMR, and mock API helpers (no auth endpoints)
-- includes reusable AI/context guidance files such as `.context/`, `.cursorrules`, `AGENTS.md`, and `.github/copilot-instructions.md`
-- does not generate login, dashboard, or documentation marketing routes
-
-## Usage
+## Quick start
 
 ```bash
 npx create-nativecore@latest my-app --defaults
@@ -32,10 +24,41 @@ TypeScript:
 npx create-nativecore@latest my-app --ts
 ```
 
-Apps vendor the framework under `.nativecore/` (no runtime `nativecorejs`
-dependency required). Component Builder is experimental and disabled by default.
+Open `http://localhost:8000`.
 
-### Flags
+## What you get
+
+| Area | Behavior |
+|------|----------|
+| Language | **JavaScript by default**; `--ts` for TypeScript |
+| Shell | **Minimal HTML shell** (no header/footer/sidebar). Chrome components ship in the template for opt-in |
+| Home | Calm enterprise starter page only — no login, dashboard, or marketing showcase routes |
+| Framework | Vendored under `.nativecore/` (`core`, `utils`, `testing`, plus scaffold-owned `dev` / `scripts`) |
+| UI | Full `nc-*` component set under `src/components/core/` |
+| Tooling | HMR, Vitest, ESLint/HTMLHint, mock API helpers, `make:*` / `remove:*` generators |
+| AI guidance | `.context/`, `.cursorrules`, `AGENTS.md`, `.github/copilot-instructions.md` |
+| Auth | **Not shipped.** Router middleware / `make:middleware` / protected views stay available so you add your own model |
+| Component Builder | Experimental and **disabled by default** |
+
+### Canonical app APIs
+
+Teach and use only:
+
+- `ref` → `this.name` in controllers/components
+- `this.signal` / `this.state` / `this.bind` / `this.on`
+- `CoreController` + `CoreComponent` + `defineComponent`
+- `r.register` / `r.group` / `createLazyController` / middleware tags
+- `npm run make:view`, `make:component`, `make:store`, `make:middleware`, …
+- `npm run build` / `npm run build:ssg`
+
+Update vendored Core later with:
+
+```bash
+npm run sync:core                 # create-nativecore@latest
+npm run sync:core -- <version>    # pin a published version
+```
+
+## Flags
 
 | Flag | Description |
 |------|-------------|
@@ -46,4 +69,15 @@ dependency required). Component Builder is experimental and disabled by default.
 
 ## Auth is your responsibility
 
-The scaffold keeps router middleware / `group({ middleware: [...] })` and `make:middleware` / `make:view` so you can build protected routes. It does **not** ship a JWT login page, auth service, or demo credentials. Add auth with your own best-practice model.
+The scaffold keeps `group({ middleware: [...] })`, `make:middleware`, and
+protected view generation. It does **not** ship a JWT login page, auth service,
+or demo credentials. Add auth with your own best-practice model.
+
+## Related packages
+
+| Package | Role |
+|---------|------|
+| **`create-nativecore`** (this) | Scaffold CLI + template (vendors Core into apps) |
+| [`nativecorejs`](https://www.npmjs.com/package/nativecorejs) | Publishable runtime for `import … from 'nativecorejs'` |
+
+Monorepo / docs: [github.com/davidtv2008/nativecorejs](https://github.com/davidtv2008/nativecorejs)

@@ -7,7 +7,7 @@ This monorepo publishes two packages:
 | [`nativecorejs`](../packages/nativecorejs) | Runtime library (`import … from 'nativecorejs'`) |
 | [`create-nativecore`](../packages/create-nativecore) | Scaffolding CLI (`npx create-nativecore`) |
 
-Current versions (keep them in sync when cutting a release): **`1.0.0-rc.16`**.
+Keep both package versions in sync when cutting a release. Live versions are always on npm.
 
 ## How the packages relate
 
@@ -121,7 +121,7 @@ runtime). From the app root:
 
 ```bash
 npm run sync:core                 # create-nativecore@latest from npm
-npm run sync:core -- 1.0.0-rc.16  # pin a published version
+npm run sync:core -- <version>    # pin a published version
 npm run sync:core -- ../nativecorejs/packages/create-nativecore/template   # local monorepo
 npm run compile
 ```

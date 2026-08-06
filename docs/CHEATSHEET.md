@@ -152,11 +152,10 @@ export class TaskCard extends CoreComponent {
 defineComponent('task-card', TaskCard);
 ```
 
-- Prefer **`CoreComponent`** (not deprecated `Component`).
+- Extend **`CoreComponent`** and register with **`defineComponent`**.
 - `this.on(target, type, handler)` — first arg is an EventTarget.
-- `this.bind(state, string)` sets an **instance property** — not a selector.
-  Bind to refs: `this.bind(state, this.titleEl)`.
-- Prefer `this.emit` over deprecated `emitEvent`.
+- Bind to refs: `this.bind(state, this.titleEl)` (element required; no string prop overload).
+- Emit with **`this.emit`** (no `emitEvent` shim).
 
 ### `this.bind` overloads
 
@@ -172,10 +171,10 @@ No `bindAttr` / `bindClass` / `bindStyle` / `bindAll` / `model` on CoreComponent
 
 ---
 
-## Wires (legacy)
+## Binding model
 
-`@core-utils/wires.js` is legacy — do not use. Prefer `ref` + `this.bind` +
-`this.on` on `CoreController` / `CoreComponent`.
+Wires helpers are removed. Prefer `ref` + `this.bind` + `this.on` on
+`CoreController` / `CoreComponent`.
 
 ---
 

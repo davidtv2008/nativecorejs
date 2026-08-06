@@ -24,7 +24,6 @@ module when in doubt.
 | `template()` | Return `html\`...\`` |
 | `onMount` / state / bind / on / emit | Parallel to controllers |
 | `defineComponent(tag, Class)` | Register CE |
-| `Component` | Deprecated shim → prefer `CoreComponent` |
 
 ## State (`@core/state.js`)
 
@@ -66,10 +65,6 @@ Params: `:id`, `:id?`, `*` → `wildcard`.
 ## Stores (scaffold)
 
 `appStore` (export `appStore`), `uiStore` (`sidebarCollapsed`, `theme`, `notifications`); plus `make:store` (e.g. `taskItems`, `loadTasks`).
-
-## Wires (`@core-utils/wires.js`)
-
-Legacy — do not use; prefer `ref` / `this.bind` / `this.on`.
 
 ## Events util (`@core-utils/events.js`)
 

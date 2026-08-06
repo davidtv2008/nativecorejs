@@ -133,7 +133,6 @@ export abstract class CoreController {
      * Reactive binding — mirrors CoreComponent.bind() exactly.
      *
      * Overloads:
-     *   bind(state, '#selector')           → sets this[selector] = value (legacy prop binding)
      *   bind(state, el)                    → el.textContent = value
      *   bind(state, el, 'href')            → el.setAttribute('href', value)
      *   bind(state, el, '?disabled')       → boolean attribute toggle

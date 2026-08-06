@@ -77,10 +77,9 @@ defineComponent('task-card', TaskCard);
 
 Notes:
 
-- Prefer **`CoreComponent`**, not the deprecated `Component` shim, for new code.
-- `this.bind(state, string)` sets an **instance property** — it is not a querySelector.
-  Always bind to a ref element: `this.bind(state, this.titleEl)`.
-- Prefer `this.emit` over deprecated `emitEvent`.
+- Extend **`CoreComponent`** (the only component base).
+- Bind to ref elements: `this.bind(state, this.titleEl)` (element required).
+- Emit with **`this.emit`**.
 - Framework `nc-*` tags used inside your component still need to be registered
   (built-ins already are via `frameworkRegistry`).
 
@@ -119,7 +118,7 @@ this.on(this.el, 'task-card-toggle', (e) => {
 
 | Mistake | Fix |
 |---------|-----|
-| Extending deprecated `Component` for new UI | Use `CoreComponent` |
+| Extending anything other than `CoreComponent` | Use `CoreComponent` |
 | Forgetting hyphen in tag name | Custom elements require a hyphen |
 | Importing the component module into the view | Register + use the tag |
 
