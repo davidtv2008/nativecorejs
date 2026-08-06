@@ -4,7 +4,9 @@
  */
 
 import { registerPageCleanup } from '../core/pageCleanupRegistry.js';
-import type { WireAction } from './wireActions.js';
+
+/** Legacy shape formerly returned by deleted wireActions(); kept for events() overload. */
+type WireAction = { element: Element; event: string };
 
 // ── Internal helper to detect a WireAction object ────────────────────────────
 

@@ -33,7 +33,7 @@ npx create-nativecore@latest my-app --ts
 ```
 
 Apps vendor the framework under `.nativecore/` (no runtime `nativecorejs`
-dependency required). Component Builder UI is disabled in this release.
+dependency required). Component Builder is experimental and disabled by default.
 
 ### Flags
 

@@ -25,7 +25,7 @@ Also useful:
 
 Exact labels evolve — treat the overlay UI as the source of truth while running.
 
-## Component Builder (disabled)
+## Component Builder (experimental, disabled by default)
 
 In shipped `denc-tools.ts`:
 
@@ -33,8 +33,9 @@ In shipped `denc-tools.ts`:
 const COMPONENT_BUILDER_ENABLED = false;
 ```
 
-Files remain in the tree; the Build UI is not shown. Flip the flag only if you
-intentionally restore the experimental builder.
+Files remain in the tree; the Build UI is not shown. Component Builder is
+**experimental** and **not required** for Deskflow or day-to-day development.
+Flip the flag only if you intentionally enable it.
 
 ## HMR notes
 
@@ -49,7 +50,7 @@ intentionally restore the experimental builder.
 1. `npm run dev`
 2. Turn DEV MODE on
 3. Navigate home → tasks → detail; note timing / cache rows
-4. Confirm no Component Builder button (expected while disabled)
+4. Confirm no Component Builder button (expected while experimental/off)
 
 ## Verify
 

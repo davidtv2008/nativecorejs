@@ -1,240 +1,232 @@
-import { Component, defineComponent } from '../../.nativecore/core/component.js';
-import { html, raw } from '../../.nativecore/utils/templates.js';
+/**
+ * NcNumberInput Component
+ *
+ * NativeCore Framework Core Component
+ *
+ * Attributes:
+ *   - name: string â€” form field name
+ *   - value: number â€” current value (default: min or 0)
+ *   - min: number â€” minimum value (default: no limit)
+ *   - max: number â€” maximum value (default: no limit)
+ *   - step: number â€” increment/decrement amount (default: 1)
+ *   - placeholder: string â€” placeholder text
+ *   - disabled: boolean â€” disabled state
+ *   - readonly: boolean â€” read-only state
+ *   - size: 'sm' | 'md' | 'lg' (default: 'md')
+ *   - variant: 'default' | 'filled' (default: 'default')
+ *
+ * Events:
+ *   - change: CustomEvent<{ value: number; name: string }>
+ *   - input: CustomEvent<{ value: number; name: string }>
+ *
+ * Usage:
+ *   <nc-number-input name="qty" value="1" min="1" max="99"></nc-number-input>
+ *   <nc-number-input name="price" value="9.99" step="0.01" min="0"></nc-number-input>
+ */
 
-export class NcNumberInput extends Component {
+import { CoreComponent } from '../../.nativecore/core/component.js';
+import { css } from '../../.nativecore/utils/templates.js';
+
+export class NcNumberInput extends CoreComponent {
     static useShadowDOM = true;
+    static observedAttributes = ['name', 'value', 'min', 'max', 'step', 'placeholder', 'disabled', 'readonly', 'size', 'variant'];
+    static attributeOptions = { variant: ['default', 'filled'], size: ['sm', 'md', 'lg'] };
+    static attributeOrder   = ['name', 'value', 'min', 'max', 'step', 'placeholder', 'size', 'variant', 'disabled', 'readonly'];
 
-    static attributeOptions = {
-        variant: ['default', 'filled'],
-        size: ['sm', 'md', 'lg']
-    };
+    // -- Refs -----------------------------------------------------------------
+    declare inputEl:  HTMLInputElement;
+    declare decBtnEl: HTMLButtonElement;
+    declare incBtnEl: HTMLButtonElement;
 
-    static get observedAttributes() {
-        return ['name', 'value', 'min', 'max', 'step', 'placeholder', 'disabled', 'readonly', 'size', 'variant'];
+    // Hold-to-repeat timers
+    private _holdTimer:    ReturnType<typeof setTimeout>  | null = null;
+    private _holdInterval: ReturnType<typeof setInterval> | null = null;
+
+    private _getNum(attr: string, fallback: number): number {
+        const v = this.getAttribute(attr);
+        return v !== null && v !== '' ? Number(v) : fallback;
     }
-
-    private holdTimer: ReturnType<typeof setTimeout> | null = null;
-    private holdInterval: ReturnType<typeof setInterval> | null = null;
-    private _stopHold: (() => void) | null = null;
-
-    private getNumber(attr: string, fallback: number): number {
-        const value = this.getAttribute(attr);
-        return value !== null && value !== '' ? Number(value) : fallback;
+    private _getCurrentValue(): number {
+        const v = this.getAttribute('value');
+        return v !== null && v !== '' ? Number(v) : 0;
     }
-
-    private getCurrentValue(): number {
-        const value = this.getAttribute('value');
-        return value !== null && value !== '' ? Number(value) : 0;
-    }
-
-    private clamp(value: number): number {
+    private _clamp(val: number): number {
         const min = this.getAttribute('min');
         const max = this.getAttribute('max');
-        if (min !== null && value < Number(min)) return Number(min);
-        if (max !== null && value > Number(max)) return Number(max);
-        return value;
+        if (min !== null && val < Number(min)) return Number(min);
+        if (max !== null && val > Number(max)) return Number(max);
+        return val;
     }
+
+    static styles = css`
+        :host { display: inline-flex; font-family: var(--nc-font-family); }
+
+        .wrap {
+            display: inline-flex; align-items: stretch;
+            border: var(--nc-input-border);
+            border-radius: var(--nc-input-radius);
+            overflow: hidden;
+            transition: border-color var(--nc-transition-fast), box-shadow var(--nc-transition-fast);
+            background: var(--nc-bg); width: 100%;
+        }
+        :host([disabled]) .wrap { opacity: 0.5; }
+        :host([variant="filled"]) .wrap { background: var(--nc-bg-tertiary); border-color: transparent; }
+        .wrap:focus-within { border-color: var(--nc-input-focus-border); box-shadow: 0 0 0 3px rgba(16,185,129,.15); }
+
+        .btn {
+            display: flex; align-items: center; justify-content: center;
+            flex-shrink: 0; width: 34px;
+            background: var(--nc-bg-secondary); border: none; cursor: pointer;
+            color: var(--nc-text-muted);
+            transition: background var(--nc-transition-fast), color var(--nc-transition-fast);
+            user-select: none; -webkit-user-select: none; padding: 0;
+        }
+        :host([size="sm"]) .btn { width: 28px; }
+        :host([size="lg"]) .btn { width: 40px; }
+        :host([disabled]) .btn,
+        :host([readonly]) .btn { cursor: not-allowed; }
+        .btn:hover:not(:disabled):not([aria-disabled="true"]) { background: var(--nc-bg-tertiary); color: var(--nc-text); }
+        .btn:active:not(:disabled):not([aria-disabled="true"]) { background: var(--nc-border); }
+        .btn[aria-disabled="true"] { opacity: 0.35; cursor: not-allowed; }
+
+        input[type="number"] {
+            flex: 1; min-width: 0; border: none; outline: none;
+            background: transparent; color: var(--nc-text);
+            font-size: var(--nc-font-size-base); font-family: var(--nc-font-family);
+            text-align: center; padding: var(--nc-spacing-sm) 0; cursor: auto;
+            -moz-appearance: textfield;
+        }
+        :host([disabled]) input { cursor: not-allowed; }
+        input[type="number"]::-webkit-outer-spin-button,
+        input[type="number"]::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
+        input[type="number"]::placeholder { color: var(--nc-text-muted); }
+        :host([size="sm"]) input { font-size: var(--nc-font-size-sm);  padding: var(--nc-spacing-xs)  0; }
+        :host([size="lg"]) input { font-size: var(--nc-font-size-lg);  padding: var(--nc-spacing-md)  0; }
+    `;
 
     template() {
-        const value = this.getCurrentValue();
-        const placeholder = this.getAttribute('placeholder') || '';
-        const disabled = this.hasAttribute('disabled');
-        const readonly = this.hasAttribute('readonly');
-        const min = this.getAttribute('min');
-        const max = this.getAttribute('max');
-        const step = this.getNumber('step', 1);
-        const atMin = min !== null && value <= Number(min);
-        const atMax = max !== null && value >= Number(max);
-
-        return html`
-            <style>
-                :host { display: inline-flex; font-family: var(--nc-font-family); }
-                .wrap {
-                    display: inline-flex;
-                    align-items: stretch;
-                    border: var(--nc-input-border, 1px solid #d1d5db);
-                    border-radius: var(--nc-input-radius, 0.5rem);
-                    overflow: hidden;
-                    transition: border-color var(--nc-transition-fast, 160ms ease), box-shadow var(--nc-transition-fast, 160ms ease);
-                    background: var(--nc-bg, #ffffff);
-                    opacity: ${disabled ? '0.5' : '1'};
-                    width: 100%;
-                }
-                :host([variant="filled"]) .wrap {
-                    background: var(--nc-bg-tertiary, #f3f4f6);
-                    border-color: transparent;
-                }
-                .wrap:focus-within {
-                    border-color: var(--nc-input-focus-border, #10b981);
-                    box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.15);
-                }
-                .btn {
-                    display: flex;
-                    align-items: center;
-                    justify-content: center;
-                    flex-shrink: 0;
-                    background: var(--nc-bg-secondary, #f8fafc);
-                    border: none;
-                    cursor: ${disabled || readonly ? 'not-allowed' : 'pointer'};
-                    color: var(--nc-text-muted, #6b7280);
-                    transition: background var(--nc-transition-fast, 160ms ease), color var(--nc-transition-fast, 160ms ease);
-                    user-select: none;
-                    -webkit-user-select: none;
-                    padding: 0;
-                }
-                :host([size="sm"]) .btn { width: 28px; }
-                :host([size="lg"]) .btn { width: 40px; }
-                .btn { width: 34px; }
-                .btn:hover:not(:disabled):not([aria-disabled="true"]) {
-                    background: var(--nc-bg-tertiary, #f3f4f6);
-                    color: var(--nc-text, #111827);
-                }
-                .btn:active:not(:disabled):not([aria-disabled="true"]) {
-                    background: var(--nc-border, #d1d5db);
-                }
-                .btn[aria-disabled="true"] {
-                    opacity: 0.35;
-                    cursor: not-allowed;
-                }
-                input[type="number"] {
-                    flex: 1;
-                    min-width: 0;
-                    border: none;
-                    outline: none;
-                    background: transparent;
-                    color: var(--nc-text, #111827);
-                    font-size: var(--nc-font-size-base, 1rem);
-                    font-family: var(--nc-font-family);
-                    text-align: center;
-                    padding: 0;
-                    cursor: ${disabled ? 'not-allowed' : 'auto'};
-                    -moz-appearance: textfield;
-                }
-                input[type="number"]::-webkit-outer-spin-button,
-                input[type="number"]::-webkit-inner-spin-button {
-                    -webkit-appearance: none;
-                    margin: 0;
-                }
-                input[type="number"]::placeholder { color: var(--nc-text-muted, #6b7280); }
-                :host([size="sm"]) input { font-size: var(--nc-font-size-sm, 0.875rem); padding: var(--nc-spacing-xs, 0.25rem) 0; }
-                :host([size="md"]) input,
-                :host input { padding: var(--nc-spacing-sm, 0.5rem) 0; }
-                :host([size="lg"]) input { font-size: var(--nc-font-size-lg, 1.125rem); padding: var(--nc-spacing-md, 1rem) 0; }
-            </style>
-
-            <div class="wrap">
-                <button class="btn btn-dec" type="button" aria-label="Decrease" aria-disabled="${atMin || disabled || readonly}" tabindex="${disabled ? '-1' : '0'}">
-                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16" fill="none" width="14" height="14"><path d="M3 8h10" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
+        return `            <div class="wrap">
+                <button ref="decBtnEl" class="btn btn-dec" type="button" aria-label="Decrease">
+                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16" fill="none" width="14" height="14">
+                        <path d="M3 8h10" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+                    </svg>
                 </button>
-                <input type="number" value="${value}" ${raw(min !== null ? `min="${min}"` : '')} ${raw(max !== null ? `max="${max}"` : '')} step="${step}" ${disabled ? 'disabled' : ''} ${readonly ? 'readonly' : ''} placeholder="${placeholder}" name="${this.getAttribute('name') || ''}" aria-label="${this.getAttribute('name') || 'number'}" />
-                <button class="btn btn-inc" type="button" aria-label="Increase" aria-disabled="${atMax || disabled || readonly}" tabindex="${disabled ? '-1' : '0'}">
-                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16" fill="none" width="14" height="14"><path d="M8 3v10M3 8h10" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
+                <input ref="inputEl" type="number" />
+                <button ref="incBtnEl" class="btn btn-inc" type="button" aria-label="Increase">
+                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16" fill="none" width="14" height="14">
+                        <path d="M8 3v10M3 8h10" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+                    </svg>
                 </button>
             </div>
         `;
     }
 
     onMount() {
-        // Use this.on() for delegation — auto-cleaned on unmount, no listener accumulation
-        this.on('input', (event: Event) => {
-            const el = event.target as HTMLInputElement;
-            if (el.type !== 'number') return;
-            const value = this.clamp(Number(el.value));
-            this.updateButtons(value);
-            this.emitEvent('input', { value, name: this.getAttribute('name') || '' });
+        this._syncFromAttrs();
+
+        // Direct input change
+        this.on(this.inputEl, 'input', () => {
+            const val = this._clamp(Number(this.inputEl.value));
+            this._updateButtons(val);
+            this.emit('input', { value: val, name: this.getAttribute('name') || '' });
+        });
+        this.on(this.inputEl, 'change', () => {
+            const val = this._clamp(Number(this.inputEl.value));
+            this.inputEl.value = String(val);
+            this.setAttribute('value', String(val));
+            this._updateButtons(val);
+            this.emit('change', { value: val, name: this.getAttribute('name') || '' });
         });
 
-        this.on('change', (event: Event) => {
-            const el = event.target as HTMLInputElement;
-            if (el.type !== 'number') return;
-            const value = this.clamp(Number(el.value));
-            el.value = String(value);
-            this.setAttribute('value', String(value));
-            this.updateButtons(value);
-            this.emitEvent('change', { value, name: this.getAttribute('name') || '' });
+        // Scroll wheel
+        this.on(this.inputEl, 'wheel', (e: WheelEvent) => {
+            if (document.activeElement !== this && !this.shadowRoot!.activeElement) return;
+            e.preventDefault();
+            this._step(e.deltaY < 0 ? 1 : -1);
         });
 
-        this.on('click', (event: Event) => {
-            const btn = (event.target as HTMLElement).closest<HTMLButtonElement>('.btn-dec, .btn-inc');
-            if (!btn) return;
-            if (btn.getAttribute('aria-disabled') === 'true') return;
-            this.step(btn.classList.contains('btn-dec') ? -1 : 1);
-        });
-
-        this.on('mousedown', (event: MouseEvent) => {
-            const btn = (event.target as HTMLElement).closest<HTMLButtonElement>('.btn-dec, .btn-inc');
-            if (!btn || event.button !== 0 || btn.getAttribute('aria-disabled') === 'true') return;
-            const direction: 1 | -1 = btn.classList.contains('btn-dec') ? -1 : 1;
-            this.holdTimer = setTimeout(() => {
-                this.holdInterval = setInterval(() => this.step(direction), 80);
-            }, 400);
-        });
+        // Hold-to-repeat
+        const setupHold = (btn: HTMLButtonElement, dir: 1 | -1) => {
+            this.on(btn, 'mousedown', (e: MouseEvent) => {
+                if (e.button !== 0 || btn.getAttribute('aria-disabled') === 'true') return;
+                this._step(dir);
+                this._holdTimer = setTimeout(() => {
+                    this._holdInterval = setInterval(() => this._step(dir), 80);
+                }, 400);
+            });
+            this.on(btn, 'click', () => {
+                if (btn.getAttribute('aria-disabled') !== 'true') this._step(dir);
+            });
+        };
+        setupHold(this.decBtnEl, -1);
+        setupHold(this.incBtnEl, 1);
 
         const stopHold = () => {
-            if (this.holdTimer) { clearTimeout(this.holdTimer); this.holdTimer = null; }
-            if (this.holdInterval) { clearInterval(this.holdInterval); this.holdInterval = null; }
+            if (this._holdTimer)    { clearTimeout(this._holdTimer);    this._holdTimer = null; }
+            if (this._holdInterval) { clearInterval(this._holdInterval); this._holdInterval = null; }
         };
-        if (this._stopHold) document.removeEventListener('mouseup', this._stopHold);
-        this._stopHold = stopHold;
-        document.addEventListener('mouseup', stopHold);
+        this.on(document, 'mouseup', stopHold);
 
-        this.on('keydown', (event: KeyboardEvent) => {
-            const el = event.target as HTMLElement;
-            if (!el.matches('input[type="number"]')) return;
-            if (event.key === 'ArrowUp') { event.preventDefault(); this.step(1); }
-            if (event.key === 'ArrowDown') { event.preventDefault(); this.step(-1); }
+        // Arrow keys
+        this.on(this.inputEl, 'keydown', (e: KeyboardEvent) => {
+            if (e.key === 'ArrowUp')   { e.preventDefault(); this._step(1);  }
+            if (e.key === 'ArrowDown') { e.preventDefault(); this._step(-1); }
         });
-    }
-
-    private step(direction: 1 | -1) {
-        if (this.hasAttribute('disabled') || this.hasAttribute('readonly')) return;
-        const step = this.getNumber('step', 1);
-        const decimals = step.toString().split('.')[1]?.length ?? 0;
-        const next = this.clamp(parseFloat((this.getCurrentValue() + direction * step).toFixed(decimals)));
-        this.setValue(next);
-    }
-
-    private setValue(value: number) {
-        const input = this.shadowRoot?.querySelector<HTMLInputElement>('input[type="number"]');
-        if (input) input.value = String(value);
-        this.setAttribute('value', String(value));
-        this.updateButtons(value);
-        this.emitEvent('change', { value, name: this.getAttribute('name') || '' });
-    }
-
-    private updateButtons(value: number) {
-        const shadowRoot = this.shadowRoot;
-        if (!shadowRoot) return;
-        const min = this.getAttribute('min');
-        const max = this.getAttribute('max');
-        const decreaseButton = shadowRoot.querySelector<HTMLButtonElement>('.btn-dec');
-        const increaseButton = shadowRoot.querySelector<HTMLButtonElement>('.btn-inc');
-        if (decreaseButton) decreaseButton.setAttribute('aria-disabled', String(min !== null && value <= Number(min)));
-        if (increaseButton) increaseButton.setAttribute('aria-disabled', String(max !== null && value >= Number(max)));
     }
 
     onUnmount() {
-        if (this.holdTimer) clearTimeout(this.holdTimer);
-        if (this.holdInterval) clearInterval(this.holdInterval);
-        if (this._stopHold) {
-            document.removeEventListener('mouseup', this._stopHold);
-            this._stopHold = null;
-        }
+        if (this._holdTimer)    clearTimeout(this._holdTimer);
+        if (this._holdInterval) clearInterval(this._holdInterval);
     }
 
-    attributeChangedCallback(name: string, oldValue: string, newValue: string) {
-        if (oldValue === newValue) return;
-        if (name === 'value' && this._mounted) {
-            const input = this.shadowRoot?.querySelector<HTMLInputElement>('input[type="number"]');
-            if (input) input.value = newValue || '0';
-            this.updateButtons(Number(newValue || 0));
+    protected _handleAttributeUpdate(name: string, val: string | null) {
+        if (name === 'value') {
+            this.inputEl.value = val ?? '0';
+            this._updateButtons(Number(val ?? 0));
             return;
         }
-        if (this._mounted) {
-            this.render();
-        }
+        this._syncFromAttrs();
+    }
+
+    private _syncFromAttrs() {
+        const value       = this._getCurrentValue();
+        const placeholder = this.getAttribute('placeholder') || '';
+        const disabled    = this.hasAttribute('disabled');
+        const readonly    = this.hasAttribute('readonly');
+        const min         = this.getAttribute('min');
+        const max         = this.getAttribute('max');
+        const step        = this._getNum('step', 1);
+
+        this.inputEl.value       = String(value);
+        this.inputEl.placeholder = placeholder;
+        this.inputEl.disabled    = disabled;
+        this.inputEl.readOnly    = readonly;
+        this.inputEl.step        = String(step);
+        this.inputEl.name        = this.getAttribute('name') || '';
+        this.inputEl.setAttribute('aria-label', this.getAttribute('name') || 'number');
+        if (min !== null) this.inputEl.min = min; else this.inputEl.removeAttribute('min');
+        if (max !== null) this.inputEl.max = max; else this.inputEl.removeAttribute('max');
+
+        this._updateButtons(value);
+    }
+
+    private _step(dir: 1 | -1) {
+        if (this.hasAttribute('disabled') || this.hasAttribute('readonly')) return;
+        const step     = this._getNum('step', 1);
+        const decimals = step.toString().split('.')[1]?.length ?? 0;
+        const next     = this._clamp(parseFloat((this._getCurrentValue() + dir * step).toFixed(decimals)));
+        this.inputEl.value = String(next);
+        this.setAttribute('value', String(next));
+        this._updateButtons(next);
+        this.emit('change', { value: next, name: this.getAttribute('name') || '' });
+    }
+
+    private _updateButtons(value: number) {
+        const min = this.getAttribute('min');
+        const max = this.getAttribute('max');
+        this.decBtnEl.setAttribute('aria-disabled', String(min !== null && value <= Number(min)));
+        this.incBtnEl.setAttribute('aria-disabled', String(max !== null && value >= Number(max)));
     }
 }
 
-defineComponent('nc-number-input', NcNumberInput);
-
+if (!customElements.get('nc-number-input')) customElements.define('nc-number-input', NcNumberInput);

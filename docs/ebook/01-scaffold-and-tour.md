@@ -90,7 +90,7 @@ After `npm run dev`, turn **DEV MODE** on via the bottom pill:
 - Drawing annotations
 - Performance overlay (FPS, MEM, DOM, route timing, …)
 
-The Component Builder button is **disabled** in current scaffolds (`COMPONENT_BUILDER_ENABLED = false`).
+The Component Builder is **experimental** and **disabled by default** (`COMPONENT_BUILDER_ENABLED = false`). It is not a required feature.
 
 ## Apply to Deskflow
 

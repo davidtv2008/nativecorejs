@@ -1,82 +1,67 @@
-import { Component, defineComponent } from '../../.nativecore/core/component.js';
-import { html } from '../../.nativecore/utils/templates.js';
+/**
+ * NcCard Component
+ *
+ * Attributes:
+ *   - variant: 'default' | 'primary' | 'secondary' | 'success' | 'danger' (default: 'default')
+ *   - size: 'sm' | 'md' | 'lg' (default: 'md')
+ *   - disabled: boolean
+ *   - elevated: boolean — adds a box shadow
+ *   - bordered: boolean — adds a border (default when no variant)
+ *
+ * Usage:
+ *   <nc-card>Content</nc-card>
+ *   <nc-card variant="primary">Highlighted</nc-card>
+ *   <nc-card elevated size="lg">Large elevated card</nc-card>
+ */
 
-export class NcCard extends Component {
+import { CoreComponent } from '../../.nativecore/core/component.js';
+import { css, html } from '../../.nativecore/utils/templates.js';
+
+export class NcCard extends CoreComponent {
     static useShadowDOM = true;
+    static observedAttributes = ['variant', 'size', 'disabled', 'elevated', 'bordered'];
 
     static attributeOptions = {
-        variant: ['primary', 'secondary', 'success', 'danger'],
-        size: ['sm', 'md', 'lg']
+        variant: ['default', 'primary', 'secondary', 'success', 'danger'],
+        size:    ['sm', 'md', 'lg'],
     };
 
-    static get observedAttributes() {
-        return ['variant', 'size', 'disabled'];
-    }
+    static attributeOrder = ['variant', 'size', 'elevated', 'bordered', 'disabled'];
+
+    static styles = css`
+        :host {
+            display: block;
+            font-family: var(--nc-font-family);
+            padding: var(--nc-spacing-md);
+            border-radius: var(--nc-radius-md);
+            background: var(--nc-bg-secondary);
+            transition: box-shadow var(--nc-transition-fast);
+            width: 100%;
+            box-sizing: border-box;
+        }
+
+        /* variant */
+        :host([variant="default"])   { background: var(--nc-bg-secondary); color: var(--nc-text); }
+        :host([variant="primary"])   { background: var(--nc-gradient-primary); color: var(--nc-white); }
+        :host([variant="secondary"]) { background: var(--nc-bg-secondary); color: var(--nc-text); border: 1px solid var(--nc-border); }
+        :host([variant="success"])   { background: var(--nc-gradient-success); color: var(--nc-white); }
+        :host([variant="danger"])    { background: var(--nc-gradient-danger);  color: var(--nc-white); }
+
+        /* size */
+        :host([size="sm"]) { padding: var(--nc-spacing-sm); font-size: var(--nc-font-size-sm); }
+        :host([size="md"]) { padding: var(--nc-spacing-md); font-size: var(--nc-font-size-base); }
+        :host([size="lg"]) { padding: var(--nc-spacing-lg); font-size: var(--nc-font-size-lg); }
+
+        /* modifiers */
+        :host([elevated]) { box-shadow: var(--nc-shadow-md); }
+        :host([bordered]:not([variant="secondary"])) { border: 1px solid var(--nc-border); }
+        :host([disabled]) { opacity: 0.5; pointer-events: none; }
+    `;
 
     template() {
-        return html`
-            <style>
-                :host {
-                    display: block;
-                    font-family: var(--nc-font-family);
-                    padding: var(--nc-spacing-md, 1rem);
-                    border-radius: var(--nc-radius-md, 0.75rem);
-                    transition: all var(--nc-transition-fast, 160ms ease);
-                    width: 100%;
-                    box-sizing: border-box;
-                }
-
-                :host([variant="primary"]) {
-                    background: var(--nc-gradient-primary, linear-gradient(135deg, #10b981, #059669));
-                    color: var(--nc-white, #ffffff);
-                }
-
-                :host([variant="secondary"]) {
-                    background: var(--nc-bg-secondary, #f8fafc);
-                    color: var(--nc-text, #111827);
-                    border: 1px solid var(--nc-border, #e5e7eb);
-                }
-
-                :host([variant="success"]) {
-                    background: var(--nc-gradient-success, linear-gradient(135deg, #22c55e, #16a34a));
-                    color: var(--nc-white, #ffffff);
-                }
-
-                :host([variant="danger"]) {
-                    background: var(--nc-gradient-danger, linear-gradient(135deg, #ef4444, #dc2626));
-                    color: var(--nc-white, #ffffff);
-                }
-
-                :host([size="sm"]) {
-                    padding: var(--nc-spacing-sm, 0.75rem);
-                    font-size: var(--nc-font-size-sm, 0.875rem);
-                }
-
-                :host([size="md"]) {
-                    padding: var(--nc-spacing-md, 1rem);
-                    font-size: var(--nc-font-size-base, 1rem);
-                }
-
-                :host([size="lg"]) {
-                    padding: var(--nc-spacing-lg, 1.5rem);
-                    font-size: var(--nc-font-size-lg, 1.125rem);
-                }
-
-                :host([disabled]) {
-                    opacity: 0.5;
-                    pointer-events: none;
-                }
-            </style>
-            <slot></slot>
+        return html`            <slot></slot>
         `;
-    }
-
-    attributeChangedCallback(name: string, oldValue: string, newValue: string) {
-        if (oldValue !== newValue && this._mounted) {
-            this.render();
-        }
     }
 }
 
-defineComponent('nc-card', NcCard);
-
+if (!customElements.get('nc-card')) customElements.define('nc-card', NcCard);

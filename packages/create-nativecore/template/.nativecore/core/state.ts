@@ -1,11 +1,5 @@
-/**
- * State Management - React-like useState API
- * Provides intuitive reactive state management for components
- */
-
 import { registerPageCleanup } from './pageCleanupRegistry.js';
 
-// Types
 export interface State<T> {
     value: T;
     set(value: T | ((prev: T) => T)): void;
@@ -15,7 +9,6 @@ export interface State<T> {
 export interface ComputedState<T> {
     readonly value: T;
     watch(callback: (value: T) => void): () => void;
-    /** Release all dependency subscriptions. Call when the computed is no longer needed. */
     dispose(): void;
 }
 
@@ -46,7 +39,6 @@ interface Tracker {
 
 type Unsubscribe = () => void;
 
-// Global tracker for dependency collection
 let currentTracker: Tracker | null = null;
 const DEFAULT_EFFECT_MAX_RUNS_PER_FLUSH = 1000;
 const EFFECT_LOOP_GUARD_EVENT = 'nativecore:effect-loop-guard';
@@ -131,15 +123,11 @@ function sanitizeValue<T>(value: T): T {
     return clean as T;
 }
 
-/**
- * Create a reactive state (React-like useState)
- */
 function createState<T>(initialValue: T): State<T> {
     let currentValue = sanitizeValue(initialValue);
     const subscribers = new Set<() => void>();
 
     const state = {
-        // Getter/setter for value property
         get value(): T {
             return currentValue;
         },
@@ -149,8 +137,6 @@ function createState<T>(initialValue: T): State<T> {
             currentValue = safe;
             notify();
         },
-        
-        // Set method (supports updater function like React)
         set(valueOrUpdater: T | ((prev: T) => T)): void {
             const rawValue = typeof valueOrUpdater === 'function'
                 ? (valueOrUpdater as (prev: T) => T)(currentValue)
@@ -161,13 +147,9 @@ function createState<T>(initialValue: T): State<T> {
             currentValue = newValue;
             notify();
         },
-        
-        // Watch for changes (like useEffect watching a dependency)
         watch(callback: (value: T) => void): Unsubscribe {
             const wrappedCallback = () => callback(currentValue);
             subscribers.add(wrappedCallback);
-            
-            // Return unsubscribe function
             return () => subscribers.delete(wrappedCallback);
         }
     };
@@ -185,16 +167,11 @@ function createState<T>(initialValue: T): State<T> {
     return state;
 }
 
-/**
- * Enhanced useState that tracks accesses for computed values
- */
 export function useState<T>(initialValue: T): State<T> {
     const state = createState(initialValue);
-    
-    // Wrap the getter to track accesses
+
     const trackedState: State<T> = {
         get value(): T {
-            // If we're inside a computed, track this dependency
             if (currentTracker) {
                 currentTracker.accessed.add(state);
             }
@@ -206,30 +183,24 @@ export function useState<T>(initialValue: T): State<T> {
         set: state.set.bind(state),
         watch: state.watch.bind(state)
     };
-    
+
     return trackedState;
 }
 
-/**
- * Create a computed/derived state from other states
- * Automatically tracks dependencies and recalculates when they change
- */
 export function computed<T>(computeFn: () => T): ComputedState<T> {
     const derivedState = createState<T>(undefined as T);
     const trackedDeps = new Set<Watchable<any>>();
     const depUnsubscribers = new Map<Watchable<any>, () => void>();
     let isComputing = false;
 
-    // Create a proxy to track which states are accessed
     const tracker: Tracker = {
         accessed: new Set()
     };
 
-    // Initial computation
     recompute();
 
     function recompute(): void {
-        if (isComputing) return; // Prevent infinite loops
+        if (isComputing) return;
         isComputing = true;
 
         tracker.accessed.clear();
@@ -251,10 +222,9 @@ export function computed<T>(computeFn: () => T): ComputedState<T> {
         depUnsubscribers.clear();
         trackedDeps.clear();
     }
-    
+
     const computedState: ComputedState<T> = {
         get value(): T {
-            // Track this access if we're inside another computed
             if (currentTracker) {
                 currentTracker.accessed.add(derivedState);
             }
@@ -262,7 +232,6 @@ export function computed<T>(computeFn: () => T): ComputedState<T> {
         },
         watch: derivedState.watch.bind(derivedState),
         dispose,
-        // Read-only, no setter
         set value(_: T) {
             console.warn('Computed values are read-only. Cannot set value directly.');
         }
@@ -272,12 +241,6 @@ export function computed<T>(computeFn: () => T): ComputedState<T> {
     return computedState;
 }
 
-/**
- * Run a reactive side effect that automatically tracks accessed state dependencies.
- *
- * @param effectFn Effect callback that can optionally return a cleanup function.
- * @returns A disposer that unsubscribes all tracked dependencies and runs the latest cleanup.
- */
 export function effect(effectFn: EffectCallback, options: EffectOptions = {}): () => void {
     const trackedDeps = new Set<Watchable<any>>();
     const depUnsubscribers = new Map<Watchable<any>, () => void>();

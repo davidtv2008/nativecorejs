@@ -14,12 +14,12 @@
  *     <p>This content will animate in.</p>
  *   </nc-transition>
  */
-import { Component, defineComponent } from '../../.nativecore/core/component.js';
+import { CoreComponent, defineComponent } from '../../.nativecore/core/component.js';
 import { fadeIn, slideIn, scaleIn } from '../../.nativecore/core/gpu-animation.js';
 
 type TransitionName = 'slide-up' | 'slide-down' | 'fade' | 'scale';
 
-export class NcTransition extends Component {
+export class NcTransition extends CoreComponent {
     static useShadowDOM = true;
 
     static get observedAttributes() {

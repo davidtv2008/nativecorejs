@@ -14,12 +14,12 @@
  *     <!-- page content / router outlet -->
  *   </nc-view-transition>
  */
-import { Component, defineComponent } from '../../.nativecore/core/component.js';
+import { CoreComponent, defineComponent } from '../../.nativecore/core/component.js';
 import { fadeIn, fadeOut, slideIn, scaleIn } from '../../.nativecore/core/gpu-animation.js';
 
 type TransitionName = 'slide-up' | 'slide-down' | 'fade' | 'scale';
 
-export class NcViewTransition extends Component {
+export class NcViewTransition extends CoreComponent {
     static useShadowDOM = true;
 
     static get observedAttributes() {

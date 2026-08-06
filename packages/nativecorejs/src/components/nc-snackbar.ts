@@ -7,7 +7,7 @@
  * Attributes:
  *   - position: 'top-right'|'top-center'|'top-left'|'bottom-right'|'bottom-center'|'bottom-left'
  *               (default: 'bottom-right')
- *   - max: number - max visible toasts (default: 5)
+ *   - max: number â€” max visible toasts (default: 5)
  *
  * Programmatic API (after import):
  *   NcSnackbar.show({ message, variant?, duration?, dismissible? })
@@ -20,14 +20,14 @@
  * Toast options:
  *   - message: string
  *   - variant: 'default'|'success'|'warning'|'danger'|'info' (default: 'default')
- *   - duration: number - ms before auto-dismiss (default: 4000, 0 = sticky)
- *   - dismissible: boolean - show close button (default: true)
- *   - icon: boolean - show variant icon (default: true)
+ *   - duration: number â€” ms before auto-dismiss (default: 4000, 0 = sticky)
+ *   - dismissible: boolean â€” show close button (default: true)
+ *   - icon: boolean â€” show variant icon (default: true)
  */
 
-import { Component, defineComponent } from '../../.nativecore/core/component.js';
+import { CoreComponent } from '../../.nativecore/core/component.js';
 import { dom } from '../../.nativecore/utils/dom.js';
-import { html, raw, escapeHTML } from '../../.nativecore/utils/templates.js';
+import { css, escapeHtml } from '../../.nativecore/utils/templates.js';
 
 interface ToastOptions {
     message: string;
@@ -53,14 +53,13 @@ const ALLOWED_VARIANTS = new Set(['default', 'success', 'warning', 'danger', 'in
 
 let _seq = 0;
 
-export class NcSnackbar extends Component {
+export class NcSnackbar extends CoreComponent {
     static useShadowDOM = true;
+    static observedAttributes = ['position', 'max'];
+    static attributeOptions = { position: ['top-right','top-center','top-left','bottom-right','bottom-center','bottom-left'] };
 
     private _toasts: Toast[] = [];
     private _timers = new Map<number, ReturnType<typeof setTimeout>>();
-    private _toastHandler: ((e: Event) => void) | null = null;
-
-    static get observedAttributes() { return ['position', 'max']; }
 
     // Static helper so other modules can call NcSnackbar.show({...})
     static show(opts: ToastOptions) {
@@ -68,111 +67,81 @@ export class NcSnackbar extends Component {
         el?._add(opts);
     }
 
+    static styles = css`
+        /* Default position: bottom-right */
+        :host {
+            position: fixed;
+            bottom: var(--nc-spacing-lg, 1.5rem); top: auto;
+            right: var(--nc-spacing-lg, 1.5rem); left: auto;
+            z-index: 10000;
+            display: flex; flex-direction: column-reverse;
+            gap: var(--nc-spacing-sm);
+            pointer-events: none;
+            max-width: min(380px, calc(100vw - 2rem));
+            width: max-content;
+            --_toast-dir: 8px;
+        }
+        :host([position="top-right"])    { top: var(--nc-spacing-lg, 1.5rem); bottom: auto; right: var(--nc-spacing-lg, 1.5rem); left: auto;  flex-direction: column; --_toast-dir: -8px; }
+        :host([position="top-center"])   { top: var(--nc-spacing-lg, 1.5rem); bottom: auto; left: 50%; right: auto; transform: translateX(-50%); flex-direction: column; --_toast-dir: -8px; }
+        :host([position="top-left"])     { top: var(--nc-spacing-lg, 1.5rem); bottom: auto; left: var(--nc-spacing-lg, 1.5rem); right: auto; flex-direction: column; --_toast-dir: -8px; }
+        :host([position="bottom-right"]) { bottom: var(--nc-spacing-lg, 1.5rem); top: auto; right: var(--nc-spacing-lg, 1.5rem); left: auto; flex-direction: column-reverse; --_toast-dir: 8px; }
+        :host([position="bottom-center"]){ bottom: var(--nc-spacing-lg, 1.5rem); top: auto; left: 50%; right: auto; transform: translateX(-50%); flex-direction: column-reverse; --_toast-dir: 8px; }
+        :host([position="bottom-left"])  { bottom: var(--nc-spacing-lg, 1.5rem); top: auto; left: var(--nc-spacing-lg, 1.5rem); right: auto; flex-direction: column-reverse; --_toast-dir: 8px; }
+
+        .toast {
+            display: flex; align-items: flex-start; gap: var(--nc-spacing-sm);
+            padding: var(--nc-spacing-sm) var(--nc-spacing-md);
+            border-radius: var(--nc-radius-md, 8px); box-shadow: var(--nc-shadow-lg);
+            font-family: var(--nc-font-family); font-size: var(--nc-font-size-sm);
+            pointer-events: all;
+            animation: nc-toast-in 0.22s ease forwards;
+            min-width: 240px; max-width: 380px; border: 1px solid transparent;
+        }
+        .toast.out { animation: nc-toast-out 0.18s ease forwards; }
+
+        @keyframes nc-toast-in {
+            from { opacity: 0; transform: translateY(var(--_toast-dir, 8px)); }
+            to   { opacity: 1; transform: translateY(0); }
+        }
+        @keyframes nc-toast-out { to { opacity: 0; transform: scale(0.95); } }
+
+        .toast--default { background: var(--nc-bg); color: var(--nc-text); border-color: var(--nc-border); }
+        .toast--success { background: #f0fdf4; color: #166534; border-color: #86efac; }
+        .toast--danger  { background: #fef2f2; color: #991b1b; border-color: #fca5a5; }
+        .toast--warning { background: #fffbeb; color: #92400e; border-color: #fcd34d; }
+        .toast--info    { background: #eff6ff; color: #1e40af; border-color: #93c5fd; }
+
+        .toast__icon { flex-shrink: 0; margin-top: 1px; }
+        .toast__msg  { flex: 1; line-height: 1.5; }
+        .toast__close {
+            background: none; border: none; cursor: pointer; padding: 0;
+            color: inherit; opacity: 0.5; flex-shrink: 0; line-height: 1;
+            transition: opacity var(--nc-transition-fast);
+        }
+        .toast__close:hover { opacity: 1; }
+    `;
+
     template() {
-        const position = this.getAttribute('position') || 'bottom-right';
-        const [vPos, hPos] = position.split('-');
-
-        return html`
-            <style>
-                :host {
-                    position: fixed;
-                    ${vPos === 'top' ? 'top: var(--nc-spacing-lg, 1.5rem);' : 'bottom: var(--nc-spacing-lg, 1.5rem);'}
-                    ${hPos === 'right' ? 'right: var(--nc-spacing-lg, 1.5rem);' : hPos === 'left' ? 'left: var(--nc-spacing-lg, 1.5rem);' : 'left: 50%; transform: translateX(-50%);'}
-                    z-index: 10000;
-                    display: flex;
-                    flex-direction: ${vPos === 'top' ? 'column' : 'column-reverse'};
-                    gap: var(--nc-spacing-sm);
-                    pointer-events: none;
-                    max-width: min(380px, calc(100vw - 2rem));
-                    width: max-content;
-                }
-
-                .toast {
-                    display: flex;
-                    align-items: flex-start;
-                    gap: var(--nc-spacing-sm);
-                    padding: var(--nc-spacing-sm) var(--nc-spacing-md);
-                    border-radius: var(--nc-radius-md, 8px);
-                    box-shadow: var(--nc-shadow-lg);
-                    font-family: var(--nc-font-family);
-                    font-size: var(--nc-font-size-sm);
-                    pointer-events: all;
-                    animation: nc-toast-in 0.22s ease forwards;
-                    min-width: 240px;
-                    max-width: 380px;
-                    border: 1px solid transparent;
-                }
-
-                .toast.out { animation: nc-toast-out 0.18s ease forwards; }
-
-                @keyframes nc-toast-in {
-                    from { opacity: 0; transform: ${vPos === 'top' ? 'translateY(-8px)' : 'translateY(8px)'}; }
-                    to   { opacity: 1; transform: translateY(0); }
-                }
-                @keyframes nc-toast-out {
-                    to { opacity: 0; transform: scale(0.95); }
-                }
-
-                .toast--default { background: var(--nc-bg); color: var(--nc-text); border-color: var(--nc-border); }
-                .toast--success { background: #f0fdf4; color: #166534; border-color: #86efac; }
-                .toast--danger  { background: #fef2f2; color: #991b1b; border-color: #fca5a5; }
-                .toast--warning { background: #fffbeb; color: #92400e; border-color: #fcd34d; }
-                .toast--info    { background: #eff6ff; color: #1e40af; border-color: #93c5fd; }
-
-                .toast__icon { flex-shrink: 0; margin-top: 1px; }
-                .toast__msg  { flex: 1; line-height: 1.5; }
-
-                .toast__close {
-                    background: none;
-                    border: none;
-                    cursor: pointer;
-                    padding: 0;
-                    color: inherit;
-                    opacity: 0.5;
-                    flex-shrink: 0;
-                    line-height: 1;
-                    transition: opacity var(--nc-transition-fast);
-                }
-                .toast__close:hover { opacity: 1; }
-            </style>
-            ${this._toasts.map(t => this._renderToast(t)).join('')}
-        `;
-    }
-
-    private _renderToast(t: Toast): string {
-        const icon = ICONS[t.variant] || '';
-        return `
-            <div class="toast toast--${t.variant}" data-id="${t.id}" role="alert" aria-live="polite">
-                ${raw(icon && t.icon ? `<span class="toast__icon">${icon}</span>` : '')}
-                <span class="toast__msg">${raw(escapeHTML(t.message))}</span>
-                ${raw(t.dismissible ? `
-                <button class="toast__close" data-dismiss="${t.id}" type="button" aria-label="Dismiss">
-                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 12 12" fill="none" width="12" height="12">
-                        <path d="M2 2l8 8M10 2l-8 8" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
-                    </svg>
-                </button>` : '')}
-            </div>`;
+        return `        `;
     }
 
     onMount() {
-        this._bindEvents();
-
-        // Store the global nc-toast handler so it can be removed in onUnmount
-        this._toastHandler = (e: Event) => {
-            this._add((e as CustomEvent<ToastOptions>).detail);
-        };
-        document.addEventListener('nc-toast', this._toastHandler);
-    }
-
-    private _bindEvents() {
-        this.shadowRoot!.addEventListener('click', (e) => {
+        this.on(this.shadowRoot!, 'click', (e: MouseEvent) => {
             const btn = (e.target as HTMLElement).closest<HTMLElement>('[data-dismiss]');
-            if (btn) {
-                const id = Number(btn.dataset.dismiss);
-                this._dismiss(id);
-            }
+            if (btn) this._dismiss(Number(btn.dataset.dismiss));
+        });
+        this.on(document, 'nc-toast', (e: Event) => {
+            this._add((e as CustomEvent<ToastOptions>).detail);
         });
     }
+
+    onUnmount() {
+        this._timers.forEach(t => clearTimeout(t));
+        this._timers.clear();
+    }
+
+    // position attribute change is handled by CSS attribute selectors â€” no JS needed
+    protected _handleAttributeUpdate(_name: string, _val: string | null) {}
 
     _add(opts: ToastOptions) {
         const max = Number(this.getAttribute('max') || 5);
@@ -188,18 +157,38 @@ export class NcSnackbar extends Component {
 
         this._toasts.push(toast);
 
-        // Cap to max
+        // Cap to max â€” remove oldest
         while (this._toasts.length > max) {
             const removed = this._toasts.shift()!;
             this._clearTimer(removed.id);
+            this.shadowRoot!.querySelector(`[data-id="${removed.id}"]`)?.remove();
         }
 
-        this.render();
+        const toastEl = document.createElement('div');
+        toastEl.className = `toast toast--${toast.variant}`;
+        toastEl.dataset.id = String(toast.id);
+        toastEl.setAttribute('role', 'alert');
+        toastEl.setAttribute('aria-live', 'polite');
+        toastEl.innerHTML = this._renderToast(toast);
+        this.shadowRoot!.appendChild(toastEl);
 
         if (toast.duration > 0) {
-            const timer = setTimeout(() => this._dismiss(toast.id), toast.duration);
-            this._timers.set(toast.id, timer);
+            this._timers.set(toast.id, setTimeout(() => this._dismiss(toast.id), toast.duration));
         }
+    }
+
+    private _renderToast(t: Toast): string {
+        const icon = ICONS[t.variant] || '';
+        return `
+            ${icon && t.icon ? `<span class="toast__icon">${icon}</span>` : ''}
+            <span class="toast__msg">${escapeHtml(t.message)}</span>
+            ${t.dismissible ? `
+            <button class="toast__close" data-dismiss="${t.id}" type="button" aria-label="Dismiss">
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 12 12" fill="none" width="12" height="12">
+                    <path d="M2 2l8 8M10 2l-8 8" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+                </svg>
+            </button>` : ''}
+        `;
     }
 
     private _dismiss(id: number) {
@@ -208,8 +197,8 @@ export class NcSnackbar extends Component {
         if (el) {
             el.classList.add('out');
             el.addEventListener('animationend', () => {
+                el.remove();
                 this._toasts = this._toasts.filter(t => t.id !== id);
-                this.render();
             }, { once: true });
         } else {
             this._toasts = this._toasts.filter(t => t.id !== id);
@@ -220,22 +209,6 @@ export class NcSnackbar extends Component {
         const t = this._timers.get(id);
         if (t) { clearTimeout(t); this._timers.delete(id); }
     }
-
-    onUnmount() {
-        this._timers.forEach(t => clearTimeout(t));
-        this._timers.clear();
-        if (this._toastHandler) {
-            document.removeEventListener('nc-toast', this._toastHandler);
-            this._toastHandler = null;
-        }
-    }
-
-    attributeChangedCallback(name: string, oldValue: string, newValue: string) {
-        if (oldValue !== newValue && this._mounted) this.render();
-    }
 }
 
-defineComponent('nc-snackbar', NcSnackbar);
-
-
-
+if (!customElements.get('nc-snackbar')) customElements.define('nc-snackbar', NcSnackbar);

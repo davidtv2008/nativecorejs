@@ -1,76 +1,74 @@
 /**
- * Template Literal Helpers
+ * Escape a string for safe interpolation into HTML.
+ * Prevents XSS by converting dangerous characters to HTML entities.
  */
-
-/**
- * Container for developer-authored HTML that should bypass auto-escaping.
- * Created via trusted() — never instantiate directly.
- */
-export class TrustedHtml {
-    constructor(public readonly __html: string) {}
-}
-
-/**
- * Mark a developer-authored HTML string as safe to insert without escaping.
- *
- * Use ONLY for strings you construct yourself in component code (sub-templates,
- * icon markup, map/join results). NEVER pass user input through trusted().
- *
- * @example
- * const itemsHtml = items.map(i => `<li>${escapeHtml(i.label)}</li>`).join('');
- * return html`<ul>${trusted(itemsHtml)}</ul>`;
- */
-export function trusted(value: string): TrustedHtml {
-    return new TrustedHtml(value);
-}
-
-/**
- * Escape a value for safe insertion as HTML text content.
- * Use this inside inner template literals (not tagged with html) to sanitize
- * user-supplied strings before combining them with markup.
- *
- * @example
- * const itemsHtml = items.map(i => `<li>${escapeHtml(i.label)}</li>`).join('');
- * return html`<ul>${trusted(itemsHtml)}</ul>`;
- */
-export function escapeHtml(value: unknown): string {
-    return String(value)
+export function escapeHTML(value: unknown): string {
+    const str = String(value ?? '');
+    return str
         .replace(/&/g, '&amp;')
         .replace(/</g, '&lt;')
         .replace(/>/g, '&gt;')
         .replace(/"/g, '&quot;')
-        .replace(/'/g, '&#039;');
+        .replace(/'/g, '&#39;')
+        .replace(/`/g, '&#96;');
 }
 
+/** Sentinel class that marks a string as already-safe HTML (not to be escaped). */
+class SafeHTML {
+    readonly __html: string;
+    constructor(value: string) {
+        this.__html = value;
+    }
+    toString(): string {
+        return this.__html;
+    }
+}
+
+/** @deprecated Prefer `SafeHTML` / `raw()` — kept for controller import compat. */
+export type TrustedHtml = SafeHTML;
+
+/** @deprecated Prefer `escapeHTML`. */
+export const escapeHtml = escapeHTML;
+
 /**
- * HTML template literal tag.
- *
- * Automatically HTML-escapes every interpolated value UNLESS it is a TrustedHtml
- * instance (created with trusted()). Use this for all component templates.
- *
- * - Plain values (string, number, boolean) → auto-escaped
- * - trusted(htmlString)                     → inserted verbatim (developer responsibility)
- *
- * Provides syntax highlighting when the "lit-html" VS Code extension is installed.
+ * Wrap a string so the `html` tagged template will NOT escape it.
+ * Use only for content you control or have already sanitised.
  *
  * @example
- * return html`<div class="${variant}">${trusted(listHtml)}</div>`;
+ * html`<div>${raw(trustedMarkup)}</div>`
+ */
+export function raw(value: string): SafeHTML {
+    return new SafeHTML(value);
+}
+
+/** Alias used by some components for trusted markup (same as `raw`). */
+export const trusted = raw;
+
+/**
+ * Tagged template literal for HTML.
+ * **All interpolated values are HTML-escaped by default.**
+ * Wrap trusted content with `raw()` to bypass escaping.
+ *
+ * @example
+ * html`<p>${userInput}</p>`           // escaped
+ * html`<div>${raw(trustedHTML)}</div>` // not escaped
  */
 export const html = (strings: TemplateStringsArray, ...values: unknown[]): string => {
     let result = strings[0];
     for (let i = 0; i < values.length; i++) {
         const value = values[i];
-        result += value instanceof TrustedHtml ? value.__html : escapeHtml(value);
+        result += (value instanceof SafeHTML) ? value.__html : escapeHTML(value);
         result += strings[i + 1];
     }
     return result;
 };
 
 /**
- * CSS template literal tag for syntax highlighting.
- * No-op at runtime.
+ * Tagged template literal for raw HTML (no auto-escaping).
+ * Use when building HTML from fully trusted sources only.
+ * Prefer `html` with `raw()` for mixed content.
  */
-export const css = (strings: TemplateStringsArray, ...values: any[]): string =>
+export const unsafeHTML = (strings: TemplateStringsArray, ...values: unknown[]): string =>
     String.raw({ raw: strings }, ...values);
 
 /**
@@ -95,3 +93,6 @@ export function sanitizeURL(url: string | null | undefined): string {
 
     return trimmed;
 }
+
+export const css = (strings: TemplateStringsArray, ...values: unknown[]): string =>
+    String.raw({ raw: strings }, ...values);

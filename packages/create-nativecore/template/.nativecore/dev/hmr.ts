@@ -147,13 +147,28 @@ if (window.location.hostname === 'localhost' || window.location.hostname === '12
             }
         }
         
-        // Hot reload JavaScript (full reload for now, can optimize later)
+        // Hot reload JavaScript — prefer soft router reload for controllers/views
         async function hotReloadJS(file: string): Promise<void> {
-            console.warn(`Reloading JS: ${file}`);
+            const normalized = String(file || '').replace(/\\/g, '/');
+            const isSoftCandidate =
+                /\/(controllers|views|stores|middleware)\//.test(normalized) ||
+                /\.controller\.(js|ts)$/.test(normalized) ||
+                /\.store\.(js|ts)$/.test(normalized);
+
+            if (isSoftCandidate && typeof (window as any).router?.reload === 'function') {
+                console.warn(`[HMR] soft reload via router.reload(): ${normalized}`);
+                showHMRIndicator('updating', 'Updating route...');
+                try {
+                    (window as any).router.reload();
+                    flashHMRIndicator();
+                    return;
+                } catch (err) {
+                    console.warn('[HMR] soft reload failed, falling back to full reload', err);
+                }
+            }
+
+            console.warn(`Reloading JS: ${normalized}`);
             showHMRIndicator('updating', 'Reloading...');
-            
-            // For now, do a full reload
-            // Future: implement module-level HMR
             setTimeout(() => {
                 location.reload();
             }, 100);

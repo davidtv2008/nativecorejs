@@ -38,6 +38,7 @@
 
 import { CoreComponent } from '@core/component.js';
 import { css, html, trusted } from '@core-utils/templates.js';
+import { trapFocus } from '../../a11y/index.js';
 
 export class NcModal extends CoreComponent {
     static useShadowDOM = true;
@@ -52,6 +53,7 @@ export class NcModal extends CoreComponent {
     declare overlayEl:  HTMLDivElement;
     declare dialogEl:   HTMLDivElement;
     declare closeBtnEl: HTMLButtonElement;
+    private _releaseFocus: (() => void) | null = null;
 
     static styles = css`
         :host { display: block; position: fixed; inset: 0; z-index: 1000; pointer-events: none; }
@@ -145,8 +147,15 @@ export class NcModal extends CoreComponent {
             const open = this.hasAttribute('open');
             this.overlayEl.setAttribute('aria-hidden', String(!open));
             document.body.style.overflow = open ? 'hidden' : '';
-            if (open) { this.overlayEl.focus(); this.emit('open'); }
-            else      { this.emit('close'); }
+            if (open) {
+                this._releaseFocus?.();
+                this._releaseFocus = trapFocus(this.overlayEl);
+                this.emit('open');
+            } else {
+                this._releaseFocus?.();
+                this._releaseFocus = null;
+                this.emit('close');
+            }
         } else {
             this._syncFromAttrs();
         }
@@ -164,6 +173,8 @@ export class NcModal extends CoreComponent {
     }
 
     onUnmount() {
+        this._releaseFocus?.();
+        this._releaseFocus = null;
         document.body.style.overflow = '';
     }
 }

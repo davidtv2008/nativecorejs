@@ -28,7 +28,7 @@ imports. This book follows the **scaffold** (see
 | Shipped JWT / login UI | **No** — protect routes with middleware you write |
 | TypeScript-only | **JS is default**; `--ts` opts in |
 | `build:bots` | Use **`build:ssg`** |
-| Component Builder always on | **Disabled** in shipped denc-tools |
+| Component Builder always on | **Experimental**, disabled by default — not required |
 
 ## Deskflow — one progressive app
 

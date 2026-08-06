@@ -1,164 +1,135 @@
-import { Component, defineComponent } from '../../.nativecore/core/component.js';
-import { html, raw } from '../../.nativecore/utils/templates.js';
+/**
+ * NcTextarea Component
+ *
+ * NativeCore Framework Core Component
+ *
+ * Attributes:
+ *   - name: string — form field name
+ *   - value: string — current value
+ *   - placeholder: string — placeholder text
+ *   - rows: number — visible row count (default: 4)
+ *   - disabled: boolean — disabled state
+ *   - readonly: boolean — read-only state
+ *   - maxlength: number — character limit (shows counter when set)
+ *   - autoresize: boolean — grow to fit content automatically
+ *   - size: 'sm' | 'md' | 'lg' (default: 'md')
+ *   - variant: 'default' | 'filled' (default: 'default')
+ *
+ * Events:
+ *   - input: CustomEvent<{ value: string; name: string }>
+ *   - change: CustomEvent<{ value: string; name: string }>
+ *
+ * Usage:
+ *   <nc-textarea name="bio" placeholder="Tell us about yourself" rows="4"></nc-textarea>
+ *   <nc-textarea name="notes" maxlength="200" autoresize></nc-textarea>
+ */
 
-export class NcTextarea extends Component {
+import { CoreComponent } from '../../.nativecore/core/component.js';
+import { css } from '../../.nativecore/utils/templates.js';
+
+export class NcTextarea extends CoreComponent {
     static useShadowDOM = true;
+    static observedAttributes = ['name', 'value', 'placeholder', 'rows', 'disabled', 'readonly', 'maxlength', 'autoresize', 'size', 'variant'];
+    static attributeOptions = { variant: ['default', 'filled'], size: ['sm', 'md', 'lg'] };
+    static attributeOrder   = ['name', 'value', 'placeholder', 'rows', 'maxlength', 'size', 'variant', 'autoresize', 'disabled', 'readonly'];
 
-    static attributeOptions = {
-        variant: ['default', 'filled'],
-        size: ['sm', 'md', 'lg']
-    };
+    // -- Refs -----------------------------------------------------------------
+    declare textareaEl: HTMLTextAreaElement;
+    declare counterEl:  HTMLSpanElement;
 
-    static get observedAttributes() {
-        return ['name', 'value', 'placeholder', 'rows', 'disabled', 'readonly', 'maxlength', 'autoresize', 'size', 'variant'];
-    }
+    static styles = css`
+        :host { display: block; font-family: var(--nc-font-family); width: 100%; }
+        .wrap { position: relative; display: flex; flex-direction: column; gap: var(--nc-spacing-xs); }
+        textarea {
+            width: 100%; box-sizing: border-box;
+            padding: var(--nc-spacing-sm) var(--nc-spacing-md);
+            background: var(--nc-bg); border: var(--nc-input-border);
+            border-radius: var(--nc-input-radius);
+            color: var(--nc-text); font-size: var(--nc-font-size-base);
+            font-family: var(--nc-font-family); line-height: var(--nc-line-height-normal);
+            resize: vertical; transition: border-color var(--nc-transition-fast), box-shadow var(--nc-transition-fast);
+            outline: none; min-height: 80px;
+        }
+        :host([autoresize]) textarea { resize: none; }
+        :host([disabled]) textarea   { opacity: 0.5; cursor: not-allowed; }
+        :host([size="sm"]) textarea  { padding: var(--nc-spacing-xs) var(--nc-spacing-sm); font-size: var(--nc-font-size-sm); }
+        :host([size="lg"]) textarea  { padding: var(--nc-spacing-md) var(--nc-spacing-lg); font-size: var(--nc-font-size-lg); }
+        :host([variant="filled"]) textarea { background: var(--nc-bg-tertiary); border-color: transparent; }
+        :host([variant="filled"]) textarea:hover:not(:disabled) { background: var(--nc-bg-secondary); }
+        textarea:hover:not(:disabled) { border-color: var(--nc-input-focus-border); }
+        textarea:focus { border-color: var(--nc-input-focus-border); box-shadow: 0 0 0 3px rgba(16,185,129,.15); }
+        textarea::placeholder { color: var(--nc-text-muted); }
+        .counter { align-self: flex-end; font-size: var(--nc-font-size-xs); color: var(--nc-text-muted); line-height: 1; }
+        .counter.over { color: var(--nc-danger); font-weight: var(--nc-font-weight-semibold); }
+        [hidden] { display: none !important; }
+    `;
 
     template() {
-        const value = this.getAttribute('value') || '';
-        const placeholder = this.getAttribute('placeholder') || '';
-        const rows = this.getAttribute('rows') || '4';
-        const disabled = this.hasAttribute('disabled');
-        const readonly = this.hasAttribute('readonly');
-        const maxlength = this.getAttribute('maxlength');
-        const autoresize = this.hasAttribute('autoresize');
-        const charCount = value.length;
-
-        return html`
-            <style>
-                :host {
-                    display: block;
-                    font-family: var(--nc-font-family);
-                    width: 100%;
-                }
-                .wrap {
-                    position: relative;
-                    display: flex;
-                    flex-direction: column;
-                    gap: var(--nc-spacing-xs, 0.25rem);
-                }
-                textarea {
-                    width: 100%;
-                    box-sizing: border-box;
-                    padding: var(--nc-spacing-sm, 0.5rem) var(--nc-spacing-md, 0.75rem);
-                    background: var(--nc-bg, #ffffff);
-                    border: var(--nc-input-border, 1px solid #d1d5db);
-                    border-radius: var(--nc-input-radius, 0.5rem);
-                    color: var(--nc-text, #111827);
-                    font-size: var(--nc-font-size-base, 1rem);
-                    font-family: var(--nc-font-family);
-                    line-height: var(--nc-line-height-normal, 1.5);
-                    resize: ${autoresize ? 'none' : 'vertical'};
-                    transition: border-color var(--nc-transition-fast, 160ms ease), box-shadow var(--nc-transition-fast, 160ms ease);
-                    outline: none;
-                    min-height: 80px;
-                    opacity: ${disabled ? '0.5' : '1'};
-                    cursor: ${disabled ? 'not-allowed' : 'auto'};
-                }
-                :host([size="sm"]) textarea {
-                    padding: var(--nc-spacing-xs, 0.25rem) var(--nc-spacing-sm, 0.5rem);
-                    font-size: var(--nc-font-size-sm, 0.875rem);
-                }
-                :host([size="lg"]) textarea {
-                    padding: var(--nc-spacing-md, 1rem) var(--nc-spacing-lg, 1.5rem);
-                    font-size: var(--nc-font-size-lg, 1.125rem);
-                }
-                :host([variant="filled"]) textarea {
-                    background: var(--nc-bg-tertiary, #f3f4f6);
-                    border-color: transparent;
-                }
-                :host([variant="filled"]) textarea:hover:not(:disabled) {
-                    background: var(--nc-bg-secondary, #f8fafc);
-                }
-                textarea:hover:not(:disabled) {
-                    border-color: var(--nc-input-focus-border, #10b981);
-                }
-                textarea:focus {
-                    border-color: var(--nc-input-focus-border, #10b981);
-                    box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.15);
-                }
-                textarea::placeholder { color: var(--nc-text-muted, #6b7280); }
-                .counter {
-                    align-self: flex-end;
-                    font-size: var(--nc-font-size-xs, 0.75rem);
-                    color: var(--nc-text-muted, #6b7280);
-                    line-height: 1;
-                }
-                .counter.over {
-                    color: var(--nc-danger, #ef4444);
-                    font-weight: var(--nc-font-weight-semibold, 600);
-                }
-            </style>
-
-            <div class="wrap">
-                <textarea
-                    rows="${rows}"
-                    ${raw(maxlength ? `maxlength="${maxlength}"` : '')}
-                    ${disabled ? 'disabled' : ''}
-                    ${readonly ? 'readonly' : ''}
-                    placeholder="${placeholder}"
-                    name="${this.getAttribute('name') || ''}"
-                    aria-multiline="true"
-                >${value}</textarea>
-                ${raw(maxlength ? `<span class="counter${charCount > Number(maxlength) ? ' over' : ''}">${charCount} / ${maxlength}</span>` : '')}
+        return `            <div class="wrap">
+                <textarea ref="textareaEl" aria-multiline="true"></textarea>
+                <span ref="counterEl" class="counter" hidden></span>
             </div>
         `;
     }
 
     onMount() {
-        const textarea = this.shadowRoot?.querySelector<HTMLTextAreaElement>('textarea');
-        if (textarea && this.hasAttribute('autoresize')) {
-            this.autoResize(textarea);
-        }
+        this._syncFromAttrs();
 
-        // Use shadowRoot delegation — survives re-renders, no listener leak
-        this.on('input', (event: Event) => {
-            const el = event.target as HTMLTextAreaElement;
-            if (el.tagName !== 'TEXTAREA') return;
-            if (this.hasAttribute('autoresize')) this.autoResize(el);
-            this.updateCounter(el.value);
-            this.emitEvent('input', { value: el.value, name: this.getAttribute('name') || '' });
+        this.on(this.textareaEl, 'input', () => {
+            if (this.hasAttribute('autoresize')) this._autoResize();
+            this._updateCounter(this.textareaEl.value);
+            this.emit('input', { value: this.textareaEl.value, name: this.getAttribute('name') || '' });
         });
 
-        this.on('change', (event: Event) => {
-            const el = event.target as HTMLTextAreaElement;
-            if (el.tagName !== 'TEXTAREA') return;
-            this.setAttribute('value', el.value);
-            this.emitEvent('change', { value: el.value, name: this.getAttribute('name') || '' });
+        this.on(this.textareaEl, 'change', () => {
+            this.setAttribute('value', this.textareaEl.value);
+            this.emit('change', { value: this.textareaEl.value, name: this.getAttribute('name') || '' });
         });
     }
 
-    private autoResize(textarea: HTMLTextAreaElement) {
-        textarea.style.height = 'auto';
-        textarea.style.height = `${textarea.scrollHeight}px`;
-    }
-
-    private updateCounter(value: string) {
-        const maxlength = this.getAttribute('maxlength');
-        if (!maxlength) return;
-        const counter = this.shadowRoot?.querySelector('.counter');
-        if (!counter) return;
-        const count = value.length;
-        const max = Number(maxlength);
-        counter.textContent = `${count} / ${maxlength}`;
-        counter.classList.toggle('over', count > max);
-    }
-
-    attributeChangedCallback(name: string, oldValue: string, newValue: string) {
-        if (oldValue === newValue) return;
-        if (name === 'value' && this._mounted) {
-            const textarea = this.shadowRoot?.querySelector<HTMLTextAreaElement>('textarea');
-            if (textarea) {
-                textarea.value = newValue || '';
-                this.updateCounter(textarea.value);
-                if (this.hasAttribute('autoresize')) this.autoResize(textarea);
-            }
+    protected _handleAttributeUpdate(name: string, val: string | null) {
+        if (name === 'value') {
+            this.textareaEl.value = val || '';
+            this._updateCounter(this.textareaEl.value);
+            if (this.hasAttribute('autoresize')) this._autoResize();
             return;
         }
-        if (this._mounted) {
-            this.render();
+        this._syncFromAttrs();
+    }
+
+    private _syncFromAttrs() {
+        const ta = this.textareaEl;
+        ta.value       = this.getAttribute('value') || '';
+        ta.placeholder = this.getAttribute('placeholder') || '';
+        ta.rows        = Number(this.getAttribute('rows') || 4);
+        ta.name        = this.getAttribute('name') || '';
+        ta.disabled    = this.hasAttribute('disabled');
+        ta.readOnly    = this.hasAttribute('readonly');
+        const maxlength = this.getAttribute('maxlength');
+        if (maxlength) {
+            ta.maxLength = Number(maxlength);
+        } else {
+            ta.removeAttribute('maxlength');
         }
+        if (this.hasAttribute('autoresize')) this._autoResize();
+        this._updateCounter(ta.value);
+    }
+
+    private _autoResize() {
+        this.textareaEl.style.height = 'auto';
+        this.textareaEl.style.height = `${this.textareaEl.scrollHeight}px`;
+    }
+
+    private _updateCounter(value: string) {
+        const maxlength = this.getAttribute('maxlength');
+        if (!maxlength) { this.counterEl.hidden = true; return; }
+        const count = value.length;
+        const max   = Number(maxlength);
+        this.counterEl.textContent = `${count} / ${maxlength}`;
+        this.counterEl.classList.toggle('over', count > max);
+        this.counterEl.hidden = false;
     }
 }
 
-defineComponent('nc-textarea', NcTextarea);
+if (!customElements.get('nc-textarea')) customElements.define('nc-textarea', NcTextarea);
 

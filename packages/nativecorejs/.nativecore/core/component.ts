@@ -157,19 +157,19 @@ export abstract class CoreComponent extends HTMLElement {
         return (this.shadowRoot ?? this).querySelectorAll<T>(selector);
     }
 
-    protected bind(source: State<any>, elOrProp: Element | string, binding?: string): void {
+    protected bind(source: State<any> | (() => any), el: Element, binding?: string): void {
         const runner = () => {
             this._activeEffect = runner;
-            const v = source.value;
+            // state → .value; signal getter → call as function
+            const v = typeof source === 'function' ? source() : source.value;
             this._activeEffect = null;
 
-            // Overload 1: bind(state, 'propName') — old wire-target form, kept for compat
-            if (typeof elOrProp === 'string') {
-                this[elOrProp] = v;
-                return;
+            if (!el || typeof (el as any).setAttribute !== 'function') {
+                throw new Error(
+                    `[${this.tagName?.toLowerCase?.() || 'component'}] bind() target is invalid. ` +
+                    `Pass a ref element (this.fooEl), not a string prop name.`
+                );
             }
-
-            const el = elOrProp;
 
             // Overload 2: bind(state, el) — no binding arg → textContent
             if (!binding) {
@@ -216,6 +216,23 @@ export abstract class CoreComponent extends HTMLElement {
             ...options,
         });
         return this.dispatchEvent(event);
+    }
+
+    /** getAttribute shorthand; optional fallback when attribute is missing. */
+    protected attr(name: string): string | null;
+    protected attr(name: string, fallback: string): string;
+    protected attr(name: string, fallback?: string): string | null {
+        const value = this.getAttribute(name);
+        if (fallback !== undefined) return value ?? fallback;
+        return value;
+    }
+
+    /**
+     * No-op kept for components that still call this.render() during migration.
+     * Prefer refs + bind / _handleAttributeUpdate for updates.
+     */
+    protected render(): void {
+        // no-op
     }
 
     /** Bind a listener on `this` (legacy 2-arg form). */
@@ -296,7 +313,10 @@ export abstract class CoreComponent extends HTMLElement {
 // while they are converted to CoreComponent one by one.
 // ---------------------------------------------------------------------------
 
-/** @deprecated Extend CoreComponent directly. */
+/**
+ * @deprecated Extend CoreComponent directly. This shim remains only for
+ * external consumers mid-migration and will be removed in a future major.
+ */
 export abstract class Component extends CoreComponent {
     /** @deprecated Use this._hasSetup or onMount() instead. */
     protected _mounted = false;
@@ -344,8 +364,5 @@ export function defineComponent(tag: string, cls: CustomElementConstructor): voi
     if (!customElements.get(tag)) customElements.define(tag, cls);
 }
 
-/** @deprecated Alias kept for package public types. */
 export type ComponentConstructor = CustomElementConstructor;
-
-/** @deprecated Prefer `State` from `@core/state.js` / this module. */
 export type ComponentState<T = unknown> = State<T>;

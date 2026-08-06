@@ -64,10 +64,10 @@
  *   ctx.fillRect(10, 10, 100, 100);
  */
 
-import { Component, defineComponent } from '../../.nativecore/core/component.js';
+import { CoreComponent, defineComponent } from '../../.nativecore/core/component.js';
 import { html, raw } from '../../.nativecore/utils/templates.js';
 
-export class NcCanvas extends Component {
+export class NcCanvas extends CoreComponent {
     static useShadowDOM = true;
 
     static get observedAttributes() {
@@ -345,7 +345,7 @@ export class NcCanvas extends Component {
         this._fillBackground(ctx, canvas);
         this._hasStrokes = false;
         this._updatePlaceholder(true);
-        this.emitEvent('nc-canvas-clear', {});
+        this.emit('nc-canvas-clear', {});
     }
 
     download(filename?: string, format?: string): void {
@@ -450,7 +450,7 @@ export class NcCanvas extends Component {
 
         this._attachCanvasEvents(canvas, ctx);
 
-        this.emitEvent('nc-canvas-ready', { canvas, ctx });
+        this.emit('nc-canvas-ready', { canvas, ctx });
     }
 
     private _syncCanvasSize(): void {
@@ -535,7 +535,7 @@ export class NcCanvas extends Component {
             this._lastY   = y;
             ctx.beginPath();
             ctx.moveTo(x, y);
-            this.emitEvent('nc-canvas-draw-start', { x, y });
+            this.emit('nc-canvas-draw-start', { x, y });
         };
 
         const moveDraw = (x: number, y: number) => {
@@ -548,14 +548,14 @@ export class NcCanvas extends Component {
             this._lastY = y;
             this._hasStrokes = true;
             this._updatePlaceholder(false);
-            this.emitEvent('nc-canvas-draw-move', { x, y });
+            this.emit('nc-canvas-draw-move', { x, y });
         };
 
         const endDraw = () => {
             if (!this._drawing) return;
             this._drawing = false;
             ctx.beginPath();
-            this.emitEvent('nc-canvas-draw-end', { dataURL: canvas.toDataURL() });
+            this.emit('nc-canvas-draw-end', { dataURL: canvas.toDataURL() });
         };
 
         // Mouse events

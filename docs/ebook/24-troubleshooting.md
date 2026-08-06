@@ -76,8 +76,8 @@ scaffold still maps `@testing`.
 
 **Symptom:** Looking for JWT helpers or a Build button.
 
-**Fix:** Auth is BYO. Component Builder is disabled via
-`COMPONENT_BUILDER_ENABLED = false`.
+**Fix:** Auth is BYO. Component Builder is experimental and disabled by default
+(`COMPONENT_BUILDER_ENABLED = false`) — not a required feature.
 
 ## Next
 

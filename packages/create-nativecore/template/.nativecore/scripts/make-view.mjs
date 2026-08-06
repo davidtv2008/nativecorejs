@@ -117,7 +117,7 @@ function createViewTemplate({ accessLabel, flatName, viewTitle, withController }
             <article class="card">
                 <div class="card__icon">&#9670;</div>
                 <h3 class="card__title">Reactive State with <code>ref=""</code></h3>
-                <p class="card__body">Elements with <code>ref="fieldName"</code> auto-wire to <code>this.fieldName</code> in the controller. Combine with <code>this.state()</code> and <code>this.bind()</code> for reactive updates.</p>
+                <p class="card__body">Elements with <code>ref="fieldName"</code> are populated as <code>this.fieldName</code> in the controller. Combine with <code>this.state()</code> and <code>this.bind()</code> for reactive updates.</p>
             </article>
             <article class="card">
                 <div class="card__icon">&#10022;</div>
@@ -170,7 +170,7 @@ import type { State } from '@core/controller.js';
 
 export class ${PascalName}Controller extends CoreController {
 
-  // ── Refs (auto-wired from ref attributes in the view) ────────────────────
+  // ── Refs (populated from ref attributes in the view) ─────────────────────
     private titleEl!: HTMLElement;
     private summaryEl!: HTMLElement;
     private primaryBtn!: HTMLElement;
@@ -191,7 +191,7 @@ export class ${PascalName}Controller extends CoreController {
         this.bind(this.title,   this.titleEl);
         this.bind(this.summary, this.summaryEl);
 
-        // Event listeners (setup here after refs are wired, not in events())
+        // Event listeners (setup here after refs are bound from ref=, not in events())
         this.on(this.primaryBtn, 'click', () => {
             this.title.value   = '${viewTitle} — clicked!';
             this.summary.value = 'Primary action fired.';

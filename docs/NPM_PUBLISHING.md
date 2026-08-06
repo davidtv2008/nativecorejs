@@ -7,7 +7,7 @@ This monorepo publishes two packages:
 | [`nativecorejs`](../packages/nativecorejs) | Runtime library (`import … from 'nativecorejs'`) |
 | [`create-nativecore`](../packages/create-nativecore) | Scaffolding CLI (`npx create-nativecore`) |
 
-Current versions (keep them in sync when cutting a release): **`1.0.0-rc.13`**.
+Current versions (keep them in sync when cutting a release): **`1.0.0-rc.16`**.
 
 ## How the packages relate
 
@@ -113,3 +113,21 @@ the package are unaffected (they use vendored `.nativecore/`).
 
 The root `package.json` is `"private": true`. Always publish via
 `publish:runtime` / `publish:cli` (or `npm publish` inside each package dir).
+
+## Updating an existing app after a release
+
+Scaffold apps vendor Core under `.nativecore/` (they do not `npm update` the
+runtime). From the app root:
+
+```bash
+npm run sync:core                 # create-nativecore@latest from npm
+npm run sync:core -- 1.0.0-rc.16  # pin a published version
+npm run sync:core -- ../nativecorejs/packages/create-nativecore/template   # local monorepo
+npm run compile
+```
+
+This refreshes only `.nativecore/core`, `utils`, and `testing`. It leaves
+`.nativecore/dev`, `.nativecore/scripts`, and your `src/` alone.
+
+On Windows PowerShell, path args work as a positional (as above). You can also set
+`NC_SYNC_FROM` to a template path if flags get dropped.

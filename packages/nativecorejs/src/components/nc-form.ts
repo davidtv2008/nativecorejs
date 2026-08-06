@@ -6,16 +6,16 @@
  *   runs validation, and emits structured events.
  *
  *   Attributes:
- *     - novalidate: boolean - skip HTML5 native validation
+ *     - novalidate: boolean — skip HTML5 native validation
  *
  *   Methods:
- *     - form.getValues(): Record<string, string> - collect all named form control values
- *     - form.validate(): boolean - trigger validation; returns true if all valid
- *     - form.reset() - reset all fields to initial value/clear errors
+ *     - form.getValues(): Record<string, string> — collect all named form control values
+ *     - form.validate(): boolean — trigger validation; returns true if all valid
+ *     - form.reset() — reset all fields to initial value/clear errors
  *
  *   Events:
- *     - submit: CustomEvent<{ values: Record<string, string> }> - on valid submit
- *     - invalid: CustomEvent<{ fields: string[] }> - on invalid submit (list of failing names)
+ *     - submit: CustomEvent<{ values: Record<string, string> }> — on valid submit
+ *     - invalid: CustomEvent<{ fields: string[] }> — on invalid submit (list of failing names)
  *
  * nc-field:
  *   A labelled wrapper for a single form control. Handles the label, hint, and
@@ -23,11 +23,11 @@
  *   nc-select, nc-textarea, nc-autocomplete, nc-date-picker, etc.
  *
  *   Attributes:
- *     - label: string - field label
- *     - for: string - id of the slotted input (for focus on label click)
- *     - required: boolean - shows required marker
- *     - hint: string - sub-label hint text
- *     - error: string - error message (shown in red; overrides hint)
+ *     - label: string — field label
+ *     - for: string — id of the slotted input (for focus on label click)
+ *     - required: boolean — shows required marker
+ *     - hint: string — sub-label hint text
+ *     - error: string — error message (shown in red; overrides hint)
  *
  * Usage:
  *   <nc-form id="signup-form">
@@ -45,78 +45,101 @@
  *   });
  */
 
-import { Component, defineComponent } from '../../.nativecore/core/component.js';
-import { html, raw } from '../../.nativecore/utils/templates.js';
+import { CoreComponent } from '../../.nativecore/core/component.js';
+import { css, html } from '../../.nativecore/utils/templates.js';
 
-// -- NcField ------------------------------------------------------------------
+// ── NcField ──────────────────────────────────────────────────────────────────
 
-export class NcField extends Component {
+export class NcField extends CoreComponent {
     static useShadowDOM = true;
+    static observedAttributes = ['label', 'for', 'required', 'hint', 'error'];
+    static attributePlaceholders = { label: 'Email address', hint: 'We never share your email.', error: 'This field is required.' };
+    static attributeOrder = ['label', 'for', 'required', 'hint', 'error'];
 
-    static get observedAttributes() {
-        return ['label', 'for', 'required', 'hint', 'error'];
-    }
+    // -- Refs -----------------------------------------------------------------
+    declare labelEl:   HTMLLabelElement;
+    declare subtextEl: HTMLSpanElement;
+
+    static styles = css`
+        :host { display: block; font-family: var(--nc-font-family); }
+        .field { display: flex; flex-direction: column; gap: 4px; }
+        label {
+            font-size: var(--nc-font-size-sm);
+            font-weight: var(--nc-font-weight-medium);
+            color: var(--nc-text); cursor: default;
+        }
+        :host([for]) label { cursor: pointer; }
+        .required { color: var(--nc-danger, #ef4444); margin-left: 2px; }
+        .subtext { font-size: var(--nc-font-size-xs); line-height: 1.4; }
+        .subtext--hint  { color: var(--nc-text-muted); }
+        .subtext--error { color: var(--nc-danger, #ef4444); }
+        [hidden] { display: none; }
+    `;
 
     template() {
-        const label = this.getAttribute('label') || '';
-        const forAttr = this.getAttribute('for') || '';
-        const required = this.hasAttribute('required');
-        const hint = this.getAttribute('hint') || '';
-        const error = this.getAttribute('error') || '';
-
-        return html`
-            <style>
-                :host { display: block; font-family: var(--nc-font-family); }
-
-                .field { display: flex; flex-direction: column; gap: 4px; }
-
-                label {
-                    font-size: var(--nc-font-size-sm);
-                    font-weight: var(--nc-font-weight-medium);
-                    color: var(--nc-text);
-                    cursor: ${forAttr ? 'pointer' : 'default'};
-                }
-
-                .required {
-                    color: var(--nc-danger, #ef4444);
-                    margin-left: 2px;
-                }
-
-                .subtext {
-                    font-size: var(--nc-font-size-xs);
-                    line-height: 1.4;
-                }
-                .subtext--hint  { color: var(--nc-text-muted); }
-                .subtext--error { color: var(--nc-danger, #ef4444); }
-            </style>
-            <div class="field">
-                ${label ? `
-                <label ${raw(forAttr ? `for="${forAttr}"` : '')}>
-                    ${label}${raw(required ? `<span class="required" aria-hidden="true">*</span>` : '')}
-                </label>` : ''}
+        return html`            <div class="field">
+                <label ref="labelEl" hidden></label>
                 <slot></slot>
-                ${error
-                    ? `<span class="subtext subtext--error" role="alert">${error}</span>`
-                    : hint ? `<span class="subtext subtext--hint">${hint}</span>` : ''}
+                <span ref="subtextEl" class="subtext" hidden></span>
             </div>
         `;
     }
 
+    onMount() { this._syncFromAttrs(); }
+
+    protected _handleAttributeUpdate(_name: string, _val: string | null) {
+        this._syncFromAttrs();
+    }
+
+    private _syncFromAttrs() {
+        const label    = this.getAttribute('label')   ?? '';
+        const forAttr  = this.getAttribute('for')     ?? '';
+        const required = this.hasAttribute('required');
+        const hint     = this.getAttribute('hint')    ?? '';
+        const error    = this.getAttribute('error')   ?? '';
+
+        if (label) {
+            this.labelEl.hidden = false;
+            if (forAttr) this.labelEl.setAttribute('for', forAttr);
+            else          this.labelEl.removeAttribute('for');
+            this.labelEl.textContent = label;
+            if (required) {
+                const span = document.createElement('span');
+                span.className = 'required';
+                span.setAttribute('aria-hidden', 'true');
+                span.textContent = '*';
+                this.labelEl.appendChild(span);
+            }
+        } else {
+            this.labelEl.hidden = true;
+        }
+
+        if (error) {
+            this.subtextEl.textContent = error;
+            this.subtextEl.className   = 'subtext subtext--error';
+            this.subtextEl.setAttribute('role', 'alert');
+            this.subtextEl.hidden = false;
+        } else if (hint) {
+            this.subtextEl.textContent = hint;
+            this.subtextEl.className   = 'subtext subtext--hint';
+            this.subtextEl.removeAttribute('role');
+            this.subtextEl.hidden = false;
+        } else {
+            this.subtextEl.hidden = true;
+        }
+    }
+
     setError(msg: string) {
         if (msg) this.setAttribute('error', msg);
-        else this.removeAttribute('error');
+        else      this.removeAttribute('error');
     }
 
     clearError() { this.removeAttribute('error'); }
-
-    attributeChangedCallback(name: string, oldValue: string, newValue: string) {
-        if (oldValue !== newValue && this._mounted) this.render();
-    }
 }
 
-defineComponent('nc-field', NcField);
+if (!customElements.get('nc-field')) customElements.define('nc-field', NcField);
 
-// -- NcForm -------------------------------------------------------------------
+// ── NcForm ───────────────────────────────────────────────────────────────────
 
 const FORM_CONTROLS = [
     'nc-input', 'nc-textarea', 'nc-select', 'nc-checkbox', 'nc-radio',
@@ -125,70 +148,39 @@ const FORM_CONTROLS = [
     'input', 'textarea', 'select',
 ];
 
-export class NcForm extends Component {
+export class NcForm extends CoreComponent {
     static useShadowDOM = true;
 
-    private readonly _submitHandler = this._onSubmit.bind(this);
-
-    private readonly _keydownHandler = (e: Event) => {
-        const ke = e as KeyboardEvent;
-        const target = ke.target as HTMLElement;
-        if (ke.key === 'Enter' && target.tagName !== 'TEXTAREA') {
-            this._handleSubmit();
-        }
-    };
-
-    private readonly _clickHandler = (e: Event) => {
-        const btn = (e.target as HTMLElement).closest<HTMLElement>('[type="submit"], nc-button[type="submit"]');
-        if (btn && this.contains(btn)) {
-            e.preventDefault();
-            this._handleSubmit();
-        }
-    };
+    static styles = css`
+        :host { display: block; width: 100%; }
+    `;
 
     template() {
-        return html`
-            <style>
-                :host {
-                    display: block;
-                    width: 100%;
-                }
-            </style>
-            <slot></slot>
-        `;
+        return html`<slot></slot>`;
     }
 
-    connectedCallback() {
-        super.connectedCallback?.();
-        this.addEventListener('submit', this._submitHandler as EventListener);
-        this.addEventListener('keydown', this._keydownHandler);
-        this.addEventListener('click', this._clickHandler);
-    }
-
-    disconnectedCallback() {
-        this.removeEventListener('submit', this._submitHandler as EventListener);
-        this.removeEventListener('keydown', this._keydownHandler);
-        this.removeEventListener('click', this._clickHandler);
-        super.disconnectedCallback?.();
-    }
-
-    private _onSubmit(e: Event) {
-        const customEvent = e as CustomEvent<{ values?: Record<string, string> }>;
-        if (customEvent.detail?.values) {
-            return;
-        }
-
-        e.preventDefault();
-        this._handleSubmit();
+    onMount() {
+        this.on(this, 'submit', (e: Event) => {
+            const ce = e as CustomEvent<{ values?: Record<string, string> }>;
+            if (ce.detail?.values) return;
+            e.preventDefault();
+            this._handleSubmit();
+        });
+        this.on(this, 'keydown', (e: Event) => {
+            const ke = e as KeyboardEvent;
+            if (ke.key === 'Enter' && (ke.target as HTMLElement).tagName !== 'TEXTAREA') {
+                this._handleSubmit();
+            }
+        });
+        this.on(this, 'click', (e: Event) => {
+            const btn = (e.target as HTMLElement).closest<HTMLElement>('[type="submit"], nc-button[type="submit"]');
+            if (btn && this.contains(btn)) { e.preventDefault(); this._handleSubmit(); }
+        });
     }
 
     private _handleSubmit() {
-        if (!this.hasAttribute('novalidate')) {
-            const valid = this.validate();
-            if (!valid) return;
-        }
-        const values = this.getValues();
-        this.emitEvent('submit', { values });
+        if (!this.hasAttribute('novalidate') && !this.validate()) return;
+        this.emit('submit', { values: this.getValues() });
     }
 
     getValues(): Record<string, string> {
@@ -286,7 +278,7 @@ export class NcForm extends Component {
         });
 
         if (!valid) {
-            this.emitEvent('invalid', { fields: Array.from(new Set(invalidFields)) });
+            this.emit('invalid', { fields: Array.from(new Set(invalidFields)) });
         }
         return valid;
     }
@@ -300,10 +292,7 @@ export class NcForm extends Component {
         });
         this.querySelectorAll<NcField>('nc-field').forEach(f => f.clearError());
     }
-
-    attributeChangedCallback(_name: string, _oldValue: string, _newValue: string) {}
 }
 
-defineComponent('nc-form', NcForm);
-
+if (!customElements.get('nc-form')) customElements.define('nc-form', NcForm);
 

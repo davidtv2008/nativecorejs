@@ -4,33 +4,33 @@
  * A declarative animation wrapper that intelligently selects the most
  * GPU-efficient execution path for each animation type:
  *
- *   - Simple CSS keyframes  ? runs entirely on the compositor thread (no JS)
- *   - Enter / exit          ? Web Animations API via gpu-animation.ts
- *   - Scroll-reveal         ? IntersectionObserver + Web Animations API
- *   - Continuous / looping  ? CSS animation (compositor-only)
- *   - Particle effects      ? WebGL (vertex shader) with canvas2d fallback
+ *   - Simple CSS keyframes  → runs entirely on the compositor thread (no JS)
+ *   - Enter / exit          → Web Animations API via gpu-animation.ts
+ *   - Scroll-reveal         → IntersectionObserver + Web Animations API
+ *   - Continuous / looping  → CSS animation (compositor-only)
+ *   - Particle effects      → WebGL (vertex shader) with canvas2d fallback
  *
  * Attributes:
- *   name         - Animation preset name (see list below). Required.
- *   trigger      - When to run: 'mount'|'visible'|'hover'|'click'|'manual' (default: 'mount')
- *   duration     - Ms integer (default: varies per preset)
- *   delay        - Ms delay before animation starts (default: 0)
- *   easing       - CSS easing / cubic-bezier string (default: preset-specific)
- *   iterations   - Number or 'infinite' (default: 1)
- *   distance     - Slide/offset distance in px (default: 40)
- *   threshold    - IntersectionObserver threshold 0-1 (default: 0.15, trigger=visible only)
- *   fill         - Web Animations fill mode: 'forwards'|'backwards'|'both'|'none' (default: 'forwards')
- *   reverse      - boolean - play animation backwards
- *   no-gpu-hint  - boolean - skip will-change + contain hints (use for very tiny elements)
+ *   name         — Animation preset name (see list below). Required.
+ *   trigger      — When to run: 'mount'|'visible'|'hover'|'click'|'manual' (default: 'mount')
+ *   duration     — Ms integer (default: varies per preset)
+ *   delay        — Ms delay before animation starts (default: 0)
+ *   easing       — CSS easing / cubic-bezier string (default: preset-specific)
+ *   iterations   — Number or 'infinite' (default: 1)
+ *   distance     — Slide/offset distance in px (default: 40)
+ *   threshold    — IntersectionObserver threshold 0-1 (default: 0.15, trigger=visible only)
+ *   fill         — Web Animations fill mode: 'forwards'|'backwards'|'both'|'none' (default: 'forwards')
+ *   reverse      — boolean — play animation backwards
+ *   no-gpu-hint  — boolean — skip will-change + contain hints (use for very tiny elements)
  *
  * Particle-specific attributes (all optional):
- *   origin-x     - Horizontal start position as 0-1 fraction of screen width (default: 0.5 = center)
- *   origin-y     - Vertical start position as 0-1 fraction of screen height (default: 0.5)
+ *   origin-x     — Horizontal start position as 0-1 fraction of screen width (default: 0.5 = center)
+ *   origin-y     — Vertical start position as 0-1 fraction of screen height (default: 0.5)
  *                  Special shortcuts: 'top'=0, 'bottom'=1, 'left'=0, 'right'=1, 'center'=0.5
- *   target-x     - End-point X fraction (used by 'converge'/'ripple' presets)
- *   target-y     - End-point Y fraction
- *   count        - Override particle count (integer)
- *   spread       - Override spread/speed scale 0-2 (default: 1)
+ *   target-x     — End-point X fraction (used by 'converge'/'ripple' presets)
+ *   target-y     — End-point Y fraction
+ *   count        — Override particle count (integer)
+ *   spread       — Override spread/speed scale 0-2 (default: 1)
  *
  * Animation preset names:
  *   Enter/exit:  fade-in | fade-out | slide-up | slide-down | slide-left | slide-right
@@ -41,17 +41,17 @@
  *                electricity | fire | explosion | ripple
  *
  * Events:
- *   start    - CustomEvent - animation begins
- *   finish   - CustomEvent - animation ends (not fired for infinite)
- *   cancel   - CustomEvent - animation was cancelled
+ *   start    — CustomEvent — animation begins
+ *   finish   — CustomEvent — animation ends (not fired for infinite)
+ *   cancel   — CustomEvent — animation was cancelled
  *
  * Methods (call on the element):
- *   el.play()    - play / replay
- *   el.pause()   - pause (Web Animations API animations only)
- *   el.cancel()  - cancel and reset
+ *   el.play()    — play / replay
+ *   el.pause()   — pause (Web Animations API animations only)
+ *   el.cancel()  — cancel and reset
  *
  * Slots:
- *   default - the content to animate
+ *   default — the content to animate
  *
  * Usage:
  *   <nc-animation name="fade-in" trigger="visible">
@@ -71,8 +71,8 @@
  *   </nc-animation>
  */
 
-import { Component, defineComponent } from '../../.nativecore/core/component.js';
-import { html } from '../../.nativecore/utils/templates.js';
+import { CoreComponent, defineComponent } from '../../.nativecore/core/component.js';
+import { css, html } from '../../.nativecore/utils/templates.js';
 import {
     animate,
     prepareForAnimation,
@@ -87,15 +87,15 @@ import {
     type ParticleConfig,
 } from '../../.nativecore/core/gpu-animation.js';
 
-// -- Types ---------------------------------------------------------------------
+// ── Types ─────────────────────────────────────────────────────────────────────
 
 type AnimationTrigger = 'mount' | 'visible' | 'hover' | 'click' | 'manual';
 
 /**
  * Defines whether an animation runs via:
- *  'css'     - a CSS class applied to the slotted element (compositor-only, zero JS)
- *  'waapi'   - Web Animations API via gpu-animation helpers (JS, GPU transform/opacity)
- *  'particle'- WebGL/canvas particle system overlay
+ *  'css'     — a CSS class applied to the slotted element (compositor-only, zero JS)
+ *  'waapi'   — Web Animations API via gpu-animation helpers (JS, GPU transform/opacity)
+ *  'particle'— WebGL/canvas particle system overlay
  */
 type AnimationPath = 'css' | 'waapi' | 'particle';
 
@@ -112,10 +112,10 @@ interface PresetDef {
     easing?: string;
 }
 
-// -- Preset registry -----------------------------------------------------------
+// ── Preset registry ───────────────────────────────────────────────────────────
 
 const PRESETS: Record<string, PresetDef> = {
-    // -- Enter / exit (WAAPI - GPU transform + opacity) ----------------------
+    // ── Enter / exit (WAAPI — GPU transform + opacity) ──────────────────────
     'fade-in': {
         path: 'waapi', duration: 400,
         run: (el, opts) => fadeIn(el, opts.duration),
@@ -188,7 +188,7 @@ const PRESETS: Record<string, PresetDef> = {
         },
     },
 
-    // -- Attention seekers (WAAPI - brief GPU motion) -------------------------
+    // ── Attention seekers (WAAPI — brief GPU motion) ─────────────────────────
     'pulse': {
         path: 'waapi', duration: 600,
         run: (el, opts) => {
@@ -303,7 +303,7 @@ const PRESETS: Record<string, PresetDef> = {
         },
     },
 
-    // -- Continuous / looping (CSS - compositor-only, zero rAF cost) ----------
+    // ── Continuous / looping (CSS — compositor-only, zero rAF cost) ──────────
     'spin': {
         path: 'css', duration: 1000,
         keyframes: `from { transform: rotate(0deg); } to { transform: rotate(360deg); }`,
@@ -332,7 +332,7 @@ const PRESETS: Record<string, PresetDef> = {
         `,
     },
 
-    // -- Particle system (WebGL ? canvas2d fallback) ---------------------------
+    // ── Particle system (WebGL → canvas2d fallback) ───────────────────────────
     'confetti': {
         path: 'particle', duration: 3000,
         particle: {
@@ -383,7 +383,7 @@ const PRESETS: Record<string, PresetDef> = {
             type: 'firework',
         },
     },
-    // -- New presets -----------------------------------------------------------
+    // ── New presets ───────────────────────────────────────────────────────────
     'electricity': {
         path: 'particle', duration: 2000,
         particle: {
@@ -426,12 +426,12 @@ const PRESETS: Record<string, PresetDef> = {
     },
 };
 
-// -- Component -----------------------------------------------------------------
+// ── Component ─────────────────────────────────────────────────────────────────
 
-// Global set - keyframes injected into document.head, deduplicated across all instances
+// Global set — keyframes injected into document.head, deduplicated across all instances
 const _injectedKeyframes = new Set<string>();
 
-export class NcAnimation extends Component {
+export class NcAnimation extends CoreComponent {
     static useShadowDOM = true;
 
     static get observedAttributes() {
@@ -440,7 +440,7 @@ export class NcAnimation extends Component {
                 'origin-x', 'origin-y', 'target-x', 'target-y', 'count', 'spread'];
     }
 
-    // active Web Animation handle - lets us pause / cancel
+    // active Web Animation handle — lets us pause / cancel
     private _waAnimation: Animation | null = null;
     // particle loop + webgl handles
     private _particleLoop: ReturnType<typeof createAnimationLoop> | null = null;
@@ -456,23 +456,24 @@ export class NcAnimation extends Component {
     // track whether IntersectionObserver already fired
     private _visibleFired = false;
 
+    static styles = css`
+        :host {
+            display: contents;
+        }
+        .wrap {
+            display: contents;
+        }
+        .canvas-layer {
+            position: absolute;
+            inset: 0;
+            pointer-events: none;
+            z-index: 10;
+        }
+        /* Will be extended dynamically per CSS preset */
+    `;
+
     template() {
         return html`
-            <style>
-                :host {
-                    display: contents;
-                }
-                .wrap {
-                    display: contents;
-                }
-                .canvas-layer {
-                    position: absolute;
-                    inset: 0;
-                    pointer-events: none;
-                    z-index: 10;
-                }
-                /* Will be extended dynamically per CSS preset */
-            </style>
             <div class="wrap"><slot></slot></div>
         `;
     }
@@ -485,7 +486,7 @@ export class NcAnimation extends Component {
         this._teardown();
     }
 
-    // -- Public methods --------------------------------------------------------
+    // ── Public methods ────────────────────────────────────────────────────────
 
     play() { this._run(); }
 
@@ -504,10 +505,10 @@ export class NcAnimation extends Component {
             cleanupAnimation(target);
             target.style.cssText = target.style.cssText.replace(/animation[^;]*;?/g, '');
         }
-        this.emitEvent('nc-animation-cancel', {});
+        this.dispatchEvent(new CustomEvent('cancel', { bubbles: true, composed: true }));
     }
 
-    // -- Setup -----------------------------------------------------------------
+    // ── Setup ─────────────────────────────────────────────────────────────────
 
     private _setupAnimation() {
         const trigger = this._attr('trigger', 'mount') as AnimationTrigger;
@@ -525,7 +526,7 @@ export class NcAnimation extends Component {
             case 'click':
                 this._setupClickTrigger();
                 break;
-            // 'manual' - nothing; caller calls .play()
+            // 'manual' — nothing; caller calls .play()
         }
     }
 
@@ -579,7 +580,7 @@ export class NcAnimation extends Component {
         this._clickOff = () => this.removeEventListener('click', onClick);
     }
 
-    // -- Core run dispatcher ---------------------------------------------------
+    // ── Core run dispatcher ───────────────────────────────────────────────────
 
     private _run() {
         const name = this._attr('name', 'fade-in');
@@ -589,7 +590,7 @@ export class NcAnimation extends Component {
             return;
         }
 
-        this.emitEvent('nc-animation-start', {});
+        this.dispatchEvent(new CustomEvent('start', { bubbles: true, composed: true }));
 
         switch (preset.path) {
             case 'waapi':    this._runWAAPI(preset); break;
@@ -598,7 +599,7 @@ export class NcAnimation extends Component {
         }
     }
 
-    // -- WAAPI path ------------------------------------------------------------
+    // ── WAAPI path ────────────────────────────────────────────────────────────
 
     private _runWAAPI(preset: PresetDef) {
         const target = this._target();
@@ -621,7 +622,7 @@ export class NcAnimation extends Component {
         const before = target.getAnimations().length;
         preset.run(target, opts).then(() => {
             if (!noHint && opts.iterations === 1) cleanupAnimation(target);
-            this.emitEvent('nc-animation-finish', {});
+            this.dispatchEvent(new CustomEvent('finish', { bubbles: true, composed: true }));
         });
 
         // Grab the newest animation handle
@@ -633,7 +634,7 @@ export class NcAnimation extends Component {
         });
     }
 
-    // -- CSS compositor path ---------------------------------------------------
+    // ── CSS compositor path ───────────────────────────────────────────────────
 
     private _runCSS(preset: PresetDef, name: string) {
         const target = this._target();
@@ -641,7 +642,7 @@ export class NcAnimation extends Component {
 
         const animName = `nc-anim-${name}`;
 
-        // Inject keyframes into document.head (NOT shadow root) - slotted targets
+        // Inject keyframes into document.head (NOT shadow root) — slotted targets
         // are light DOM elements; shadow-scoped @keyframes are invisible to them.
         if (!_injectedKeyframes.has(animName)) {
             const style = document.createElement('style');
@@ -664,14 +665,14 @@ export class NcAnimation extends Component {
         if (iterations !== 'infinite') {
             target.addEventListener('animationend', () => {
                 cleanupAnimation(target);
-                this.emitEvent('nc-animation-finish', {});
+                this.dispatchEvent(new CustomEvent('finish', { bubbles: true, composed: true }));
             }, { once: true });
         }
     }
 
-    // -- Particle path ---------------------------------------------------------
+    // ── Particle path ─────────────────────────────────────────────────────────
 
-    /** Resolve 'top'|'bottom'|'left'|'right'|'center'|number-string ? 0-1 float */
+    /** Resolve 'top'|'bottom'|'left'|'right'|'center'|number-string → 0-1 float */
     private _resolvePos(raw: string | null, fallback: number): number {
         if (!raw) return fallback;
         const aliases: Record<string, number> = { top: 0, bottom: 1, left: 0, right: 1, center: 0.5 };
@@ -684,7 +685,7 @@ export class NcAnimation extends Component {
         if (!preset.particle) return;
         this._stopParticles();
 
-        // Full-viewport canvas - particles live in screen space, not element space
+        // Full-viewport canvas — particles live in screen space, not element space
         const canvas = document.createElement('canvas');
         canvas.width  = window.innerWidth;
         canvas.height = window.innerHeight;
@@ -710,14 +711,14 @@ export class NcAnimation extends Component {
                 : { min: 40, max: 120 },
         };
 
-        // Always use canvas2d - the WebGL system from gpu-animation doesn't
+        // Always use canvas2d — the WebGL system from gpu-animation doesn't
         // support per-preset behaviors (electricity, fire, ripple etc.)
         this._runCanvas2D(canvas, cfg, ox, oy, tx, ty, preset);
 
         const duration = this._numAttr('duration', preset.duration);
         setTimeout(() => {
             this._stopParticles();
-            this.emitEvent('nc-animation-finish', {});
+            this.dispatchEvent(new CustomEvent('finish', { bubbles: true, composed: true }));
         }, duration);
     }
 
@@ -751,7 +752,7 @@ export class NcAnimation extends Component {
             return r ? [parseInt(r[1],16), parseInt(r[2],16), parseInt(r[3],16)] : [255,255,255];
         };
 
-        // -- Particle data arrays (avoid GC pressure) -------------------------
+        // ── Particle data arrays (avoid GC pressure) ─────────────────────────
         interface P {
             x: number; y: number; vx: number; vy: number;
             ax: number; ay: number;          // acceleration
@@ -765,7 +766,7 @@ export class NcAnimation extends Component {
         }
         const particles: P[] = [];
 
-        // -- Spawn logic per type ---------------------------------------------
+        // ── Spawn logic per type ─────────────────────────────────────────────
         const spawnParticle = (i: number): P => {
             const t = count > 1 ? i / (count - 1) : 0.5;
             switch (type) {
@@ -952,7 +953,7 @@ export class NcAnimation extends Component {
             for (let i = 0; i < count; i++) particles.push(spawnParticle(i));
         }
 
-        // -- Per-particle draw -------------------------------------------------
+        // ── Per-particle draw ─────────────────────────────────────────────────
         const drawParticle = (p: P) => {
             ctx.globalAlpha = Math.max(0, p.life) * (p.alpha ?? 1);
             ctx.fillStyle   = p.color;
@@ -966,7 +967,7 @@ export class NcAnimation extends Component {
                 ctx.restore();
 
             } else if (p.shape === 'line' && p.trail && p.trail.length > 1) {
-                // Electricity bolt - draw jagged line segments from trail
+                // Electricity bolt — draw jagged line segments from trail
                 ctx.lineWidth = p.size;
                 ctx.shadowColor = p.color;
                 ctx.shadowBlur  = 12;
@@ -992,7 +993,7 @@ export class NcAnimation extends Component {
                 }
 
             } else {
-                // Circle - fire, firework, explosion debris each get glow
+                // Circle — fire, firework, explosion debris each get glow
                 if (type === 'fire') {
                     const [r,g,b] = hex2rgb(p.color);
                     const grad = ctx.createRadialGradient(p.x, p.y, 0, p.x, p.y, p.size);
@@ -1001,7 +1002,7 @@ export class NcAnimation extends Component {
                     grad.addColorStop(1,   `rgba(${r},${g},${b},0)`);
                     ctx.fillStyle = grad;
                 } else if (type === 'firework') {
-                    // Glowing spark - shrinks as it fades
+                    // Glowing spark — shrinks as it fades
                     ctx.shadowColor = p.color;
                     ctx.shadowBlur  = p.size * 4;
                     const drawR = Math.max(0.5, p.size * p.life);
@@ -1036,7 +1037,7 @@ export class NcAnimation extends Component {
         const loop = createAnimationLoop((dt) => {
             ctx.clearRect(0, 0, W, H);
 
-            // -- Electricity: regenerate jagged bolt paths each interval ----
+            // ── Electricity: regenerate jagged bolt paths each interval ────
             if (type === 'electricity') {
                 elecTimer += dt;
                 if (elecTimer >= elecInterval) {
@@ -1071,7 +1072,7 @@ export class NcAnimation extends Component {
                 return true; // electricity loops until duration expires
             }
 
-            // -- All other types -------------------------------------------
+            // ── All other types ───────────────────────────────────────────
             let alive = 0;
             const fadeRate = type === 'ripple' ? 0.3 : type === 'fire' ? 0.7 :
                              type === 'float' ? 0.15 :
@@ -1113,7 +1114,7 @@ export class NcAnimation extends Component {
         }
     }
 
-    // -- Helpers ---------------------------------------------------------------
+    // ── Helpers ───────────────────────────────────────────────────────────────
 
     /** First painted element assigned to the default slot. */
     private _target(): HTMLElement | null {
@@ -1149,5 +1150,4 @@ export class NcAnimation extends Component {
 }
 
 defineComponent('nc-animation', NcAnimation);
-
 

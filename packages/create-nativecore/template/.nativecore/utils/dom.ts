@@ -1,8 +1,3 @@
-/**
- * DOM Utility Functions
- * Shorthand helpers for common DOM operations
- */
-
 type QueryRoot = Document | Element | ShadowRoot;
 
 function resolveRoot(root?: Element | ShadowRoot | string | null): QueryRoot {
@@ -23,7 +18,6 @@ function createDataScope(viewName: string, rootOverride?: Element | ShadowRoot |
                 return resolvedRoot.querySelector<HTMLElement>(rootSelector);
             }
         }
-
         return document.querySelector<HTMLElement>(rootSelector);
     };
 
@@ -54,132 +48,86 @@ function createDataScope(viewName: string, rootOverride?: Element | ShadowRoot |
             query<HTMLInputElement>(`[data-hook="${name}"]`),
         form: (name: string): HTMLFormElement | null =>
             query<HTMLFormElement>(`[data-hook="${name}"]`),
-        component: <T extends HTMLElement = HTMLElement>(name: string): T | null =>
-            query<T>(`[data-hook="${name}"]`),
         /** Re-scope to a named [data-view] within the same shadow root. */
         view: (nestedViewName: string) => createDataScope(nestedViewName, rootOverride),
     };
 }
 
 export const dom = {
-    /**
-     * Query single element (shorthand for document.querySelector)
-     */
     query: <T extends Element = Element>(selector: string): T | null =>
         document.querySelector<T>(selector),
 
-    /**
-     * Query multiple elements (shorthand for document.querySelectorAll)
-     */
     queryAll: <T extends Element = Element>(selector: string): NodeListOf<T> =>
         document.querySelectorAll<T>(selector),
 
-    /**
-     * Alias for query (similar to jQuery)
-     */
     $: <T extends Element = Element>(selector: string): T | null =>
         document.querySelector<T>(selector),
 
-    /**
-     * Alias for queryAll (similar to jQuery)
-     */
     $$: <T extends Element = Element>(selector: string): NodeListOf<T> =>
         document.querySelectorAll<T>(selector),
 
-    /**
-     * Query within a specific parent element (scoped query)
-     * @example dom.within(shadowRoot, '.btn')
-     * @example dom.within('#sidebar', 'a.active')
-     */
     within: <T extends Element = Element>(
         parent: Element | ShadowRoot | string,
         selector: string
     ): T | null => {
-        const el = typeof parent === 'string' ? document.querySelector(parent) : parent;
-        return el ? el.querySelector<T>(selector) : null;
+        const element = typeof parent === 'string' ? document.querySelector(parent) : parent;
+        return element ? element.querySelector<T>(selector) : null;
     },
 
-    /**
-     * Query all within a specific parent element (scoped query)
-     */
     withinAll: <T extends Element = Element>(
         parent: Element | ShadowRoot | string,
         selector: string
     ): NodeListOf<T> | T[] => {
-        const el = typeof parent === 'string' ? document.querySelector(parent) : parent;
-        return el ? el.querySelectorAll<T>(selector) : ([] as T[]);
+        const element = typeof parent === 'string' ? document.querySelector(parent) : parent;
+        return element ? element.querySelectorAll<T>(selector) : ([] as T[]);
     },
 
-    /**
-     * Create an element with optional attributes and children
-     * @example dom.create('button', { class: 'btn', type: 'button' }, 'Click me')
-     * @example dom.create('div', { id: 'wrapper' }, childEl1, childEl2)
-     */
     create: <K extends keyof HTMLElementTagNameMap>(
         tag: K,
         attrs?: Record<string, string> | null,
         ...children: Array<string | Node>
     ): HTMLElementTagNameMap[K] => {
-        const el = document.createElement(tag);
+        const element = document.createElement(tag);
         if (attrs) {
-            for (const [key, val] of Object.entries(attrs)) {
-                el.setAttribute(key, val);
+            for (const [key, value] of Object.entries(attrs)) {
+                element.setAttribute(key, value);
             }
         }
         for (const child of children) {
             if (typeof child === 'string') {
-                el.appendChild(document.createTextNode(child));
+                element.appendChild(document.createTextNode(child));
             } else {
-                el.appendChild(child);
+                element.appendChild(child);
             }
         }
-        return el;
+        return element;
     },
 
-    /**
-     * Add one or more CSS classes to an element
-     */
-    addClass: (el: Element | string | null, ...classes: string[]): void => {
-        const target = typeof el === 'string' ? document.querySelector(el) : el;
+    addClass: (element: Element | string | null, ...classes: string[]): void => {
+        const target = typeof element === 'string' ? document.querySelector(element) : element;
         if (target) target.classList.add(...classes);
     },
 
-    /**
-     * Remove one or more CSS classes from an element
-     */
-    removeClass: (el: Element | string | null, ...classes: string[]): void => {
-        const target = typeof el === 'string' ? document.querySelector(el) : el;
+    removeClass: (element: Element | string | null, ...classes: string[]): void => {
+        const target = typeof element === 'string' ? document.querySelector(element) : element;
         if (target) target.classList.remove(...classes);
     },
 
-    /**
-     * Toggle a CSS class on an element
-     */
-    toggleClass: (el: Element | string | null, cls: string, force?: boolean): void => {
-        const target = typeof el === 'string' ? document.querySelector(el) : el;
-        if (target) target.classList.toggle(cls, force);
+    toggleClass: (element: Element | string | null, className: string, force?: boolean): void => {
+        const target = typeof element === 'string' ? document.querySelector(element) : element;
+        if (target) target.classList.toggle(className, force);
     },
 
-    /**
-     * Show an element (removes display:none inline style)
-     */
-    show: (el: Element | string | null): void => {
-        const target = typeof el === 'string' ? document.querySelector(el) : el;
+    show: (element: Element | string | null): void => {
+        const target = typeof element === 'string' ? document.querySelector(element) : element;
         if (target) (target as HTMLElement).style.removeProperty('display');
     },
 
-    /**
-     * Hide an element (sets display:none inline style)
-     */
-    hide: (el: Element | string | null): void => {
-        const target = typeof el === 'string' ? document.querySelector(el) : el;
+    hide: (element: Element | string | null): void => {
+        const target = typeof element === 'string' ? document.querySelector(element) : element;
         if (target) (target as HTMLElement).style.display = 'none';
     },
 
-    /**
-     * Add event listener — returns an unsubscribe function for cleanup
-     * @example const off = dom.listen('#btn', 'click', handler); off(); // removes listener
-     */
     listen: (
         selectorOrElement: string | Element | null,
         eventName: string,
@@ -200,19 +148,22 @@ export const dom = {
 
     /**
      * Create a scoped accessor for [data-view="..."] containers. Use in controllers
-     * to scope queries to a specific view without leaking into other parts of the page.
+     * to scope queries to a specific view, or in components via `this.component`.
      *
      * @example dom.view('tasks').hook('list')     // [data-hook="list"] inside [data-view="tasks"]
      * @example dom.view('tasks').action('add')    // [data-action="add"]
      * @example dom.view('tasks').query('.badge')  // arbitrary selector
      */
     view: (viewName: string, root?: Element | ShadowRoot | string | null) =>
-        createDataScope(viewName, root)
+        createDataScope(viewName, root),
 };
 
-// Expose to window for console debugging
 if (typeof window !== 'undefined') {
-    (window as any).dom = dom;
+    Object.defineProperty(window, 'dom', {
+        value: Object.freeze(dom),
+        writable: false,
+        configurable: false,
+    });
 }
 
 export default dom;

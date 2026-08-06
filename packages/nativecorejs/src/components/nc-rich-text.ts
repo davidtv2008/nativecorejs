@@ -5,16 +5,16 @@
  * with a toolbar, HTML output, and zero external dependencies.
  *
  * Attributes:
- *   - name: string - for use in nc-form (emits HTML string as value)
- *   - value: string - initial HTML content
+ *   - name: string — for use in nc-form (emits HTML string as value)
+ *   - value: string — initial HTML content
  *   - placeholder: string (default: 'Start typing...')
  *   - disabled: boolean
  *   - readonly: boolean
- *   - toolbar: string - comma-separated list of toolbar buttons to show.
+ *   - toolbar: string — comma-separated list of toolbar buttons to show.
  *       Full list: 'bold,italic,underline,strike,|,h1,h2,h3,|,ul,ol,|,blockquote,code,|,link,|,align-left,align-center,align-right,|,clear'
  *       Default: all of the above
- *   - min-height: string - CSS min-height of editable area (default: '120px')
- *   - max-height: string - CSS max-height of editable area (default: '400px')
+ *   - min-height: string — CSS min-height of editable area (default: '120px')
+ *   - max-height: string — CSS max-height of editable area (default: '400px')
  *
  * Events:
  *   - input:  CustomEvent<{ value: string; name: string }>
@@ -25,8 +25,8 @@
  *   <nc-rich-text name="notes" toolbar="bold,italic,underline,|,ul,ol"></nc-rich-text>
  */
 
-import { Component, defineComponent } from '../../.nativecore/core/component.js';
-import { html, raw, sanitizeURL } from '../../.nativecore/utils/templates.js';
+import { CoreComponent } from '../../.nativecore/core/component.js';
+import { css } from '../../.nativecore/utils/templates.js';
 
 const ICONS: Record<string, string> = {
     bold:         `<svg viewBox="0 0 16 16" fill="none" width="14" height="14"><text x="3" y="13" font-family="Georgia,serif" font-size="13" font-weight="bold" fill="currentColor">B</text></svg>`,
@@ -47,12 +47,15 @@ const ICONS: Record<string, string> = {
     clear:          `<svg viewBox="0 0 16 16" fill="none" width="14" height="14" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"><path d="M3 3l10 10M13 3L3 13"/></svg>`,
 };
 
-export class NcRichText extends Component {
+export class NcRichText extends CoreComponent {
     static useShadowDOM = true;
+    static observedAttributes = ['name', 'value', 'placeholder', 'disabled', 'readonly', 'toolbar', 'min-height', 'max-height'];
+    static attributeOrder     = ['name', 'value', 'placeholder', 'toolbar', 'min-height', 'max-height', 'disabled', 'readonly'];
 
-    static get observedAttributes() {
-        return ['name', 'value', 'placeholder', 'disabled', 'readonly', 'toolbar', 'min-height', 'max-height'];
-    }
+    // -- Refs -----------------------------------------------------------------
+    declare toolbarEl:  HTMLDivElement;
+    declare editableEl: HTMLDivElement;
+    declare hiddenEl:   HTMLInputElement;
 
     private _value = '';
 
@@ -64,125 +67,130 @@ export class NcRichText extends Component {
         return ['bold','italic','underline','strike','|','h1','h2','h3','|','ul','ol','|','blockquote','code','|','link','|','align-left','align-center','align-right','|','clear'];
     }
 
-    template() {
-        if (!this._mounted) {
-            this._value = this.getAttribute('value') || '';
+    static styles = css`
+        :host { display: block; font-family: var(--nc-font-family); }
+
+        .editor-wrap {
+            border: var(--nc-input-border);
+            border-radius: var(--nc-input-radius);
+            background: var(--nc-bg);
+            overflow: hidden;
+            transition: border-color var(--nc-transition-fast), box-shadow var(--nc-transition-fast);
         }
-        const placeholder = this.getAttribute('placeholder') || 'Start typing...';
-        const disabled = this.hasAttribute('disabled');
-        const readonly = this.hasAttribute('readonly');
-        const minHeight = this.getAttribute('min-height') || '120px';
-        const maxHeight = this.getAttribute('max-height') || '400px';
-        const items = this._getToolbarItems();
+        :host([disabled]) .editor-wrap { opacity: 0.5; pointer-events: none; }
+        .editor-wrap:focus-within { border-color: var(--nc-input-focus-border); box-shadow: 0 0 0 3px rgba(16,185,129,.15); }
 
-        const toolbarHtml = items.map(id => {
-            if (id === '|') return html`<span class="tb-sep"></span>`;
-            const icon = ICONS[id] ?? '';
-            return `<button class="tb-btn" type="button" data-cmd="${id}" title="${id}" tabindex="-1">${icon}</button>`;
-        }).join('');
+        .toolbar {
+            display: flex;
+            flex-wrap: wrap;
+            align-items: center;
+            gap: 2px;
+            padding: 6px 8px;
+            border-bottom: 1px solid var(--nc-border);
+            background: var(--nc-bg-secondary);
+            user-select: none;
+        }
 
-        return `
-            <style>
-                :host { display: block; font-family: var(--nc-font-family); }
+        .tb-btn {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            background: none;
+            border: none;
+            cursor: pointer;
+            padding: 4px 6px;
+            border-radius: var(--nc-radius-sm, 4px);
+            color: var(--nc-text);
+            transition: background var(--nc-transition-fast), color var(--nc-transition-fast);
+            line-height: 1;
+        }
+        .tb-btn:hover { background: var(--nc-bg-tertiary); }
+        .tb-btn.active { background: var(--nc-primary); color: #fff; }
 
-                .editor-wrap {
-                    border: var(--nc-input-border);
-                    border-radius: var(--nc-input-radius);
-                    background: var(--nc-bg);
-                    overflow: hidden;
-                    opacity: ${disabled ? '0.5' : '1'};
-                    pointer-events: ${disabled ? 'none' : 'auto'};
-                    transition: border-color var(--nc-transition-fast), box-shadow var(--nc-transition-fast);
-                }
-                .editor-wrap:focus-within { border-color: var(--nc-input-focus-border); box-shadow: 0 0 0 3px rgba(16,185,129,.15); }
+        .tb-sep {
+            width: 1px;
+            height: 18px;
+            background: var(--nc-border);
+            margin: 0 4px;
+            flex-shrink: 0;
+        }
 
-                .toolbar {
-                    display: flex;
-                    flex-wrap: wrap;
-                    align-items: center;
-                    gap: 2px;
-                    padding: 6px 8px;
-                    border-bottom: 1px solid var(--nc-border);
-                    background: var(--nc-bg-secondary);
-                    user-select: none;
-                }
+        .editable {
+            padding: var(--nc-spacing-md);
+            min-height: var(--_min-height, 120px);
+            max-height: var(--_max-height, 400px);
+            overflow-y: auto;
+            outline: none;
+            font-size: var(--nc-font-size-base);
+            line-height: var(--nc-line-height-relaxed, 1.7);
+            color: var(--nc-text);
+            word-break: break-word;
+        }
 
-                .tb-btn {
-                    display: inline-flex;
-                    align-items: center;
-                    justify-content: center;
-                    background: none;
-                    border: none;
-                    cursor: pointer;
-                    padding: 4px 6px;
-                    border-radius: var(--nc-radius-sm, 4px);
-                    color: var(--nc-text);
-                    transition: background var(--nc-transition-fast), color var(--nc-transition-fast);
-                    line-height: 1;
-                }
-                .tb-btn:hover { background: var(--nc-bg-tertiary); }
-                .tb-btn.active { background: var(--nc-primary); color: #fff; }
+        .editable:empty::before {
+            content: attr(data-placeholder);
+            color: var(--nc-text-muted);
+            pointer-events: none;
+        }
 
-                .tb-sep {
-                    width: 1px;
-                    height: 18px;
-                    background: var(--nc-border);
-                    margin: 0 4px;
-                    flex-shrink: 0;
-                }
+        /* Content styles */
+        .editable h1 { font-size: 1.8em; font-weight: 700; margin: 0.5em 0 0.25em; }
+        .editable h2 { font-size: 1.4em; font-weight: 700; margin: 0.5em 0 0.25em; }
+        .editable h3 { font-size: 1.1em; font-weight: 700; margin: 0.5em 0 0.25em; }
+        .editable ul, .editable ol { padding-left: 1.5em; margin: 0.4em 0; }
+        .editable blockquote { border-left: 3px solid var(--nc-primary); padding-left: var(--nc-spacing-md); margin: 0.4em 0; color: var(--nc-text-muted); font-style: italic; }
+        .editable code, .editable pre { background: var(--nc-bg-tertiary); border-radius: 4px; font-family: monospace; font-size: 0.9em; padding: 1px 5px; }
+        .editable a { color: var(--nc-primary); text-decoration: underline; }
+    `;
 
-                .editable {
-                    padding: var(--nc-spacing-md);
-                    min-height: ${minHeight};
-                    max-height: ${maxHeight};
-                    overflow-y: auto;
-                    outline: none;
-                    font-size: var(--nc-font-size-base);
-                    line-height: var(--nc-line-height-relaxed, 1.7);
-                    color: var(--nc-text);
-                    word-break: break-word;
-                }
-
-                .editable:empty::before {
-                    content: attr(data-placeholder);
-                    color: var(--nc-text-muted);
-                    pointer-events: none;
-                }
-
-                /* Content styles */
-                .editable h1 { font-size: 1.8em; font-weight: 700; margin: 0.5em 0 0.25em; }
-                .editable h2 { font-size: 1.4em; font-weight: 700; margin: 0.5em 0 0.25em; }
-                .editable h3 { font-size: 1.1em; font-weight: 700; margin: 0.5em 0 0.25em; }
-                .editable ul, .editable ol { padding-left: 1.5em; margin: 0.4em 0; }
-                .editable blockquote { border-left: 3px solid var(--nc-primary); padding-left: var(--nc-spacing-md); margin: 0.4em 0; color: var(--nc-text-muted); font-style: italic; }
-                .editable code, .editable pre { background: var(--nc-bg-tertiary); border-radius: 4px; font-family: monospace; font-size: 0.9em; padding: 1px 5px; }
-                .editable a { color: var(--nc-primary); text-decoration: underline; }
-            </style>
-            <div class="editor-wrap">
-                <div class="toolbar">${raw(toolbarHtml)}</div>
+    template() {
+        return `            <div class="editor-wrap">
+                <div ref="toolbarEl" class="toolbar"></div>
                 <div
+                    ref="editableEl"
                     class="editable"
-                    contenteditable="${!disabled && !readonly ? 'true' : 'false'}"
-                    data-placeholder="${placeholder}"
                     role="textbox"
                     aria-multiline="true"
-                    aria-label="${placeholder}"
-                >${this._value}</div>
+                ></div>
             </div>
-            <input type="hidden" name="${this.getAttribute('name') || ''}" value="" />
+            <input ref="hiddenEl" type="hidden" />
         `;
     }
 
     onMount() {
+        this._value = this.getAttribute('value') || '';
+        this._syncFromAttrs();
+        this.editableEl.innerHTML = this._value;
+        this.hiddenEl.value = this._value;
         this._bindEvents();
-        // Sync hidden input with initial value
-        const hidden = this.$<HTMLInputElement>('input[type="hidden"]')!;
-        hidden.value = this._value;
+    }
+
+    private _syncFromAttrs() {
+        const placeholder = this.getAttribute('placeholder') || 'Start typing...';
+        const disabled    = this.hasAttribute('disabled');
+        const readonly    = this.hasAttribute('readonly');
+        const minHeight   = this.getAttribute('min-height') || '120px';
+        const maxHeight   = this.getAttribute('max-height') || '400px';
+        const items       = this._getToolbarItems();
+
+        this.style.setProperty('--_min-height', minHeight);
+        this.style.setProperty('--_max-height', maxHeight);
+
+        this.editableEl.setAttribute('data-placeholder', placeholder);
+        this.editableEl.setAttribute('aria-label', placeholder);
+        this.editableEl.contentEditable = (!disabled && !readonly) ? 'true' : 'false';
+
+        this.hiddenEl.name = this.getAttribute('name') || '';
+
+        this.toolbarEl.innerHTML = items.map(id => {
+            if (id === '|') return '<span class="tb-sep"></span>';
+            const icon = ICONS[id] ?? '';
+            return `<button class="tb-btn" type="button" data-cmd="${id}" title="${id}" tabindex="-1">${icon}</button>`;
+        }).join('');
     }
 
     private _exec(cmd: string) {
-        const editable = this.$<HTMLElement>('.editable')!;
-        editable.focus();
+        this.editableEl.focus();
 
         switch (cmd) {
             case 'bold':         document.execCommand('bold', false); break;
@@ -202,8 +210,7 @@ export class NcRichText extends Component {
             case 'clear':        document.execCommand('removeFormat', false); break;
             case 'link': {
                 const url = prompt('Enter URL:');
-                const safeUrl = sanitizeURL(url);
-                if (safeUrl) document.execCommand('createLink', false, safeUrl);
+                if (url) document.execCommand('createLink', false, url);
                 break;
             }
         }
@@ -212,17 +219,14 @@ export class NcRichText extends Component {
     }
 
     private _onContentChange() {
-        const editable = this.$<HTMLElement>('.editable')!;
-        const html = editable.innerHTML;
+        const html = this.editableEl.innerHTML;
         this._value = html;
-        const hidden = this.$<HTMLInputElement>('input[type="hidden"]');
-        if (hidden) hidden.value = html;
-        const name = this.getAttribute('name') || '';
-        this.emitEvent('input', { value: html, name });
+        this.hiddenEl.value = html;
+        this.emit('input', { value: html, name: this.getAttribute('name') || '' });
     }
 
     private _updateToolbarState() {
-        this.shadowRoot!.querySelectorAll<HTMLButtonElement>('.tb-btn').forEach(btn => {
+        this.toolbarEl.querySelectorAll<HTMLButtonElement>('.tb-btn').forEach(btn => {
             const cmd = btn.dataset.cmd ?? '';
             let active = false;
             switch (cmd) {
@@ -236,48 +240,32 @@ export class NcRichText extends Component {
     }
 
     private _bindEvents() {
-        const toolbar = this.$<HTMLElement>('.toolbar')!;
-        const editable = this.$<HTMLElement>('.editable')!;
-
-        toolbar.addEventListener('mousedown', (e) => {
-            // Prevent losing selection when clicking toolbar buttons
-            e.preventDefault();
-        });
-        toolbar.addEventListener('click', (e) => {
+        this.on(this.toolbarEl, 'mousedown', (e: MouseEvent) => { e.preventDefault(); });
+        this.on(this.toolbarEl, 'click', (e: MouseEvent) => {
             const btn = (e.target as HTMLElement).closest<HTMLButtonElement>('[data-cmd]');
             if (btn) this._exec(btn.dataset.cmd!);
         });
-
-        editable.addEventListener('input', () => this._onContentChange());
-        editable.addEventListener('blur', () => {
-            this.emitEvent('change', { value: this._value, name: this.getAttribute('name') || '' });
+        this.on(this.editableEl, 'input', () => this._onContentChange());
+        this.on(this.editableEl, 'blur', () => {
+            this.emit('change', { value: this._value, name: this.getAttribute('name') || '' });
         });
-        editable.addEventListener('keyup', () => this._updateToolbarState());
-        editable.addEventListener('mouseup', () => this._updateToolbarState());
+        this.on(this.editableEl, 'keyup', () => this._updateToolbarState());
+        this.on(this.editableEl, 'mouseup', () => this._updateToolbarState());
     }
 
     getValue(): string { return this._value; }
 
     setValue(html: string) {
         this._value = html;
-        const editable = this.$<HTMLElement>('.editable');
-        if (editable) editable.innerHTML = html;
-        const hidden = this.$<HTMLInputElement>('input[type="hidden"]');
-        if (hidden) hidden.value = html;
+        this.editableEl.innerHTML = html;
+        this.hiddenEl.value = html;
     }
 
-    attributeChangedCallback(name: string, oldValue: string, newValue: string) {
-        if (oldValue === newValue) return;
-        if (name === 'value' && this._mounted) {
-            this.setValue(newValue || '');
-            return;
-        }
-        if (this._mounted) { this.render(); }
-        // Do not re-call _bindEvents() — the .toolbar and .editable delegation survives re-renders
+    protected _handleAttributeUpdate(name: string, val: string | null) {
+        if (name === 'value') { this.setValue(val || ''); return; }
+        this._syncFromAttrs();
     }
 }
 
-defineComponent('nc-rich-text', NcRichText);
-
-
+if (!customElements.get('nc-rich-text')) customElements.define('nc-rich-text', NcRichText);
 

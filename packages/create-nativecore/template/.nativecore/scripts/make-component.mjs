@@ -83,7 +83,6 @@ if (fs.existsSync(componentFile)) {
 const tsTemplate = `import { CoreComponent, defineComponent } from '@core/component.js';
 import { html } from '@core-utils/templates.js';
 import type { State } from '@core/component.js';
-import '@components/core/nc-button.js';
 
 export class ${className} extends CoreComponent {
     static useShadowDOM = true;
@@ -91,7 +90,7 @@ export class ${className} extends CoreComponent {
 
     private titleEl!: HTMLElement;
     private descriptionEl!: HTMLElement;
-    private actionBtn!: HTMLElement;
+    private actionBtn!: HTMLButtonElement;
 
     private titleState!: State<string>;
     private descriptionState!: State<string>;
@@ -108,7 +107,7 @@ export class ${className} extends CoreComponent {
             <div class="${componentName}">
                 <header class="${componentName}__header">
                     <h3 class="${componentName}__title" ref="titleEl"></h3>
-                    <nc-button ref="actionBtn" class="${componentName}__action" variant="outline">Action</nc-button>
+                    <button type="button" ref="actionBtn" class="${componentName}__action">Action</button>
                 </header>
                 <p class="${componentName}__description" ref="descriptionEl"></p>
                 <slot></slot>
@@ -123,7 +122,6 @@ export class ${className} extends CoreComponent {
         this.bind(this.titleState, this.titleEl);
         this.bind(this.descriptionState, this.descriptionEl);
 
-        // nc-button uses the native click event (bubbles from the host).
         this.on(this.actionBtn, 'click', () => {
             this.emit('${componentName}-action', { title: this.titleState.value });
         });
@@ -141,7 +139,6 @@ defineComponent('${componentName}', ${className});
 // ─── JavaScript template ────────────────────────────────────────────────────
 const jsTemplate = `import { CoreComponent, defineComponent } from '@core/component.js';
 import { html } from '@core-utils/templates.js';
-import '@components/core/nc-button.js';
 
 export class ${className} extends CoreComponent {
     static useShadowDOM = true;
@@ -159,7 +156,7 @@ export class ${className} extends CoreComponent {
             <div class="${componentName}">
                 <header class="${componentName}__header">
                     <h3 class="${componentName}__title" ref="titleEl"></h3>
-                    <nc-button ref="actionBtn" class="${componentName}__action" variant="outline">Action</nc-button>
+                    <button type="button" ref="actionBtn" class="${componentName}__action">Action</button>
                 </header>
                 <p class="${componentName}__description" ref="descriptionEl"></p>
                 <slot></slot>
@@ -174,7 +171,6 @@ export class ${className} extends CoreComponent {
         this.bind(this.titleState, this.titleEl);
         this.bind(this.descriptionState, this.descriptionEl);
 
-        // nc-button uses the native click event (bubbles from the host).
         this.on(this.actionBtn, 'click', () => {
             this.emit('${componentName}-action', { title: this.titleState.value });
         });

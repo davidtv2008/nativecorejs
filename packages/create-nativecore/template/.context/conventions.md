@@ -171,25 +171,9 @@ export function registerRoutes(r) {
 - Discover protected paths with `router.getPathsForMiddleware('auth')` after you register that tag.
 - Do not invent JWT / login / dashboard routes unless the user asks.
 
-## Optional declarative wires
+## Wires utils (do not use)
 
-Generators use refs + `CoreController.bind`. Wires remain available for attribute-driven markup:
-
-```js
-import {
-    wireContents, wireInputs, wireAttributes,
-    wireClasses, wireStyles, wireActions,
-} from '@core-utils/wires.js';
-```
-
-| Helper | Attribute |
-|--------|-----------|
-| `wireContents` | `wire-content="key"` |
-| `wireInputs` | `wire-input="key"` |
-| `wireAttributes` | `wire-attribute="key:attr"` |
-| `wireClasses` | `wire-class="key:class"` |
-| `wireStyles` | `wire-style="key:css-prop"` |
-| `wireActions` | `wire-action="name:eventType"` |
+Do not use wires utils (`@core-utils/wires.js`). Use `ref` + `this.bind` + `this.on`.
 
 ## Generators
 
@@ -251,5 +235,5 @@ Default shell is minimal (`#app.minimal-shell`). `app-header`, `app-sidebar`, an
 - Invent auth, Capacitor, or dual HTML shells by default
 - Use `router.register` inside `registerRoutes(r)` (use `r.register`)
 - Import from `nativecorejs/testing` when `@testing/index.js` is available
-- Enable or assume the Component Builder UI (it ships disabled)
+- Enable or assume the Component Builder (experimental; disabled by default)
 - Use emojis in code, comments, or docs

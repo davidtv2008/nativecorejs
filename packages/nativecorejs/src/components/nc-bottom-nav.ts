@@ -1,20 +1,20 @@
 /**
- * NcBottomNav Component - mobile bottom navigation bar
+ * NcBottomNav Component — mobile bottom navigation bar
  *
  * Container for nc-nav-bottom-item children. Handles active state management.
  * Designed for mobile viewports but works on all sizes.
  *
  * Attributes:
- *   value      - currently active tab value
- *   variant    - 'default'|'labeled'|'icon-only' (default: 'labeled')
- *   elevated   - boolean - add drop shadow / elevated appearance
- *   bordered   - boolean - top border (default: true)
+ *   value      — currently active tab value
+ *   variant    — 'default'|'labeled'|'icon-only' (default: 'labeled')
+ *   elevated   — boolean — add drop shadow / elevated appearance
+ *   bordered   — boolean — top border (default: true)
  *
  * Slots:
- *   (default) - nc-bottom-nav-item elements
+ *   (default) — nc-bottom-nav-item elements
  *
  * Events:
- *   change - CustomEvent<{ value: string }> - tab changed
+ *   change — CustomEvent<{ value: string }> — tab changed
  *
  * Usage:
  *   <nc-bottom-nav value="home">
@@ -26,18 +26,18 @@
  */
 
 /**
- * NcBottomNavItem Component - individual tab in a bottom nav bar
+ * NcBottomNavItem Component — individual tab in a bottom nav bar
  *
  * Attributes:
- *   value    - unique identifier for this tab
- *   label    - tab label text
- *   icon     - icon name (same set as nc-nav-item)
- *   badge    - numeric badge count
- *   disabled - boolean
- *   active   - boolean (managed by parent nc-bottom-nav)
+ *   value    — unique identifier for this tab
+ *   label    — tab label text
+ *   icon     — icon name (same set as nc-nav-item)
+ *   badge    — numeric badge count
+ *   disabled — boolean
+ *   active   — boolean (managed by parent nc-bottom-nav)
  */
-import { Component, defineComponent } from '../../.nativecore/core/component.js';
-import { html, raw, escapeHTML } from '../../.nativecore/utils/templates.js';
+import { CoreComponent } from '../../.nativecore/core/component.js';
+import { css, escapeHtml, html, trusted } from '../../.nativecore/utils/templates.js';
 
 // Shared icon paths with nc-nav-item
 const NAV_ICONS: Record<string, string> = {
@@ -54,125 +54,150 @@ const NAV_ICONS: Record<string, string> = {
 const svgWrap = (p: string) =>
     `<svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">${p}</svg>`;
 
-// -- NcBottomNavItem -----------------------------------------------------------
+// ── NcBottomNavItem ───────────────────────────────────────────────────────────
 
-export class NcBottomNavItem extends Component {
+export class NcBottomNavItem extends CoreComponent {
     static useShadowDOM = true;
+    static observedAttributes = ['active', 'badge', 'disabled', 'label', 'icon', 'value'];
 
-    static get observedAttributes() { return ['active', 'badge', 'disabled']; }
+    // -- Refs --
+    declare btnEl: HTMLButtonElement;
+
+    // -- State --
+    private isActive   = this.state(false);
+    private badgeText  = this.state('');
+    private isBadgeHidden = this.state(true);
+
+    static styles = css`
+        :host { display: flex; flex: 1; }
+        button {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            gap: 2px;
+            flex: 1;
+            padding: 6px 4px 8px;
+            background: none;
+            border: none;
+            cursor: pointer;
+            font-family: var(--nc-font-family);
+            font-size: 10px;
+            font-weight: var(--nc-font-weight-medium);
+            color: var(--nc-text-muted);
+            outline: none;
+            transition: color var(--nc-transition-fast);
+            position: relative;
+            min-width: 48px;
+            user-select: none;
+        }
+        :host([active])    button { color: var(--nc-primary); }
+        :host([disabled])  button { opacity: 0.4; cursor: not-allowed; }
+        :host([active]) .icon-wrap svg { transform: translateY(-1px) scale(1.05); }
+        button:focus-visible { color: var(--nc-primary); }
+        .icon-wrap {
+            position: relative;
+            display: flex;
+        }
+        .icon-wrap svg {
+            transition: transform var(--nc-transition-fast);
+        }
+        .badge {
+            position: absolute;
+            top: -5px;
+            right: -8px;
+            background: var(--nc-danger);
+            color: #fff;
+            font-size: 9px;
+            font-weight: 700;
+            min-width: 16px;
+            height: 16px;
+            border-radius: 99px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 0 4px;
+            line-height: 1;
+            border: 1.5px solid var(--nc-bg-elevated, #fff);
+        }
+    `;
 
     template() {
-        const value    = this.getAttribute('value') ?? '';
-        const label    = this.getAttribute('label') ?? '';
-        const iconName = this.getAttribute('icon') ?? '';
-        const active   = this.hasAttribute('active');
-        const disabled = this.hasAttribute('disabled');
-        const badge    = this.getAttribute('badge') ?? '';
+        const value    = this.getAttribute('value')  ?? '';
+        const label    = this.getAttribute('label')  ?? '';
+        const iconName = this.getAttribute('icon')   ?? '';
         const iconOnly = this.closest('nc-bottom-nav')?.getAttribute('variant') === 'icon-only';
 
         const iconHtml = NAV_ICONS[iconName] ? svgWrap(NAV_ICONS[iconName]) : '';
 
-        return html`
-            <style>
-                :host { display: flex; flex: 1; }
-                button {
-                    display: flex;
-                    flex-direction: column;
-                    align-items: center;
-                    justify-content: center;
-                    gap: 2px;
-                    flex: 1;
-                    padding: 6px 4px 8px;
-                    background: none;
-                    border: none;
-                    cursor: ${disabled ? 'not-allowed' : 'pointer'};
-                    opacity: ${disabled ? 0.4 : 1};
-                    font-family: var(--nc-font-family);
-                    font-size: 10px;
-                    font-weight: var(--nc-font-weight-medium);
-                    color: ${active ? 'var(--nc-primary)' : 'var(--nc-text-muted)'};
-                    outline: none;
-                    transition: color var(--nc-transition-fast);
-                    position: relative;
-                    min-width: 48px;
-                    user-select: none;
-                }
-                button:focus-visible { color: var(--nc-primary); }
-                .icon-wrap {
-                    position: relative;
-                    display: flex;
-                }
-                .icon-wrap svg {
-                    transition: transform var(--nc-transition-fast);
-                    ${active ? 'transform: translateY(-1px) scale(1.05);' : ''}
-                }
-                .badge {
-                    position: absolute;
-                    top: -5px;
-                    right: -8px;
-                    background: var(--nc-danger);
-                    color: #fff;
-                    font-size: 9px;
-                    font-weight: 700;
-                    min-width: 16px;
-                    height: 16px;
-                    border-radius: 99px;
-                    display: flex;
-                    align-items: center;
-                    justify-content: center;
-                    padding: 0 4px;
-                    line-height: 1;
-                    border: 1.5px solid var(--nc-bg-elevated, #fff);
-                }
-            </style>
-            <button type="button" ${disabled ? 'disabled' : ''} aria-label="${raw(escapeHTML(label))}" aria-current="${active ? 'page' : 'false'}" data-value="${raw(escapeHTML(value))}">
+        return html`            <button ref="btnEl" type="button" aria-label="${escapeHtml(label)}" data-value="${escapeHtml(value)}">
                 <span class="icon-wrap">
-                    ${raw(iconHtml)}
+                    ${trusted(iconHtml)}
                     <slot name="icon"></slot>
-                    ${raw(badge ? `<span class="badge">${escapeHTML(badge)}</span>` : '')}
+                    <span class="badge" hidden></span>
                 </span>
-                ${raw(!iconOnly && label ? `<span>${escapeHTML(label)}</span>` : '')}
+                ${trusted(!iconOnly && label ? `<span>${escapeHtml(label)}</span>` : '')}
             </button>
         `;
     }
 
     onMount() {
-        this.shadowRoot!.addEventListener('click', () => {
+        // Find badge span inside shadow DOM (no ref= on dynamic content in slot)
+        const badgeSpan = this.shadowRoot!.querySelector<HTMLSpanElement>('.badge')!;
+
+        this.effect(() => {
+            this.btnEl.disabled = this.hasAttribute('disabled');
+            this.btnEl.setAttribute('aria-current', this.isActive.value ? 'page' : 'false');
+        });
+
+        this.effect(() => {
+            badgeSpan.textContent = this.badgeText.value;
+            badgeSpan.hidden      = this.isBadgeHidden.value;
+        });
+
+        this._syncFromAttrs();
+
+        this.on(this.btnEl, 'click', () => {
             if (this.hasAttribute('disabled')) return;
-            this.emitEvent('nc-bottom-nav-item-click', { value: this.getAttribute('value') });
+            this.emit('_item-click', { value: this.getAttribute('value') });
         });
     }
 
-    attributeChangedCallback(n: string, o: string, v: string) {
-        if (o !== v && this._mounted) this.render();
+    protected _handleAttributeUpdate(_name: string, _val: string | null) {
+        this._syncFromAttrs();
+    }
+
+    private _syncFromAttrs() {
+        const badge = this.getAttribute('badge') ?? '';
+        this.isActive.value      = this.hasAttribute('active');
+        this.badgeText.value     = badge;
+        this.isBadgeHidden.value = !badge;
     }
 }
 
-defineComponent('nc-bottom-nav-item', NcBottomNavItem);
+if (!customElements.get('nc-bottom-nav-item')) customElements.define('nc-bottom-nav-item', NcBottomNavItem);
 
 // -- NcBottomNav ---------------------------------------------------------------
 
-export class NcBottomNav extends Component {
+export class NcBottomNav extends CoreComponent {
     static useShadowDOM = true;
+    static observedAttributes = ['value', 'elevated', 'bordered'];
 
-    static get observedAttributes() { return ['value']; }
+    static styles = css`
+        :host { display: block; }
+        nav {
+            display: flex;
+            align-items: stretch;
+            background: var(--nc-bg-elevated, var(--nc-bg));
+            safe-area-inset-bottom: env(safe-area-inset-bottom);
+            padding-bottom: env(safe-area-inset-bottom);
+        }
+        :host(:not([no-border])) nav { border-top: 1px solid var(--nc-border); }
+        :host([elevated]) nav { box-shadow: 0 -2px 12px rgba(0,0,0,.08); }
+    `;
 
     template() {
-        const elevated = this.hasAttribute('elevated');
-        const bordered = !this.hasAttribute('no-border');
-
         return html`
-            <style>
-                :host { display: block; }
-                nav {
-                    display: flex;
-                    align-items: stretch;
-                    background: var(--nc-bg-elevated, var(--nc-bg));
-                    ${bordered ? 'border-top: 1px solid var(--nc-border);' : ''}
-                    ${elevated ? 'box-shadow: 0 -2px 12px rgba(0,0,0,.08);' : ''}
-                    padding-bottom: env(safe-area-inset-bottom);
-                }
-            </style>
             <nav role="navigation" aria-label="Bottom navigation">
                 <slot></slot>
             </nav>
@@ -180,32 +205,29 @@ export class NcBottomNav extends Component {
     }
 
     onMount() {
-        this.addEventListener('nc-bottom-nav-item-click', (e: Event) => {
+        this.on(this, '_item-click', (e: Event) => {
             const ce = e as CustomEvent<{ value: string }>;
             const newValue = ce.detail.value;
             this._setActive(newValue);
-            this.emitEvent('nc-bottom-nav-change', { value: newValue });
+            this.emit('change', { value: newValue });
         });
 
-        // Set initial active state
         const initial = this.getAttribute('value');
         if (initial) this._setActive(initial);
     }
 
+    protected _handleAttributeUpdate(name: string, val: string | null) {
+        if (name === 'value' && val) this._setActive(val);
+    }
+
     private _setActive(value: string) {
         this.setAttribute('value', value);
-        const items = this.querySelectorAll<HTMLElement>('nc-bottom-nav-item');
-        items.forEach(item => {
+        this.querySelectorAll<HTMLElement>('nc-bottom-nav-item').forEach(item => {
             if (item.getAttribute('value') === value) item.setAttribute('active', '');
             else item.removeAttribute('active');
         });
     }
-
-    attributeChangedCallback(n: string, o: string, v: string) {
-        if (n === 'value' && o !== v && this._mounted) this._setActive(v);
-    }
 }
 
-defineComponent('nc-bottom-nav', NcBottomNav);
-
+if (!customElements.get('nc-bottom-nav')) customElements.define('nc-bottom-nav', NcBottomNav);
 

@@ -65,7 +65,7 @@ import type { State } from '@core/controller.js';
 
 export class ${pascalName}Controller extends CoreController {
 
-    // ── Refs (auto-wired from ref attributes in the view) ────────────────
+    // ── Refs (populated from ref attributes in the view) ─────────────────
     private titleEl!: HTMLElement;
 
     // ── State ─────────────────────────────────────────────────────────────────
@@ -73,7 +73,7 @@ export class ${pascalName}Controller extends CoreController {
 
     // ── Lifecycle ─────────────────────────────────────────────────────────────
     onMount() {
-        // Refs are auto-wired by _bootstrap(): ref="titleEl" → this.titleEl
+        // Refs are bound from ref= by _bootstrap(): ref="titleEl" → this.titleEl
         this.title = this.state('${titleName}');
         this.bind(this.title, this.titleEl);
     }
@@ -97,7 +97,7 @@ export function ${camelName}Controller(
 export class ${pascalName}Controller extends CoreController {
 
     onMount() {
-        // Refs are auto-wired by _bootstrap(): ref="titleEl" → this.titleEl
+        // Refs are bound from ref= by _bootstrap(): ref="titleEl" → this.titleEl
         this.title = this.state('${titleName}');
         this.bind(this.title, this.titleEl);
     }

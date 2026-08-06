@@ -8,7 +8,7 @@ import { flushPageCleanups } from '../core/pageCleanupRegistry.js';
 
 // Types
 export interface CachePolicy {
-    /** Seconds before the cached HTML is considered stale. Default: 0 (no cache). */
+    /** Seconds before the cached HTML is considered stale. Routes without an explicit policy default to 300 s. */
     ttl: number;
     /**
      * When true, serve stale HTML instantly while refreshing in the background.
@@ -136,22 +136,60 @@ export class Router {
                 if (!href) return;
                 
                 // Skip external links (http://, https://, mailto:, tel:, etc.)
-                if (href.startsWith('http://') || href.startsWith('https://') || 
-                    href.startsWith('mailto:') || href.startsWith('tel:') || 
-                    href.startsWith('#')) {
+                if (href.startsWith('http://') || href.startsWith('https://') ||
+                    href.startsWith('mailto:') || href.startsWith('tel:')) {
                     return;
                 }
-                
+
+                // In-page hash links: <base href="/"> would otherwise resolve
+                // `#section` to `/#section` and navigate home. Keep the current
+                // path and scroll instead.
+                if (href.startsWith('#')) {
+                    e.preventDefault();
+                    this.scrollToHash(href);
+                    return;
+                }
+
                 // Skip if target="_blank" or data-external attribute
                 if (link.target === '_blank' || link.hasAttribute('data-external')) {
                     return;
                 }
-                
+
+                // Same-path link with hash → scroll only (no view reload)
+                const hashIdx = href.indexOf('#');
+                if (hashIdx >= 0) {
+                    const pathPart = href.slice(0, hashIdx) || window.location.pathname;
+                    const hash = href.slice(hashIdx);
+                    const norm = (p: string) => (p.replace(/\/+$/, '') || '/');
+                    if (norm(pathPart) === norm(window.location.pathname)) {
+                        e.preventDefault();
+                        this.scrollToHash(hash);
+                        return;
+                    }
+                }
+
                 // Handle as SPA navigation
                 e.preventDefault();
                 this.navigate(href);
             }
         });
+    }
+
+    /**
+     * Scroll to an in-page target without leaving the current route.
+     * Needed because scaffolds ship `<base href="/">`, which makes bare
+     * `#id` hrefs resolve against `/` instead of the current pathname.
+     */
+    scrollToHash(hash: string): void {
+        const id = decodeURIComponent(String(hash || '').replace(/^#/, ''));
+        if (!id) return;
+        const url = `${window.location.pathname}${window.location.search}#${id}`;
+        window.history.pushState(window.history.state, '', url);
+        const el = document.getElementById(id) ||
+            document.querySelector(`[name="${id.replace(/"/g, '\\"')}"]`);
+        if (el) {
+            el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        }
     }
     
     /**
@@ -430,7 +468,8 @@ export class Router {
             const shouldAnimateTransition =
                 !isPrerenderedInitialRoute &&
                 hasWarmHtmlCache &&
-                route.config.disableTransition !== true;
+                route.config.disableTransition !== true &&
+                previousRoute?.config?.htmlFile !== route.config.htmlFile;
 
             if (progressBar) {
                 progressBar.classList.add('loading');
@@ -560,27 +599,27 @@ export class Router {
         const isFresh = entry && ttlMs > 0 && now - entry.cachedAt < ttlMs;
         const isStale = entry && ttlMs > 0 && !isFresh;
 
-        // Serve stale immediately and kick off a background refresh
-        if (isStale && policy?.revalidate) {
-            this.refreshInBackground(file, policy.ttl);
+        // Serve stale immediately and refresh in background.
+        // Triggers for: explicit revalidate:true OR routes with no cache policy (default behaviour).
+        // Only blocks for a fresh fetch when policy.revalidate is explicitly false.
+        if (isStale && policy?.revalidate !== false) {
+            this.refreshInBackground(file, entry.ttl);
             return entry.html;
         }
 
         // Serve fresh from cache
         if (isFresh) return entry.html;
 
-        // Fetch from network
-    const response = await fetch(bustCache(file), { cache: 'no-store' });
+        // Fetch from network — always write result to htmlCache regardless of TTL.
+        const response = await fetch(bustCache(file), { cache: 'no-store' });
         if (!response.ok) throw new Error(`Failed to load ${file}`);
         const html = await response.text();
 
-        if (ttlMs > 0 || allowPrefetchCache) {
-            this.htmlCache.set(file, {
-                html,
-                cachedAt: now,
-                ttl: policy?.ttl ?? entry?.ttl ?? 30
-            });
-        }
+        this.htmlCache.set(file, {
+            html,
+            cachedAt: now,
+            ttl: policy?.ttl ?? entry?.ttl ?? 300
+        });
 
         return html;
     }
@@ -961,7 +1000,7 @@ export class Router {
     }
 
     private resolveCacheTtl(policy?: CachePolicy, entry?: CacheEntry): number {
-        return policy?.ttl ?? entry?.ttl ?? 0;
+        return policy?.ttl ?? entry?.ttl ?? 300;
     }
 
     private resetScrollPosition(mainContent?: HTMLElement | null): void {

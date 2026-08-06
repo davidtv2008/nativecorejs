@@ -172,31 +172,10 @@ No `bindAttr` / `bindClass` / `bindStyle` / `bindAll` / `model` on CoreComponent
 
 ---
 
-## Wires (optional, controllers)
+## Wires (legacy)
 
-```js
-import {
-    wireContents, wireInputs, wireAttributes,
-    wireClasses, wireStyles, wireActions,
-} from '@core-utils/wires.js';
-
-const contents = wireContents({ root: this.el });
-const inputs = wireInputs({ root: this.el });
-const { save } = wireActions({ root: this.el });
-this.on(save.element, save.event, () => { /* … */ });
-```
-
-| Utility | Attribute |
-|---------|-----------|
-| `wireContents` | `wire-content="key"` |
-| `wireInputs` | `wire-input="key"` |
-| `wireAttributes` | `wire-attribute="key:attr"` |
-| `wireClasses` | `wire-class="key:class"` |
-| `wireStyles` | `wire-style="key:css-prop"` |
-| `wireActions` | `wire-action="name:eventType"` |
-
-Cleanup registers with the page cleanup registry. CoreComponent has **no**
-`this.wires()` helper — use refs + `this.bind` inside components.
+`@core-utils/wires.js` is legacy — do not use. Prefer `ref` + `this.bind` +
+`this.on` on `CoreController` / `CoreComponent`.
 
 ---
 

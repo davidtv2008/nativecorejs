@@ -1,5 +1,16 @@
 import './install-template-globals.js';
-export { Component, defineComponent } from '../.nativecore/core/component.js';
+export {
+	CoreComponent,
+	Component,
+	defineComponent
+} from '../.nativecore/core/component.js';
+export { CoreController } from '../.nativecore/core/controller.js';
+export { Router } from '../.nativecore/core/router.js';
+export { createLazyController } from '../.nativecore/core/lazyController.js';
+export { createMiddleware } from '../.nativecore/core/createMiddleware.js';
+export { componentRegistry, initLazyComponents } from '../.nativecore/core/lazyComponents.js';
+export { useState, computed, effect, batch } from '../.nativecore/core/state.js';
+export { mountDevTools } from '../.nativecore/core/devtools.js';
 export {
 	LoadingSpinner,
 	NcA,
@@ -86,9 +97,6 @@ export {
 	slideIn,
 	throttle
 } from '../.nativecore/core/gpu-animation.js';
-export { Router } from '../.nativecore/core/router.js';
-export { componentRegistry, initLazyComponents } from '../.nativecore/core/lazyComponents.js';
-export { useState, computed, effect, batch } from '../.nativecore/core/state.js';
 export { bustCache, cacheVersion, importWithBust } from '../.nativecore/utils/cacheBuster.js';
 export { trapFocus, announce, roving } from './a11y/index.js';
 export { dom } from '../.nativecore/utils/dom.js';
@@ -104,25 +112,7 @@ export {
 	trackEvents,
 	trackSubscriptions
 } from '../.nativecore/utils/events.js';
-export {
-	wireContents,
-	wireInputs,
-	wireAttributes,
-	wireClasses,
-	wireStyles
-} from '../.nativecore/utils/wires.js';
-export type {
-	WireContentsOptions,
-	WireContentsResult,
-	WireInputsOptions,
-	WireInputsResult,
-	WireAttributesOptions,
-	WireAttributesResult,
-	WireClassesOptions,
-	WireClassesResult,
-	WireStylesOptions,
-	WireStylesResult
-} from '../.nativecore/utils/wires.js';
+// Wires utils are legacy — use ref + this.bind + this.on. Not re-exported.
 export { connectSSE } from '../.nativecore/core/sse.js';
 
 export { http, HttpClient, HttpError } from '../.nativecore/core/http.js';
@@ -169,8 +159,6 @@ export type {
 	WSHeartbeat,
 	WSReconnectOptions
 } from '../.nativecore/core/ws.js';
-
-export { mountDevTools } from '../.nativecore/core/devtools.js';
 
 export type {
 	ComponentConstructor,

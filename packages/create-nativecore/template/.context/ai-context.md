@@ -22,7 +22,7 @@ Scaffold defaults:
 - **Home:** enterprise starter (not a component showcase)
 - **Shell:** minimal (`#app.minimal-shell`) — chrome components exist for opt-in
 - **Auth:** not included
-- **Component Builder UI:** disabled (`COMPONENT_BUILDER_ENABLED = false`)
+- **Component Builder:** experimental, disabled by default (`COMPONENT_BUILDER_ENABLED = false`)
 
 ## Critical rules
 
@@ -252,25 +252,9 @@ import { verifiedMiddleware } from '@middleware/verified.middleware.js';
 router.use(createMiddleware('verified', verifiedMiddleware));
 ```
 
-## Declarative wires (optional)
+## Wires utils (do not use)
 
-Prefer refs + `bind` for new generator-based views. Wires remain supported:
-
-```js
-import {
-    wireContents, wireInputs, wireAttributes,
-    wireClasses, wireStyles, wireActions,
-} from '@core-utils/wires.js';
-```
-
-| Helper | Markup |
-|--------|--------|
-| `wireContents()` | `wire-content="key"` |
-| `wireInputs()` | `wire-input="key"` |
-| `wireAttributes()` | `wire-attribute="key:attr"` |
-| `wireClasses()` | `wire-class="key:class"` |
-| `wireStyles()` | `wire-style="key:prop"` |
-| `wireActions()` | `wire-action="name:click"` |
+Do not use wires utils (`@core-utils/wires.js`). Use `ref` + `this.bind` + `this.on`.
 
 ## Templates and DOM
 
@@ -338,7 +322,7 @@ Localhost-only dynamic imports from `app.*`:
 2. `@dev/denc-tools.js` — overlay, live editor, outline, drawing, DEV MODE pill
 3. `@dev/devOverlay.js` — FPS/memory/DOM/route/net/error/SEO diagnostics
 
-Component Builder (`component-builder*`) is present in the tree but **not activated**. Do not document it as a user-facing feature until `COMPONENT_BUILDER_ENABLED` is flipped to `true`.
+Component Builder (`component-builder*`) is experimental and disabled by default. Do not document it as a required feature until `COMPONENT_BUILDER_ENABLED` is flipped to `true`.
 
 ## Testing
 
@@ -382,7 +366,7 @@ Optional. Only when the project was created with `--capacitor` or the author add
 | Adding JWT/login by default | Only when requested; use `make:middleware` |
 | Importing controllers into `app.*` | Lazy via routes |
 | Putting CSS/JS in view HTML | Controllers + `src/styles` + components |
-| Assuming Component Builder is on | It is disabled |
+| Assuming Component Builder is on | Experimental; disabled by default |
 | `npm run make:view -- --defaults` under PowerShell | Use `npm.cmd run make:view -- profile --defaults` |
 | Dual `index.html` + `app.html` shells | Single `index.html` only |
 | Expecting `src/config/routes.ts` | Routes are `src/routes/routes.*` |

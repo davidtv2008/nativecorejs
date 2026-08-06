@@ -124,7 +124,10 @@ const pathAliasPlugin = {
                 }
             );
 
-            return { contents: transformed, loader: SOURCE_LOADER };
+            // Core is always TypeScript even when the app is JS-mode
+            // (useTypeScript: false). Pick loader from the file extension.
+            const loader = /\.tsx?$/.test(args.path) ? 'ts' : SOURCE_LOADER;
+            return { contents: transformed, loader };
         });
     },
 };

@@ -4,8 +4,10 @@
  * A minimal, framework-native DevTools surface that runs inside the
  * host page (no browser extension required). Gives developers:
  *
- *   - **Stores tab**: live list of every `createStore(name, ...)` with
- *     its current value and a JSON editor for quick mutation.
+ *   - **Stores tab**: optional debug registry on `globalThis.__NC_STORES__`
+ *     (a Map of name → `{ value }` state). Module `useState` stores are NOT
+ *     auto-registered — there is no `createStore` API. Empty tab is expected
+ *     unless the app opts in for debugging.
  *   - **Components tab**: enumerates every registered `nc-*` custom
  *     element currently mounted in the DOM, highlights them on hover,
  *     and shows their attributes + shadow-root state.
@@ -206,7 +208,7 @@ export function mountDevTools(options: DevToolsOptions = {}): DevToolsHandle {
         body.innerHTML = '';
         const registry = getStoreRegistry();
         if (registry.size === 0) {
-            body.innerHTML = `<div class="empty">No stores registered.</div>`;
+            body.innerHTML = `<div class="empty">No debug stores registered. Module useState stores are not listed here — there is no createStore API. Opt in by setting globalThis.__NC_STORES__ (Map of name → state) for debugging only.</div>`;
             return;
         }
         for (const [name, store] of registry.entries()) {

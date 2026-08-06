@@ -51,7 +51,7 @@ Not shipped by default:
 
 - JWT / login / dashboard
 - Capacitor (unless opted in at scaffold time)
-- Enabled Component Builder UI (code may exist; runtime flag is off)
+- Component Builder (experimental; disabled by default)
 
 Auth is author-owned: `npm run make:middleware` + `createMiddleware` + `r.group({ middleware: ['…'] })`.
 
@@ -289,16 +289,9 @@ If you create global `computed(...)` from `@core/state.js`, dispose it in `onUnm
 
 ---
 
-## Optional Wires
+## Wires (do not use)
 
-Generators use refs + `bind`. Attribute wires remain available:
-
-```js
-import {
-    wireContents, wireInputs, wireAttributes,
-    wireClasses, wireStyles, wireActions,
-} from '@core-utils/wires.js';
-```
+Do not use `@core-utils/wires.js`. Prefer `ref` + `this.bind` + `this.on`.
 
 ---
 
@@ -322,7 +315,7 @@ Default: `#app.minimal-shell` with `#main-content` as the router outlet.
 ## Dev Tools
 
 Localhost-only: HMR, component overlay/editor/outline/drawing, performance overlay.
-Component Builder is disabled — do not tell users to click a Build button unless that flag is re-enabled.
+Component Builder is experimental and disabled by default — do not tell users to click a Build button unless that flag is re-enabled.
 
 ---
 
@@ -336,7 +329,7 @@ Component Builder is disabled — do not tell users to click a Build button unle
 | Extending deprecated `Component` | Extend `CoreComponent` |
 | Inventing JWT/login by default | Only when requested |
 | Dual `index.html` + `app.html` | Single `index.html` |
-| `npm run build:bots` | `npm run build:ssg` |
+| `build:bots` (historical name) | `npm run build:ssg` |
 | `delete:*` scripts | `remove:*` |
 | Styles/scripts in view HTML | Controllers + `src/styles` + components |
 | Assuming auth is built-in | Author middleware around protected group |
@@ -357,5 +350,5 @@ Component Builder is disabled — do not tell users to click a Build button unle
 - Modify `.nativecore/` casually
 - Put logic in view HTML
 - Assume TypeScript-only or JWT-auth scaffolding
-- Enable/assume Component Builder
+- Enable/assume Component Builder (experimental; off by default)
 - Use emojis

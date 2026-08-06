@@ -16,7 +16,7 @@ import { useState, effect, Router, defineComponent } from 'nativecorejs';
 import { trapFocus, announce } from 'nativecorejs/a11y';
 ```
 
-Current version: **`1.0.0-rc.13`**.
+Current version: **`1.0.0-rc.16`**.
 
 ## Exports
 
@@ -28,9 +28,11 @@ Current version: **`1.0.0-rc.13`**.
 | `nativecorejs/a11y` | `trapFocus`, `announce`, `roving` |
 | `nativecorejs/styles/base.css` | Base framework CSS |
 
-Also includes: router, `CoreComponent` / `Component` (shim), `useState` /
-`computed` / `effect` / `batch`, wires (`wireInputs`, `wireContents`, …),
-lazy component registry, cache-busting helpers, and the reusable `nc-*` set.
+Primary teaching surface: **`CoreComponent`** / **`CoreController`**, router,
+`useState` / `computed` / `effect` / `batch`, lazy component registry,
+cache-busting helpers, and the reusable `nc-*` set. (`Component` remains a
+compat shim.) Wires utils (`wireInputs`, `wireContents`, …) are **legacy** —
+prefer `ref` + `this.bind` + `this.on`.
 
 ## Component events
 
@@ -57,8 +59,7 @@ this.emit('my-event', { … });
 ```
 
 There is no `bindAttr` / `bindClass` / `bindStyle` / `this.wires()` on the current
-`CoreComponent` API. Declarative wires live in `@core-utils/wires.js` /
-package utils for controllers.
+`CoreComponent` API. Do not teach `@core-utils/wires.js` — it is legacy.
 
 ## App shell components
 

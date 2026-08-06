@@ -140,19 +140,13 @@ export abstract class CoreController {
      *   bind(state, el, '.active .bold')   → class toggle(s)
      *   bind(state, el, 'innerHTML')       → sets innerHTML
      */
-    protected bind<T>(source: State<T>, elOrProp: Element | string, binding?: string): void {
+    protected bind<T>(source: State<T> | (() => T), el: Element, binding?: string): void {
         const runner = () => {
             this._activeEffect = runner;
-            const v = source.value;
+            // state → .value; signal getter → call as function
+            const v = typeof source === 'function' ? (source as () => T)() : source.value;
             this._activeEffect = null;
 
-            // Legacy: bind(state, 'propName') — writes to this[propName]
-            if (typeof elOrProp === 'string') {
-                this[elOrProp] = v;
-                return;
-            }
-
-            const el = elOrProp;
             const isValidElement = !!el && typeof (el as any).setAttribute === 'function';
             if (!isValidElement) {
                 const bindTarget = binding ? `binding="${binding}"` : 'textContent binding';
@@ -241,37 +235,10 @@ export abstract class CoreController {
     }
 
     private _bootstrap(): void {
-        // 1. Auto-populate refs — ref="name" → this.name = el
+        // Populate refs — ref="name" → this.name = el
         this.el.querySelectorAll('[ref]').forEach(el => {
             const refName = el.getAttribute('ref');
             if (refName) this[refName] = el as HTMLElement;
-        });
-
-        // 2. Legacy wire="" bindings (backward compat)
-        this.el.querySelectorAll('[wire]').forEach(el => {
-            const wireAttr = el.getAttribute('wire');
-            if (!wireAttr) return;
-
-            wireAttr.split(';').forEach(inst => {
-                const [type, propName] = inst.split(':').map(s => s.trim());
-
-                Object.defineProperty(this, propName, {
-                    configurable: true,
-                    set: (val: any) => {
-                        const target = el as any;
-                        if (type === 'text') {
-                            el.textContent = val;
-                        } else if (type === 'class') {
-                            typeof val === 'boolean'
-                                ? el.classList.toggle(propName, val)
-                                : el.className = val;
-                        } else {
-                            el.setAttribute(type, val);
-                            if (type in target) target[type] = val;
-                        }
-                    }
-                });
-            });
         });
 
         if (this.events) this.events();

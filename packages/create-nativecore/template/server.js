@@ -33,6 +33,94 @@ const MIME_TYPES = {
     '.ico': 'image/x-icon'
 };
 
+// ============================================
+// IN-MEMORY STATIC FILE CACHE
+// ============================================
+
+const MAX_CACHE_FILE_SIZE = 2 * 1024 * 1024; // 2 MB
+
+/**
+ * In-memory static file cache.
+ * Each entry stores { mtimeMs, content } so a changed file is automatically
+ * detected via statSync on the next request.
+ * @type {Map<string, { mtimeMs: number, content: Buffer }>}
+ */
+const staticFileCache = new Map();
+
+/**
+ * Return cached content for filePath if the on-disk mtime matches.
+ * Returns null on miss or when the file has changed.
+ */
+function getCachedFile(filePath) {
+    const cached = staticFileCache.get(filePath);
+    if (!cached) return null;
+    try {
+        const stat = fs.statSync(filePath);
+        if (stat.mtimeMs === cached.mtimeMs) return cached.content;
+        staticFileCache.delete(filePath);
+    } catch {
+        staticFileCache.delete(filePath);
+    }
+    return null;
+}
+
+/**
+ * Store content in the in-memory cache (only if the file is within the size
+ * limit and the stat is readable).
+ */
+function setCachedFile(filePath, content) {
+    try {
+        const stat = fs.statSync(filePath);
+        if (stat.size <= MAX_CACHE_FILE_SIZE) {
+            staticFileCache.set(filePath, { mtimeMs: stat.mtimeMs, content });
+        }
+    } catch {
+        // ignore unreadable files
+    }
+}
+
+/**
+ * Recursively warm the static file cache for a directory (sync, startup only).
+ * Skips files larger than MAX_CACHE_FILE_SIZE.
+ */
+function warmCacheDir(dir) {
+    let count = 0;
+    try {
+        const entries = fs.readdirSync(dir, { withFileTypes: true });
+        for (const entry of entries) {
+            const fullPath = path.join(dir, entry.name);
+            if (entry.isDirectory()) {
+                count += warmCacheDir(fullPath);
+            } else if (entry.isFile()) {
+                try {
+                    const stat = fs.statSync(fullPath);
+                    if (stat.size > MAX_CACHE_FILE_SIZE) continue;
+                    const content = fs.readFileSync(fullPath);
+                    staticFileCache.set(fullPath, { mtimeMs: stat.mtimeMs, content });
+                    count++;
+                } catch {
+                    // skip files that cannot be read
+                }
+            }
+        }
+    } catch {
+        // skip directories that cannot be read
+    }
+    return count;
+}
+
+function warmStaticCache() {
+    const dirs = ['src/views', 'public/content', 'dist/src/controllers', 'dist/src/styles'];
+    let total = 0;
+    for (const dir of dirs) {
+        const fullDir = path.join(ROOT_DIR, dir);
+        if (fs.existsSync(fullDir)) {
+            total += warmCacheDir(fullDir);
+        }
+    }
+    console.log(`[perf] warmed ${total} files`);
+}
+
 // Parse JSON body
 const MAX_BODY_SIZE = 1 * 1024 * 1024; // 1MB
 
@@ -1201,75 +1289,77 @@ const server = http.createServer(async (req, res) => {
     const fileExt = path.extname(filePath);
     const contentType = MIME_TYPES[fileExt] || 'text/plain';
     
-    // Read and serve file
-    fs.readFile(filePath, (error, content) => {
-        if (error) {
+    // Read and serve file — check in-memory cache first, fall back to disk.
+    let content = getCachedFile(filePath);
+    if (content === null) {
+        try {
+            content = fs.readFileSync(filePath);
+            setCachedFile(filePath, content);
+        } catch (error) {
             res.writeHead(500);
             res.end('Server Error: ' + error.code);
-        } else {
-            // Add headers
-            const headers = { 'Content-Type': contentType };
-
-            // Security headers
-            headers['X-Frame-Options'] = 'DENY';
-            headers['X-Content-Type-Options'] = 'nosniff';
-            headers['Referrer-Policy'] = 'strict-origin-when-cross-origin';
-            headers['Permissions-Policy'] = 'camera=(), microphone=(), geolocation=()';
-
-            // In development, disable all caching for instant updates
-            const isDevelopment = process.env.NODE_ENV !== 'production';
-
-            // In development, set a permissive CSP to allow HMR/devtools eval
-            if (isDevelopment && contentType === 'text/html') {
-                const connectSrc = [
-                    "'self'",
-                    'ws://localhost:8001',
-                ].join(' ');
-
-                headers['Content-Security-Policy'] = [
-                    "default-src 'self'",
-                    "script-src 'self' 'unsafe-inline' 'unsafe-eval'",
-                    "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
-                    "font-src 'self' https://fonts.gstatic.com",
-                    `connect-src ${connectSrc}`,
-                    "img-src 'self' data:"
-                ].join('; ');
-            } else if (!isDevelopment && contentType === 'text/html') {
-                headers['Content-Security-Policy'] = [
-                    "default-src 'self'",
-                    "script-src 'self'",
-                    "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
-                    "font-src 'self' https://fonts.gstatic.com",
-                    "connect-src 'self'",
-                    "img-src 'self' data: https:",
-                    "frame-ancestors 'none'"
-                ].join('; ');
-                headers['Strict-Transport-Security'] = 'max-age=31536000; includeSubDomains';
-            }
-            
-            if (isDevelopment) {
-                // No caching in development for HMR
-                headers['Cache-Control'] = 'no-cache, no-store, must-revalidate';
-                headers['Pragma'] = 'no-cache';
-                headers['Expires'] = '0';
-            } else {
-                // Production caching (with cache busting in place)
-                if (['.css', '.js'].includes(fileExt)) {
-                    // Cache CSS/JS for 1 day with cache busting
-                    headers['Cache-Control'] = 'public, max-age=86400';
-                } else if (['.png', '.jpg', '.jpeg', '.gif', '.svg', '.ico', '.woff', '.woff2'].includes(fileExt)) {
-                    // Cache images and fonts for 30 days
-                    headers['Cache-Control'] = 'public, max-age=2592000';
-                } else if (fileExt === '.html') {
-                    // HTML should not be cached
-                    headers['Cache-Control'] = 'no-cache, no-store, must-revalidate';
-                }
-            }
-            
-            res.writeHead(200, headers);
-            res.end(content, 'utf-8');
+            return;
         }
-    });
+    }
+
+    // Build response headers
+    const headers = { 'Content-Type': contentType };
+
+    // Security headers
+    headers['X-Frame-Options'] = 'DENY';
+    headers['X-Content-Type-Options'] = 'nosniff';
+    headers['Referrer-Policy'] = 'strict-origin-when-cross-origin';
+    headers['Permissions-Policy'] = 'camera=(), microphone=(), geolocation=()';
+
+    // In development, disable all caching for instant updates
+    const isDevelopment = process.env.NODE_ENV !== 'production';
+
+    // In development, set a permissive CSP to allow HMR/devtools eval
+    if (isDevelopment && contentType === 'text/html') {
+        const connectSrc = [
+            "'self'",
+            'ws://localhost:8001',
+        ].join(' ');
+
+        headers['Content-Security-Policy'] = [
+            "default-src 'self'",
+            "script-src 'self' 'unsafe-inline' 'unsafe-eval'",
+            "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
+            "font-src 'self' https://fonts.gstatic.com",
+            `connect-src ${connectSrc}`,
+            "img-src 'self' data:"
+        ].join('; ');
+    } else if (!isDevelopment && contentType === 'text/html') {
+        headers['Content-Security-Policy'] = [
+            "default-src 'self'",
+            "script-src 'self'",
+            "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
+            "font-src 'self' https://fonts.gstatic.com",
+            "connect-src 'self'",
+            "img-src 'self' data: https:",
+            "frame-ancestors 'none'"
+        ].join('; ');
+        headers['Strict-Transport-Security'] = 'max-age=31536000; includeSubDomains';
+    }
+
+    if (isDevelopment) {
+        // No caching in development for HMR
+        headers['Cache-Control'] = 'no-cache, no-store, must-revalidate';
+        headers['Pragma'] = 'no-cache';
+        headers['Expires'] = '0';
+    } else {
+        // Production caching (with cache busting in place)
+        if (['.css', '.js'].includes(fileExt)) {
+            headers['Cache-Control'] = 'public, max-age=86400';
+        } else if (['.png', '.jpg', '.jpeg', '.gif', '.svg', '.ico', '.woff', '.woff2'].includes(fileExt)) {
+            headers['Cache-Control'] = 'public, max-age=2592000';
+        } else if (fileExt === '.html') {
+            headers['Cache-Control'] = 'no-cache, no-store, must-revalidate';
+        }
+    }
+
+    res.writeHead(200, headers);
+    res.end(content, 'utf-8');
 });
 
 server.listen(PORT, () => {
@@ -1277,6 +1367,7 @@ server.listen(PORT, () => {
     console.log(`Serving files from: ${ROOT_DIR}`);
     console.log(`SPA mode: All routes fallback to index.html`);
     console.log(`Mock API: /api/* endpoints available`);
+    warmStaticCache();
 });
 
 // ========== Hot Module Replacement (HMR) ==========

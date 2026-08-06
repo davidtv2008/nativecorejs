@@ -17,7 +17,7 @@ Monorepo for the NativeCore framework runtime and the official app scaffolder.
 | `packages/nativecorejs` | Publishable runtime (`import … from 'nativecorejs'`) |
 | `packages/create-nativecore` | CLI scaffolder (`npx create-nativecore`) |
 
-Current version: **`1.0.0-rc.13`**.
+Current version: **`1.0.0-rc.16`**.
 
 ## Product shape (current)
 
@@ -25,7 +25,7 @@ Current version: **`1.0.0-rc.13`**.
 - Apps get a **vendored** `.nativecore/` runtime (not a hard dependency on the npm package).
 - Starter ships a calm home page only — **no login, dashboard, or auth service**.
 - Protected routing is supported via `router.group({ middleware })` + `make:middleware` (BYO auth).
-- Component Builder UI is **disabled** in this release (`COMPONENT_BUILDER_ENABLED = false`).
+- Component Builder is **experimental** and **disabled by default** (`COMPONENT_BUILDER_ENABLED = false`).
 - Production static hosting: `npm run build` / `build:ssg` / `build:full` → `_deploy/`.
 
 ## Workflow

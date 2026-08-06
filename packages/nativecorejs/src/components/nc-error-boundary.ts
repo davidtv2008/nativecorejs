@@ -33,7 +33,7 @@
  * Programmatic reset:
  *   document.querySelector('nc-error-boundary').reset();
  */
-import { Component, defineComponent } from '../../.nativecore/core/component.js';
+import { CoreComponent, defineComponent } from '../../.nativecore/core/component.js';
 import { html, raw } from '../../.nativecore/utils/templates.js';
 
 export interface NcErrorDetail {
@@ -48,7 +48,7 @@ export interface NcErrorDetail {
     source?: 'component' | 'route' | 'global' | 'promise';
 }
 
-export class NcErrorBoundary extends Component {
+export class NcErrorBoundary extends CoreComponent {
     static useShadowDOM = true;
 
     static get observedAttributes() {
@@ -375,13 +375,13 @@ export class NcErrorBoundary extends Component {
         this._error = null;
         this.innerHTML = this._originalHTML;
         this.render();
-        this.emitEvent('nc-error-reset', {});
+        this.emit('nc-error-reset', {});
     }
 
     private _capture(detail: NcErrorDetail): void {
         this._error = this._withLocation(detail);
         this.render();
-        this.emitEvent('nc-error', this._error);
+        this.emit('nc-error', this._error);
     }
 
     private _withLocation(detail: NcErrorDetail): NcErrorDetail {

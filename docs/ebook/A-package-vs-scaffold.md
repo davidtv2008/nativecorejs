@@ -1,39 +1,48 @@
 # Appendix B — Package vs Scaffold
 
-NativeCore has two related surfaces.
+NativeCore has one **canonical** runtime and a scaffold that vendors it.
 
-## `create-nativecore` scaffold (what Deskflow uses)
+## Source of truth: `nativecorejs` package
+
+Edit Core under `packages/nativecorejs/.nativecore/` (and package exports in
+`packages/nativecorejs/src/index.ts`). Then vendor into the CLI template:
+
+```bash
+npm run vendor-core -w create-nativecore
+# or: node packages/create-nativecore/scripts/vendor-core.mjs
+```
+
+That copies `core/`, `utils/`, and `testing/` into
+`packages/create-nativecore/template/.nativecore/`.
+
+**Do not hand-edit** vendored `core/` / `utils/` in the template or in apps —
+change the package and re-vendor.
+
+## `create-nativecore` scaffold (what apps get)
 
 Copied into each app:
 
-- `.nativecore/core/*` — router, CoreController, CoreComponent, state, lazy
-  controllers/components, middleware helper, ws, sse, i18n, http, errorHandler,
-  pageCleanup, gpu-animation, mountDevTools helper, …
-- `.nativecore/utils/*` — wires, events, templates, dom, …
-- `.nativecore/dev/*` — HMR/denc/overlay (dev only)
-- `.nativecore/scripts/*` — make/remove, compile, ssg, minify, …
-- `.nativecore/testing/index.js`
+- `.nativecore/core/*` — **vendored** from the package (router, CoreController,
+  CoreComponent, state, lazyController, createMiddleware, http, …)
+- `.nativecore/utils/*` — **vendored** (events, templates, dom, …). Wires utils
+  are **removed**.
+- `.nativecore/dev/*` — scaffold-owned (HMR, overlays, experimental Builder)
+- `.nativecore/scripts/*` — scaffold-owned (`make:*` / `remove:*`, compile, ssg)
+- `.nativecore/testing/` — vendored helpers
 - App tree: `src/`, `server.js`, styles, registries, services, stores
 
-This is the source of truth for **this ebook**.
+## Package-only extras
 
-## `nativecorejs` npm package
+Still primarily consumed via `import … from 'nativecorejs'`:
 
-Published library used when you import from `nativecorejs` instead of (or in
-addition to) a full scaffold. It may include extras not copied into every
-create-nativecore app, notably:
-
-| API | Package | Typical scaffold |
-|-----|---------|------------------|
-| `registerPlugin` / `unregisterPlugin` | Yes | Not the primary app path |
-| `useForm` + validators | Yes (`form` module) | Not vendored in scaffold core |
-| `nativecorejs/a11y` | Yes | Components may inline a11y; package export is separate |
-| Builtin component manifest helpers | Yes | Scaffold uses local `frameworkRegistry` + files under `src/components/core` |
-
-Component counts can differ slightly between package builtins and the template’s
-`nc-*` set.
+| API | Notes |
+|-----|--------|
+| `registerPlugin` / `unregisterPlugin` | Observability hooks |
+| `useForm` + validators | Forms |
+| `nativecorejs/a11y` | `trapFocus`, `announce`, `roving` (also used by `nc-modal` / `nc-drawer`) |
+| Builtin component manifest helpers | Scaffold uses local `frameworkRegistry` |
 
 ## Rule for contributors
 
-If a feature is package-only, chapters must say **package-only** and must not
-imply `npm create nativecore` apps already have it.
+- Core changes → package first → `vendor-core` → ship CLI/template.
+- If a feature is package-only, chapters must say **package-only**.

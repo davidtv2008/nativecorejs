@@ -69,7 +69,7 @@ Params: `:id`, `:id?`, `*` → `wildcard`.
 
 ## Wires (`@core-utils/wires.js`)
 
-`wireContents`, `wireInputs`, `wireAttributes`, `wireClasses`, `wireStyles`, `wireActions`
+Legacy — do not use; prefer `ref` / `this.bind` / `this.on`.
 
 ## Events util (`@core-utils/events.js`)
 

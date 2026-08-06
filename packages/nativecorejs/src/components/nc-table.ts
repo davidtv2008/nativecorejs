@@ -1,46 +1,56 @@
 /**
- * NcTable Component - lightweight sortable data table
+ * NcTable Component — lightweight sortable data table
  *
- * Renders a table from JSON data with optional sorting, striping, compact mode,
- * sticky header, and simple empty state. Zero dependencies.
+ * Accepts two data shapes via the `rows` attribute or the `rows` JS property:
+ *
+ *   2-D array  (simple):
+ *     rows='[["Name","Age"],["Alice",30],["Bob",25]]'
+ *     Add `header` attribute → first row becomes the column header.
+ *
+ *   Array of objects (keyed):
+ *     rows='[{"name":"Alice","age":30},{"name":"Bob","age":25}]'
+ *     Column keys are inferred from the first object.
+ *     Add `header` attribute → keys are used as header labels.
+ *
+ *   JS property (recommended for dynamic data):
+ *     table.rows = myArray;   // 2-D or object[], no JSON.stringify needed
  *
  * Attributes:
- *   columns   - JSON array of column defs:
- *               [{ key, label?, sortable?, align?, width?, format? }]
- *               format: 'text'(default)|'number'|'currency'|'date'|'badge'
- *   rows      - JSON array of row objects
- *   sortable  - boolean - enable sorting on all columns unless column.sortable=false
- *   striped   - boolean - alternating row backgrounds
- *   compact   - boolean - reduced cell padding
- *   sticky-header - boolean - sticky thead
- *   empty     - empty state text (default: 'No data available')
- *   max-height - CSS value to constrain height and enable scrolling
+ *   rows          — JSON (see above)
+ *   header        — boolean — show column headers
+ *   sortable      — boolean — enable click-to-sort on headers
+ *   striped       — boolean — alternating row backgrounds
+ *   compact       — boolean — reduced cell padding
+ *   sticky-header — boolean — fix thead on scroll
+ *   empty         — string  — empty state text (default: 'No data available')
+ *   max-height    — CSS value — enables vertical scroll (e.g. '320px')
  *
  * Events:
- *   sort  - CustomEvent<{ key: string; direction: 'asc'|'desc' }>
- *   row-click - CustomEvent<{ row: Record<string, unknown>; index: number }>
+ *   sort      — CustomEvent<{ key: string; direction: 'asc'|'desc' }>
+ *   row-click — CustomEvent<{ row: Record<string,unknown>; index: number }>
  *
- * Usage:
- *   <nc-table
- *      sortable
- *      striped
- *      columns='[{"key":"name","label":"Name"},{"key":"role","label":"Role"}]'
- *      rows='[{"name":"Alice","role":"Admin"},{"name":"Bob","role":"Editor"}]'>
+ * Usage (simple):
+ *   <nc-table header sortable striped
+ *     rows='[["Name","Role"],["Alice","Admin"],["Bob","Editor"]]'>
  *   </nc-table>
+ *
+ * Usage (keyed objects):
+ *   <nc-table header striped
+ *     rows='[{"name":"Alice","role":"Admin"},{"name":"Bob","role":"Editor"}]'>
+ *   </nc-table>
+ *
+ * Usage (programmatic + pagination):
+ *   const table = document.querySelector('nc-table');
+ *   const pager = document.querySelector('nc-pagination');
+ *   pager.addEventListener('change', ({ detail }) => {
+ *     table.rows = allRows.slice(detail.offset, detail.offset + detail.limit);
+ *   });
  */
-import { Component, defineComponent } from '../../.nativecore/core/component.js';
-import { html, raw } from '../../.nativecore/utils/templates.js';
+import { CoreComponent } from '../../.nativecore/core/component.js';
+import { css } from '../../.nativecore/utils/templates.js';
 
 type TableAlign = 'left' | 'center' | 'right';
-interface TableColumn {
-    key: string;
-    label?: string;
-    sortable?: boolean;
-    align?: TableAlign;
-    width?: string;
-    format?: 'text' | 'number' | 'currency' | 'date' | 'badge' | 'html';
-}
-
+interface ColDef { key: string; label: string; align: TableAlign; }
 type TableRow = Record<string, unknown>;
 
 function esc(s: unknown): string {
@@ -51,230 +61,207 @@ function esc(s: unknown): string {
         .replace(/"/g, '&quot;');
 }
 
-export class NcTable extends Component {
+export class NcTable extends CoreComponent {
     static useShadowDOM = true;
+    static observedAttributes = ['rows', 'header', 'sortable', 'striped', 'compact', 'sticky-header', 'empty', 'max-height'];
+    static attributeOrder     = ['rows', 'header', 'sortable', 'striped', 'compact', 'sticky-header', 'empty', 'max-height'];
 
-    static get observedAttributes() {
-        return ['columns', 'rows', 'sortable', 'striped', 'compact', 'sticky-header', 'empty', 'max-height'];
+    // -- Refs -----------------------------------------------------------------
+    declare wrapEl:      HTMLDivElement;
+    declare theadEl:     HTMLTableSectionElement;
+    declare headerRowEl: HTMLTableRowElement;
+    declare tbodyEl:     HTMLTableSectionElement;
+
+    // -- JS property ----------------------------------------------------------
+    private _rowsOverride: unknown[] | null = null;
+
+    /** Set rows directly from JS — accepts 2-D array or array of objects. */
+    get rows(): unknown[] {
+        return this._rowsOverride ?? this._parseAttr();
+    }
+    set rows(value: unknown[]) {
+        this._rowsOverride = Array.isArray(value) ? value : [];
+        if (this.isConnected) this._render();
     }
 
+    // -- Sort state -----------------------------------------------------------
     private _sortKey = '';
     private _sortDir: 'asc' | 'desc' = 'asc';
 
-    private _parseColumns(): TableColumn[] {
-        try {
-            const raw = this.getAttribute('columns') ?? '[]';
-            const cols = JSON.parse(raw) as TableColumn[];
-            return Array.isArray(cols) ? cols : [];
-        } catch {
-            return [];
-        }
-    }
-
-    private _parseRows(): TableRow[] {
+    // -- Data helpers ---------------------------------------------------------
+    private _parseAttr(): unknown[] {
         try {
             const raw = this.getAttribute('rows') ?? '[]';
-            const rows = JSON.parse(raw) as TableRow[];
-            return Array.isArray(rows) ? rows : [];
-        } catch {
-            return [];
-        }
+            const parsed = JSON.parse(raw);
+            return Array.isArray(parsed) ? parsed : [];
+        } catch { return []; }
     }
 
-    private _sortedRows(rows: TableRow[], columns: TableColumn[]): TableRow[] {
+    /** Normalise any input shape into ColDefs + uniform row objects. */
+    private _normalise(raw: unknown[]): { cols: ColDef[]; rows: TableRow[] } {
+        if (raw.length === 0) return { cols: [], rows: [] };
+        const hasHeader = this.hasAttribute('header');
+
+        // 2-D array
+        if (Array.isArray(raw[0])) {
+            const grid = raw as unknown[][];
+            let cols: ColDef[];
+            let dataRows: unknown[][];
+            if (hasHeader) {
+                cols     = (grid[0]).map(h => ({ key: String(h), label: String(h), align: 'left' }));
+                dataRows = grid.slice(1);
+            } else {
+                const w = Math.max(...grid.map(r => r.length));
+                cols     = Array.from({ length: w }, (_, i) => ({ key: String(i), label: String(i), align: 'left' as TableAlign }));
+                dataRows = grid;
+            }
+            const rows: TableRow[] = dataRows.map(r =>
+                Object.fromEntries((r as unknown[]).map((cell, i) => [cols[i]?.key ?? String(i), cell]))
+            );
+            return { cols, rows };
+        }
+
+        // Array of objects
+        const objRows = raw as TableRow[];
+        const keys = Object.keys(objRows[0] ?? {});
+        const cols: ColDef[] = keys.map(k => ({ key: k, label: k, align: 'left' }));
+        return { cols, rows: objRows };
+    }
+
+    private _sorted(rows: TableRow[], cols: ColDef[]): TableRow[] {
         if (!this._sortKey) return rows;
-        const col = columns.find(c => c.key === this._sortKey);
+        const col = cols.find(c => c.key === this._sortKey);
         if (!col) return rows;
         const dir = this._sortDir === 'asc' ? 1 : -1;
         return [...rows].sort((a, b) => {
-            const va = a[this._sortKey];
-            const vb = b[this._sortKey];
+            const va = a[this._sortKey], vb = b[this._sortKey];
             if (va == null && vb == null) return 0;
             if (va == null) return -1 * dir;
-            if (vb == null) return 1 * dir;
+            if (vb == null) return  1 * dir;
             if (typeof va === 'number' && typeof vb === 'number') return (va - vb) * dir;
-            const sa = String(va).toLowerCase();
-            const sb = String(vb).toLowerCase();
-            return sa.localeCompare(sb) * dir;
+            return String(va).toLowerCase().localeCompare(String(vb).toLowerCase()) * dir;
         });
     }
 
-    private _fmt(value: unknown, col: TableColumn): string {
-        if (value == null) return '';
-        switch (col.format) {
-            case 'number':
-                return typeof value === 'number' ? String(value) : esc(value);
-            case 'currency':
-                return typeof value === 'number'
-                    ? new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(value)
-                    : esc(value);
-            case 'date': {
-                const d = new Date(String(value));
-                return isNaN(d.getTime()) ? esc(value) : d.toLocaleDateString();
-            }
-            case 'badge':
-                return `<span class="badge">${esc(value)}</span>`;
-            case 'html':
-                return String(value ?? '');
-            default:
-                return esc(value);
+    // -- Template -------------------------------------------------------------
+    static styles = css`
+        :host { display: block; font-family: var(--nc-font-family); }
+        .wrap {
+            border: 1px solid var(--nc-border);
+            border-radius: var(--nc-radius-lg);
+            overflow: auto;
+            background: var(--nc-bg);
         }
-    }
+        table { width: 100%; border-collapse: collapse; min-width: 320px; }
+        thead th {
+            background: var(--nc-bg-secondary);
+            border-bottom: 1px solid var(--nc-border);
+            padding: 0;
+            font-size: var(--nc-font-size-xs);
+            text-transform: uppercase;
+            letter-spacing: .04em;
+            color: var(--nc-text-muted);
+        }
+        :host([sticky-header]) thead th { position: sticky; top: 0; z-index: 1; }
+        .head-btn {
+            width: 100%; display: flex; align-items: center;
+            justify-content: space-between; gap: 8px;
+            padding: 14px 16px;
+            background: none; border: none; cursor: default;
+            font: inherit; color: inherit; text-align: inherit;
+        }
+        :host([compact]) .head-btn { padding: 10px 12px; }
+        .head-btn.sortable { cursor: pointer; }
+        .head-btn.sortable:hover { background: rgba(0,0,0,.03); }
+        .head-btn.active { color: var(--nc-text); }
+        tbody tr { transition: background var(--nc-transition-fast); cursor: pointer; }
+        tbody tr:hover { background: rgba(0,0,0,.02); }
+        :host([striped]) tbody tr:nth-child(even) { background: var(--nc-bg-secondary); }
+        td {
+            padding: 14px 16px;
+            border-bottom: 1px solid var(--nc-border);
+            font-size: var(--nc-font-size-sm);
+            color: var(--nc-text-secondary);
+            vertical-align: top;
+        }
+        :host([compact]) td { padding: 10px 12px; }
+        tbody tr:last-child td { border-bottom: none; }
+        .empty { text-align: center; color: var(--nc-text-muted); padding: 28px 16px; cursor: default; }
+        .sort-icon { min-width: 1em; font-size: 10px; text-align: center; color: var(--nc-text-muted); }
+    `;
 
     template() {
-        const columns      = this._parseColumns();
-        const rows         = this._sortedRows(this._parseRows(), columns);
-        const striped      = this.hasAttribute('striped');
-        const compact      = this.hasAttribute('compact');
-        const stickyHeader = this.hasAttribute('sticky-header');
-        const emptyText    = this.getAttribute('empty') ?? 'No data available';
-        const maxHeight    = this.getAttribute('max-height') ?? '';
-        const sortableAll  = this.hasAttribute('sortable');
-
-        const tableRows = rows.length === 0
-            ? `<tr><td class="empty" colspan="${Math.max(columns.length, 1)}">${esc(emptyText)}</td></tr>`
-            : rows.map((row, rowIndex) => `
-                <tr data-row-index="${rowIndex}">
-                    ${columns.map(col => {
-                        const align = col.align ?? 'left';
-                        return html`<td style="text-align:${align}">${this._fmt(row[col.key], col)}</td>`;
-                    }).join('')}
-                </tr>
-            `).join('');
-
-        const headers = columns.map(col => {
-            const align    = col.align ?? 'left';
-            const sortable = sortableAll && col.sortable !== false;
-            const active   = this._sortKey === col.key;
-            const arrow    = active ? (this._sortDir === 'asc' ? '?' : '?') : '';
-            return `
-                <th style="text-align:${align};${raw(col.width ? `width:${col.width};` : '')}">
-                    <button class="head-btn ${sortable ? 'is-sortable' : ''} ${active ? 'is-active' : ''}" type="button" ${raw(sortable ? `data-sort-key="${col.key}"` : 'disabled')}>
-                        <span>${esc(col.label ?? col.key)}</span>
-                        <span class="sort-indicator">${arrow}</span>
-                    </button>
-                </th>
-            `;
-        }).join('');
-
-        return `
-            <style>
-                :host { display: block; font-family: var(--nc-font-family); }
-                .wrap {
-                    border: 1px solid var(--nc-border);
-                    border-radius: var(--nc-radius-lg);
-                    overflow: auto;
-                    background: var(--nc-bg);
-                    ${raw(maxHeight ? `max-height:${maxHeight};` : '')}
-                }
-                table {
-                    width: 100%;
-                    border-collapse: collapse;
-                    min-width: 480px;
-                }
-                thead th {
-                    position: ${stickyHeader ? 'sticky' : 'static'};
-                    top: 0;
-                    z-index: 1;
-                    background: var(--nc-bg-secondary);
-                    border-bottom: 1px solid var(--nc-border);
-                    padding: 0;
-                    font-size: var(--nc-font-size-xs);
-                    text-transform: uppercase;
-                    letter-spacing: .04em;
-                    color: var(--nc-text-muted);
-                }
-                .head-btn {
-                    width: 100%;
-                    display: flex;
-                    align-items: center;
-                    justify-content: space-between;
-                    gap: 8px;
-                    padding: ${compact ? '10px 12px' : '14px 16px'};
-                    background: none;
-                    border: none;
-                    cursor: default;
-                    font: inherit;
-                    color: inherit;
-                    text-align: inherit;
-                }
-                .head-btn.is-sortable { cursor: pointer; }
-                .head-btn.is-sortable:hover { background: rgba(0,0,0,.03); }
-                .head-btn.is-active { color: var(--nc-text); }
-                tbody tr {
-                    transition: background var(--nc-transition-fast);
-                    cursor: pointer;
-                }
-                tbody tr:hover { background: rgba(0,0,0,.02); }
-                ${striped ? 'tbody tr:nth-child(even) { background: var(--nc-bg-secondary); }' : ''}
-                td {
-                    padding: ${compact ? '10px 12px' : '14px 16px'};
-                    border-bottom: 1px solid var(--nc-border);
-                    font-size: var(--nc-font-size-sm);
-                    color: var(--nc-text-secondary);
-                    vertical-align: top;
-                }
-                tbody tr:last-child td { border-bottom: none; }
-                .empty {
-                    text-align: center;
-                    color: var(--nc-text-muted);
-                    padding: 28px 16px;
-                    cursor: default;
-                }
-                .badge {
-                    display: inline-flex;
-                    align-items: center;
-                    padding: 2px 8px;
-                    border-radius: 99px;
-                    background: rgba(var(--nc-primary-rgb, 99,102,241), .12);
-                    color: var(--nc-primary);
-                    font-size: var(--nc-font-size-xs);
-                    font-weight: var(--nc-font-weight-medium);
-                }
-                .sort-indicator {
-                    min-width: 1em;
-                    font-size: 10px;
-                    text-align: center;
-                    color: var(--nc-text-muted);
-                }
-            </style>
-            <div class="wrap">
+        return `            <div ref="wrapEl" class="wrap">
                 <table role="table">
-                    <thead><tr>${headers}</tr></thead>
-                    <tbody>${raw(tableRows)}</tbody>
+                    <thead ref="theadEl"><tr ref="headerRowEl"></tr></thead>
+                    <tbody ref="tbodyEl"></tbody>
                 </table>
             </div>
         `;
     }
 
+    // -- Lifecycle ------------------------------------------------------------
     onMount() {
-        this.shadowRoot!.addEventListener('click', (e) => {
+        this._render();
+        this.on(this.root, 'click', (e: MouseEvent) => {
             const sortBtn = (e.target as HTMLElement).closest<HTMLElement>('[data-sort-key]');
             if (sortBtn) {
                 const key = sortBtn.dataset.sortKey ?? '';
                 if (this._sortKey === key) this._sortDir = this._sortDir === 'asc' ? 'desc' : 'asc';
                 else { this._sortKey = key; this._sortDir = 'asc'; }
-                this.render();
-                  this.emitEvent('nc-table-sort', { key: this._sortKey, direction: this._sortDir });
+                this._render();
+                this.emit('sort', { key: this._sortKey, direction: this._sortDir });
                 return;
             }
-
             const row = (e.target as HTMLElement).closest<HTMLTableRowElement>('tbody tr[data-row-index]');
             if (row) {
                 const index = parseInt(row.dataset.rowIndex ?? '-1', 10);
-                const rows  = this._sortedRows(this._parseRows(), this._parseColumns());
-                if (index >= 0 && rows[index]) {
-                      this.emitEvent('nc-table-row-click', { row: rows[index], index });
-                }
+                const { cols, rows } = this._normalise(this._rowsOverride ?? this._parseAttr());
+                const sorted = this._sorted(rows, cols);
+                if (index >= 0 && sorted[index]) this.emit('row-click', { row: sorted[index], index });
             }
         });
     }
 
-    attributeChangedCallback(name: string, oldValue: string, newValue: string) {
-        if (oldValue !== newValue && this._mounted) this.render();
+    protected _handleAttributeUpdate(_name: string, _val: string | null) {
+        // If rows attr changes, clear JS override so attribute takes precedence
+        if (_name === 'rows') this._rowsOverride = null;
+        this._render();
+    }
+
+    private _render() {
+        const raw             = this._rowsOverride ?? this._parseAttr();
+        const { cols, rows }  = this._normalise(raw);
+        const sorted          = this._sorted(rows, cols);
+        const hasHeader       = this.hasAttribute('header');
+        const sortableAll     = this.hasAttribute('sortable');
+        const emptyText       = this.getAttribute('empty') ?? 'No data available';
+        const maxHeight       = this.getAttribute('max-height') ?? '';
+
+        this.wrapEl.style.maxHeight = maxHeight || '';
+        this.theadEl.style.display  = hasHeader ? '' : 'none';
+
+        // Header
+        this.headerRowEl.innerHTML = cols.map(col => {
+            const active = this._sortKey === col.key;
+            const arrow  = active ? (this._sortDir === 'asc' ? '▲' : '▼') : '';
+            return `<th>
+                <button class="head-btn ${sortableAll ? 'sortable' : ''} ${active ? 'active' : ''}"
+                    type="button" ${sortableAll ? `data-sort-key="${esc(col.key)}"` : 'disabled'}>
+                    <span>${esc(col.label)}</span>
+                    <span class="sort-icon">${arrow}</span>
+                </button>
+            </th>`;
+        }).join('');
+
+        // Body
+        this.tbodyEl.innerHTML = sorted.length === 0
+            ? `<tr><td class="empty" colspan="${Math.max(cols.length, 1)}">${esc(emptyText)}</td></tr>`
+            : sorted.map((row, i) => `
+                <tr data-row-index="${i}">
+                    ${cols.map(col => `<td>${esc(row[col.key])}</td>`).join('')}
+                </tr>`).join('');
     }
 }
 
-defineComponent('nc-table', NcTable);
-
-
+if (!customElements.get('nc-table')) customElements.define('nc-table', NcTable);

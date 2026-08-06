@@ -18,8 +18,8 @@ import { DrawingOverlay } from './drawing-overlay.js';
 import { ComponentBuilder } from './component-builder.js';
 
 /**
- * Component Builder is parked until the codegen/save/open flow is more robust.
- * Flip to true to restore the Build button + Ctrl+Shift+B shortcut.
+ * EXPERIMENTAL — Component Builder is disabled by default and not part of the
+ * day-one curriculum. Flip to true only for local experiments.
  * Do not delete component-builder*. files — they remain for a future revisit.
  */
 const COMPONENT_BUILDER_ENABLED = false;

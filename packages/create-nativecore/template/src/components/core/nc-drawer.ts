@@ -29,6 +29,7 @@
 
 import { CoreComponent } from '@core/component.js';
 import { css, html, trusted } from '@core-utils/templates.js';
+import { trapFocus } from '../../a11y/index.js';
 
 export class NcDrawer extends CoreComponent {
     static useShadowDOM = true;
@@ -42,6 +43,7 @@ export class NcDrawer extends CoreComponent {
     declare panelEl:    HTMLDivElement;
     declare overlayEl:  HTMLDivElement;
     declare closeBtnEl: HTMLButtonElement;
+    private _releaseFocus: (() => void) | null = null;
 
     static styles = css`
         :host { display: contents; }
@@ -124,10 +126,13 @@ export class NcDrawer extends CoreComponent {
             this.panelEl.style.transform = open ? 'none' : (translates[placement] ?? 'translateX(100%)');
             this.panelEl.setAttribute('aria-hidden', String(!open));
             if (open) {
-                this.panelEl.focus();
                 document.body.style.overflow = 'hidden';
+                this._releaseFocus?.();
+                this._releaseFocus = trapFocus(this.panelEl);
                 this.emit('open');
             } else {
+                this._releaseFocus?.();
+                this._releaseFocus = null;
                 document.body.style.overflow = '';
                 this.emit('close');
             }
@@ -162,6 +167,8 @@ export class NcDrawer extends CoreComponent {
     }
 
     onUnmount() {
+        this._releaseFocus?.();
+        this._releaseFocus = null;
         document.body.style.overflow = '';
     }
 }

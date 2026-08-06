@@ -37,7 +37,7 @@ How a scaffolded NativeCore app is structured and how data flows through it.
 ├── .context/                  # AI / human project guidance
 ├── .nativecore/
 │   ├── core/                  # Framework runtime (router, CoreComponent, …)
-│   ├── utils/                 # dom, events, templates, wires, cacheBuster
+│   ├── utils/                 # dom, events, templates, cacheBuster (wires.js = legacy)
 │   ├── types/
 │   ├── testing/               # mountComponent, waitFor, fireEvent
 │   ├── dev/                   # HMR, denc-tools, overlays (dev-only)
@@ -206,7 +206,7 @@ Loaded from `app.*` on localhost:
 | `@dev/denc-tools.js` | Component overlay, editor, outline, drawing, DEV pill |
 | `@dev/devOverlay.js` | Performance / SEO / diagnostics overlay |
 
-Component Builder source may exist under `.nativecore/dev/component-builder*`, but **`COMPONENT_BUILDER_ENABLED` is false** — Build button and shortcut stay off until re-enabled intentionally.
+Component Builder source may exist under `.nativecore/dev/component-builder*`, but it is **experimental** and **`COMPONENT_BUILDER_ENABLED` is false** by default — Build button and shortcut stay off until re-enabled intentionally.
 
 Production builds strip / omit `.nativecore/dev` usage.
 

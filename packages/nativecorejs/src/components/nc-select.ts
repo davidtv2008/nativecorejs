@@ -7,14 +7,14 @@
  * populating child `<option>` elements before the component mounts.
  *
  * Attributes:
- *   - options: JSON string - array of { value, label, disabled? }
- *   - value: string - currently selected value
- *   - placeholder: string - shown when no value selected (default: 'Select...')
- *   - name: string - form field name
- *   - disabled: boolean - disabled state
+ *   - options: JSON string — array of { value, label, disabled? }
+ *   - value: string — currently selected value
+ *   - placeholder: string — shown when no value selected (default: 'Select...')
+ *   - name: string — form field name
+ *   - disabled: boolean — disabled state
  *   - size: 'sm' | 'md' | 'lg' (default: 'md')
  *   - variant: 'default' | 'filled' (default: 'default')
- *   - searchable: boolean - adds a live filter input inside the dropdown
+ *   - searchable: boolean — adds a live filter input inside the dropdown
  *
  * Events:
  *   - change: CustomEvent<{ value: string; label: string; name: string }>
@@ -27,9 +27,8 @@
  *   </nc-select>
  */
 
-import { Component, defineComponent } from '../../.nativecore/core/component.js';
-import { html, raw, escapeHTML } from '../../.nativecore/utils/templates.js';
-import { useState } from '../../.nativecore/core/state.js';
+import { CoreComponent } from '../../.nativecore/core/component.js';
+import { css } from '../../.nativecore/utils/templates.js';
 
 interface SelectOption {
     value: string;
@@ -37,407 +36,220 @@ interface SelectOption {
     disabled?: boolean;
 }
 
-export class NcSelect extends Component {
+export class NcSelect extends CoreComponent {
     static useShadowDOM = true;
+    static attributeOptions = { variant: ['default', 'filled'], size: ['sm', 'md', 'lg'] };
+    static observedAttributes = ['options', 'value', 'placeholder', 'name', 'disabled', 'size', 'variant', 'searchable'];
+    static attributeOrder = ['name', 'options', 'value', 'placeholder', 'size', 'variant', 'searchable', 'disabled'];
 
-    static attributeOptions = {
-        variant: ['default', 'filled'],
-        size: ['sm', 'md', 'lg']
-    };
+    // -- Refs -----------------------------------------------------------------
+    declare triggerEl:      HTMLDivElement;
+    declare triggerLabelEl: HTMLSpanElement;
+    declare chevronEl:      SVGElement;
+    declare dropdownEl:     HTMLDivElement;
+    declare optionsListEl:  HTMLDivElement;
+    declare searchWrapEl:   HTMLDivElement;
+    declare hiddenInputEl:  HTMLInputElement;
 
-    static get observedAttributes() {
-        return ['options', 'value', 'placeholder', 'name', 'disabled', 'size', 'variant', 'searchable'];
-    }
-
-    private _open = useState(false);
+    private _open = false;
     private _filterText = '';
-
-    constructor() {
-        super();
-    }
 
     private _getOptions(): SelectOption[] {
         try {
             const raw = this.getAttribute('options');
             if (raw) return JSON.parse(raw) as SelectOption[];
-        } catch {
-            // fall through
-        }
+        } catch { /* fall through */ }
         return [];
     }
 
     private _getSelectedLabel(): string {
         const value = this.getAttribute('value') || '';
         if (!value) return '';
-        const opt = this._getOptions().find(o => o.value === value);
-        return opt?.label ?? value;
+        return this._getOptions().find(o => o.value === value)?.label ?? value;
     }
 
+    static styles = css`
+        :host { display: inline-block; position: relative; font-family: var(--nc-font-family); width: 100%; }
+        .select-trigger {
+            display: flex; align-items: center; justify-content: space-between;
+            width: 100%; box-sizing: border-box;
+            padding: var(--nc-spacing-sm) var(--nc-spacing-md);
+            background: var(--nc-bg); border: var(--nc-input-border);
+            border-radius: var(--nc-input-radius); cursor: pointer;
+            color: var(--nc-text-muted);
+            font-size: var(--nc-font-size-base);
+            transition: border-color var(--nc-transition-fast), box-shadow var(--nc-transition-fast);
+            user-select: none; gap: var(--nc-spacing-sm); min-height: 40px;
+        }
+        .select-trigger.has-value { color: var(--nc-text); }
+        :host([disabled]) .select-trigger { cursor: not-allowed; opacity: 0.5; }
+        :host([size="sm"]) .select-trigger { padding: var(--nc-spacing-xs) var(--nc-spacing-sm); font-size: var(--nc-font-size-sm); min-height: 32px; }
+        :host([size="lg"]) .select-trigger { padding: var(--nc-spacing-md) var(--nc-spacing-lg); font-size: var(--nc-font-size-lg); min-height: 48px; }
+        :host([variant="filled"]) .select-trigger { background: var(--nc-bg-tertiary); border-color: transparent; }
+        :host([variant="filled"]) .select-trigger:hover:not([disabled]) { background: var(--nc-bg-secondary); }
+        .select-trigger:hover { border-color: var(--nc-input-focus-border); }
+        .select-trigger.open  { border-color: var(--nc-input-focus-border); box-shadow: 0 0 0 3px rgba(16,185,129,.15); }
+        .trigger-label { flex: 1; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+        .chevron { flex-shrink: 0; transition: transform var(--nc-transition-fast); color: var(--nc-text-muted); }
+        .chevron.open { transform: rotate(180deg); }
+        .dropdown {
+            display: none; position: absolute; top: calc(100% + 4px); left: 0; right: 0;
+            background: var(--nc-bg); border: var(--nc-input-border);
+            border-radius: var(--nc-radius-md); box-shadow: var(--nc-shadow-lg);
+            z-index: var(--nc-z-dropdown); overflow: hidden; max-height: 240px; flex-direction: column;
+        }
+        .dropdown.open { display: flex; }
+        .search-wrap { padding: var(--nc-spacing-xs) var(--nc-spacing-sm); border-bottom: 1px solid var(--nc-border); }
+        .search-input {
+            width: 100%; box-sizing: border-box; border: var(--nc-input-border);
+            border-radius: var(--nc-radius-sm); padding: var(--nc-spacing-xs) var(--nc-spacing-sm);
+            font-size: var(--nc-font-size-sm); font-family: var(--nc-font-family);
+            color: var(--nc-text); background: var(--nc-bg-secondary); outline: none;
+        }
+        .search-input:focus { border-color: var(--nc-input-focus-border); }
+        .options-list { overflow-y: auto; flex: 1; }
+        .option {
+            display: flex; align-items: center; justify-content: space-between;
+            padding: var(--nc-spacing-sm) var(--nc-spacing-md); cursor: pointer;
+            font-size: var(--nc-font-size-base); color: var(--nc-text);
+            transition: background var(--nc-transition-fast); gap: var(--nc-spacing-sm);
+        }
+        .option:hover:not(.option--disabled) { background: var(--nc-bg-secondary); }
+        .option--selected { color: var(--nc-primary); font-weight: var(--nc-font-weight-medium); }
+        .option--disabled { opacity: 0.4; cursor: not-allowed; }
+        .option__check { flex-shrink: 0; }
+        .empty { padding: var(--nc-spacing-md); text-align: center; color: var(--nc-text-muted); font-size: var(--nc-font-size-sm); }
+        [hidden] { display: none !important; }
+    `;
+
     template() {
-        const value = this.getAttribute('value') || '';
-        const placeholder = this.getAttribute('placeholder') || 'Select...';
-        const disabled = this.hasAttribute('disabled');
-        const searchable = this.hasAttribute('searchable');
-        const selectedLabel = this._getSelectedLabel() || placeholder;
-        const hasValue = !!value;
-
-        const options = this._getOptions();
-        const filtered = this._filterText
-            ? options.filter(o => o.label.toLowerCase().includes(this._filterText.toLowerCase()))
-            : options;
-
-        const optionItems = filtered.map(o => `
-            <div class="option${o.value === value ? ' option--selected' : ''}${o.disabled ? ' option--disabled' : ''}"
-                 data-value="${raw(escapeHTML(o.value))}"
-                 role="option"
-                 aria-selected="${o.value === value}"
-                 aria-disabled="${o.disabled ? 'true' : 'false'}">
-                ${raw(escapeHTML(o.label))}
-                ${raw(o.value === value ? `
-                <svg class="option__check" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 12 12" fill="none" width="12" height="12">
-                    <path d="M2 6l3 3 5-5" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-                </svg>` : '')}
-            </div>
-        `).join('');
-
-        return html`
-            <style>
-                :host {
-                    display: inline-block;
-                    position: relative;
-                    font-family: var(--nc-font-family);
-                    width: 100%;
-                }
-
-                .select-trigger {
-                    display: flex;
-                    align-items: center;
-                    justify-content: space-between;
-                    width: 100%;
-                    box-sizing: border-box;
-                    padding: var(--nc-spacing-sm) var(--nc-spacing-md);
-                    background: var(--nc-bg);
-                    border: var(--nc-input-border);
-                    border-radius: var(--nc-input-radius);
-                    cursor: ${disabled ? 'not-allowed' : 'pointer'};
-                    color: ${hasValue ? 'var(--nc-text)' : 'var(--nc-text-muted)'};
-                    font-size: var(--nc-font-size-base);
-                    transition: border-color var(--nc-transition-fast), box-shadow var(--nc-transition-fast);
-                    opacity: ${disabled ? '0.5' : '1'};
-                    user-select: none;
-                    gap: var(--nc-spacing-sm);
-                    min-height: 40px;
-                }
-
-                /* Size variants */
-                :host([size="sm"]) .select-trigger {
-                    padding: var(--nc-spacing-xs) var(--nc-spacing-sm);
-                    font-size: var(--nc-font-size-sm);
-                    min-height: 32px;
-                }
-
-                :host([size="lg"]) .select-trigger {
-                    padding: var(--nc-spacing-md) var(--nc-spacing-lg);
-                    font-size: var(--nc-font-size-lg);
-                    min-height: 48px;
-                }
-
-                /* Filled variant */
-                :host([variant="filled"]) .select-trigger {
-                    background: var(--nc-bg-tertiary);
-                    border-color: transparent;
-                }
-
-                :host([variant="filled"]) .select-trigger:hover:not([disabled]) {
-                    background: var(--nc-bg-secondary);
-                }
-
-                .select-trigger:hover {
-                    border-color: var(--nc-input-focus-border);
-                }
-
-                .select-trigger.open {
-                    border-color: var(--nc-input-focus-border);
-                    box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.15);
-                }
-
-                .trigger-label {
-                    flex: 1;
-                    overflow: hidden;
-                    white-space: nowrap;
-                    text-overflow: ellipsis;
-                }
-
-                .chevron {
-                    flex-shrink: 0;
-                    transition: transform var(--nc-transition-fast);
-                    color: var(--nc-text-muted);
-                }
-
-                .chevron.open {
-                    transform: rotate(180deg);
-                }
-
-                /* Dropdown */
-                .dropdown {
-                    display: none;
-                    position: absolute;
-                    top: calc(100% + 4px);
-                    left: 0;
-                    right: 0;
-                    background: var(--nc-bg);
-                    border: var(--nc-input-border);
-                    border-radius: var(--nc-radius-md);
-                    box-shadow: var(--nc-shadow-lg);
-                    z-index: var(--nc-z-dropdown);
-                    overflow: hidden;
-                    max-height: 240px;
-                    flex-direction: column;
-                }
-
-                .dropdown.open {
-                    display: flex;
-                }
-
-                .search-wrap {
-                    padding: var(--nc-spacing-xs) var(--nc-spacing-sm);
-                    border-bottom: 1px solid var(--nc-border);
-                }
-
-                .search-input {
-                    width: 100%;
-                    box-sizing: border-box;
-                    border: var(--nc-input-border);
-                    border-radius: var(--nc-radius-sm);
-                    padding: var(--nc-spacing-xs) var(--nc-spacing-sm);
-                    font-size: var(--nc-font-size-sm);
-                    font-family: var(--nc-font-family);
-                    color: var(--nc-text);
-                    background: var(--nc-bg-secondary);
-                    outline: none;
-                }
-
-                .search-input:focus {
-                    border-color: var(--nc-input-focus-border);
-                }
-
-                .options-list {
-                    overflow-y: auto;
-                    flex: 1;
-                }
-
-                .option {
-                    display: flex;
-                    align-items: center;
-                    justify-content: space-between;
-                    padding: var(--nc-spacing-sm) var(--nc-spacing-md);
-                    cursor: pointer;
-                    font-size: var(--nc-font-size-base);
-                    color: var(--nc-text);
-                    transition: background var(--nc-transition-fast);
-                    gap: var(--nc-spacing-sm);
-                }
-
-                .option:hover:not(.option--disabled) {
-                    background: var(--nc-bg-secondary);
-                }
-
-                .option--selected {
-                    color: var(--nc-primary);
-                    font-weight: var(--nc-font-weight-medium);
-                }
-
-                .option--disabled {
-                    opacity: 0.4;
-                    cursor: not-allowed;
-                }
-
-                .option__check {
-                    flex-shrink: 0;
-                }
-
-                .empty {
-                    padding: var(--nc-spacing-md);
-                    text-align: center;
-                    color: var(--nc-text-muted);
-                    font-size: var(--nc-font-size-sm);
-                }
-            </style>
-
-            <input type="hidden"
-                name="${this.getAttribute('name') || ''}"
-                value="${value}"
-            />
-
-            <div class="select-trigger${this._open.value ? ' open' : ''}" role="combobox" aria-expanded="${this._open.value}" aria-haspopup="listbox">
-                <span class="trigger-label">${selectedLabel}</span>
-                <svg class="chevron${this._open.value ? ' open' : ''}" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16" fill="none" width="16" height="16">
+        return `            <input ref="hiddenInputEl" type="hidden" />
+            <div ref="triggerEl" class="select-trigger" role="combobox" aria-expanded="false" aria-haspopup="listbox">
+                <span ref="triggerLabelEl" class="trigger-label"></span>
+                <svg ref="chevronEl" class="chevron" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16" fill="none" width="16" height="16">
                     <path d="M4 6l4 4 4-4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
                 </svg>
             </div>
-
-            <div class="dropdown${this._open.value ? ' open' : ''}" role="listbox">
-                ${raw(searchable ? `
-                <div class="search-wrap">
-                    <input class="search-input" type="text" placeholder="Search..." value="${this._filterText}" autocomplete="off" />
-                </div>` : '')}
-                <div class="options-list">
-                    ${raw(optionItems || `<div class="empty">No options</div>`)}
+            <div ref="dropdownEl" class="dropdown" role="listbox">
+                <div ref="searchWrapEl" class="search-wrap" hidden>
+                    <input class="search-input" type="text" placeholder="Search..." autocomplete="off" />
                 </div>
+                <div ref="optionsListEl" class="options-list"></div>
             </div>
         `;
     }
 
     onMount() {
-        if (!this.hasAttribute('tabindex')) {
-            this.setAttribute('tabindex', '0');
-        }
+        if (!this.hasAttribute('tabindex')) this.setAttribute('tabindex', '0');
+        this._syncFromAttrs();
 
-        // All listeners via this.on() — auto-cleaned on unmount
-        this.on('click', (e: Event) => {
+        this.on(this.shadowRoot!, 'click', (e: MouseEvent) => {
             if (this.hasAttribute('disabled')) return;
             const target = e.target as HTMLElement;
-
-            const option = target.closest('.option') as HTMLElement | null;
+            const option = target.closest<HTMLElement>('.option');
             if (option) {
-                if (option.classList.contains('option--disabled')) return;
-                this._select(option.dataset.value ?? '');
+                if (!option.classList.contains('option--disabled')) this._select(option.dataset.value ?? '');
                 return;
             }
-
-            if (target.closest('.select-trigger')) {
-                this._setOpen(!this._open.value);
-            }
+            if (target.closest('.select-trigger')) this._setOpen(!this._open);
         });
 
-        this.on('input', (e: Event) => {
+        this.on(this.shadowRoot!, 'input', (e: Event) => {
             const input = e.target as HTMLInputElement;
             if (input.classList.contains('search-input')) {
                 this._filterText = input.value;
-                this._rerenderDropdown();
+                this._rerenderList();
             }
         });
 
-        this.on('keydown', (e: KeyboardEvent) => {
+        this.on(document as EventTarget, 'click', (e: MouseEvent) => {
+            if (!this.contains(e.target as Node) && !this.shadowRoot!.contains(e.target as Node)) {
+                this._setOpen(false);
+            }
+        });
+
+        this.on(this, 'keydown', (e: KeyboardEvent) => {
             if (e.key === 'Escape') { this._setOpen(false); return; }
-            if (e.key === 'Enter' || e.key === ' ') {
-                e.preventDefault();
-                this._setOpen(!this._open.value);
-            }
-            if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
-                e.preventDefault();
-                this._navigateOptions(e.key === 'ArrowDown' ? 1 : -1);
-            }
+            if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); this._setOpen(!this._open); return; }
+            if (e.key === 'ArrowDown' || e.key === 'ArrowUp') { e.preventDefault(); this._navigateOptions(e.key === 'ArrowDown' ? 1 : -1); }
         });
-
-        document.addEventListener('click', this._onOutsideClick);
     }
 
-    private _onOutsideClick = (e: MouseEvent) => {
-        if (!this.contains(e.target as Node) && !this.shadowRoot!.contains(e.target as Node)) {
-            this._setOpen(false);
-        }
-    };
+    protected _handleAttributeUpdate(_name: string, _val: string | null) {
+        this._syncFromAttrs();
+    }
+
+    private _syncFromAttrs() {
+        const value       = this.getAttribute('value') || '';
+        const placeholder = this.getAttribute('placeholder') || 'Select...';
+        const searchable  = this.hasAttribute('searchable');
+        const label       = this._getSelectedLabel();
+
+        this.hiddenInputEl.name  = this.getAttribute('name') || '';
+        this.hiddenInputEl.value = value;
+
+        this.triggerLabelEl.textContent = label || placeholder;
+        this.triggerEl.classList.toggle('has-value', !!label);
+        this.searchWrapEl.hidden = !searchable;
+
+        this._rerenderList();
+    }
 
     private _setOpen(open: boolean) {
-        this._open.value = open;
-        if (!open) this._filterText = '';
-
-        const sr = this.shadowRoot!;
-        const trigger = sr.querySelector('.select-trigger');
-        const chevron = sr.querySelector('.chevron');
-        const dropdown = sr.querySelector('.dropdown');
-
-        if (trigger) {
-            trigger.classList.toggle('open', open);
-            trigger.setAttribute('aria-expanded', String(open));
+        this._open = open;
+        if (!open) {
+            this._filterText = '';
+            const searchInput = this.searchWrapEl.querySelector<HTMLInputElement>('.search-input');
+            if (searchInput) searchInput.value = '';
+            this._rerenderList();
         }
-        if (chevron) chevron.classList.toggle('open', open);
-        if (dropdown) {
-            dropdown.classList.toggle('open', open);
-            if (!open) {
-                const searchInput = dropdown.querySelector<HTMLInputElement>('.search-input');
-                if (searchInput) searchInput.value = '';
-                this._rerenderDropdown();
-            }
-        }
-
+        this.triggerEl.classList.toggle('open', open);
+        this.triggerEl.setAttribute('aria-expanded', String(open));
+        this.chevronEl.classList.toggle('open', open);
+        this.dropdownEl.classList.toggle('open', open);
         if (open) {
-            const search = sr.querySelector<HTMLInputElement>('.search-input');
-            if (search) search.focus();
+            const search = this.searchWrapEl.querySelector<HTMLInputElement>('.search-input');
+            if (search && !this.searchWrapEl.hidden) search.focus();
         }
     }
 
-    private _rerenderDropdown() {
-        const sr = this.shadowRoot!;
-        const list = sr.querySelector('.options-list');
-        if (!list) return;
-
-        const value = this.getAttribute('value') || '';
+    private _rerenderList() {
+        const value   = this.getAttribute('value') || '';
         const options = this._getOptions();
         const filtered = this._filterText
             ? options.filter(o => o.label.toLowerCase().includes(this._filterText.toLowerCase()))
             : options;
 
-        list.innerHTML = filtered.length ? filtered.map(o => `
+        this.optionsListEl.innerHTML = filtered.length ? filtered.map(o => `
             <div class="option${o.value === value ? ' option--selected' : ''}${o.disabled ? ' option--disabled' : ''}"
-                 data-value="${raw(escapeHTML(o.value))}"
-                 role="option"
+                 data-value="${o.value}" role="option"
                  aria-selected="${o.value === value}"
                  aria-disabled="${o.disabled ? 'true' : 'false'}">
-                ${raw(escapeHTML(o.label))}
-                ${raw(o.value === value ? `
-                <svg class="option__check" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 12 12" fill="none" width="12" height="12">
-                    <path d="M2 6l3 3 5-5" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-                </svg>` : '')}
-            </div>
-        `).join('') : '<div class="empty">No results</div>';
+                ${o.label}
+                ${o.value === value ? `<svg class="option__check" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 12 12" fill="none" width="12" height="12"><path d="M2 6l3 3 5-5" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>` : ''}
+            </div>`).join('') : '<div class="empty">No results</div>';
     }
 
     private _select(value: string) {
-        const opts = this._getOptions();
-        const opt = opts.find(o => o.value === value);
+        const opt = this._getOptions().find(o => o.value === value);
         if (!opt) return;
-
-        this._open.value = false;
-        this._filterText = '';
-
-        const sr = this.shadowRoot!;
-        const label = sr.querySelector('.trigger-label');
-        if (label) label.textContent = opt.label;
-        const hidden = sr.querySelector<HTMLInputElement>('input[type="hidden"]');
-        if (hidden) hidden.value = value;
-
-        this._setOpen(false);
         this.setAttribute('value', value);
-
-        this.emitEvent('change', {
-            value,
-            label: opt.label,
-            name: this.getAttribute('name') || ''
-        });
+        this.triggerLabelEl.textContent = opt.label;
+        this.triggerEl.classList.add('has-value');
+        this.hiddenInputEl.value = value;
+        this._setOpen(false);
+        this._rerenderList();
+        this.emit('change', { value, label: opt.label, name: this.getAttribute('name') || '' });
     }
 
     private _navigateOptions(direction: number) {
-        const opts = this._getOptions().filter(o => !o.disabled);
+        const opts    = this._getOptions().filter(o => !o.disabled);
         const current = this.getAttribute('value') || '';
-        const idx = opts.findIndex(o => o.value === current);
-        const next = opts[Math.max(0, Math.min(opts.length - 1, idx + direction))];
+        const idx     = opts.findIndex(o => o.value === current);
+        const next    = opts[Math.max(0, Math.min(opts.length - 1, idx + direction))];
         if (next) this._select(next.value);
-    }
-
-    onUnmount() {
-        document.removeEventListener('click', this._onOutsideClick);
-    }
-
-    attributeChangedCallback(name: string, oldValue: string, newValue: string) {
-        if (oldValue !== newValue && this._mounted) {
-            this.render();
-        }
     }
 }
 
-defineComponent('nc-select', NcSelect);
-
-
+if (!customElements.get('nc-select')) customElements.define('nc-select', NcSelect);
 

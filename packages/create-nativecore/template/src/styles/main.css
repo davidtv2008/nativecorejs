@@ -116,11 +116,11 @@ a:hover {
 }
 
 .page-transition-exit {
-    animation: fadeOut 0.2s ease-out forwards;
+    animation: fadeOut 0.08s ease-out forwards;
 }
 
 .page-transition-enter {
-    animation: fadeIn 0.4s ease-in forwards;
+    animation: fadeIn 0.12s ease-out forwards;
 }
 
 /* Page navigation spinner */

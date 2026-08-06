@@ -36,11 +36,11 @@ It does **not** include login, JWT auth, or a dashboard. Auth is author-owned vi
 7. ALWAYS set `static useShadowDOM = true` on UI components unless light DOM is required
 8. NEVER add business logic to `app.*` — routes go in `src/routes/routes.*`
 9. NEVER put `<style>` or `<script>` tags in view HTML files — markup only
-10. Do not casually modify `.nativecore/` — framework internals
+10. Do not hand-edit vendored `.nativecore/core|utils` — change `packages/nativecorejs`, then `npm run vendor-core` in create-nativecore
 11. NEVER invent a JWT/session login flow unless the user explicitly asks
 12. Inside `registerRoutes(r)`, use `r.register` (not `router.register`)
 13. Prefer generators (`make:*` / `remove:*`) over hand-wiring registries and routes
-14. Component Builder UI is disabled — do not assume a Build button exists
+14. Component Builder is experimental (disabled by default)
 
 ## Key File Locations
 
@@ -56,7 +56,6 @@ It does **not** include login, JWT auth, or a dashboard. Auth is author-owned vi
 | Router | `.nativecore/core/router.ts` |
 | Middleware helper | `.nativecore/core/createMiddleware.ts` |
 | Global signals | `.nativecore/core/state.ts` |
-| Wires | `.nativecore/utils/wires.ts` |
 | Testing helpers | `.nativecore/testing/index.js` (`@testing/index.js`) |
 | Dev tools | `.nativecore/dev/` (localhost only) |
 | Stores | `src/stores/` |

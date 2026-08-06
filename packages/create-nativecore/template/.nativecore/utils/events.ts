@@ -4,7 +4,9 @@
  */
 
 import { registerPageCleanup } from '../core/pageCleanupRegistry.js';
-import type { WireAction } from './wireActions.js';
+
+/** Legacy shape formerly returned by deleted wireActions(); kept for events() overload. */
+type WireAction = { element: Element; event: string };
 
 // ── Internal helper to detect a WireAction object ────────────────────────────
 
@@ -26,7 +28,7 @@ function isWireAction(v: unknown): v is WireAction {
  *   on('.input', 'input', handleInput);
  */
 export function on<T = Event>(
-    selectorOrElement: string | Element | null,
+    selectorOrElement: string | Element | EventTarget | null,
     eventName: string,
     handler: (event: T) => void
 ): () => void {
@@ -80,20 +82,20 @@ export function bindEvents(
 /**
  * Shorthand helpers — all return a cleanup function
  */
-export const onClick      = (sel: string | Element | null, h: (e: Event) => void)        => on(sel, 'click', h);
-export const onChange     = (sel: string | Element | null, h: (e: Event) => void)        => on(sel, 'change', h);
-export const onInput      = (sel: string | Element | null, h: (e: Event) => void)        => on(sel, 'input', h);
-export const onSubmit     = (sel: string | Element | null, h: (e: Event) => void)        => on(sel, 'submit', h);
+export const onClick      = (sel: string | Element | null, h: (e: Event) => void)         => on(sel, 'click', h);
+export const onChange     = (sel: string | Element | null, h: (e: Event) => void)         => on(sel, 'change', h);
+export const onInput      = (sel: string | Element | null, h: (e: Event) => void)         => on(sel, 'input', h);
+export const onSubmit     = (sel: string | Element | null, h: (e: Event) => void)         => on(sel, 'submit', h);
 export const onKeydown    = (sel: string | Element | null, h: (e: KeyboardEvent) => void) => on<KeyboardEvent>(sel, 'keydown', h);
 export const onKeyup      = (sel: string | Element | null, h: (e: KeyboardEvent) => void) => on<KeyboardEvent>(sel, 'keyup', h);
-export const onFocus      = (sel: string | Element | null, h: (e: FocusEvent) => void)   => on<FocusEvent>(sel, 'focus', h);
-export const onBlur       = (sel: string | Element | null, h: (e: FocusEvent) => void)   => on<FocusEvent>(sel, 'blur', h);
-export const onFocusin    = (sel: string | Element | null, h: (e: FocusEvent) => void)   => on<FocusEvent>(sel, 'focusin', h);
-export const onFocusout   = (sel: string | Element | null, h: (e: FocusEvent) => void)   => on<FocusEvent>(sel, 'focusout', h);
-export const onScroll     = (sel: string | Element | null, h: (e: Event) => void)        => on(sel, 'scroll', h);
-export const onMouseenter = (sel: string | Element | null, h: (e: MouseEvent) => void)   => on<MouseEvent>(sel, 'mouseenter', h);
-export const onMouseleave = (sel: string | Element | null, h: (e: MouseEvent) => void)   => on<MouseEvent>(sel, 'mouseleave', h);
-export const onDblclick   = (sel: string | Element | null, h: (e: MouseEvent) => void)   => on<MouseEvent>(sel, 'dblclick', h);
+export const onFocus      = (sel: string | Element | null, h: (e: FocusEvent) => void)    => on<FocusEvent>(sel, 'focus', h);
+export const onBlur       = (sel: string | Element | null, h: (e: FocusEvent) => void)    => on<FocusEvent>(sel, 'blur', h);
+export const onFocusin    = (sel: string | Element | null, h: (e: FocusEvent) => void)    => on<FocusEvent>(sel, 'focusin', h);
+export const onFocusout   = (sel: string | Element | null, h: (e: FocusEvent) => void)    => on<FocusEvent>(sel, 'focusout', h);
+export const onScroll     = (sel: string | Element | null, h: (e: Event) => void)         => on(sel, 'scroll', h);
+export const onMouseenter = (sel: string | Element | null, h: (e: MouseEvent) => void)    => on<MouseEvent>(sel, 'mouseenter', h);
+export const onMouseleave = (sel: string | Element | null, h: (e: MouseEvent) => void)    => on<MouseEvent>(sel, 'mouseleave', h);
+export const onDblclick   = (sel: string | Element | null, h: (e: MouseEvent) => void)    => on<MouseEvent>(sel, 'dblclick', h);
 
 /**
  * Delegate event to parent container (for dynamic elements)
@@ -207,20 +209,20 @@ export function trackEvents(): EventTracker {
 
     tracker.add = tracker.on;
 
-    tracker.onClick      = (sel: string | Element | null, h: (e: Event) => void)         => { cleanupFunctions.push(onClick(sel, h)); };
-    tracker.onChange     = (sel: string | Element | null, h: (e: Event) => void)         => { cleanupFunctions.push(onChange(sel, h)); };
-    tracker.onInput      = (sel: string | Element | null, h: (e: Event) => void)         => { cleanupFunctions.push(onInput(sel, h)); };
-    tracker.onSubmit     = (sel: string | Element | null, h: (e: Event) => void)         => { cleanupFunctions.push(onSubmit(sel, h)); };
+    tracker.onClick      = (sel: string | Element | null, h: (e: Event) => void)          => { cleanupFunctions.push(onClick(sel, h)); };
+    tracker.onChange     = (sel: string | Element | null, h: (e: Event) => void)          => { cleanupFunctions.push(onChange(sel, h)); };
+    tracker.onInput      = (sel: string | Element | null, h: (e: Event) => void)          => { cleanupFunctions.push(onInput(sel, h)); };
+    tracker.onSubmit     = (sel: string | Element | null, h: (e: Event) => void)          => { cleanupFunctions.push(onSubmit(sel, h)); };
     tracker.onKeydown    = (sel: string | Element | null, h: (e: KeyboardEvent) => void)  => { cleanupFunctions.push(onKeydown(sel, h)); };
     tracker.onKeyup      = (sel: string | Element | null, h: (e: KeyboardEvent) => void)  => { cleanupFunctions.push(onKeyup(sel, h)); };
-    tracker.onFocus      = (sel: string | Element | null, h: (e: FocusEvent) => void)    => { cleanupFunctions.push(onFocus(sel, h)); };
-    tracker.onBlur       = (sel: string | Element | null, h: (e: FocusEvent) => void)    => { cleanupFunctions.push(onBlur(sel, h)); };
-    tracker.onFocusin    = (sel: string | Element | null, h: (e: FocusEvent) => void)    => { cleanupFunctions.push(onFocusin(sel, h)); };
-    tracker.onFocusout   = (sel: string | Element | null, h: (e: FocusEvent) => void)    => { cleanupFunctions.push(onFocusout(sel, h)); };
-    tracker.onScroll     = (sel: string | Element | null, h: (e: Event) => void)         => { cleanupFunctions.push(onScroll(sel, h)); };
-    tracker.onMouseenter = (sel: string | Element | null, h: (e: MouseEvent) => void)    => { cleanupFunctions.push(onMouseenter(sel, h)); };
-    tracker.onMouseleave = (sel: string | Element | null, h: (e: MouseEvent) => void)    => { cleanupFunctions.push(onMouseleave(sel, h)); };
-    tracker.onDblclick   = (sel: string | Element | null, h: (e: MouseEvent) => void)    => { cleanupFunctions.push(onDblclick(sel, h)); };
+    tracker.onFocus      = (sel: string | Element | null, h: (e: FocusEvent) => void)     => { cleanupFunctions.push(onFocus(sel, h)); };
+    tracker.onBlur       = (sel: string | Element | null, h: (e: FocusEvent) => void)     => { cleanupFunctions.push(onBlur(sel, h)); };
+    tracker.onFocusin    = (sel: string | Element | null, h: (e: FocusEvent) => void)     => { cleanupFunctions.push(onFocusin(sel, h)); };
+    tracker.onFocusout   = (sel: string | Element | null, h: (e: FocusEvent) => void)     => { cleanupFunctions.push(onFocusout(sel, h)); };
+    tracker.onScroll     = (sel: string | Element | null, h: (e: Event) => void)          => { cleanupFunctions.push(onScroll(sel, h)); };
+    tracker.onMouseenter = (sel: string | Element | null, h: (e: MouseEvent) => void)     => { cleanupFunctions.push(onMouseenter(sel, h)); };
+    tracker.onMouseleave = (sel: string | Element | null, h: (e: MouseEvent) => void)     => { cleanupFunctions.push(onMouseleave(sel, h)); };
+    tracker.onDblclick   = (sel: string | Element | null, h: (e: MouseEvent) => void)     => { cleanupFunctions.push(onDblclick(sel, h)); };
 
     tracker.delegate = function<T = Event>(
         containerSelector: string,

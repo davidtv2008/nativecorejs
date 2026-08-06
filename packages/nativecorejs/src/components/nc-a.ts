@@ -16,21 +16,27 @@ export class NcA extends CoreComponent {
     };
 
     static styles = css`
-        :host { display: inline-block; }
-        a { 
-            display: inline-flex; align-items: center; justify-content: center;
-            padding: 10px 24px; background: var(--nc-primary, #007bff);
-            color: white; text-decoration: none; border-radius: var(--nc-radius-md, 6px);
-            cursor: pointer; transition: 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+        :host { display: inline; }
+        a {
+            display: inline;
+            color: var(--nc-a-color, var(--nc-text, inherit));
+            text-decoration: none;
+            cursor: pointer;
+            transition: opacity 0.2s;
         }
         :host([disabled]) a { opacity: 0.5; cursor: not-allowed; pointer-events: none; }
-        :host([variant="primary"]) a { background: var(--nc-primary, #007bff); }
+        /* Button variants */
+        :host([variant]) a {
+            display: inline-flex; align-items: center; justify-content: center;
+            padding: 10px 24px; border-radius: var(--nc-radius-md, 6px);
+            color: white; transition: 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+        :host([variant="primary"]) a   { background: var(--nc-primary, #007bff); }
         :host([variant="secondary"]) a { background: var(--nc-secondary, #6c757d); }
-        :host([variant="tertiary"]) a { background: var(--nc-bg, #ffffff); color: var(--nc-text, #212529); border: 1px solid var(--nc-text, #212529); }
-        :host([variant="success"]) a { background: var(--nc-success, #28a745); }
-        :host([variant="danger"]) a { background: var(--nc-danger, #dc3545); }
-        :host([variant="outline"]) a { background: transparent; color: var(--nc-primary, #007bff); border: 1px solid var(--nc-primary, #007bff); }
-        /* Add more variants as needed */
+        :host([variant="tertiary"]) a  { background: var(--nc-bg, #ffffff); color: var(--nc-text, #212529); border: 1px solid var(--nc-text, #212529); }
+        :host([variant="success"]) a   { background: var(--nc-success, #28a745); }
+        :host([variant="danger"]) a    { background: var(--nc-danger, #dc3545); }
+        :host([variant="outline"]) a   { background: transparent; color: var(--nc-primary, #007bff); border: 1px solid var(--nc-primary, #007bff); }
     `;
 
     // --- TEMPLATE ---
@@ -56,7 +62,7 @@ export class NcA extends CoreComponent {
         this._href.value     = sanitizeURL(this.getAttribute('href')) || '#';
         this._target.value   = this.getAttribute('target') || '';
         this._disabled.value = this.hasAttribute('disabled');
-        this._variant.value  = this.getAttribute('variant') || 'primary';
+        this._variant.value  = this.getAttribute('variant') || '';
         this.bind(this._href,     this.anchor, 'href');
         this.bind(this._target,   this.anchor, 'target');
         this.bind(this._disabled, this.anchor, '?disabled');
@@ -68,7 +74,7 @@ export class NcA extends CoreComponent {
         if (name === 'target')   this._target.value   = val || '';
         if (name === 'disabled') this._disabled.value = val !== null;
         if (name === 'variant') {
-            this._variant.value = val || 'primary';
+            this._variant.value = val || '';
         }
     }
 

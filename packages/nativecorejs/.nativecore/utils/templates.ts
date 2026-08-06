@@ -41,6 +41,9 @@ export function raw(value: string): SafeHTML {
     return new SafeHTML(value);
 }
 
+/** Alias used by some components for trusted markup (same as `raw`). */
+export const trusted = raw;
+
 /**
  * Tagged template literal for HTML.
  * **All interpolated values are HTML-escaped by default.**
