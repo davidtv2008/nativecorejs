@@ -457,11 +457,16 @@ async function init() {
 
 /**
  * Load HMR and the component inspector dev tools.
- * SECURITY: guarded by isLocalhost() — these modules are never loaded in production.
- * The build script also strips the entire .nativecore/ import block from the production bundle.
+ * SECURITY: localhost only — never in production, Capacitor, SSG, or automation
+ * (Puppeteer sets navigator.webdriver; SSG also sets window.__NATIVECORE_SSG__).
+ * Production builds also delete dist/.nativecore/dev via remove-dev.mjs.
  */
 function initDevTools()${isTs ? ': void' : ''} {
-    if (!isLocalhost()) {
+    if (
+        !isLocalhost() ||
+        Boolean(navigator.webdriver) ||
+        ${isTs ? '(window as any)' : 'window'}.__NATIVECORE_SSG__ === true
+    ) {
         return;
     }
 

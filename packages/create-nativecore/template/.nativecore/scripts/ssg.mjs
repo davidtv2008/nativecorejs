@@ -78,12 +78,23 @@ function readRoutesSource() {
  *   • Cloudflare analytics beacon script
  *
  * REPLACED:
- *   • data-public-route="pending" → "ready" (page is already rendered)
+ *   • <html data-public-route="pending"> → "ready" (page is already rendered)
+ *     IMPORTANT: only rewrite the <html> attribute — a global replace also
+ *     rewrites the FOUC CSS selector and permanently hides <body>.
  */
 function sanitizeSsgHtml(html) {
     return html
-        // Mark page as already rendered — no FOUC flash
-        .replace(/data-public-route="pending"/g, 'data-public-route="ready"')
+        // Mark <html> as already rendered — do NOT touch the FOUC CSS selector
+        .replace(
+            /(<html\b[^>]*\b)data-public-route="pending"/i,
+            '$1data-public-route="ready"'
+        )
+
+        // FOUC hide is unnecessary once the page is pre-rendered
+        .replace(
+            /<style>\s*html\[data-public-route="pending"\]\s*body\s*\{[^}]*\}\s*<\/style>/i,
+            ''
+        )
 
         // Remove the flash-prevention / pageloaded inline script
         .replace(
@@ -102,6 +113,15 @@ function sanitizeSsgHtml(html) {
         .replace(/<script[^>]+src="[^"]*(?:hmr|\/ws\.js)[^"]*"[^>]*>[\s\S]*?<\/script>/g, '')
         .replace(/<script[^>]+src="[^"]*(?:hmr|\/ws\.js)[^"]*"[^>]* ?\/?>/g, '')
 
+        // Remove any residual HMR / DEnc / Outline markup (DOM strip is primary)
+        .replace(/<style\b[^>]*\bid=["']nativecore-outline-styles["'][^>]*>[\s\S]*?<\/style>/gi, '')
+        .replace(/<style\b[^>]*>[\s\S]*?\b(?:\.nc-denc-control|#nativecore-denc|\.nc-outline-panel|#hmr-indicator)\b[\s\S]*?<\/style>/gi, '')
+        .replace(/<div\b[^>]*\bid=["']hmr-indicator["'][^>]*>[\s\S]*?<\/div>/gi, '')
+        .replace(/<div\b[^>]*\bid=["']nativecore-denc-indicator["'][^>]*>[\s\S]*?<\/div>/gi, '')
+        .replace(/<div\b[^>]*\bclass=["'][^"']*\bnc-outline-tab\b[^"']*["'][^>]*>[\s\S]*?<\/div>/gi, '')
+        .replace(/<div\b[^>]*\bclass=["'][^"']*\bnc-outline-panel\b[^"']*["'][^>]*>[\s\S]*?<\/div>/gi, '')
+        .replace(/<button\b[^>]*\bclass=["'][^"']*\bnc-denc-control\b[^"']*["'][^>]*>[\s\S]*?<\/button>/gi, '')
+
         // Remove Cloudflare Insights beacon
         .replace(/<script[^>]+src="https:\/\/static\.cloudflareinsights\.com\/beacon[^>]*>[\s\S]*?<\/script>/g, '')
         .replace(/<script[^>]+src="https:\/\/static\.cloudflareinsights\.com\/beacon[^>]* ?\/?>/g, '')
@@ -113,6 +133,35 @@ function sanitizeSsgHtml(html) {
         .replace(/<!-- DEnc-ONLY-START -->[\s\S]*?<!-- DEnc-ONLY-END -->/g, '');
 }
 
+/** Remove live DOM nodes injected by HMR / DEnc / Outline before serializing HTML. */
+async function stripDevDom(page) {
+    await page.evaluate(() => {
+        const selectors = [
+            '#hmr-indicator',
+            '#nativecore-denc-indicator',
+            '#nativecore-denc-brush-btn',
+            '#nativecore-denc-label',
+            '.nc-outline-panel',
+            '.nc-outline-tab',
+            'button.nc-denc-control',
+            'style#nativecore-outline-styles',
+            '[id^="nativecore-denc"]',
+            '.nc-component-editor-overlay',
+            '.nc-drawing-overlay',
+            '.nc-dev-overlay',
+        ];
+        document.querySelectorAll(selectors.join(',')).forEach((el) => el.remove());
+        for (const style of Array.from(document.querySelectorAll('style'))) {
+            const text = style.textContent || '';
+            if (/nc-denc|nc-outline|nativecore-denc|#hmr-indicator|nc-storage-|nc-component-editor|nc-dev-overlay|DEV MODE/i.test(text)) {
+                style.remove();
+            }
+        }
+    });
+}
+
+const DEV_UI_LEAK_RE = /nc-outline-panel|nc-outline-tab|hmr-indicator|nativecore-denc|nc-denc-control|DEV MODE:/i;
+
 // ---------------------------------------------------------------------------
 // Server lifecycle
 // ---------------------------------------------------------------------------
@@ -120,7 +169,14 @@ function sanitizeSsgHtml(html) {
 async function isServerReady() {
     try {
         const res = await fetch(SERVER_URL, { signal: AbortSignal.timeout(2000) });
-        return res.ok || res.status < 500;
+        if (!(res.ok || res.status < 500)) return false;
+        const contentType = res.headers.get('content-type') || '';
+        const body = await res.text();
+        // Reject workers / mock APIs that also listen on :8000 (JSON "API is running")
+        if (contentType.includes('application/json') || body.trimStart().startsWith('{')) {
+            return false;
+        }
+        return /<!DOCTYPE html/i.test(body) && /id=["']app["']|NativeCore/i.test(body);
     } catch {
         return false;
     }
@@ -132,7 +188,11 @@ async function startServer() {
             cwd: rootDir,
             detached: false,
             stdio: 'ignore',
-            shell: process.platform === 'win32'
+            shell: process.platform === 'win32',
+            env: {
+                ...process.env,
+                NATIVECORE_SSG: '1',
+            },
         });
 
         child.on('error', err => reject(new Error(`Could not start server: ${err.message}`)));
@@ -230,6 +290,21 @@ async function runSsg(routes) {
     let serverChild = null;
 
     if (!alreadyRunning) {
+        // Port may be taken by a Worker/API mock — refuse rather than SSG that JSON.
+        try {
+            const probe = await fetch(SERVER_URL, { signal: AbortSignal.timeout(1500) });
+            const probeBody = await probe.text();
+            if (probeBody.trimStart().startsWith('{') || /API is running/i.test(probeBody)) {
+                throw new Error(
+                    `Port ${SERVER_PORT} is serving an API/JSON response, not the NativeCore app. ` +
+                    `Stop that process and re-run SSG (or free :${SERVER_PORT}).`
+                );
+            }
+        } catch (err) {
+            if (err instanceof Error && err.message.includes('Port ')) throw err;
+            // connection refused → free to start our server
+        }
+
         console.log('🚀 Starting dev server...');
         try {
             serverChild = await startServer();
@@ -252,6 +327,13 @@ async function runSsg(routes) {
         });
 
         const page = await browser.newPage();
+        await page.evaluateOnNewDocument(() => {
+            Object.defineProperty(window, '__NATIVECORE_SSG__', {
+                value: true,
+                writable: false,
+                configurable: false,
+            });
+        });
 
         for (const route of routes) {
             process.stdout.write(`  📄 ${route} ... `);
@@ -261,9 +343,13 @@ async function runSsg(routes) {
                     timeout: RENDER_TIMEOUT
                 });
                 await new Promise(r => setTimeout(r, RENDER_SETTLE_MS));
+                await stripDevDom(page);
 
                 const rawHtml = await page.content();
                 const html = sanitizeSsgHtml(rawHtml);
+                if (DEV_UI_LEAK_RE.test(html)) {
+                    throw new Error('dev-tool UI leaked into SSG HTML (Outline/HMR/DEnc)');
+                }
 
                 const outPath = route === '/'
                     ? path.join(deployDir, 'index.html')

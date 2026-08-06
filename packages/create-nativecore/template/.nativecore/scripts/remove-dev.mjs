@@ -1,14 +1,25 @@
 // scripts/remove-dev.mjs
-// Remove dev folder from dist for production builds
+// Remove all dev-tool bundles from production dist / _deploy
 import { rmSync, existsSync } from 'fs';
 import { join } from 'path';
 
-const devPath = join(process.cwd(), 'dist', 'dev');
+const targets = [
+  ['dist', 'dev'],
+  ['dist', '.nativecore', 'dev'],
+  ['_deploy', 'dist', 'dev'],
+  ['_deploy', 'dist', '.nativecore', 'dev'],
+];
 
-if (existsSync(devPath)) {
-  rmSync(devPath, { recursive: true, force: true });
-  console.log('🗑️  Removed dist/dev folder (denc-only files excluded from production)');
-} else {
-  console.log('✓ No dist/dev folder found (already clean)');
+let removed = 0;
+for (const parts of targets) {
+  const fullPath = join(process.cwd(), ...parts);
+  if (existsSync(fullPath)) {
+    rmSync(fullPath, { recursive: true, force: true });
+    console.log(`🗑️  Removed ${parts.join('/')} (dev tools excluded from production)`);
+    removed += 1;
+  }
 }
 
+if (removed === 0) {
+  console.log('✓ No dist/.nativecore/dev (or legacy dist/dev) folders found (already clean)');
+}
