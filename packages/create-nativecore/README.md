@@ -51,11 +51,13 @@ Teach and use only:
 - `npm run make:view`, `make:component`, `make:store`, `make:middleware`, …
 - `npm run build` / `npm run build:ssg`
 
-Update vendored Core later with:
+Update an existing app later with:
 
 ```bash
-npm run sync:core                 # create-nativecore@latest
+npm run sync:core                 # .nativecore runtime (router/state/utils)
 npm run sync:core -- <version>    # pin a published version
+npm run sync:components           # additive src/components/core nc-* UI
+npm run sync:components -- <version>
 ```
 
 ## Flags

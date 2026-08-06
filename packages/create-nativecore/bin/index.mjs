@@ -169,6 +169,7 @@ function packageJsonTemplate(config) {
         'bundle:css': 'node .nativecore/scripts/bundle-css.mjs',
         'sync:importmap': 'node .nativecore/scripts/sync-importmap.mjs',
         'sync:core': 'node .nativecore/scripts/sync-core.mjs',
+        'sync:components': 'node .nativecore/scripts/sync-components.mjs',
         'compile:prod': 'node .nativecore/scripts/watch-compile.mjs --once && node .nativecore/scripts/bundle-css.mjs && node .nativecore/scripts/remove-dev.mjs',
         'make:component': 'node .nativecore/scripts/make-component.mjs',
         'make:core-component': 'node .nativecore/scripts/make-core-component.mjs',
