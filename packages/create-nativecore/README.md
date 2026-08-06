@@ -21,10 +21,19 @@ Official CLI for generating NativeCore applications.
 ## Usage
 
 ```bash
-npx create-nativecore my-app --defaults
+npx create-nativecore@latest my-app --defaults
 cd my-app
 npm run dev
 ```
+
+TypeScript:
+
+```bash
+npx create-nativecore@latest my-app --ts
+```
+
+Apps vendor the framework under `.nativecore/` (no runtime `nativecorejs`
+dependency required). Component Builder UI is disabled in this release.
 
 ### Flags
 
