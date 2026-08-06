@@ -131,7 +131,7 @@ On Windows PowerShell, prefer `npm.cmd` so flags after `--` are preserved.
 
 ## Status of this rewrite
 
-This ebook was rebuilt in August 2026 to match create-nativecore **rc.12-era**
+This ebook was rebuilt in August 2026 to match create-nativecore **rc.13-era**
 scaffolds. Chapters **00–25** plus appendices are present under `docs/ebook/`.
 
 Replaced obsolete teaching: shipped JWT auth, hand-rolled `lazyController`,

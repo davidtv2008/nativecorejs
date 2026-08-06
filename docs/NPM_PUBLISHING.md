@@ -7,7 +7,7 @@ This monorepo publishes two packages:
 | [`nativecorejs`](../packages/nativecorejs) | Runtime library (`import … from 'nativecorejs'`) |
 | [`create-nativecore`](../packages/create-nativecore) | Scaffolding CLI (`npx create-nativecore`) |
 
-Current versions (keep them in sync when cutting a release): **`1.0.0-rc.12`**.
+Current versions (keep them in sync when cutting a release): **`1.0.0-rc.13`**.
 
 ## How the packages relate
 
