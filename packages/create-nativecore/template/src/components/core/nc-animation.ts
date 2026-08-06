@@ -479,7 +479,7 @@ export class NcAnimation extends Component {
     }
 
     onMount() {
-        this._setup();
+        this._setupAnimation();
     }
 
     onUnmount() {
@@ -510,7 +510,7 @@ export class NcAnimation extends Component {
 
     // ── Setup ─────────────────────────────────────────────────────────────────
 
-    private _setup() {
+    private _setupAnimation() {
         const trigger = this._attr('trigger', 'mount') as AnimationTrigger;
 
         switch (trigger) {
@@ -1145,7 +1145,7 @@ export class NcAnimation extends Component {
         // Re-setup on any attribute change (restarts trigger logic)
         this._teardown();
         this._visibleFired = false;
-        this._setup();
+        this._setupAnimation();
     }
 }
 

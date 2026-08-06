@@ -4,28 +4,37 @@ Official CLI for generating NativeCore applications.
 
 ## Goals
 
-- prompt only for app-level starter decisions that actually vary
-- generate a full NativeCore project structure, not just a thin starter shell
-- include dev tools, HMR, scripts, stores, services, middleware, mock API, tests, and source folders by default
-- avoid shipping framework marketing/docs routes into new projects by default
+- scaffold a full NativeCore project with framework bulk, components, HMR, and dev tools
+- ship a calm enterprise starter home page only — no login flow, dashboard, or component showcase
+- use a minimal HTML shell by default (no header/footer/sidebar); chrome components remain available for opt-in
+- leave protected-route APIs in place so users can add their own auth model
 
 ## Current starter behavior
 
-- always generates a TypeScript project
-- uses npm for dependency installation by default unless `--skip-install` is passed
+- generates a JavaScript project by default; pass `--ts` for TypeScript
+- uses npm for dependency installation by default
 - scaffolds the full NativeCore-style source tree: `src/components`, `constants`, `core`, `dev`, `middleware`, `routes`, `services`, `stores`, `styles`, `types`, `utils`, and `views`
-- includes `api/`, `scripts/`, test setup, lint config, HMR, and local mock authentication/data flow
+- includes `api/`, `scripts/`, test setup, lint config, HMR, and mock API helpers (no auth endpoints)
 - includes reusable AI/context guidance files such as `.context/`, `.cursorrules`, `AGENTS.md`, and `.github/copilot-instructions.md`
-- does not generate documentation routes or docs pages
+- does not generate login, dashboard, or documentation marketing routes
 
-## Install behavior
+## Usage
 
-- `npx create-nativecore my-app` should scaffold the project and run `npm install` immediately by default
-- use `--skip-install` when you only want files generated without dependency installation
+```bash
+npx create-nativecore my-app --defaults
+cd my-app
+npm run dev
+```
 
-## Planned templates
+### Flags
 
-- full app shell plus dashboard flow
-- auth starter
-- dashboard starter
-- future deployment targets such as Cloudflare or Node
+| Flag | Description |
+|------|-------------|
+| `--defaults` | Skip prompts (JavaScript on, Capacitor off) |
+| `--ts` / `--js` | Force TypeScript or JavaScript (JS is the default) |
+| `--capacitor` / `--no-capacitor` | Include or exclude Capacitor packaging |
+| `--out-dir <path>` | Output directory override |
+
+## Auth is your responsibility
+
+The scaffold keeps router middleware / `group({ middleware: [...] })` and `make:middleware` / `make:view` so you can build protected routes. It does **not** ship a JWT login page, auth service, or demo credentials. Add auth with your own best-practice model.

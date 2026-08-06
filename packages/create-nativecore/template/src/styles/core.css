@@ -198,7 +198,7 @@
     grid-template-columns: 64px 1fr;
 }
 
-/* No sidebar present (public shell) */
+/* No sidebar present (public shell with optional header) */
 #app.no-sidebar {
     grid-template-areas:
         "header"
@@ -212,6 +212,31 @@
 
 #app.no-sidebar app-sidebar {
     display: none;
+}
+
+/* Minimal scaffold shell — content only, no reserved chrome */
+#app.minimal-shell {
+    display: block;
+    grid-template-areas: none;
+    grid-template-columns: none;
+    grid-template-rows: none;
+    min-height: 100vh;
+    height: auto;
+    overflow: visible;
+    /* Match home terminal band so leftover viewport is not a white strip */
+    background: #070b10;
+}
+
+#app.minimal-shell .main-content {
+    display: block;
+    overflow: visible;
+    min-height: 0;
+}
+
+#app.minimal-shell .main-content .page {
+    max-width: none;
+    margin: 0;
+    min-height: 0;
 }
 
 /* Grid area assignments */

@@ -207,16 +207,46 @@ export abstract class CoreComponent extends HTMLElement {
     }
 
     // --- DOM HELPERS ---
-    protected emit(name: string, detail: any = {}): boolean {
-        const event = new CustomEvent(name, { 
-            detail, bubbles: true, composed: true, cancelable: true 
+    protected emit(name: string, detail: any = {}, options: EventInit = {}): boolean {
+        const event = new CustomEvent(name, {
+            detail,
+            bubbles: true,
+            composed: true,
+            cancelable: true,
+            ...options,
         });
         return this.dispatchEvent(event);
     }
 
-    protected on(target: EventTarget, type: string, handler: (ev: any) => void): void {
-        target.addEventListener(type, handler);
-        this._unsubs.add(() => target.removeEventListener(type, handler));
+    /** Bind a listener on `this` (legacy 2-arg form). */
+    protected on(type: string, handler: (ev: any) => void, options?: AddEventListenerOptions): void;
+    /** Bind a listener on an explicit target (preferred). */
+    protected on(
+        target: EventTarget,
+        type: string,
+        handler: (ev: any) => void,
+        options?: AddEventListenerOptions
+    ): void;
+    protected on(
+        targetOrType: EventTarget | string,
+        typeOrHandler: string | ((ev: any) => void),
+        handlerOrOptions?: ((ev: any) => void) | AddEventListenerOptions,
+        options?: AddEventListenerOptions
+    ): void {
+        if (typeof targetOrType === 'string') {
+            const type = targetOrType;
+            const handler = typeOrHandler as (ev: any) => void;
+            const opts = handlerOrOptions as AddEventListenerOptions | undefined;
+            this.addEventListener(type, handler, opts);
+            this._unsubs.add(() => this.removeEventListener(type, handler, opts));
+            return;
+        }
+
+        const target = targetOrType;
+        const type = typeOrHandler as string;
+        const handler = handlerOrOptions as (ev: any) => void;
+        target.addEventListener(type, handler, options);
+        this._unsubs.add(() => target.removeEventListener(type, handler, options));
     }
 
     private _bootstrap(): void {
@@ -281,14 +311,18 @@ export abstract class Component extends CoreComponent {
         return (this.shadowRoot ?? this).querySelectorAll<T>(selector);
     }
 
-    /** getAttribute shorthand. */
-    protected attr(name: string): string | null {
-        return this.getAttribute(name);
+    /** getAttribute shorthand; optional fallback when attribute is missing. */
+    protected attr(name: string): string | null;
+    protected attr(name: string, fallback: string): string;
+    protected attr(name: string, fallback?: string): string | null {
+        const value = this.getAttribute(name);
+        if (fallback !== undefined) return value ?? fallback;
+        return value;
     }
 
     /** @deprecated Use this.emit() instead. */
-    protected emitEvent(name: string, detail: any = {}): boolean {
-        return this.emit(name, detail);
+    protected emitEvent(name: string, detail: any = {}, options: EventInit = {}): boolean {
+        return this.emit(name, detail, options);
     }
 
     /**
@@ -309,3 +343,9 @@ export abstract class Component extends CoreComponent {
 export function defineComponent(tag: string, cls: CustomElementConstructor): void {
     if (!customElements.get(tag)) customElements.define(tag, cls);
 }
+
+/** @deprecated Alias kept for package public types. */
+export type ComponentConstructor = CustomElementConstructor;
+
+/** @deprecated Prefer `State` from `@core/state.js` / this module. */
+export type ComponentState<T = unknown> = State<T>;

@@ -1,36 +1,79 @@
 <div data-view="home">
-<section class="hero">
-    <div class="hero-inner">
-        <div class="hero-badge">Web Components. Dev tools included.</div>
-
-        <h1>NativeCoreJS</h1>
-
-        <p class="hero-tagline">
-            Build modern applications with a browser-native architecture that leans on web standards,
-            not proprietary runtimes. NativeCoreJS keeps you close to the platform with Web Components,
-            TypeScript, reactive state, and high-performance patterns that stay durable as the web evolves.
-        </p>
-
-        <div class="hero-actions">
-            <nc-a ref="ctaBtn" variant="outline" href="/login">Sign In</nc-a>
-            <nc-a variant="hero-ghost" href="https://nativecorejs.com/docs" target="_blank" rel="noopener noreferrer">Read the Docs</nc-a>
-            <nc-a variant="hero-ghost" href="https://nativecorejs.com/components">Component Library</nc-a>
-        </div>
-
-        <div class="hero-stats">
-            <div class="stat-item">
-                <span class="stat-number">Full</span>
-                <span class="stat-label">Project Template</span>
-            </div>
-            <div class="stat-item">
-                <span class="stat-number">Built-in</span>
-                <span class="stat-label">Dev Tools</span>
-            </div>
-            <div class="stat-item">
-                <span class="stat-number">Local</span>
-                <span class="stat-label">Mock API</span>
+    <section class="home-hero" aria-labelledby="home-brand">
+        <div class="home-hero__wash" aria-hidden="true"></div>
+        <div class="home-hero__inner">
+            <h1 id="home-brand" class="home-hero__brand">NativeCoreJS</h1>
+            <p class="home-hero__headline">Your application scaffold is ready</p>
+            <p class="home-hero__lead">
+                A production-oriented Web Components starter with routing and first-class tooling.
+                Replace this page with your product experience.
+            </p>
+            <div class="home-hero__actions">
+                <a class="home-hero__btn home-hero__btn--primary" href="https://nativecorejs.com" target="_blank" rel="noopener noreferrer">Documentation</a>
+                <a class="home-hero__btn home-hero__btn--ghost" href="https://github.com/davidtv2008/nativecorejs" target="_blank" rel="noopener noreferrer">GitHub</a>
             </div>
         </div>
-    </div>
-</section>
+    </section>
+
+    <section class="home-start" aria-labelledby="home-start-title">
+        <div class="home-start__inner">
+            <h2 id="home-start-title">Next steps</h2>
+            <p class="home-start__lead">
+                Grow the app from the project CLI. Framework demos live on
+                <a href="https://nativecorejs.com" target="_blank" rel="noopener noreferrer">nativecorejs.com</a>.
+            </p>
+
+            <div class="home-term" role="region" aria-label="CLI next steps">
+                <div class="home-term__chrome">
+                    <span class="home-term__traffic" aria-hidden="true">
+                        <i></i><i></i><i></i>
+                    </span>
+                    <span class="home-term__title">nativecore — ~/app</span>
+                </div>
+
+                <div class="home-term__body">
+                    <p class="home-term__comment"># scaffold a page (HTML + route wiring)</p>
+                    <p class="home-term__line">
+                        <span class="home-term__prompt">$</span>
+                        <span class="home-term__cmd">npm run make:view <span class="home-term__arg">settings</span></span>
+                    </p>
+
+                    <p class="home-term__comment"># add a controller on its own when you need one</p>
+                    <p class="home-term__line">
+                        <span class="home-term__prompt">$</span>
+                        <span class="home-term__cmd">npm run make:controller <span class="home-term__arg">settings</span></span>
+                    </p>
+
+                    <p class="home-term__comment"># generate a reusable custom element + registry entry</p>
+                    <p class="home-term__line">
+                        <span class="home-term__prompt">$</span>
+                        <span class="home-term__cmd">npm run make:component <span class="home-term__arg">billing-card</span></span>
+                    </p>
+
+                    <p class="home-term__comment"># create route middleware (auth stays your model)</p>
+                    <p class="home-term__line">
+                        <span class="home-term__prompt">$</span>
+                        <span class="home-term__cmd">npm run make:middleware <span class="home-term__arg">auth</span></span>
+                    </p>
+
+                    <p class="home-term__comment"># local development with HMR</p>
+                    <p class="home-term__line">
+                        <span class="home-term__prompt">$</span>
+                        <span class="home-term__cmd">npm run dev</span>
+                    </p>
+
+                    <p class="home-term__comment"># production build when you are ready to ship</p>
+                    <p class="home-term__line">
+                        <span class="home-term__prompt">$</span>
+                        <span class="home-term__cmd">npm run build</span>
+                    </p>
+
+                    <p class="home-term__line home-term__line--live" aria-hidden="true">
+                        <span class="home-term__prompt">$</span>
+                        <span class="home-term__cursor"></span>
+                    </p>
+                </div>
+            </div>
+        </div>
+    </section>
 </div>

@@ -9,6 +9,8 @@
  * Key differences from the older build-for-bots.mjs:
  *  • Routes are read automatically from src/routes/routes.(ts|js) — no hardcoded list.
  *  • Protected routes and dynamic routes (:param, *) are skipped.
+ *  • Protected = export const protectedRoutes = [...] (legacy) OR routes inside
+ *    r.group({ middleware: [...] }, ...) when the middleware array is non-empty.
  *  • The app.js <script> is KEPT so the page hydrates in the browser.
  *  • Pre-rendered HTML is written to _deploy/ (not dist/bot/).
  *  • A sitemap.xml is generated / updated inside _deploy/.
@@ -28,6 +30,7 @@ import path from 'path';
 import { fileURLToPath } from 'url';
 import { spawn } from 'child_process';
 import readline from 'readline';
+import { resolvePublicRoutes } from './ssg-routes.mjs';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -46,7 +49,7 @@ const RENDER_TIMEOUT = 30_000;
 const RENDER_SETTLE_MS = 800;
 
 // ---------------------------------------------------------------------------
-// Route extraction (mirrors generate-route-redirects.mjs)
+// Route extraction — see ssg-routes.mjs (middleware groups + legacy array)
 // ---------------------------------------------------------------------------
 
 function readRoutesSource() {
@@ -54,27 +57,6 @@ function readRoutesSource() {
         return null;
     }
     return fs.readFileSync(routesPath, 'utf8');
-}
-
-function extractRegisteredRoutes(src) {
-    return Array.from(src.matchAll(/\.register\(\s*['"]([^'"]+)['"]/g), m => m[1]);
-}
-
-function extractProtectedRoutes(src) {
-    const match = src.match(/export const protectedRoutes\s*=\s*\[(.*?)\]/s);
-    if (!match) return [];
-    return Array.from(match[1].matchAll(/['"]([^'"]+)['"]/g), m => m[1]);
-}
-
-/** Returns only the static, public routes eligible for SSG pre-rendering. */
-function resolvePublicRoutes(src) {
-    const all = extractRegisteredRoutes(src);
-    const protected_ = new Set(extractProtectedRoutes(src));
-    return all.filter(route => {
-        if (protected_.has(route)) return false;           // protected — skip
-        if (route.includes(':') || route.includes('*')) return false; // dynamic — skip
-        return true;
-    });
 }
 
 // ---------------------------------------------------------------------------
@@ -320,7 +302,7 @@ async function runSsg(routes) {
 // Entry point
 // ---------------------------------------------------------------------------
 
-(async () => {
+async function main() {
     const mode = resolveMode();
 
     console.log('\n╔═══════════════════════════════════════════════════╗');
@@ -364,4 +346,6 @@ async function runSsg(routes) {
         console.error('\n❌ SSG failed:', err.message);
         process.exit(1);
     }
-})();
+}
+
+main();

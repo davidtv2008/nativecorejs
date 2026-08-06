@@ -24,6 +24,12 @@ class SafeHTML {
     }
 }
 
+/** @deprecated Prefer `SafeHTML` / `raw()` — kept for controller import compat. */
+export type TrustedHtml = SafeHTML;
+
+/** @deprecated Prefer `escapeHTML`. */
+export const escapeHtml = escapeHTML;
+
 /**
  * Wrap a string so the `html` tagged template will NOT escape it.
  * Use only for content you control or have already sanitised.

@@ -20,11 +20,11 @@ const __dirname = path.dirname(__filename);
 
 // ─── Detect project language mode ───────────────────────────────────────────
 const ROOT = path.resolve(__dirname, '../..');
-let useTypeScript = true;
+let useTypeScript = false;
 try {
     const ncConfig = JSON.parse(fs.readFileSync(path.join(ROOT, 'nativecore.config.json'), 'utf8'));
-    if (ncConfig.useTypeScript === false) useTypeScript = false;
-} catch { /* default to TypeScript */ }
+    if (ncConfig.useTypeScript === true) useTypeScript = true;
+} catch { /* default to JavaScript (matches create-nativecore defaults) */ }
 const ext = useTypeScript ? 'ts' : 'js';
 
 const rawName = process.argv[2];
@@ -58,6 +58,22 @@ function toTitle(kebab) {
   return kebab.split('-').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ');
 }
 
+/** True only for a real top-level import line (ignores // comments). */
+function hasTopLevelImport(source, importStatement) {
+  const escaped = importStatement.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  return new RegExp(`^${escaped}\\s*$`, 'm').test(source);
+}
+
+function insertImportLine(source, line) {
+  if (hasTopLevelImport(source, line)) return source;
+  const lines = source.split('\n');
+  const routerIdx = lines.findIndex((l) => /^import\s/.test(l) && l.includes("@core/router.js"));
+  const lastImportIdx = lines.findLastIndex((l) => /^import\s/.test(l));
+  const insertAt = routerIdx !== -1 ? routerIdx + 1 : lastImportIdx !== -1 ? lastImportIdx + 1 : 0;
+  lines.splice(insertAt, 0, line);
+  return lines.join('\n');
+}
+
 const kebabName = toKebab(rawName);
 const camelName = toCamel(kebabName);
 const titleName = toTitle(kebabName);
@@ -83,7 +99,6 @@ const tsMiddlewareTemplate = `/**
  * Apply it to routes in routes.${ext}:
  *   r.group({ middleware: ['${kebabName}'] }, (r) => { ... });
  */
-import router from '@core/router.js';
 import type { RouteMatch } from '@core/router.js';
 
 export async function ${camelName}Middleware(route: RouteMatch): Promise<boolean> {
@@ -105,7 +120,6 @@ const jsMiddlewareTemplate = `/**
  * Apply it to routes in routes.${ext}:
  *   r.group({ middleware: ['${kebabName}'] }, (r) => { ... });
  */
-import router from '@core/router.js';
 
 export async function ${camelName}Middleware(route) {
     // TODO: implement your middleware logic here.
@@ -131,15 +145,27 @@ if (!fs.existsSync(appEntryPath)) {
 
 let appContent = fs.readFileSync(appEntryPath, 'utf8');
 
+const createMiddlewareImport = `import { createMiddleware } from '@core/createMiddleware.js';`;
 const importLine = `import { ${camelName}Middleware } from '@middleware/${kebabName}.middleware.js';`;
 
-if (appContent.includes(importLine)) {
+if (!hasTopLevelImport(appContent, createMiddlewareImport)) {
+  appContent = insertImportLine(appContent, createMiddlewareImport);
+  console.log(`Added createMiddleware import to src/app.${ext}`);
+}
+
+if (hasTopLevelImport(appContent, importLine)) {
   console.log(`Note: Import already exists in app.${ext}`);
 } else {
-  appContent = appContent.replace(
-    /import \{ createMiddleware \} from '@core\/createMiddleware\.js';/,
-    `import { createMiddleware } from '@core/createMiddleware.js';\n${importLine}`
-  );
+  // Prefer grouping under the real createMiddleware import line.
+  const createImportLineRe = /^import \{ createMiddleware \} from '@core\/createMiddleware\.js';\s*$/m;
+  if (createImportLineRe.test(appContent)) {
+    appContent = appContent.replace(
+      createImportLineRe,
+      `${createMiddlewareImport}\n${importLine}`
+    );
+  } else {
+    appContent = insertImportLine(appContent, importLine);
+  }
   console.log(`Added import to src/app.${ext}`);
 }
 
@@ -153,7 +179,7 @@ if (appContent.includes(useStatement)) {
 
   if (match) {
     const block = match[1];
-    appContent = appContent.replace(block, `${block}    router.use(createMiddleware('${kebabName}', ${camelName}Middleware));\n`);
+    appContent = appContent.replace(block, `${block}${useStatement}\n`);
     console.log(`Added router.use(createMiddleware('${kebabName}', ${camelName}Middleware)) to src/app.${ext}`);
   } else {
     console.log(`Warning: Could not find // @middleware sentinel in app.${ext} — add manually:\n    ${useStatement}`);
@@ -175,5 +201,3 @@ Apply to routes in routes.${ext}:
       r.register('/your-path', ...);
   });
 `);
-
-

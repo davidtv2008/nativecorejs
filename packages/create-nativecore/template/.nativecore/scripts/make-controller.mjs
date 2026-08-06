@@ -17,11 +17,11 @@ const question = (query) => new Promise((resolve) => rl.question(query, resolve)
 
 // ─── Detect project language mode ───────────────────────────────────────────
 const ROOT = path.resolve(__dirname, '../..');
-let useTypeScript = true;
+let useTypeScript = false;
 try {
     const ncConfig = JSON.parse(fs.readFileSync(path.join(ROOT, 'nativecore.config.json'), 'utf8'));
-    if (ncConfig.useTypeScript === false) useTypeScript = false;
-} catch { /* default to TypeScript */ }
+    if (ncConfig.useTypeScript === true) useTypeScript = true;
+} catch { /* default to JavaScript (matches create-nativecore defaults) */ }
 const ext = useTypeScript ? 'ts' : 'js';
 
 // Get controller name from command line or prompt

@@ -10,11 +10,20 @@
  *   - Flex direction, wrap, gap, align, justify controls
  *   - Per-child attribute editor (uses component's attributeOptions/observedAttributes)
  *   - Event builder — name, trigger, payload fields, bubbles/composed/cancelable
+ *   - Open existing src/components/ui/* components for round-trip editing
  *   - Code preview panel (auto-generated Component class)
- *   - Actions: Copy, Download, Register live, Save to disk
+ *   - Actions: Copy, Download, Save to disk
  *
  * SECURITY: Never loaded outside localhost/dev. Excluded from production build.
  */
+
+import {
+    createEmptyState,
+    generateBuilderCode,
+    parseBuilderSource,
+    toClassName,
+    uid,
+} from './component-builder-codegen.mjs';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -182,28 +191,28 @@ function inferAttrType(tag: string, attrName: string): 'text' | 'bool' {
     return genericBool.has(attrName) ? 'bool' : 'text';
 }
 
-function uid(): string {
-    return Math.random().toString(36).slice(2, 9);
-}
-
-function toClassName(tag: string): string {
-    return tag.split('-').map(p => p.charAt(0).toUpperCase() + p.slice(1)).join('');
-}
-
 // ─── ComponentBuilder ─────────────────────────────────────────────────────────
+
+const BUILDER_DND_MIME = 'application/x-nc-builder-tag';
 
 export class ComponentBuilder {
     private panel: HTMLElement | null = null;
     private isOpen: boolean = false;
     private state: BuilderState;
     private codePreviewOpen: boolean = false;
+    private loadedFromDisk: boolean = false;
+    private loadedBuilderOwned: boolean = true;
+    private language: 'ts' | 'js' = 'ts';
+    private openPickerEl: HTMLElement | null = null;
     private keydownHandler: ((e: KeyboardEvent) => void) | null = null;
     private eventLog: EventLogEntry[] = [];
     private eventBridgeListeners: Map<string, { eventName: string; handler: EventListener }> = new Map();
     private eventLogListeners: Map<string, EventListener> = new Map();
     private canvasHostBound: boolean = false;
+    private dragActive: boolean = false;
     private docDragOver: ((e: DragEvent) => void) | null = null;
     private docDrop: ((e: DragEvent) => void) | null = null;
+    private docDragEnd: ((e: DragEvent) => void) | null = null;
 
     constructor() {
         this.state = this.defaultState();
@@ -214,45 +223,51 @@ export class ComponentBuilder {
                 e.preventDefault();
                 this.toggle();
             }
-            if (e.key === 'Escape' && this.isOpen) this.close();
+            if (e.key === 'Escape' && this.isOpen) {
+                // Esc cancels an in-flight HTML5 drag — do not close the builder.
+                if (this.dragActive) {
+                    this.dragActive = false;
+                    return;
+                }
+                if (this.openPickerEl) {
+                    this.closeOpenPicker();
+                    return;
+                }
+                this.close();
+            }
         };
         window.addEventListener('keydown', this.keydownHandler);
     }
 
     private defaultState(): BuilderState {
-        return {
-            componentTag: 'my-component',
-            componentClass: 'MyComponent',
-            componentDesc: '',
-            useShadowDOM: true,
-            observedAttrs: [],
-            children: [],
-            layout: {
-                direction: 'column',
-                wrap: 'nowrap',
-                alignItems: 'flex-start',
-                justifyContent: 'flex-start',
-                gap: '12px',
-                padding: '16px',
-            },
-            events: [],
-            selectedChildId: null,
-            dragSourceId: null,
-            dragOverId: null,
-        };
+        return createEmptyState() as BuilderState;
     }
 
     open(): void {
         if (!this.panel) return;
         this.isOpen = true;
         this.panel.classList.add('active');
+        void this.ensureProjectLanguage();
         this.renderAll();
         this.syncEventRuntime();
         this.bindDocDragSafety();
     }
 
+    private async ensureProjectLanguage(): Promise<void> {
+        try {
+            const res = await fetch('/api/dev/project-config');
+            if (!res.ok) return;
+            const cfg = await res.json() as { language?: 'ts' | 'js'; useTypeScript?: boolean };
+            this.language = cfg.language === 'js' || cfg.useTypeScript === false ? 'js' : 'ts';
+            this.updateCodePane();
+        } catch {
+            // keep default ts
+        }
+    }
+
     close(): void {
         if (!this.panel) return;
+        this.closeOpenPicker();
         this.isOpen = false;
         this.panel.classList.remove('active');
         this.clearEventRuntime();
@@ -274,15 +289,22 @@ export class ComponentBuilder {
         if (this.docDragOver) return; // already bound
         this.docDragOver = (e: DragEvent) => {
             if (!this.isOpen) return;
+            // Required so drops are allowed and the browser does not navigate.
             e.preventDefault();
+            if (e.dataTransfer) e.dataTransfer.dropEffect = this.dragActive ? 'copy' : e.dataTransfer.dropEffect;
         };
         this.docDrop = (e: DragEvent) => {
             if (!this.isOpen) return;
             e.preventDefault();
+            this.dragActive = false;
+        };
+        this.docDragEnd = () => {
+            this.dragActive = false;
         };
         // Capture phase ensures this runs even if nested components call stopPropagation().
         document.addEventListener('dragover', this.docDragOver, true);
         document.addEventListener('drop', this.docDrop, true);
+        document.addEventListener('dragend', this.docDragEnd, true);
     }
 
     private unbindDocDragSafety(): void {
@@ -294,6 +316,21 @@ export class ComponentBuilder {
             document.removeEventListener('drop', this.docDrop, true);
             this.docDrop = null;
         }
+        if (this.docDragEnd) {
+            document.removeEventListener('dragend', this.docDragEnd, true);
+            this.docDragEnd = null;
+        }
+        this.dragActive = false;
+    }
+
+    private readDragTag(e: DragEvent): string {
+        const dt = e.dataTransfer;
+        if (!dt) return '';
+        const typed = dt.getData(BUILDER_DND_MIME) || dt.getData('text/plain') || '';
+        if (!typed || typed.startsWith('__reorder__:')) return '';
+        // Guard against accidental URL/file drops navigating or injecting paths.
+        if (/[:/\\]/.test(typed) || typed.includes('://')) return '';
+        return typed.trim();
     }
 
     // ─── Styles ───────────────────────────────────────────────────────────────
@@ -346,6 +383,71 @@ export class ComponentBuilder {
                 background: rgba(255,255,255,0.9); color: #667eea;
             }
             .nc-builder-tb-btn.primary:hover { background: white; }
+            .nc-builder-tb-btn.green {
+                background: rgba(74,222,128,0.22); border-color: rgba(74,222,128,0.45);
+            }
+            .nc-builder-tb-btn.green:hover { background: rgba(74,222,128,0.35); }
+
+            /* Open existing picker */
+            .nc-builder-open-overlay {
+                position: absolute; inset: 0; z-index: 20;
+                background: rgba(0,0,0,0.55);
+                display: flex; align-items: center; justify-content: center;
+                padding: 24px;
+            }
+            .nc-builder-open-modal {
+                width: min(480px, 100%);
+                max-height: min(70vh, 560px);
+                background: #161b22;
+                border: 1px solid #30363d;
+                border-radius: 12px;
+                box-shadow: 0 24px 60px rgba(0,0,0,0.55);
+                display: flex; flex-direction: column;
+                overflow: hidden;
+            }
+            .nc-builder-open-header {
+                display: flex; align-items: center; justify-content: space-between;
+                padding: 12px 14px; border-bottom: 1px solid #30363d;
+                font-size: 13px; font-weight: 700; color: #f0f6fc;
+            }
+            .nc-builder-open-close {
+                background: none; border: none; color: #8b949e; cursor: pointer;
+                font-size: 16px; line-height: 1; padding: 2px 6px; border-radius: 4px;
+            }
+            .nc-builder-open-close:hover { background: #21262d; color: #f0f6fc; }
+            .nc-builder-open-search {
+                margin: 10px 12px 0; width: calc(100% - 24px);
+                background: #0d1117; border: 1px solid #30363d; border-radius: 6px;
+                padding: 7px 10px; color: #cdd6f4; font-size: 12px; outline: none;
+                box-sizing: border-box;
+            }
+            .nc-builder-open-search:focus { border-color: #667eea; }
+            .nc-builder-open-list {
+                flex: 1; overflow: auto; padding: 8px; margin-top: 8px;
+            }
+            .nc-builder-open-item {
+                width: 100%; text-align: left; cursor: pointer;
+                background: #0d1117; border: 1px solid #30363d; border-radius: 8px;
+                padding: 10px 12px; margin-bottom: 6px; color: #cdd6f4;
+            }
+            .nc-builder-open-item:hover { border-color: #667eea; background: #12181f; }
+            .nc-builder-open-item-tag {
+                font-family: 'Fira Code', Consolas, monospace; font-size: 12px; font-weight: 700;
+                color: #f0f6fc;
+            }
+            .nc-builder-open-item-meta {
+                margin-top: 3px; font-size: 10px; color: #8b949e;
+            }
+            .nc-builder-open-badge {
+                display: inline-block; margin-left: 6px; padding: 1px 6px;
+                border-radius: 999px; font-size: 9px; font-weight: 700;
+                background: rgba(102,126,234,0.18); color: #a5b4fc;
+                vertical-align: middle;
+            }
+            .nc-builder-open-empty {
+                padding: 28px 16px; text-align: center; color: #6e7681; font-size: 12px;
+                line-height: 1.6;
+            }
             .nc-builder-close {
                 background: rgba(255,255,255,0.18); border: 1px solid rgba(255,255,255,0.28);
                 border-radius: 6px; color: white; width: 28px; height: 28px;
@@ -453,6 +555,14 @@ export class ComponentBuilder {
             }
             .nc-builder-empty-drop-icon { font-size: 36px; opacity: 0.4; }
             .nc-builder-empty-drop-text { font-size: 12px; opacity: 0.6; }
+            .nc-builder-empty-open {
+                pointer-events: auto;
+                margin-top: 10px;
+                background: #667eea; border: none; border-radius: 6px;
+                color: #fff; font-size: 11px; font-weight: 700;
+                padding: 7px 12px; cursor: pointer;
+            }
+            .nc-builder-empty-open:hover { background: #7c8ff0; }
 
             /* Child wrapper inside the live canvas */
             .nc-builder-child-wrap {
@@ -756,9 +866,9 @@ export class ComponentBuilder {
                 <span class="nc-builder-topbar-title">⚡ Component Builder</span>
                 <span class="nc-builder-topbar-tag" id="ncb-tag-badge">&lt;my-component&gt;</span>
                 <div class="nc-builder-topbar-actions">
-                    <button class="nc-builder-tb-btn" id="ncb-btn-reset" title="Reset canvas">↺ Reset</button>
-                    <button class="nc-builder-tb-btn green" id="ncb-btn-register" title="Register component live in this page">⚡ Register Live</button>
-                    <button class="nc-builder-tb-btn primary" id="ncb-btn-save" title="Save to src/components/ui/">💾 Save File</button>
+                    <button class="nc-builder-tb-btn green" id="ncb-btn-open" title="Load a component from src/components/ui/">Open existing</button>
+                    <button class="nc-builder-tb-btn" id="ncb-btn-reset" title="Reset canvas">Reset</button>
+                    <button class="nc-builder-tb-btn primary" id="ncb-btn-save" title="Save to src/components/ui/">Save file</button>
                     <button class="nc-builder-close" id="ncb-btn-close" title="Close (Esc)">✕</button>
                 </div>
             </div>
@@ -789,7 +899,6 @@ export class ComponentBuilder {
                             <div class="nc-builder-code-actions">
                                 <button class="nc-builder-code-btn" id="ncb-code-copy">📋 Copy</button>
                                 <button class="nc-builder-code-btn" id="ncb-code-download">⬇ Download</button>
-                                <button class="nc-builder-code-btn green" id="ncb-code-register">⚡ Register Live</button>
                                 <button class="nc-builder-code-btn purple" id="ncb-code-save">💾 Save to Disk</button>
                             </div>
                             <pre class="nc-builder-code-pre" id="ncb-code-pre"></pre>
@@ -821,12 +930,11 @@ export class ComponentBuilder {
         if (!this.panel) return;
 
         this.panel.querySelector('#ncb-btn-close')?.addEventListener('click', () => this.close());
+        this.panel.querySelector('#ncb-btn-open')?.addEventListener('click', () => void this.openExistingPicker());
         this.panel.querySelector('#ncb-btn-reset')?.addEventListener('click', () => this.resetState());
-        this.panel.querySelector('#ncb-btn-register')?.addEventListener('click', () => this.registerLive());
         this.panel.querySelector('#ncb-btn-save')?.addEventListener('click', () => this.saveToDisk());
         this.panel.querySelector('#ncb-code-copy')?.addEventListener('click', () => this.copyCode());
         this.panel.querySelector('#ncb-code-download')?.addEventListener('click', () => this.downloadCode());
-        this.panel.querySelector('#ncb-code-register')?.addEventListener('click', () => this.registerLive());
         this.panel.querySelector('#ncb-code-save')?.addEventListener('click', () => this.saveToDisk());
 
         // Code bar toggle
@@ -909,8 +1017,13 @@ export class ComponentBuilder {
                     </div>
                 `;
                 el.addEventListener('dragstart', (e) => {
+                    this.dragActive = true;
+                    e.dataTransfer?.setData(BUILDER_DND_MIME, item.tag);
                     e.dataTransfer?.setData('text/plain', item.tag);
                     e.dataTransfer!.effectAllowed = 'copy';
+                });
+                el.addEventListener('dragend', () => {
+                    this.dragActive = false;
                 });
                 list.appendChild(el);
             }
@@ -973,6 +1086,7 @@ export class ComponentBuilder {
 
         host.addEventListener('dragover', (e) => {
             e.preventDefault();
+            e.stopPropagation();
             e.dataTransfer!.dropEffect = 'copy';
             host.classList.add('drag-over-canvas');
         });
@@ -983,14 +1097,44 @@ export class ComponentBuilder {
         });
         host.addEventListener('drop', (e) => {
             e.preventDefault();
+            e.stopPropagation();
+            this.dragActive = false;
             host.classList.remove('drag-over-canvas');
-            const raw = e.dataTransfer?.getData('text/plain') || '';
-            if (!raw || raw.startsWith('__reorder__:')) return;
+            const raw = this.readDragTag(e);
+            if (!raw) return;
             const target = e.target as HTMLElement;
             if (!target.closest('.nc-builder-child-wrap')) {
-                this.addChild(raw);
+                try {
+                    this.addChild(raw);
+                } catch (err) {
+                    console.error('[ComponentBuilder] Failed to add child:', err);
+                }
             }
         });
+
+        // Wider drop target: entire canvas area (not only the white host card)
+        const canvasArea = host.parentElement;
+        if (canvasArea && !canvasArea.dataset.ncbDropBound) {
+            canvasArea.dataset.ncbDropBound = '1';
+            canvasArea.addEventListener('dragover', (e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                if (e.dataTransfer) e.dataTransfer.dropEffect = 'copy';
+            });
+            canvasArea.addEventListener('drop', (e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                this.dragActive = false;
+                const raw = this.readDragTag(e);
+                if (!raw) return;
+                if ((e.target as HTMLElement).closest('.nc-builder-child-wrap')) return;
+                try {
+                    this.addChild(raw);
+                } catch (err) {
+                    console.error('[ComponentBuilder] Failed to add child:', err);
+                }
+            });
+        }
     }
 
     private syncEventRuntime(): void {
@@ -1203,13 +1347,19 @@ export class ComponentBuilder {
         // Drag to reorder within canvas
         wrap.draggable = true;
         wrap.addEventListener('dragstart', (e) => {
+            this.dragActive = true;
             this.state.dragSourceId = child.id;
             e.dataTransfer!.effectAllowed = 'move';
+            e.dataTransfer?.setData(BUILDER_DND_MIME, `__reorder__:${child.id}`);
             e.dataTransfer?.setData('text/plain', `__reorder__:${child.id}`);
+        });
+        wrap.addEventListener('dragend', () => {
+            this.dragActive = false;
         });
         wrap.addEventListener('dragover', (e) => {
             if (this.state.dragSourceId && this.state.dragSourceId !== child.id) {
                 e.preventDefault();
+                e.stopPropagation();
                 e.dataTransfer!.dropEffect = 'move';
                 wrap.classList.add('drag-over');
                 this.state.dragOverId = child.id;
@@ -1222,14 +1372,19 @@ export class ComponentBuilder {
         wrap.addEventListener('drop', (e) => {
             e.preventDefault();
             e.stopPropagation();
+            this.dragActive = false;
             wrap.classList.remove('drag-over');
-            const raw = e.dataTransfer?.getData('text/plain') || '';
-            if (raw.startsWith('__reorder__:')) {
-                const srcId = raw.split(':')[1];
-                this.reorderChild(srcId, child.id);
-            } else {
-                // New component dropped ON an existing child — insert before it
-                this.addChildBefore(raw, child.id);
+            const raw = e.dataTransfer?.getData(BUILDER_DND_MIME) || e.dataTransfer?.getData('text/plain') || '';
+            try {
+                if (raw.startsWith('__reorder__:')) {
+                    const srcId = raw.split(':')[1];
+                    this.reorderChild(srcId, child.id);
+                } else if (raw && !/[:/\\]/.test(raw)) {
+                    // New component dropped ON an existing child — insert before it
+                    this.addChildBefore(raw, child.id);
+                }
+            } catch (err) {
+                console.error('[ComponentBuilder] Drop on child failed:', err);
             }
             this.state.dragSourceId = null;
             this.state.dragOverId = null;
@@ -1332,12 +1487,34 @@ export class ComponentBuilder {
         if (this.state.children.length === 0) {
             const hint = document.createElement('div');
             hint.className = 'nc-builder-empty-drop';
-            hint.innerHTML = `<div class="nc-builder-empty-drop-icon">🖱️</div>
-                <div class="nc-builder-empty-drop-text">Drag components from the palette</div>`;
+            hint.innerHTML = `
+                <div class="nc-builder-empty-drop-icon">+</div>
+                <div class="nc-builder-empty-drop-text">Drag from the palette, or open a saved component</div>
+                <button type="button" class="nc-builder-empty-open" id="ncb-empty-open">Open existing…</button>
+            `;
+            // pointer-events none on the hint blocks the button — re-enable for the CTA
+            hint.style.pointerEvents = 'none';
+            const openBtn = hint.querySelector('#ncb-empty-open') as HTMLButtonElement | null;
+            if (openBtn) {
+                openBtn.style.pointerEvents = 'auto';
+                openBtn.addEventListener('click', (e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    void this.openExistingPicker();
+                });
+            }
             host.appendChild(hint);
         } else {
             for (const child of this.state.children) {
-                host.appendChild(this.buildChildWrap(child));
+                try {
+                    host.appendChild(this.buildChildWrap(child));
+                } catch (err) {
+                    console.error(`[ComponentBuilder] Failed to render <${child.tag}>:`, err);
+                    const fallback = document.createElement('div');
+                    fallback.className = 'nc-builder-child-wrap';
+                    fallback.textContent = `<${child.tag}> (failed to render)`;
+                    host.appendChild(fallback);
+                }
             }
         }
     }
@@ -1877,104 +2054,7 @@ export class ComponentBuilder {
     // ─── Code generation ──────────────────────────────────────────────────────
 
     private generateCode(): string {
-        const s = this.state;
-        const obs = s.observedAttrs.map(a => `'${a.name}'`).join(', ');
-        const obsBlock = obs ? `\n    static get observedAttributes() {\n        return [${obs}];\n    }\n` : '';
-
-        // Build template HTML
-        const indent = '            ';
-        const childrenHTML = s.children.length === 0
-            ? `${indent}<slot></slot>`
-            : s.children.map(c => {
-                const attrs = Object.entries(c.attrs)
-                    .filter(([, attr]) => attr.type === 'bool' ? Boolean(attr.value) : String(attr.value) !== '')
-                    .map(([k, attr]) => attr.type === 'bool' ? ` ${k}` : ` ${k}="${String(attr.value)}"`)
-                    .join('');
-                const classAttr = c.classList ? ` class="${c.classList}"` : '';
-                const idAttr = c.nodeId ? ` id="${c.nodeId}"` : '';
-                const selfClose = ['img', 'input', 'hr', 'br'].includes(c.tag);
-                if (selfClose) return `${indent}<${c.tag}${idAttr}${classAttr}${attrs} />`;
-                return `${indent}<${c.tag}${idAttr}${classAttr}${attrs}>${c.slotContent}</${c.tag}>`;
-            }).join('\n');
-
-        // Layout style
-        const l = s.layout;
-        const layoutCSS = [
-            `display: flex`,
-            `flex-direction: ${l.direction}`,
-            l.wrap !== 'nowrap' ? `flex-wrap: ${l.wrap}` : '',
-            l.alignItems !== 'flex-start' ? `align-items: ${l.alignItems}` : '',
-            l.justifyContent !== 'flex-start' ? `justify-content: ${l.justifyContent}` : '',
-            `gap: ${l.gap}`,
-            `padding: ${l.padding}`,
-        ].filter(Boolean).map(r => `                ${r};`).join('\n');
-
-        // attributeChangedCallback block
-        const attrChangedBlock = s.observedAttrs.length > 0 ? `
-    attributeChangedCallback(name: string, _old: string | null, _new: string | null): void {
-        if (!this._mounted) return;
-        this.render();
-    }
-` : '';
-
-        // onMount — wire events
-        const onMountListeners = s.events.map(ev => {
-            const payloadKeys = ev.payload
-                .filter(p => p.key)
-                .map(p => `                    ${p.key}: /* TODO */`)
-                .join(',\n');
-            const payloadArg = payloadKeys
-                ? `{\n${payloadKeys}\n                }`
-                : '{}';
-
-            const options: string[] = [];
-            if (!ev.bubbles) options.push('bubbles: false');
-            if (!ev.composed) options.push('composed: false');
-            if (ev.cancelable) options.push('cancelable: true');
-            const optionsArg = options.length ? `, { ${options.join(', ')} }` : '';
-
-            if (ev.trigger && ev.triggerTag) {
-                return `        this.on('${ev.trigger}', '${ev.triggerTag}', () => {\n            this.emitEvent('${ev.name}', ${payloadArg}${optionsArg});\n        });`;
-            }
-            return `        // TODO: wire '${ev.name}'\n        // this.emitEvent('${ev.name}', ${payloadArg}${optionsArg});`;
-        }).join('\n\n');
-
-        const onMountBlock = onMountListeners
-            ? `\n    onMount(): void {\n${onMountListeners}\n    }\n`
-            : '';
-
-        const defaultsBlock = s.observedAttrs.length > 0
-            ? s.observedAttrs.map(a =>
-                `        const ${a.name.replace(/-([a-z])/g, (_, c) => c.toUpperCase())} = this.attr('${a.name}'${a.defaultValue ? `, '${a.defaultValue}'` : ''});`
-              ).join('\n') + '\n\n'
-            : '';
-
-        const descComment = s.componentDesc ? `\n * ${s.componentDesc}` : '';
-
-        return `/**${descComment}
- * Auto-generated by NativeCore Component Builder
- * ${new Date().toLocaleDateString()}
- */
-import { Component, defineComponent } from '../../.nativecore/core/component.js';
-import { html } from '../../.nativecore/utils/templates.js';
-
-export class ${s.componentClass} extends Component {
-    static useShadowDOM = ${s.useShadowDOM};
-${obsBlock}
-    template(): string {
-${defaultsBlock}        return html\`
-            <style>
-                :host {
-${layoutCSS}
-                }
-            </style>
-${childrenHTML}
-        \`;
-    }
-${onMountBlock}${attrChangedBlock}}
-
-defineComponent('${s.componentTag}', ${s.componentClass});
-`;
+        return generateBuilderCode(this.state, this.language);
     }
 
     private updateCodePane(): void {
@@ -2008,67 +2088,225 @@ defineComponent('${s.componentTag}', ${s.componentClass});
         const url = URL.createObjectURL(blob);
         const a = document.createElement('a');
         a.href = url;
-        a.download = `${this.state.componentTag}.ts`;
+        a.download = `${this.state.componentTag}.${this.language}`;
         a.click();
         URL.revokeObjectURL(url);
     }
 
-    private async registerLive(): Promise<void> {
-        const code = this.generateCode();
-        const btn = this.panel?.querySelector('#ncb-btn-register') as HTMLButtonElement;
-        try {
-            // Transpile is not available in browser, so we register a minimal version directly
-            const tag = this.state.componentTag;
-            if (customElements.get(tag)) {
-                console.warn(`[ComponentBuilder] <${tag}> already registered.`);
-                if (btn) { btn.textContent = '⚠️ Already registered'; setTimeout(() => { btn.textContent = '⚡ Register Live'; }, 2000); }
-                return;
-            }
-            // Build a vanilla HTMLElement stub so the tag at least renders in the canvas
-            const templateHTML = (this.panel?.querySelector('#ncb-canvas-host') as HTMLElement)?.innerHTML || '';
-            const layout = this.state.layout;
-            customElements.define(tag, class extends HTMLElement {
-                connectedCallback() {
-                    if (this.shadowRoot) return;
-                    const shadow = this.attachShadow({ mode: 'open' });
-                    shadow.innerHTML = `<style>:host{display:flex;flex-direction:${layout.direction};gap:${layout.gap};padding:${layout.padding};}</style>${templateHTML}`;
-                }
-            });
-            console.log(`[ComponentBuilder] <${tag}> registered live.`);
-            if (btn) { btn.textContent = '✅ Registered!'; setTimeout(() => { btn.textContent = '⚡ Register Live'; }, 2000); }
-        } catch (err) {
-            console.error('[ComponentBuilder] Live register failed:', err);
-            // Fallback: offer the code in console
-            console.log('[ComponentBuilder] Generated code:\n', code);
-            if (btn) { btn.textContent = '❌ Failed — see console'; setTimeout(() => { btn.textContent = '⚡ Register Live'; }, 2500); }
-        }
-    }
-
-    private async saveToDisk(): Promise<void> {
+    private async saveToDisk(force = false): Promise<void> {
         const btn = this.panel?.querySelector('#ncb-btn-save') as HTMLButtonElement;
+        const tag = this.state.componentTag;
         try {
+            await this.ensureProjectLanguage();
+
+            const listRes = await fetch('/api/dev/components');
+            if (listRes.ok) {
+                const data = await listRes.json() as {
+                    language?: 'ts' | 'js';
+                    components: { tag: string; file: string; builderOwned?: boolean }[];
+                };
+                if (data.language === 'js' || data.language === 'ts') this.language = data.language;
+                const existing = data.components.find((c) => c.tag === tag);
+                if (existing && !force) {
+                    if (existing.builderOwned === false) {
+                        const ok = window.confirm(
+                            `${existing.file} does not look builder-owned (may be hand-edited).\n\nOverwrite anyway?`
+                        );
+                        if (!ok) return;
+                        return this.saveToDisk(true);
+                    }
+                    const ok = window.confirm(
+                        `Overwrite ${existing.file}?\n\nThis replaces the on-disk component with the current builder output.`
+                    );
+                    if (!ok) return;
+                }
+            }
+
             const res = await fetch('/api/dev/component/create', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
-                    tag: this.state.componentTag,
+                    tag,
                     className: this.state.componentClass,
                     code: this.generateCode(),
+                    force,
                 }),
             });
-            if (!res.ok) throw new Error(`Server responded ${res.status}`);
-            const { filePath } = await res.json();
-            console.log(`[ComponentBuilder] Saved to ${filePath}`);
-            if (btn) { btn.textContent = `✅ Saved!`; setTimeout(() => { btn.textContent = '💾 Save File'; }, 2500); }
+            const data = await res.json() as {
+                success?: boolean;
+                needsForce?: boolean;
+                filePath?: string;
+                overwritten?: boolean;
+                message?: string;
+                language?: 'ts' | 'js';
+            };
+            if (data.needsForce) {
+                const ok = window.confirm(`${data.message || 'File is not builder-owned.'}\n\nForce overwrite?`);
+                if (!ok) return;
+                return this.saveToDisk(true);
+            }
+            if (!res.ok || data.success === false) {
+                throw new Error(data.message || `Server responded ${res.status}`);
+            }
+            if (data.language === 'js' || data.language === 'ts') this.language = data.language;
+            this.loadedFromDisk = true;
+            this.loadedBuilderOwned = true;
+            this.updateSaveButtonLabel();
+            console.log(`[ComponentBuilder] ${data.overwritten ? 'Updated' : 'Saved'} ${data.filePath}`);
+            if (btn) {
+                btn.textContent = data.overwritten ? 'Updated!' : 'Saved!';
+                setTimeout(() => this.updateSaveButtonLabel(), 2500);
+            }
         } catch (err) {
             console.error('[ComponentBuilder] Save failed:', err);
             this.downloadCode(); // graceful fallback → download
-            if (btn) { btn.textContent = '⬇ Fallback: downloaded'; setTimeout(() => { btn.textContent = '💾 Save File'; }, 2500); }
+            if (btn) { btn.textContent = 'Downloaded fallback'; setTimeout(() => this.updateSaveButtonLabel(), 2500); }
         }
+    }
+
+    private updateSaveButtonLabel(): void {
+        const btn = this.panel?.querySelector('#ncb-btn-save') as HTMLButtonElement | null;
+        if (btn) btn.textContent = this.loadedFromDisk ? '💾 Update File' : '💾 Save File';
     }
 
     private resetState(): void {
         this.state = this.defaultState();
+        this.loadedFromDisk = false;
+        this.loadedBuilderOwned = true;
+        this.updateSaveButtonLabel();
         this.renderAll();
+    }
+
+    private async openExistingPicker(): Promise<void> {
+        if (!this.panel) return;
+        this.closeOpenPicker();
+
+        const overlay = document.createElement('div');
+        overlay.className = 'nc-builder-open-overlay';
+        overlay.innerHTML = `
+            <div class="nc-builder-open-modal" role="dialog" aria-label="Open existing component">
+                <div class="nc-builder-open-header">
+                    <span>Open UI component</span>
+                    <button type="button" class="nc-builder-open-close" id="ncb-open-close" aria-label="Close">✕</button>
+                </div>
+                <input class="nc-builder-open-search" id="ncb-open-search" type="search"
+                    placeholder="Filter by tag…" autocomplete="off" />
+                <div class="nc-builder-open-list" id="ncb-open-list">
+                    <div class="nc-builder-open-empty">Loading…</div>
+                </div>
+            </div>
+        `;
+        this.panel.appendChild(overlay);
+        this.openPickerEl = overlay;
+
+        overlay.querySelector('#ncb-open-close')?.addEventListener('click', () => this.closeOpenPicker());
+        overlay.addEventListener('click', (e) => {
+            if (e.target === overlay) this.closeOpenPicker();
+        });
+
+        const listEl = overlay.querySelector('#ncb-open-list') as HTMLElement;
+        const searchEl = overlay.querySelector('#ncb-open-search') as HTMLInputElement;
+
+        try {
+            const res = await fetch('/api/dev/components');
+            if (!res.ok) throw new Error(`Server responded ${res.status}`);
+            const { components } = await res.json() as {
+                components: {
+                    tag: string;
+                    className: string;
+                    file: string;
+                    builderGenerated: boolean;
+                    description: string;
+                }[];
+            };
+
+            const renderList = (filter: string) => {
+                const q = filter.trim().toLowerCase();
+                const items = components.filter((c) =>
+                    !q || c.tag.includes(q) || c.className.toLowerCase().includes(q)
+                );
+                listEl.innerHTML = '';
+                if (items.length === 0) {
+                    listEl.innerHTML = `<div class="nc-builder-open-empty">${
+                        components.length === 0
+                            ? 'No components in <code>src/components/ui/</code> yet.<br>Save one from the builder first.'
+                            : 'No matches.'
+                    }</div>`;
+                    return;
+                }
+                for (const item of items) {
+                    const btn = document.createElement('button');
+                    btn.type = 'button';
+                    btn.className = 'nc-builder-open-item';
+                    btn.innerHTML = `
+                        <div class="nc-builder-open-item-tag">
+                            &lt;${item.tag}&gt;
+                            ${item.builderGenerated ? '<span class="nc-builder-open-badge">builder</span>' : ''}
+                        </div>
+                        <div class="nc-builder-open-item-meta">
+                            ${item.className} · ${item.file}
+                            ${item.description ? ` · ${item.description}` : ''}
+                        </div>
+                    `;
+                    btn.addEventListener('click', () => void this.loadExistingComponent(item.tag));
+                    listEl.appendChild(btn);
+                }
+            };
+
+            renderList('');
+            searchEl.addEventListener('input', () => renderList(searchEl.value));
+            searchEl.focus();
+        } catch (err) {
+            console.error('[ComponentBuilder] Failed to list components:', err);
+            listEl.innerHTML = `<div class="nc-builder-open-empty">
+                Failed to load component list.<br>
+                Restart the app with <code>npm run dev</code> so <code>/api/dev/components</code> is available, then try again.
+            </div>`;
+        }
+    }
+
+    private closeOpenPicker(): void {
+        this.openPickerEl?.remove();
+        this.openPickerEl = null;
+    }
+
+    private async loadExistingComponent(tag: string): Promise<void> {
+        try {
+            const res = await fetch(`/api/dev/component/${encodeURIComponent(tag)}`);
+            if (!res.ok) throw new Error(`Component <${tag}> not found`);
+            const meta = await res.json() as { sourceCode?: string; tagName?: string };
+            if (!meta.sourceCode) throw new Error('No sourceCode returned');
+
+            await this.ensureProjectLanguage();
+            const parsed = parseBuilderSource(meta.sourceCode) as {
+                state: BuilderState;
+                warnings: string[];
+                builderOwned: boolean;
+            };
+
+            if (!parsed.builderOwned) {
+                const ok = window.confirm(
+                    `<${tag}> is not marked builder-owned (may be hand-edited).\n\nLoad into the canvas anyway? Saving may overwrite custom code.`
+                );
+                if (!ok) return;
+            }
+
+            this.state = parsed.state;
+            this.loadedFromDisk = true;
+            this.loadedBuilderOwned = !!parsed.builderOwned;
+            this.closeOpenPicker();
+            this.updateSaveButtonLabel();
+            this.renderAll();
+
+            if (parsed.warnings.length) {
+                console.warn(`[ComponentBuilder] Loaded <${tag}> with warnings:\n- ${parsed.warnings.join('\n- ')}`);
+                window.alert(`Loaded <${tag}> with caveats:\n\n• ${parsed.warnings.join('\n• ')}`);
+            } else {
+                console.log(`[ComponentBuilder] Loaded <${tag}> into the canvas.`);
+            }
+        } catch (err) {
+            console.error('[ComponentBuilder] Load failed:', err);
+            window.alert(`Could not load <${tag}>. See console for details.`);
+        }
     }
 }

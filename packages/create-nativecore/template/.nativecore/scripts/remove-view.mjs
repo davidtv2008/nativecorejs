@@ -16,19 +16,22 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 const ROOT = path.resolve(__dirname, '../..');
 
-let useTypeScript = true;
+let useTypeScript = false;
 try {
-  const ncConfig = JSON.parse(fs.readFileSync(path.join(ROOT, 'nativecore.config.json'), 'utf8'));
-  if (ncConfig.useTypeScript === false) useTypeScript = false;
-} catch { /* default to TypeScript */ }
+    const ncConfig = JSON.parse(fs.readFileSync(path.join(ROOT, 'nativecore.config.json'), 'utf8'));
+    if (ncConfig.useTypeScript === true) useTypeScript = true;
+} catch { /* default to JavaScript (matches create-nativecore defaults) */ }
 const ext = useTypeScript ? 'ts' : 'js';
 
-const rawViewPath = process.argv[2];
+const cliArgs = process.argv.slice(2);
+const rawViewPath = cliArgs.find((arg) => !arg.startsWith('--'));
+const autoYes = cliArgs.includes('--yes') || cliArgs.includes('--defaults') || !process.stdin.isTTY;
 
 if (!rawViewPath) {
   console.error('Error: View path is required');
   console.log('\nUsage:');
   console.log('  npm run remove:view <name>');
+  console.log('  npm run remove:view <name> -- --yes');
   console.log('\nExamples:');
   console.log('  npm run remove:view profile');
   console.log('  npm run remove:view docs/getting-started');
@@ -113,7 +116,12 @@ function printSummary(summary) {
 
 function removeRouteRegistration(routesContent, viewFileRelative) {
   const escapedViewFile = escapeRegExp(viewFileRelative);
-  const routeRegex = new RegExp(`\\s*\\.register\\('([^']+)',\\s*'${escapedViewFile}'[^\\n]*\\)\\r?\\n`, 'g');
+  // Match r.register(...) / .register(...) lines that point at this view file.
+  // Allow trailing semicolon and nested parens in lazyController(...).
+  const routeRegex = new RegExp(
+    `^[ \\t]*r?\\.register\\('([^']+)',\\s*'${escapedViewFile}'[\\s\\S]*?\\);?[ \\t]*\\r?\\n`,
+    'gm'
+  );
   const removedRoutePaths = [];
   const updatedContent = routesContent.replace(routeRegex, (_match, routePath) => {
     removedRoutePaths.push(routePath);
@@ -173,14 +181,18 @@ async function removeView() {
   console.log(`- controller: ${hasController ? 'present' : 'missing'}`);
   console.log(`- route reference: ${hasRouteReference ? 'present' : 'missing'}`);
 
-  const confirm = await question('\nProceed with cleanup? (y/n): ');
-  if (confirm.toLowerCase().trim() !== 'y') {
-    console.log('Deletion cancelled');
+  if (autoYes) {
+    console.log('\nNon-interactive: proceeding with cleanup (--yes / piped stdin).');
     rl.close();
-    process.exit(0);
+  } else {
+    const confirm = await question('\nProceed with cleanup? (y/n): ');
+    if (confirm.toLowerCase().trim() !== 'y') {
+      console.log('Deletion cancelled');
+      rl.close();
+      process.exit(0);
+    }
+    rl.close();
   }
-
-  rl.close();
 
   for (const targetPath of [publicViewPath, protectedViewPath]) {
     const label = path.relative(process.cwd(), targetPath);

@@ -16,17 +16,31 @@ export default defineConfig({
       '@middleware': fileURLToPath(new URL('./src/middleware', import.meta.url)),
       '@types': fileURLToPath(new URL('./src/types', import.meta.url)),
       '@constants': fileURLToPath(new URL('./src/constants', import.meta.url)),
+      '@testing': fileURLToPath(new URL('./.nativecore/testing', import.meta.url)),
     },
   },
   test: {
     environment: 'happy-dom',
     globals: true,
+    // App unit tests only — framework Node tests under .nativecore use node:test
+    include: [
+      'src/**/*.{test,spec}.{js,ts}',
+      'tests/**/*.{test,spec}.{js,ts}',
+    ],
+    exclude: [
+      'node_modules/**',
+      'dist/**',
+      '.nativecore/**',
+      '_deploy/**',
+    ],
     coverage: {
       provider: 'v8',
       reporter: ['text', 'json', 'html'],
       exclude: [
         'node_modules/',
         'tests/',
+        'dist/',
+        '.nativecore/',
         '**/*.config.js',
         'server.js',
         'api/',
@@ -34,3 +48,4 @@ export default defineConfig({
     },
   },
 });
+

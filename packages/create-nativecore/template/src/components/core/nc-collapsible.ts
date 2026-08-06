@@ -67,7 +67,7 @@ export class NcCollapsible extends CoreComponent {
             flex-shrink: 0;
             color: var(--nc-text-muted);
             transform: rotate(0deg);
-            transition: transform ${dur}ms var(--nc-ease-out);
+            transition: transform var(--nc-collapsible-dur, 250ms) var(--nc-ease-out);
         }
         :host([open]) .icon           { transform: rotate(180deg); }
         :host([icon="arrow"]) .icon    { transform: rotate(0deg); }
@@ -78,7 +78,7 @@ export class NcCollapsible extends CoreComponent {
         .body {
             display: grid;
             grid-template-rows: 0fr;
-            transition: grid-template-rows ${dur}ms var(--nc-ease-out);
+            transition: grid-template-rows var(--nc-collapsible-dur, 250ms) var(--nc-ease-out);
         }
         :host([open]) .body { grid-template-rows: 1fr; }
 
@@ -94,6 +94,7 @@ export class NcCollapsible extends CoreComponent {
 
     template() {
         const dur  = parseInt(this.getAttribute('duration') ?? '250', 10);
+        this.style.setProperty('--nc-collapsible-dur', `${Number.isFinite(dur) ? dur : 250}ms`);
         const icon = this.getAttribute('icon') ?? 'chevron';
 
         const iconSvg: Record<string, string> = {

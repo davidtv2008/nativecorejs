@@ -16,7 +16,7 @@ const srcDir = path.join(__dirname, '../..', 'src');
 // Files to skip (already converted or special cases)
 const skipFiles = new Set([
     'state.ts', 'component.ts', 'router.ts', 'http.ts',
-    'auth.service.ts', 'api.service.ts', 'storage.service.ts'
+    'api.service.ts', 'storage.service.ts'
 ]);
 
 // Basic type inference rules

@@ -8,7 +8,12 @@
     "rootDir": ".",
     "strict": true,
     "skipLibCheck": true,
-    "lib": ["ES2022", "DOM", "DOM.Iterable"]
+    "lib": ["ES2022", "DOM", "DOM.Iterable"],
+    "baseUrl": ".",
+    "paths": {
+      "@core/*": [".nativecore/core/*"],
+      "@core-utils/*": [".nativecore/utils/*"]
+    }
   },
   "include": ["src/**/*.ts", "src/**/*.d.ts", ".nativecore/**/*.ts"]
 }

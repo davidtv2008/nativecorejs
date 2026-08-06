@@ -1,473 +1,162 @@
 # NativeCore Framework — Agent Context
 
-This file provides context for AI agents (Claude, Copilot, OpenAI Codex, etc.) working in this
-codebase. Read this before writing any code. Also read `.context/ai-context.md` for full API
-reference and `.context/architecture.md` for the full structure.
+Read this before writing code. For full API and structure, also read:
+
+- `.context/ai-context.md` — API reference and common mistakes
+- `.context/architecture.md` — project structure and data flow
+- `.context/conventions.md` — day-to-day coding rules
 
 ## What This Project Is
 
-NativeCore is a zero-dependency TypeScript SPA framework. It uses native Web Components with
-Shadow DOM, a custom History API router (middleware, per-route caching, prefetch, route loaders),
-reactive signals (useState, computed, effect, batch), lazy loading, JWT auth with a single-shell
-architecture, GPU animation utilities, plugin API, a11y utilities, testing utilities, and
-Puppeteer-based bot pre-rendering for SEO. No JSX, no virtual DOM, no React, no Vue.
+NativeCore is a zero-dependency SPA framework: native Web Components + Shadow DOM,
+History API router (middleware, caching, prefetch, loaders), reactive signals,
+lazy controllers/components, single HTML shell, optional Puppeteer SSG for SEO.
+No JSX, no virtual DOM, no React, no Vue.
+
+Language mode:
+
+- **JavaScript is the default** when the app was scaffolded with `--defaults` / `--js`
+- TypeScript when scaffolded with `--ts` (`nativecore.config.json` → `useTypeScript`)
+
+This scaffold ships a calm enterprise starter home page (not a component showcase —
+that lives on nativecorejs.com). The default shell is minimal (no header/footer/sidebar
+in the DOM); chrome components still live under `src/components/core/` for opt-in.
+
+It does **not** include login, JWT auth, or a dashboard. Auth is author-owned via
+`make:middleware` + `router.group({ middleware: [...] })`.
 
 ## Critical Rules
 
 1. NEVER use emojis in code, console.logs, comments, or documentation
-2. ALWAYS add `.js` extension to imports (TypeScript compiles to JS; ES modules require it)
-3. NEVER import controllers at top level — use `lazyController()` in `src/routes/routes.ts`
-4. `lazyController` is ALWAYS defined locally in `routes.ts` — it is NOT imported from the router
-5. ALWAYS return a cleanup function from controllers
-6. ALWAYS use `trackEvents()` + `trackSubscriptions()` in controllers — never raw addEventListener
-7. ALWAYS call `computed.dispose()` in `onUnmount`
-8. ALWAYS set `static useShadowDOM = true` on UI components
-9. NEVER add logic to `app.ts` — routes go in `src/routes/routes.ts`
-10. NEVER put `<style>` or `<script>` tags in view HTML files — markup only
-11. NEVER modify files in `.nativecore/` — these are framework internals
+2. ALWAYS add `.js` extension to imports (JS and TS)
+3. NEVER import controllers at top level — use `createLazyController` in `src/routes/routes.*`
+4. Prefer `CoreController` + factory export for pages; prefer `CoreComponent` for UI
+5. ALWAYS return a cleanup function from controller factories (`() => ctrl.destroy()`)
+6. Use `this.on(target, type, handler)` — never leak raw listeners
+7. ALWAYS set `static useShadowDOM = true` on UI components unless light DOM is required
+8. NEVER add business logic to `app.*` — routes go in `src/routes/routes.*`
+9. NEVER put `<style>` or `<script>` tags in view HTML files — markup only
+10. Do not casually modify `.nativecore/` — framework internals
+11. NEVER invent a JWT/session login flow unless the user explicitly asks
+12. Inside `registerRoutes(r)`, use `r.register` (not `router.register`)
+13. Prefer generators (`make:*` / `remove:*`) over hand-wiring registries and routes
+14. Component Builder UI is disabled — do not assume a Build button exists
 
 ## Key File Locations
 
-| What                        | Where                                        |
-|-----------------------------|----------------------------------------------|
-| Route definitions           | `src/routes/routes.ts`                       |
-| Component registry          | `src/components/registry.ts`                 |
-| Controller exports          | `src/controllers/index.ts`                   |
-| Base Component class        | `.nativecore/core/component.ts`              |
-| State primitives            | `.nativecore/core/state.ts`                  |
-| Router                      | `.nativecore/core/router.ts`                 |
-| GPU animation utilities     | `.nativecore/core/gpu-animation.ts`          |
-| Page cleanup registry       | `.nativecore/core/pageCleanupRegistry.ts`    |
-| Event/subscription helpers  | `.nativecore/utils/events.ts`                |
-| DOM helpers                 | `.nativecore/utils/dom.ts`                   |
-| Template utilities          | `.nativecore/utils/templates.ts`             |
-| Global store                | `src/stores/appStore.ts`                     |
-| UI store                    | `src/stores/uiStore.ts`                      |
-| Auth service                | `src/services/auth.service.ts`               |
-| API service                 | `src/services/api.service.ts`                |
+| What | Where |
+|------|--------|
+| App boot | `src/app.js` or `src/app.ts` |
+| Route definitions | `src/routes/routes.js` or `routes.ts` |
+| Component registries | `src/components/{registry,frameworkRegistry,appRegistry,preloadRegistry}.*` |
+| Controllers | `src/controllers/` |
+| Views | `src/views/public/`, `src/views/protected/` |
+| CoreComponent / CoreController | `.nativecore/core/component.ts`, `controller.ts` |
+| Lazy controller helper | `.nativecore/core/lazyController.ts` |
+| Router | `.nativecore/core/router.ts` |
+| Middleware helper | `.nativecore/core/createMiddleware.ts` |
+| Global signals | `.nativecore/core/state.ts` |
+| Wires | `.nativecore/utils/wires.ts` |
+| Testing helpers | `.nativecore/testing/index.js` (`@testing/index.js`) |
+| Dev tools | `.nativecore/dev/` (localhost only) |
+| Stores | `src/stores/` |
+| API service | `src/services/api.service.*` |
+| Middleware (user-owned) | `src/middleware/` via `npm run make:middleware` |
 
 ## Path Aliases
 
-```typescript
+```
 @core/         → .nativecore/core/
 @core-utils/   → .nativecore/utils/
 @core-types/   → .nativecore/types/
-@dev/          → .nativecore/dev/       (dev tools only — excluded from prod build)
+@dev/          → .nativecore/dev/       (dev only — excluded from prod)
+@testing/      → .nativecore/testing/
 @components/   → src/components/
 @services/     → src/services/
-@utils/        → src/utils/           // app-specific only
+@utils/        → src/utils/
 @stores/       → src/stores/
 @middleware/   → src/middleware/
-@config/       → src/config/
 @routes/       → src/routes/
+@config/       → src/config/
 @types/        → src/types/
 @constants/    → src/constants/
 ```
 
-Always include `.js` extension even when using aliases.
+Always include the `.js` extension when importing through aliases.
 
-## Component Pattern
+## Default Patterns (short)
 
-```typescript
-import { Component, defineComponent } from '@core/component.js';
-import { useState, computed } from '@core/state.js';
-import type { State, ComputedState } from '@core/state.js';
+**Controller**
 
-export class MyWidget extends Component {
-    static useShadowDOM = true;
+```js
+import { CoreController } from '@core/controller.js';
 
-    count: State<number>;
-    doubled: ComputedState<number>;
-    private _unwatchCount?: () => void;
-
-    constructor() {
-        super();
-        this.count = useState(0);
-        this.doubled = computed(() => this.count.value * 2);
-    }
-
-    template() {
-        return `
-            <style>.widget { padding: 1rem; }</style>
-            <div class="widget">
-                <span id="val">${this.count.value}</span>
-                <button class="inc-btn">+</button>
-            </div>
-        `;
-    }
-
+export class ProfileController extends CoreController {
     onMount() {
-        this.shadowRoot.addEventListener('click', (e) => {
-            if ((e.target as HTMLElement).matches('.inc-btn')) {
-                this.count.value++;
-            }
-        });
-        // Option A: declarative bind (auto-cleaned)
-        this.bind(this.count, '#val');
-        // Option B: manual
-        this._unwatchCount = this.count.watch(val => {
-            this.$('#val')!.textContent = String(val);
-        });
-    }
-
-    onUnmount() {
-        this._unwatchCount?.();
-        this.doubled.dispose();
+        this.assertRefs('titleEl');
+        this.title = this.state('Profile');
+        this.bind(this.title, this.titleEl);
     }
 }
 
-defineComponent('my-widget', MyWidget);
+export function profileController(_params, _state, _loaderData, rootElement) {
+    const ctrl = new ProfileController(rootElement);
+    return () => ctrl.destroy();
+}
 ```
 
-### Component Helper API
-```typescript
-this.$('.sel')                           // shadowRoot.querySelector
-this.$$('.sel')                          // shadowRoot.querySelectorAll
-this.bind(state, '#sel', 'textContent')  // reactive property binding
-this.bindAttr(state, '#sel', 'disabled') // reactive attribute binding
-this.bindAll({ '#a': stateA })           // batch bindings
-this.setState({ k: v })                  // merge + re-render
-this.patchState({ k: v })               // merge without re-render
-```
+**Component**
 
-## Controller Pattern
-
-```typescript
-import { trackEvents, trackSubscriptions } from '@core-utils/events.js';
+```js
+import { CoreComponent, defineComponent } from '@core/component.js';
 import { html } from '@core-utils/templates.js';
-import api from '@services/api.service.js';
-import { store } from '@stores/appStore.js';
 
-export async function myController(
-    params: Record<string, string> = {},
-    _state?: any,
-    loaderData?: unknown
-): Promise<() => void> {
-    const events = trackEvents();
-    const subs = trackSubscriptions();
-
-    const data = await api.get('/endpoint');
-
-    document.getElementById('root')!.innerHTML = html`
-        <h1>Page</h1>
-        <button id="save-btn">Save</button>
-    `;
-
-    events.onClick('#save-btn', handleSave);
-    subs.watch(store.isLoading.watch(v => toggleSpinner(v)));
-
-    return () => {
-        events.cleanup();
-        subs.cleanup();
-    };
-
-    function handleSave() {}
-    function toggleSpinner(v: boolean) {}
-}
-```
-
-## State API Quick Reference
-
-```typescript
-// useState
-const x = useState(0);
-x.value = 5;
-x.set(prev => prev + 1);
-const unsub = x.watch(val => {}); unsub();
-
-// computed
-const y = computed(() => x.value * 2);
-y.value; y.watch(cb); y.dispose(); // MUST dispose
-
-// effect
-const stop = effect(() => { /* runs when deps change */ });
-stop();
-
-// batch
-batch(() => { a.value = 1; b.value = 2; }); // single notification
-
-// useSignal
-const [get, set] = useSignal(0);
-
-// createStates
-const { name, age } = createStates({ name: '', age: 0 });
-
-// createStore / getStore
-const cartStore = createStore('cart', { items: [] });
-getStore<CartState>('cart');
-
-// appStore
-store.user.value / store.setUser(u)
-store.isLoading.value / store.setLoading(bool)
-store.setError(msg) / store.clearError()
-
-// uiStore
-uiStore.sidebarOpen.value / uiStore.toggleSidebar()
-uiStore.setTheme('dark')
-uiStore.addNotification({ id, message, type }) / uiStore.removeNotification(id)
-```
-
----
-
-## Declarative View Binding (wires)
-
-Scaffolded controllers use a unified barrel for all declarative binding utilities.
-**Always import from `@core-utils/wires.js` — never from individual files.**
-
-```typescript
-import { wireContents, wireInputs, wireAttributes } from '@core-utils/wires.js';
-
-export async function tasksController(params = {}) {
-    const events = trackEvents();
-
-    // wire-content="key" → state → el.textContent (auto-cleaned on nav)
-    const { title, summary } = wireContents();
-    title.value   = 'Tasks';
-    summary.value = 'Ready.';
-
-    // wire-attribute="key:html-attr" → state → el.setAttribute (auto-cleaned on nav)
-    const { cardStatus } = wireAttributes();
-    cardStatus.value = 'ready';
-
-    // wire-input="key" → state ↔ input value two-way (auto-cleaned on nav)
-    const { email } = wireInputs();
-    email.value = '';
-
-    events.onClick(dom.view('tasks').actionSelector('save'), async () => {
-        await api.post('/tasks', { email: email.value });
-    });
-}
-```
-
-```html
-<!-- View HTML — markup only -->
-<div data-view="tasks">
-    <h1 wire-content="title">Tasks</h1>
-    <p  wire-content="summary">Loading...</p>
-    <article wire-attribute="cardStatus:data-status"></article>
-    <input wire-input="email" type="email" />
-</div>
-```
-
-| HTML attribute               | Utility            | Direction            |
-|------------------------------|--------------------|----------------------|
-| `wire-content="key"`         | `wireContents()`   | state → textContent  |
-| `wire-input="key"`           | `wireInputs()`     | state ↔ input value  |
-| `wire-attribute="key:attr"`  | `wireAttributes()` | state → setAttribute |
-
-All three auto-register cleanup with `PageCleanupRegistry` — no manual cleanup needed.
-In components, call once from `onMount()`: `this.wireContents()`, `this.wireInputs()`, `this.wireAttributes()`.
-
----
-
-## Adding a New Feature
-
-### New component:
-```bash
-npm run make:component <kebab-case-name>
-```
-Creates `src/components/ui/<name>.ts` and auto-registers in `src/components/registry.ts`.
-
-### New view + controller + route:
-```bash
-npm run make:view <kebab-case-name>
-```
-Prompts for protected/public and whether to create a controller. Auto-updates `routes.ts`.
-
-### New protected route manually:
-1. Create view HTML in `src/views/protected/`
-2. Create controller in `src/controllers/`
-3. Export controller from `src/controllers/index.ts`
-4. Register route in `src/routes/routes.ts` with local `lazyController()`
-5. Add path to `protectedRoutes` export in `routes.ts`
-
-## Common Mistakes to Avoid
-
-- `import { lazyController } from '@core/router.js'` — does not exist; define it locally in routes.ts
-- `import DashboardController from './dashboard.js'` — use `lazyController()` instead
-- `document.querySelector` inside a component — use `this.$()` or `this.shadowRoot.querySelector`
-- Forgetting `computed.dispose()` in `onUnmount` — memory leak
-- Not returning cleanup from controller — old listeners survive navigations
-- `import { X } from '@core/component'` without `.js` — module not found at runtime
-- Adding a component to `registry.ts` without `./ui/` prefix
-- Putting any logic in `app.ts`
-
-
-## Component Pattern
-
-```typescript
-import { Component, defineComponent } from '@core/component.js';
-import { useState, computed } from '@core/state.js';
-import type { State, ComputedState } from '@core/state.js';
-
-export class MyWidget extends Component {
+export class MyCard extends CoreComponent {
     static useShadowDOM = true;
-
-    count: State<number>;
-    doubled: ComputedState<number>;
-    private _unwatchCount?: () => void;
-
-    constructor() {
-        super();
-        this.count = useState(0);
-        this.doubled = computed(() => this.count.value * 2);
-    }
-
     template() {
-        return `
-            <style>.widget { padding: 1rem; }</style>
-            <div class="widget">
-                <span id="val">${this.count.value}</span>
-                <button class="inc-btn">+</button>
-            </div>
-        `;
-    }
-
-    onMount() {
-        this.shadowRoot.addEventListener('click', (e) => {
-            if ((e.target as HTMLElement).matches('.inc-btn')) {
-                this.count.value++;
-            }
-        });
-        this._unwatchCount = this.count.watch(val => {
-            this.shadowRoot.querySelector('#val')!.textContent = String(val);
-        });
-    }
-
-    onUnmount() {
-        this._unwatchCount?.();
-        this.doubled.dispose();
+        return html`<slot></slot>`;
     }
 }
 
-defineComponent('my-widget', MyWidget);
+defineComponent('my-card', MyCard);
 ```
 
-## Controller Pattern
+**Routes**
 
-```typescript
-import { trackEvents, trackSubscriptions } from '@core-utils/events.js';
-import api from '@services/api.service.js';
-import { store } from '@stores/appStore.js';
+```js
+import { createLazyController } from '@core/lazyController.js';
+const lazyController = createLazyController(import.meta.url);
 
-export async function myController(params: Record<string, string> = {}): Promise<() => void> {
-    const events = trackEvents();
-    const subs = trackSubscriptions();
+export function registerRoutes(r) {
+    // @group:public
+    r.group({}, (r) => {
+        r.register('/', 'src/views/public/home.html',
+            lazyController('homeController', '../controllers/home.controller.js'));
+    });
 
-    const data = await api.get('/endpoint');
-
-    document.getElementById('root')!.innerHTML = `
-        <h1>Page</h1>
-        <button id="save-btn">Save</button>
-    `;
-
-    events.onClick('#save-btn', handleSave);
-    subs.watch(store.isLoading.watch(v => toggleSpinner(v)));
-
-    return () => {
-        events.cleanup();
-        subs.cleanup();
-    };
-
-    function handleSave() {}
-    function toggleSpinner(v: boolean) {}
+    // @group:protected
+    r.group({ middleware: [] }, (r) => {});
 }
 ```
 
-## Adding a New Feature
+## Generators
 
-### New component:
 ```bash
-npm run make:component <kebab-case-name>
-```
-Creates `src/components/ui/<name>.ts` and auto-registers in `src/components/registry.ts`.
-
-### New view + controller + route:
-```bash
-npm run make:view <kebab-case-name>
-```
-Prompts for protected/public and whether to create a controller. Auto-updates `routes.ts`.
-
-### New protected route manually:
-1. Create view HTML in `src/views/pages/protected/`
-2. Create controller in `src/controllers/`
-3. Export controller from `src/controllers/index.ts`
-4. Register route in `src/config/routes.ts` with `lazyController()`
-5. Add path to `protectedRoutes` export in `routes.ts`
-
-## Path Aliases
-
-```typescript
-@core/        → .nativecore/core/
-@components/  → src/components/
-@services/    → src/services/
-@utils/       → src/utils/
-@stores/      → src/stores/
-@middleware/  → src/middleware/
-@config/      → src/config/
-@types/       → src/types/
+npm run make:component -- my-card --defaults
+npm run make:view -- profile --defaults
+npm run make:middleware -- verified
+npm run remove:component -- my-card
+npm run remove:view -- profile --yes
 ```
 
-Always include `.js` extension even when using aliases.
+On Windows PowerShell, prefer `npm.cmd run … -- <args>` so flags after `--` are kept.
 
-## State API Quick Reference
+There are no `delete:*` scripts — use `remove:*`.
 
-```typescript
-// useState
-const x = useState(0);
-x.value = 5;
-x.set(prev => prev + 1);
-const unsub = x.watch(val => {});   // call unsub() to stop watching
+## Testing
 
-// computed
-const y = computed(() => x.value * 2);
-y.value;          // read-only
-y.watch(cb);      // subscribe to changes
-y.dispose();      // MUST call to prevent memory leak
-
-// stores
-store.user.value
-store.isLoading.value
-store.setUser(user)
-store.setLoading(true)
-store.setError('msg')
-store.clearError()
-
-uiStore.sidebarOpen.value
-uiStore.toggleSidebar()
-uiStore.setTheme('dark')
-uiStore.addNotification({ id, message, type })
-uiStore.removeNotification(id)
+```js
+import { mountComponent, waitFor } from '@testing/index.js';
 ```
 
-## Common Mistakes to Avoid
-
-- Using `import MyController from './my.controller.js'` — use `lazyController()` instead
-- Using `document.querySelector` inside a component — use `this.shadowRoot.querySelector` or `this.$()`
-- Forgetting to call `computed.dispose()` in `onUnmount` — causes memory leaks
-- Not returning cleanup from a controller — old listeners accumulate across navigations
-- Writing `import { X } from '@core/component'` without `.js` — module not found at runtime
-- Adding a component to `registry.ts` with wrong path prefix — all UI components use `'./ui/'`
-
-## Component Quality Standard
-
-Use this standard for every new or refactored component.
-
-1. Include a concise component header comment: attributes, events, methods, and a short usage example.
-2. Prefer clear sectioning and line breaks: state fields, event handlers, helpers, lifecycle hooks, and public API.
-3. Keep runtime state deterministic:
-    - Attribute values are defaults.
-    - Properties are runtime source of truth.
-    - Runtime property writes must not be clobbered during first render.
-4. Ensure custom inputs behave like native controls for wires/model bindings:
-    - `get value()` returns current runtime value.
-    - `set value(v)` updates internal state and visible control.
-    - `input` / `change` events emit composable payloads.
-5. Use framework utilities first (`@core-utils/wires.js`, `trackEvents`, `dom` helpers) instead of ad-hoc DOM plumbing.
-6. Keep cleanup explicit and complete in `onUnmount`.
-7. Keep component code readable over clever:
-    - small helpers for repeated logic,
-    - meaningful names,
-    - guard clauses for edge cases.
-
-
+Vitest + happy-dom. See `.context/ai-context.md` for details.

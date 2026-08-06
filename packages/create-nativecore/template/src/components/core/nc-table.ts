@@ -47,6 +47,7 @@
  *   });
  */
 import { CoreComponent } from '@core/component.js';
+import { css } from '@core-utils/templates.js';
 
 type TableAlign = 'left' | 'center' | 'right';
 interface ColDef { key: string; label: string; align: TableAlign; }

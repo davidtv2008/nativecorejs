@@ -41,7 +41,7 @@
  *   </nc-timeline>
  */
 import { CoreComponent } from '@core/component.js';
-import { css } from '@core-utils/templates.js';
+import { css, html } from '@core-utils/templates.js';
 
 const STATUS_COLORS: Record<string, string> = {
     completed: 'var(--nc-success)',

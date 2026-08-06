@@ -27,11 +27,11 @@ const question = (query) => new Promise((resolve) => rl.question(query, resolve)
 
 // ─── Detect project language mode ───────────────────────────────────────────
 const ROOT = path.resolve(__dirname, '../..');
-let useTypeScript = true;
+let useTypeScript = false;
 try {
     const ncConfig = JSON.parse(fs.readFileSync(path.join(ROOT, 'nativecore.config.json'), 'utf8'));
-    if (ncConfig.useTypeScript === false) useTypeScript = false;
-} catch { /* default to TypeScript */ }
+    if (ncConfig.useTypeScript === true) useTypeScript = true;
+} catch { /* default to JavaScript (matches create-nativecore defaults) */ }
 const ext = useTypeScript ? 'ts' : 'js';
 
 const storeArg = process.argv[2];
@@ -55,6 +55,12 @@ async function main() {
     const camelName = kebabName.replace(/-([a-z])/g, (_, g) => g.toUpperCase());
     const PascalName = camelName.charAt(0).toUpperCase() + camelName.slice(1);
     const titleName = kebabName.split('-').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ');
+    // API collection path: "task" → "tasks", "tasks" → "tasks" (no double plural)
+    const collectionKebab = kebabName.endsWith('s') ? kebabName : `${kebabName}s`;
+    const collectionPascal = collectionKebab
+        .split('-')
+        .map(w => w.charAt(0).toUpperCase() + w.slice(1))
+        .join('');
 
     const storesDir = path.resolve(ROOT, 'src', 'stores');
     const storeFile = path.join(storesDir, `${kebabName}.store.${ext}`);
@@ -111,7 +117,7 @@ export const ${camelName}Count = computed(() => ${camelName}Items.value.length);
 
 // ── Actions ───────────────────────────────────────────────────────────────────
 
-export async function load${PascalName}s(force = false): Promise<void> {
+export async function load${collectionPascal}(force = false): Promise<void> {
     if (${camelName}Loading.value) return;
 
     batch(() => {
@@ -120,11 +126,12 @@ export async function load${PascalName}s(force = false): Promise<void> {
     });
 
     try {
-        const data = await api.getCached('/${kebabName}s', {
-            ttl:        60_000,
+        // api.getCached ttl is in seconds
+        const data = await api.getCached('/${collectionKebab}', {
+            ttl:        60,
             revalidate: !force,
-            queryKey:   ['${kebabName}s', 'list'],
-            tags:       ['${kebabName}s'],
+            queryKey:   ['${collectionKebab}', 'list'],
+            tags:       ['${collectionKebab}'],
         });
         batch(() => {
             ${camelName}Items.value   = data as ${PascalName}[];
@@ -132,7 +139,7 @@ export async function load${PascalName}s(force = false): Promise<void> {
         });
     } catch (err) {
         batch(() => {
-            ${camelName}Error.value   = err instanceof Error ? err.message : 'Failed to load ${titleName.toLowerCase()}s';
+            ${camelName}Error.value   = err instanceof Error ? err.message : 'Failed to load ${collectionKebab}';
             ${camelName}Loading.value = false;
         });
     }
@@ -140,9 +147,9 @@ export async function load${PascalName}s(force = false): Promise<void> {
 
 export async function add${PascalName}(item: Omit<${PascalName}, 'id'>): Promise<void> {
     try {
-        const created = await api.post('/${kebabName}s', item) as ${PascalName};
+        const created = await api.post('/${collectionKebab}', item) as ${PascalName};
         ${camelName}Items.value = [...${camelName}Items.value, created];
-        api.invalidateTags(['${kebabName}s']);
+        api.invalidateTags(['${collectionKebab}']);
     } catch (err) {
         ${camelName}Error.value = err instanceof Error ? err.message : 'Failed to add ${titleName.toLowerCase()}';
     }
@@ -153,8 +160,8 @@ export async function remove${PascalName}(id: string): Promise<void> {
     ${camelName}Items.value = previous.filter(item => item.id !== id);
 
     try {
-        await api.delete(\`/${kebabName}s/\${id}\`);
-        api.invalidateTags(['${kebabName}s']);
+        await api.delete(\`/${collectionKebab}/\${id}\`);
+        api.invalidateTags(['${collectionKebab}']);
     } catch (err) {
         ${camelName}Items.value = previous;
         ${camelName}Error.value = err instanceof Error ? err.message : 'Failed to remove ${titleName.toLowerCase()}';
@@ -190,7 +197,7 @@ export const ${camelName}Count = computed(() => ${camelName}Items.value.length);
 
 // ── Actions ───────────────────────────────────────────────────────────────────
 
-export async function load${PascalName}s(force = false) {
+export async function load${collectionPascal}(force = false) {
     if (${camelName}Loading.value) return;
 
     batch(() => {
@@ -199,11 +206,12 @@ export async function load${PascalName}s(force = false) {
     });
 
     try {
-        const data = await api.getCached('/${kebabName}s', {
-            ttl:        60_000,
+        // api.getCached ttl is in seconds
+        const data = await api.getCached('/${collectionKebab}', {
+            ttl:        60,
             revalidate: !force,
-            queryKey:   ['${kebabName}s', 'list'],
-            tags:       ['${kebabName}s'],
+            queryKey:   ['${collectionKebab}', 'list'],
+            tags:       ['${collectionKebab}'],
         });
         batch(() => {
             ${camelName}Items.value   = data;
@@ -211,7 +219,7 @@ export async function load${PascalName}s(force = false) {
         });
     } catch (err) {
         batch(() => {
-            ${camelName}Error.value   = err instanceof Error ? err.message : 'Failed to load ${titleName.toLowerCase()}s';
+            ${camelName}Error.value   = err instanceof Error ? err.message : 'Failed to load ${collectionKebab}';
             ${camelName}Loading.value = false;
         });
     }
@@ -219,9 +227,9 @@ export async function load${PascalName}s(force = false) {
 
 export async function add${PascalName}(item) {
     try {
-        const created = await api.post('/${kebabName}s', item);
+        const created = await api.post('/${collectionKebab}', item);
         ${camelName}Items.value = [...${camelName}Items.value, created];
-        api.invalidateTags(['${kebabName}s']);
+        api.invalidateTags(['${collectionKebab}']);
     } catch (err) {
         ${camelName}Error.value = err instanceof Error ? err.message : 'Failed to add ${titleName.toLowerCase()}';
     }
@@ -232,8 +240,8 @@ export async function remove${PascalName}(id) {
     ${camelName}Items.value = previous.filter(item => item.id !== id);
 
     try {
-        await api.delete(\`/${kebabName}s/\${id}\`);
-        api.invalidateTags(['${kebabName}s']);
+        await api.delete(\`/${collectionKebab}/\${id}\`);
+        api.invalidateTags(['${collectionKebab}']);
     } catch (err) {
         ${camelName}Items.value = previous;
         ${camelName}Error.value = err instanceof Error ? err.message : 'Failed to remove ${titleName.toLowerCase()}';
@@ -262,8 +270,9 @@ export async function remove${PascalName}(id) {
 
     console.log('\nNext steps:');
     console.log(`  1. Edit src/stores/${kebabName}.store.${ext} — add your types and fields`);
-    console.log(`  2. Import in a controller:  import { load${PascalName}s, ${camelName}Items } from '@stores/${kebabName}.store.js';`);
-    console.log(`  3. Call load${PascalName}s() in the controller setup`);
+    console.log(`  2. Import in a controller:  import { load${collectionPascal}, ${camelName}Items } from '@stores/${kebabName}.store.js';`);
+    console.log(`  3. Call load${collectionPascal}() in the controller setup`);
+    console.log(`  4. Confirm mock/API routes match /${collectionKebab}`);
 
     rl.close();
 }

@@ -1,18 +1,13 @@
-import auth from '@services/auth.service.js';
+import { CoreController } from '@core/controller.js';
 
-export async function homeController(): Promise<() => void> {
-    const ctaBtn = document.querySelector<HTMLElement>('[ref="ctaBtn"]');
-
-    const sync = () => {
-        const authed = auth.isAuthenticated();
-        ctaBtn?.setAttribute('href', authed ? '/dashboard' : '/login');
-        if (ctaBtn) ctaBtn.textContent = authed ? 'Go to Dashboard' : 'Sign In';
-        ctaBtn?.classList.toggle('hero-primary--authed', authed);
-    };
-
-    sync();
-    window.addEventListener('auth-change', sync);
-
-    return () => window.removeEventListener('auth-change', sync);
+export class HomeController extends CoreController {
+    onMount() {
+        // Home is a static welcome surface — add view logic here as the app grows.
+    }
 }
 
+// Factory — called by the router via lazyController('homeController', ...)
+export function homeController(): () => void {
+    const ctrl = new HomeController();
+    return () => ctrl.destroy();
+}

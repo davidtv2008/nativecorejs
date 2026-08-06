@@ -19,11 +19,11 @@ const __dirname = path.dirname(__filename);
 
 // ─── Detect project language mode ───────────────────────────────────────────
 const ROOT = path.resolve(__dirname, '../..');
-let useTypeScript = true;
+let useTypeScript = false;
 try {
     const ncConfig = JSON.parse(fs.readFileSync(path.join(ROOT, 'nativecore.config.json'), 'utf8'));
-    if (ncConfig.useTypeScript === false) useTypeScript = false;
-} catch { /* default to TypeScript */ }
+    if (ncConfig.useTypeScript === true) useTypeScript = true;
+} catch { /* default to JavaScript (matches create-nativecore defaults) */ }
 const ext = useTypeScript ? 'ts' : 'js';
 
 // Get component name from command line
@@ -61,6 +61,7 @@ const componentsDir = path.resolve(ROOT, 'src', 'components');
 const coreDir = path.join(componentsDir, 'core');
 const componentFile = path.join(coreDir, `${tagName}.${ext}`);
 const preloadRegistryFile = path.join(componentsDir, `preloadRegistry.${ext}`);
+const frameworkRegistryFile = path.join(componentsDir, `frameworkRegistry.${ext}`);
 
 // Ensure core directory exists
 if (!fs.existsSync(coreDir)) {
@@ -328,40 +329,62 @@ function prompt(question) {
 
 async function main() {
   console.log(`\nCreating NativeCore framework component: ${tagName}\n`);
-  
-  // Ask about preloading
-  const preload = await prompt('Preload this component? (Y/n): ');
-  const shouldPreload = !preload || preload.toLowerCase() !== 'n';
+
+  const cliArgs = process.argv.slice(2);
+  const forcePrefetch = cliArgs.includes('--prefetch');
+  const forceNoPrefetch = cliArgs.includes('--no-prefetch') || cliArgs.includes('--defaults');
+  let shouldPreload;
+  if (forcePrefetch || forceNoPrefetch || !process.stdin.isTTY) {
+    shouldPreload = forcePrefetch && !forceNoPrefetch;
+    console.log(`Non-interactive: preload=${shouldPreload}`);
+    rl.close();
+  } else {
+    // Ask about preloading
+    const preload = await prompt('Preload this component? (Y/n): ');
+    shouldPreload = !preload || preload.toLowerCase() !== 'n';
+    rl.close();
+  }
   
   // Create component file
   fs.writeFileSync(componentFile, componentTemplate);
   console.log(`Created: src/components/core/${tagName}.${ext}`);
+
+  // Register for lazy loading (same path as built-in nc-* components)
+  if (fs.existsSync(frameworkRegistryFile)) {
+    let frameworkContent = fs.readFileSync(frameworkRegistryFile, 'utf-8');
+    const registrationStatement = `    componentRegistry.register('${tagName}', './core/${tagName}.js');`;
+    if (!frameworkContent.includes(`'${tagName}'`)) {
+      const lines = frameworkContent.split('\n');
+      const lastRegisterIndex = lines.findLastIndex((line) => line.includes('componentRegistry.register'));
+      if (lastRegisterIndex !== -1) {
+        lines.splice(lastRegisterIndex + 1, 0, registrationStatement);
+        frameworkContent = lines.join('\n');
+      } else {
+        frameworkContent = frameworkContent.trimEnd() + '\n' + registrationStatement + '\n';
+      }
+      fs.writeFileSync(frameworkRegistryFile, frameworkContent);
+      console.log(`Registered in: src/components/frameworkRegistry.${ext}`);
+    }
+  } else {
+    console.log(`Warning: frameworkRegistry.${ext} not found — component will only load if preloaded.`);
+  }
   
   // Add to preloadRegistry if requested
   if (shouldPreload) {
     if (fs.existsSync(preloadRegistryFile)) {
       let registryContent = fs.readFileSync(preloadRegistryFile, 'utf-8');
-      
-      // Find the import section for core components
-      const coreImportSection = registryContent.indexOf('// Core framework components');
-      
-      if (coreImportSection !== -1) {
-        // Find the next line after the comment
-        const insertPosition = registryContent.indexOf('\n', coreImportSection) + 1;
-        const importStatement = `import './core/${tagName}.js';\n`;
-        
-        // Check if import already exists
-        if (!registryContent.includes(importStatement)) {
-          registryContent = registryContent.slice(0, insertPosition) + 
-                           importStatement + 
-                           registryContent.slice(insertPosition);
-          
-          fs.writeFileSync(preloadRegistryFile, registryContent);
-          console.log(`Added to: src/components/preloadRegistry.${ext}`);
+      const importStatement = `import './core/${tagName}.js';`;
+
+      if (!registryContent.includes(importStatement)) {
+        const lines = registryContent.split('\n');
+        const lastImportIndex = lines.findLastIndex((line) => /^import\s/.test(line));
+        if (lastImportIndex !== -1) {
+          lines.splice(lastImportIndex + 1, 0, importStatement);
+        } else {
+          lines.push(importStatement);
         }
-      } else {
-        console.log(`Warning: Could not find core components section in preloadRegistry.${ext}`);
-        console.log(`   Please manually add: import './core/${tagName}.js';`);
+        fs.writeFileSync(preloadRegistryFile, lines.join('\n'));
+        console.log(`Added to: src/components/preloadRegistry.${ext}`);
       }
     } else {
       console.log(`Warning: preloadRegistry.${ext} not found.`);
@@ -380,8 +403,6 @@ async function main() {
   console.log('   • Boolean attrs (disabled, etc.) → Checkbox');
   console.log('   • attributeChangedCallback → Live preview updates');
   console.log('\nComponent uses --nc- variables from core-variables.css\n');
-  
-  rl.close();
 }
 
 main().catch(error => {

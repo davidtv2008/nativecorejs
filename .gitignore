@@ -5,3 +5,5 @@ coverage/
 *.log
 .artifacts/
 sample-nativecore/
+demo-app/
+verify-home-only/

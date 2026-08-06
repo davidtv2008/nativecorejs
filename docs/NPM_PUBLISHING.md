@@ -1,113 +1,115 @@
-# Publishing To npm
+# Publishing to npm
 
-This repo contains two publishable packages:
+This monorepo publishes two packages:
 
-- `nativecorejs` - the runtime package
-- `create-nativecore` - the scaffolding CLI
+| Package | Role |
+|---------|------|
+| [`nativecorejs`](../packages/nativecorejs) | Runtime library (`import … from 'nativecorejs'`) |
+| [`create-nativecore`](../packages/create-nativecore) | Scaffolding CLI (`npx create-nativecore`) |
 
-The expected release order is:
+Current versions (keep them in sync when cutting a release): **`1.0.0-rc.12`**.
 
-1. publish `nativecorejs`
-2. publish `create-nativecore`
+## How the packages relate
 
-The CLI depends on the runtime existing on npm, so the runtime must be published first.
+- **`create-nativecore` vendors** the framework into each app under `.nativecore/`.
+  Generated apps do **not** install `nativecorejs` as a runtime dependency by
+  default (only dev tooling).
+- **`nativecorejs`** is for consumers who import the library directly
+  (`nativecorejs`, `nativecorejs/a11y`, `nativecorejs/testing`, …), and for
+  keeping a publishable runtime artifact aligned with the vendored sources.
+
+Recommended publish order is still **runtime → CLI** so library consumers and
+docs never see a CLI release that points at a missing runtime version. The CLI
+package itself does not list `nativecorejs` as an npm dependency.
 
 ## First-time setup
 
-1. Create an npm account at `https://www.npmjs.com/signup` if you do not already have one.
-2. Verify your email in npm.
+1. Create an npm account at https://www.npmjs.com/signup if needed.
+2. Verify your email on npm.
 3. Log in on this machine:
 
 ```bash
 npm login
-```
-
-4. Confirm the active npm identity:
-
-```bash
 npm whoami
 ```
 
 ## Pre-publish check
 
-From the repo root, run:
+From the **repo root**:
 
 ```bash
 npm run publish:check
 ```
 
-This will:
-
-- build the runtime
-- preview the exact tarball contents for `nativecorejs`
-- preview the exact tarball contents for `create-nativecore`
+This builds the runtime and dry-runs `npm pack` for both packages so you can
+inspect tarball contents.
 
 ## Publish flow
 
 From the repo root:
 
 ```bash
-npm run publish:runtime
-npm run publish:cli
+npm run publish:runtime   # npm publish packages/nativecorejs
+npm run publish:cli       # npm publish packages/create-nativecore
 ```
 
-Or publish both in sequence:
+Or both:
 
 ```bash
 npm run publish:all
 ```
 
-## Recommended first release checklist
+`nativecorejs` runs `prepublishOnly` → `build:full` (TypeScript + custom
+elements manifest). `create-nativecore` publishes `bin/` + `template/` as-is
+(no separate build step).
 
-1. Make sure `git status` is clean.
-2. Run `npm whoami`.
-3. Run `npm run publish:check`.
-4. Publish the runtime with `npm run publish:runtime`.
-5. Test installing it directly:
+## Release checklist
+
+1. Working tree clean (`git status`).
+2. Bump versions in:
+   - `packages/nativecorejs/package.json`
+   - `packages/create-nativecore/package.json`
+3. Commit the version bump.
+4. `npm whoami`
+5. `npm run publish:check`
+6. `npm run publish:runtime`
+7. Spot-check:
 
 ```bash
 npm view nativecorejs version
 ```
 
-6. Publish the CLI with `npm run publish:cli`.
-7. Test the public initializer:
+8. `npm run publish:cli`
+9. Spot-check scaffold:
 
 ```bash
-npx create-nativecore my-app
+npx create-nativecore@latest my-app --defaults
+cd my-app && npm run dev
 ```
 
-## Versioning
-
-Both packages are currently at `0.1.0`.
-
-When you make a new release:
-
-1. bump the package versions you intend to publish
-2. commit the version changes
-3. run `npm run publish:check`
-4. publish in runtime-then-CLI order
-
-## Common first-time errors
+## Common errors
 
 ### `npm ERR! need auth`
-
-Run:
 
 ```bash
 npm login
 ```
 
-### `403 Forbidden - package already exists under another owner`
-
-That package name is already taken, or you are trying to publish a version that already exists.
-
-Check:
+### `403 Forbidden` / name taken / version exists
 
 ```bash
 npm view nativecorejs versions --json
 npm view create-nativecore versions --json
 ```
 
-### CLI publish succeeds but `npx create-nativecore my-app` fails on install
+Bump the version, or confirm you own the package on npm.
 
-That usually means `nativecorejs` was not published first, or the CLI version points at a runtime version that does not exist yet.
+### CLI works but `import 'nativecorejs'` fails for library users
+
+Publish / bump **`nativecorejs`** first. Scaffold-only users who never import
+the package are unaffected (they use vendored `.nativecore/`).
+
+### Accidental publish of private monorepo root
+
+The root `package.json` is `"private": true`. Always publish via
+`publish:runtime` / `publish:cli` (or `npm publish` inside each package dir).

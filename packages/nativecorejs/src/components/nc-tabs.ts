@@ -513,7 +513,7 @@ export class NcTabs extends Component {
         // Use setAttribute silently - attributeChangedCallback guard (oldValue !== newValue) prevents loops
         this.setAttribute('active', String(index));
 
-        this.emitEvent<{ index: number; label: string | null }>('nc-tab-change', {
+        this.emitEvent('nc-tab-change', {
             index,
             label: tabs[index].getAttribute('label'),
         });

@@ -1,8 +1,6 @@
 import { CoreComponent } from '@core/component.js';
-import { css, html, escapeHtml, sanitizeURL } from '@core-utils/templates.js';
+import { css, html } from '@core-utils/templates.js';
 import router from '@core/router.js';
-import auth from '@services/auth.service.js';
-import './nc-avatar.js';
 
 export class AppHeader extends CoreComponent {
 
@@ -17,14 +15,17 @@ export class AppHeader extends CoreComponent {
             top: 0;
             z-index: 1002;
             width: 100%;
-            background: rgba(15, 23, 42, 0.92);
-            backdrop-filter: blur(16px);
-            -webkit-backdrop-filter: blur(16px);
+            background: rgba(15, 23, 42, 0.42);
+            backdrop-filter: blur(6px);
+            -webkit-backdrop-filter: blur(6px);
             border-bottom: 1px solid transparent;
-            transition: border-color 0.2s ease, background 0.2s ease;
+            transition: border-color 0.2s ease, background 0.2s ease, backdrop-filter 0.2s ease, -webkit-backdrop-filter 0.2s ease;
         }
 
         :host(.scrolled) {
+            background: rgba(15, 23, 42, 0.68);
+            backdrop-filter: blur(10px);
+            -webkit-backdrop-filter: blur(10px);
             border-bottom-color: rgba(255, 255, 255, 0.08);
         }
 
@@ -97,54 +98,8 @@ export class AppHeader extends CoreComponent {
             gap: var(--spacing-md);
         }
 
-        .user-menu {
-            display: flex;
-            align-items: center;
-            gap: 0.6rem;
-        }
-
-        .user-name {
-            color: rgba(255, 255, 255, 0.85);
-            font-size: 0.875rem;
-            font-weight: 500;
-        }
-
-        .header-logout-btn {
-            background: rgba(255, 255, 255, 0.08);
-            border: 1px solid rgba(255, 255, 255, 0.12);
-            color: rgba(255, 255, 255, 0.7);
-            font-size: 0.8rem;
-            font-weight: 500;
-            padding: 0.3rem 0.75rem;
-            border-radius: 6px;
-            cursor: pointer;
-            transition: background 0.15s ease, color 0.15s ease;
-        }
-
-        .header-logout-btn:hover {
-            background: rgba(255, 255, 255, 0.15);
-            color: #fff;
-        }
-
-        .header-login-btn {
-            display: inline-block;
-            background: var(--gradient-primary);
-            color: #fff;
-            text-decoration: none;
-            font-size: 0.875rem;
-            font-weight: 600;
-            padding: 0.45rem 1.1rem;
-            border-radius: 8px;
-            transition: opacity 0.15s ease, transform 0.15s ease;
-        }
-
-        .header-login-btn:hover {
-            opacity: 0.9;
-            transform: translateY(-1px);
-        }
-
         .mobile-menu-toggle {
-            display: flex;
+            display: none;
             flex-direction: column;
             justify-content: center;
             align-items: center;
@@ -171,23 +126,18 @@ export class AppHeader extends CoreComponent {
             border-radius: 2px;
         }
 
-        .desktop-only { display: flex; }
-
-        @media (max-width: 768px) {
-            .desktop-only { display: none !important; }
+        body.sidebar-enabled .mobile-menu-toggle {
+            display: flex;
         }
 
         [hidden] { display: none !important; }
     `;
 
-    // --- TEMPLATE ---
-    // Must be fully static - CoreComponent caches it after the first render.
-    // All auth-dependent content is injected via refs in _applyAuthState().
     template() {
         return html`
             <div class="header-container">
                 <div class="header-left">
-                    <button ref="mobileToggle" class="mobile-menu-toggle" aria-label="Toggle sidebar" hidden>
+                    <button ref="mobileToggle" class="mobile-menu-toggle" aria-label="Toggle sidebar" type="button">
                         <span class="burger-line"></span>
                         <span class="burger-line"></span>
                         <span class="burger-line"></span>
@@ -211,10 +161,6 @@ export class AppHeader extends CoreComponent {
 
     // --- LIFECYCLE ---
     onMount() {
-        this._applyAuthState();
-
-        this.on(window, 'auth-change', () => this._applyAuthState());
-        this.on(window, 'unauthorized', () => this._applyAuthState());
         this.on(window, 'pageloaded', (e: Event) => {
             this._updateActiveLink((e as CustomEvent<{ path?: string }>).detail?.path);
         });
@@ -231,47 +177,17 @@ export class AppHeader extends CoreComponent {
         this.on(this.root, 'click', (e: MouseEvent) => {
             const target = e.target as HTMLElement;
 
-            if (target.closest('#logoutBtn')) {
-                auth.logout();
-                return;
-            }
-
             if (target.closest('.logo')) {
                 e.preventDefault();
-                router.navigate(auth.isAuthenticated() ? '/dashboard' : '/');
+                router.navigate('/');
                 return;
             }
 
             if (target.closest('.mobile-menu-toggle')) {
                 e.preventDefault();
                 window.dispatchEvent(new CustomEvent('sidebar-toggle'));
-                return;
             }
         });
-    }
-
-    // --- PRIVATE ---
-    private _applyAuthState(): void {
-        const isAuthenticated = auth.isAuthenticated();
-        const user = auth.getUser();
-        const userName = escapeHtml(user?.name || 'User');
-
-        this.logoLink.setAttribute('href', sanitizeURL(isAuthenticated ? '/dashboard' : '/') || '/');
-        this.mobileToggle.hidden = !isAuthenticated;
-
-        this.headerNav.innerHTML = !isAuthenticated
-            ? ''
-            : '';
-
-        this.headerRight.innerHTML = isAuthenticated
-            ? `<div class="user-menu desktop-only">
-                   <nc-avatar alt="${userName}" size="sm" variant="primary"></nc-avatar>
-                   <span class="user-name">${userName}</span>
-                   <button class="header-logout-btn" id="logoutBtn">Sign out</button>
-               </div>`
-            : `<a href="/login" data-link class="header-login-btn desktop-only">Sign in</a>`;
-
-        this._updateActiveLink(router.getCurrentRoute()?.path);
     }
 
     private _normalizePath(path: string | null | undefined): string {

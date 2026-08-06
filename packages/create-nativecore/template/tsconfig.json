@@ -27,7 +27,9 @@
       "@stores/*": ["src/stores/*"],
       "@middleware/*": ["src/middleware/*"],
       "@types/*": ["src/types/*"],
-      "@constants/*": ["src/constants/*"]
+      "@constants/*": ["src/constants/*"],
+      "@testing/*": [".nativecore/testing/*"],
+      "nativecorejs/testing": [".nativecore/testing/index.js"]
     },
     "plugins": [
       {

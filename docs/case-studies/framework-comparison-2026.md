@@ -6,9 +6,13 @@ It is an internal working report, not a marketing claim sheet. Weaknesses are ca
 
 ---
 
-## What NativeCoreJS Actually Is (May 2026)
+## What NativeCoreJS Actually Is (August 2026)
 
-NativeCoreJS is a standards-based web application framework built on native browser APIs (Web Components, Shadow DOM, `customElements`). It ships two foundational patterns:
+NativeCoreJS is a standards-based web application framework built on native browser APIs (Web Components, Shadow DOM, `customElements`). The framework source is TypeScript; **scaffolded apps default to JavaScript** (`create-nativecore` / `--defaults`), with TypeScript available via `--ts`.
+
+Auth is **not** shipped. Protected route groups exist as placeholders (`middleware: []`) until the author adds middleware (`make:middleware` + `createMiddleware`). The default app home is an enterprise starter shell (minimal chrome), not a component showcase.
+
+It ships two foundational patterns:
 
 ### `CoreComponent` — reactive Web Component base class
 
@@ -53,47 +57,47 @@ export class NcBadge extends CoreComponent {
 ### `CoreController` — reactive controller base class for page logic
 
 ```typescript
-export class LoginController extends CoreController {
-
-    // Refs resolved from rootElement DOM by attribute name
-    private loginForm!: HTMLElement;
-    private errorDiv!:  HTMLElement;
-    private loginBtn!:  HTMLElement;
+export class ProfileController extends CoreController {
+    // Refs resolved from rootElement DOM via ref="…" attributes
+    declare titleEl: HTMLElement;
+    declare saveBtn: HTMLElement;
 
     // State declared in onMount() because class fields run before refs are wired
-    private errorMessage!: State<string>;
-    private isLoading!:    State<boolean>;
+    private title!: State<string>;
+    private isSaving!: State<boolean>;
 
     onMount() {
-        this.errorMessage = this.state('');
-        this.isLoading    = this.state(false);
+        this.assertRefs('titleEl', 'saveBtn');
+        this.title = this.state('Profile');
+        this.isSaving = this.state(false);
 
+        this.bind(this.title, this.titleEl);
         this.effect(() => {
-            this.loginBtn.toggleAttribute('disabled', this.isLoading.value);
-            this.loginBtn.textContent = this.isLoading.value ? 'Signing in...' : 'Sign in';
-        });
-        this.effect(() => {
-            this.errorDiv.hidden      = !this.errorMessage.value;
-            this.errorDiv.textContent = this.errorMessage.value;
+            this.saveBtn.toggleAttribute('disabled', this.isSaving.value);
+            this.saveBtn.textContent = this.isSaving.value ? 'Saving...' : 'Save';
         });
 
-        this.on(this.loginForm, 'submit', (e) => void this._handleSubmit(e as CustomEvent));
+        this.on(this.saveBtn, 'click', () => {
+            this.isSaving.value = true;
+            // …persist, then:
+            this.isSaving.value = false;
+        });
     }
 }
 
-// Router factory
-export function loginController(
+// Router factory — lazyController('profileController', '../controllers/profile.controller.js')
+export function profileController(
     _params?: Record<string, string>,
     _state?: unknown,
     _loaderData?: unknown,
     rootElement?: HTMLElement,
 ): () => void {
-    const ctrl = new LoginController(rootElement);
+    const ctrl = new ProfileController(rootElement);
     return () => ctrl.destroy();
 }
 ```
 
-Both patterns share the **same API surface:** `this.state()`, `this.bind()`, `this.effect()`, `this.on()`, `this.compute()`. Refs are auto-wired from the DOM — no `querySelector` boilerplate.
+Both patterns share the **same API surface:** `this.state()`, `this.bind()`, `this.effect()`, `this.on()`, `this.compute()`. Refs are auto-wired from the DOM — no `querySelector` boilerplate. Lazy page controllers are loaded via `createLazyController(import.meta.url)` in `src/routes/routes.*`.
 
 ---
 
@@ -157,7 +161,7 @@ Frameworks compared:
 | 6 | **Router & Navigation** | 7% | Caching, middleware, dynamic params, lazy loading |
 | 7 | **State Management** | 8% | Global stores, derived state, cross-page persistence, cleanup |
 | 8 | **Mobile Development** | 6% | Capacitor integration, same runtime, platform story |
-| 9 | **Dev Tools & Debugging** | 5% | Performance overlay, HMR, inspector, component explorer |
+| 9 | **Dev Tools & Debugging** | 5% | Performance overlay, HMR, component overlay/editor/outline |
 | 10 | **TypeScript Integration** | 5% | Type inference, generics, strict mode, IDE experience |
 | 11 | **Testing Support** | 4% | Test utilities, Shadow DOM support, ecosystem |
 | 12 | **SSG / SSR / SEO** | 7% | Static generation, server rendering, pre-rendering pipeline |
@@ -245,7 +249,7 @@ this.bind(this.variant,  this.badgeEl, '.danger'); // → badgeEl classList togg
 | **Svelte 5** | 10.0 | ~1–3 KB | Compiler outputs pure DOM instructions. |
 | **Qwik** | 10.0 | ~0 KB hydration | Resumability: zero JS executes on load for server-rendered pages. |
 | **Lit** | 9.5 | ~5 KB | Minimal tagged-template runtime. |
-| **NativeCoreJS** | 9.0 | ~25–30 KB | Complete app framework: router + state + CoreComponent + CoreController + 65+ components. Competitive for its feature scope. |
+| **NativeCoreJS** | 9.0 | ~25–30 KB | Complete app framework: router + state + CoreComponent + CoreController + ~60 `nc-*` components. Competitive for its feature scope. (Bundle figure from earlier local measurement — re-run `npm run bench` / build analysis before citing externally.) |
 | **Solid** | 9.0 | ~7 KB | Tiny signals runtime. |
 | **Vue 3** | 8.0 | ~16 KB | Runtime-only build. |
 | **React** | 6.0 | ~42 KB | react + react-dom. |
@@ -287,9 +291,11 @@ onMount() {
     this.on(this.resetBtn, 'click', () => {
         batch(() => {
             this.count.value = 0;
-            this.doubled.dispose(); // manual dispose only for computed
         });
     });
+
+    // Note: instance this.compute() / this.effect() clean up on destroy()/disconnect.
+    // Module-level computed() from @core/state.js exposes .dispose() when you create those yourself.
 }
 ```
 
@@ -316,7 +322,7 @@ NativeCoreJS's clearest architectural differentiator: the only framework in this
 template() {
     return html`
         <input  ref="emailInput"  type="email" />
-        <button ref="submitBtn">Login</button>
+        <button ref="submitBtn">Submit</button>
         <div    ref="errorDiv"    hidden></div>
     `;
 }
@@ -349,31 +355,32 @@ onMount() {
 |---|---:|---|---|
 | **Vue 3** | 8.5 | Single File Components | `<template>` + `<script setup>` + `<style>` in one file. Excellent Volar IDE support. |
 | **Svelte 5** | 8.5 | `.svelte` files | Lowest boilerplate in the group. `$props()` is very clean. |
-| **NativeCoreJS** | 8.0 | `CoreComponent` + `CoreController` + 65+ `nc-*` components | Class-based. Shadow DOM. Refs auto-wired. 65 production-ready UI components ship in the framework itself. |
+| **NativeCoreJS** | 8.0 | `CoreComponent` + `CoreController` + ~60 `nc-*` components | Class-based. Shadow DOM. Refs auto-wired. Production UI components ship in the framework / scaffold (`nc-*`). |
 | **React** | 8.0 | Function components + JSX | Largest third-party UI ecosystem. Framework ships zero components. |
 | **Angular** | 7.0 | Decorated class components | Verbose decorator boilerplate. Angular Material ships separately. |
 | **Solid** | 7.0 | JSX function components | Clean but thin third-party component ecosystem. |
 | **Qwik** | 6.0 | JSX + `$` suffix discipline | Novel mental model. Cognitive overhead from `$` scoping rules. |
 | **Lit** | 6.0 | `LitElement` class | Best for design systems. No built-in application UI library. |
 
-**NativeCoreJS `nc-*` component library (65+ components):**
+**NativeCoreJS `nc-*` component library (~62 in `packages/nativecorejs`; scaffold ships a large overlapping core set):**
 
 ```
-nc-accordion    nc-alert       nc-autocomplete  nc-avatar        nc-badge
-nc-bottom-nav   nc-breadcrumb  nc-button        nc-canvas        nc-card
-nc-checkbox     nc-chip        nc-code          nc-collapsible   nc-color-picker
-nc-copy-button  nc-date-picker nc-divider       nc-drawer        nc-dropdown
-nc-empty-state  nc-error-boundary nc-file-upload nc-form         nc-image
-nc-input        nc-kbd         nc-menu          nc-modal         nc-nav-item
-nc-number-input nc-otp-input   nc-pagination    nc-popover       nc-progress
-nc-progress-circular nc-radio  nc-rating        nc-rich-text     nc-scroll-top
-nc-select       nc-skeleton    nc-slider        nc-snackbar      nc-splash
-nc-stepper      nc-switch      nc-table         nc-tabs          nc-tag-input
-nc-textarea     nc-time-picker nc-timeline      nc-tooltip       nc-transition
-nc-view-transition ...
+nc-a            nc-accordion     nc-alert          nc-animation     nc-autocomplete
+nc-avatar       nc-avatar-group  nc-badge          nc-bottom-nav    nc-breadcrumb
+nc-button       nc-canvas        nc-card           nc-checkbox      nc-chip
+nc-code         nc-collapsible   nc-color-picker   nc-copy-button   nc-date-picker
+nc-div          nc-divider       nc-drawer         nc-dropdown      nc-empty-state
+nc-error-boundary nc-file-upload nc-form           nc-image         nc-input
+nc-kbd          nc-menu          nc-menu-item      nc-modal         nc-nav-item
+nc-number-input nc-otp-input     nc-pagination     nc-popover       nc-progress
+nc-progress-circular nc-radio    nc-rating         nc-rich-text     nc-scroll-top
+nc-select       nc-skeleton      nc-slider         nc-snackbar      nc-splash
+nc-stepper      nc-switch        nc-tab-item       nc-table         nc-tabs
+nc-tag-input    nc-textarea      nc-time-picker    nc-timeline      nc-tooltip
+nc-transition   nc-view-transition
 ```
 
-All components: Shadow DOM encapsulated, dark-mode aware, accessible, emit standardized `nc-{component}-{action}` events.
+All components: Shadow DOM encapsulated, token-driven (`--nc-*`), emit standardized `nc-{component}-{action}` events where applicable.
 
 ---
 
@@ -390,18 +397,28 @@ All components: Shadow DOM encapsulated, dark-mode aware, accessible, emit stand
 | **Solid** | 7.0 | `@solidjs/router` | Type-safe. Less mature than Vue Router. |
 | **Lit** | 2.0 | None | No router. Must add a third-party library. |
 
-**Two-layer caching detail:**
+**Registration + caching detail (actual scaffold API):**
 
 ```typescript
-router.register('/dashboard', DashboardController, {
-    htmlFile: '/views/protected/dashboard.html',
-    revalidate: true,   // show cached immediately, fetch fresh in background
-});
+import { createLazyController } from '@core/lazyController.js';
 
-router.register('/settings', SettingsController, {
-    htmlFile: '/views/protected/settings.html',
-    revalidate: false,  // block until fresh — for layout-critical changes
-});
+const lazyController = createLazyController(import.meta.url);
+
+export function registerRoutes(r) {
+    // @group:public
+    r.group({}, (r) => {
+        r.register('/', 'src/views/public/home.html',
+            lazyController('homeController', '../controllers/home.controller.js'))
+         .cache({ ttl: 300, revalidate: true }); // show cached, refresh in background
+    });
+
+    // @group:protected — middleware: [] until the author adds tags (auth not shipped)
+    r.group({ middleware: [] }, (r) => {
+        r.register('/settings', 'src/views/protected/settings.html',
+            lazyController('settingsController', '../controllers/settings.controller.js'))
+         .cache({ ttl: 60, revalidate: false });
+    });
+}
 ```
 
 Layer 1 (network): fetches HTML once, reuses until TTL expires.
@@ -484,7 +501,7 @@ npm run cap:add:ios           # macOS + Xcode only
 | Framework | Score | Tools |
 |---|---:|---|
 | **React** | 9.0 | React DevTools browser ext — component tree, props/state viewer, Profiler flame graph, time-travel (Redux DevTools) |
-| **NativeCoreJS** | 8.5 | Built-in 10-metric performance overlay + component inspector + store explorer + HMR. No extension needed. |
+| **NativeCoreJS** | 8.5 | Built-in performance overlay + component overlay/editor/outline + drawing tools + HMR (localhost). No browser extension required. Component Builder UI currently disabled. |
 | **Vue 3** | 8.0 | Vue DevTools + Nuxt DevTools — component tree, Pinia inspector, route inspector |
 | **Angular** | 7.5 | Angular DevTools — component tree, change detection profiler |
 | **Svelte 5** | 6.0 | Svelte DevTools — component inspector, less mature |
@@ -518,7 +535,7 @@ The **DOM delta metric** is a standout: if node count climbs on repeated navigat
 | **Angular** | 10.0 | TypeScript-first since 2016. DI, decorators, strict generics. Deepest TS integration. |
 | **React** | 9.0 | `@types/react` is one of the most downloaded packages. Excellent generic support. |
 | **Solid** | 8.5 | Clean inference: `createSignal<T>()` → `[Accessor<T>, Setter<T>]`. |
-| **NativeCoreJS** | 8.0 | Strict mode. Path aliases (`@core/*`, `@services/*`, etc.). Reactive type inference: `this.state(0)` → `State<number>`, `this.compute(() => ...)` → `ComputedState<T>`. Typed controller params and navigation state. |
+| **NativeCoreJS** | 8.0 | Framework source is TypeScript-first. Scaffolded apps may be JS (default) or TS (`--ts`). Path aliases (`@core/*`, `@services/*`, etc.). Reactive inference in TS: `this.state(0)` → `State<number>`. Typed controller params and navigation state in TS mode. |
 | **Vue 3** | 8.0 | `script setup` + Volar significantly improved TS support. |
 | **Svelte 5** | 8.0 | Good in `<script lang="ts">`. Some edge cases with Runes inference. |
 | **Qwik** | 8.0 | Good throughout Qwik City. |
@@ -534,7 +551,7 @@ The **DOM delta metric** is a standout: if node count climbs on repeated navigat
 | **Angular** | 8.0 | TestBed + Karma/Jest + Playwright | DI-aware unit tests. Mature enterprise testing culture. |
 | **Vue 3** | 8.0 | `@vue/test-utils` + Vitest + Playwright | Official utils mature. Works well with happy-dom. |
 | **Svelte 5** | 7.0 | `@testing-library/svelte` + Vitest | Works but `.svelte` compilation in test environments can be quirky. |
-| **NativeCoreJS** | 7.0 | Vitest + happy-dom | `happy-dom` supports Shadow DOM + custom elements — required for Web Components testing. Generators include test scaffold. |
+| **NativeCoreJS** | 7.0 | Vitest + happy-dom | Scaffold: `@testing/index.js` helpers + optional `--with-tests` generators. Published package also exports `nativecorejs/testing`. `happy-dom` supports Shadow DOM + custom elements. |
 | **Solid** | 6.0 | `@solidjs/testing-library` | Functional but thin ecosystem. |
 | **Qwik** | 6.0 | Playwright (e2e focus) | Server-centric model pushes toward e2e. Unit DX limited. |
 | **Lit** | 5.0 | `@open-wc/testing` | Standard but limited. Shadow DOM piercing requires care. |
@@ -554,21 +571,21 @@ The **DOM delta metric** is a standout: if node count climbs on repeated navigat
 | **Solid** | 7.0 | ✓ SolidStart | ✓ SolidStart | Good but less mature than Next.js/Nuxt. |
 | **Lit** | 3.0 | Experimental | Experimental | `@lit-labs/ssr` is complex. Shadow DOM serialization is unstable. |
 
-**NativeCoreJS SSG pipeline:**
+**NativeCoreJS SSG pipeline (`npm run build:ssg`):**
 
 ```
-1. Extract all public routes from router.getRoutes()
-2. Skip protected and dynamic routes
+1. Parse public routes from src/routes/routes.(js|ts) (static analysis)
+2. Skip protected / dynamic routes where detected
 3. Visit each route with Puppeteer (headless Chrome)
-4. Wait for network idle + 800ms
+4. Wait for network idle + settle delay
 5. Capture rendered DOM, strip dev scripts
 6. Write _deploy/<route>/index.html
 7. Generate sitemap.xml automatically
 ```
 
-Pre-rendered HTML includes `<script type="module" src="/app.js">`. On first user load the CDN serves static HTML instantly. The SPA hydrates silently: router attaches, controllers run, effects reconcile any stale content with current state.
+Pre-rendered HTML boots the SPA module entry on first interactive load. The router attaches, controllers run, and effects reconcile any stale content with current state.
 
-**Limitation:** No server runtime. Personalized/authenticated pages are client-only SPA. For the typical use case (public marketing/docs = SSG, authenticated dashboard = SPA), this covers everything.
+**Limitation:** No server runtime. Personalized or middleware-gated pages remain client-only SPA. Typical split: public marketing/docs = SSG, author-protected areas = SPA after middleware is added.
 
 ---
 
@@ -613,7 +630,7 @@ Higher score = easier to become productive quickly.
 | **Svelte 5** | 9.0 | HTML, CSS, JS | `.svelte` syntax is the most approachable. Runes are intuitive. |
 | **Vue 3** | 8.0 | HTML, CSS, JS + Composition API | Options API fallback. Excellent documentation. |
 | **Lit** | 7.0 | Web Components basics | Simple if you know Web Components. |
-| **NativeCoreJS** | 6.0 | TypeScript, class-based OOP, Web Components, Shadow DOM | Class-based pattern is familiar to Angular/Java developers. Shadow DOM, slots, and `customElements` add a barrier for developers who only know JSX/functional patterns. The `CoreController` class pattern for pages is distinctive. |
+| **NativeCoreJS** | 6.0 | JS or TS, class-based OOP, Web Components, Shadow DOM | Apps can start in JavaScript (scaffold default). Class-based `CoreComponent` / `CoreController` is familiar to Angular/Java developers; Shadow DOM, slots, and `customElements` still add a barrier for JSX-only teams. |
 | **React** | 6.0 | JSX, hooks mental model, ecosystem choices | Hooks have sharp edges (stale closures, manual deps arrays). Ecosystem fragmentation adds cognitive load. |
 | **Solid** | 6.0 | JSX, signal ownership, cleanup rules | JSX is familiar. Reactive ownership and `onCleanup` nesting surprises newcomers. |
 | **Qwik** | 4.0 | JSX + resumability concepts + `$` discipline | Resumability is a genuinely novel mental model. `$` scoping rules are non-obvious. |
@@ -660,14 +677,16 @@ Higher score = easier to become productive quickly.
 
 | Rank | Framework | Weighted Score |
 |---:|---|---:|
-| 🥇 1 | **NativeCoreJS** | **8.28** |
-| 🥈 2 | **Svelte 5** | **8.23** |
-| 🥉 3 | **Vue 3** | **8.12** |
+| 1 | **NativeCoreJS** | **8.28** |
+| 2 | **Svelte 5** | **8.23** |
+| 3 | **Vue 3** | **8.12** |
 | 4 | **Solid** | **7.48** |
 | 5 | **React** | **7.41** |
 | 6 | **Angular** | **7.15** |
 | 7 | **Qwik** | **7.15** |
 | 8 | **Lit** | **5.65** |
+
+Weighted totals above are unchanged from the May 2026 scoring pass. Category *scores* were not rebalanced in the August factual refresh — re-review Bundle, Dev Tools, Testing, TypeScript, and Learning Curve before publishing externally.
 
 ### Score Calculations
 
@@ -720,7 +739,7 @@ Higher score = easier to become productive quickly.
 
 ### NativeCoreJS vs. Solid
 
-**NativeCoreJS wins:** Explicit `bind()` API with ref auto-wiring (no querySelector), built-in router with two-layer caching, 65+ UI components, first-class Capacitor mobile, built-in dev overlay, Web Standards compliance — components work outside the framework.
+**NativeCoreJS wins:** Explicit `bind()` API with ref auto-wiring (no querySelector), built-in router with two-layer caching, ~60 `nc-*` UI components, optional Capacitor mobile packaging, built-in localhost dev overlay, Web Standards compliance — components work outside the framework.
 
 **Solid wins:** Marginally superior fine-grained reactivity (no `.value` in JSX, proxy-based), smaller bundle (~7KB vs ~25KB), JSX DX familiar to React developers.
 
@@ -780,7 +799,7 @@ Higher score = easier to become productive quickly.
 
 ### NativeCoreJS vs. Lit
 
-**NativeCoreJS wins:** Built-in router, `CoreController` for page logic, `CoreComponent` `bind()`/`effect()`/ref API, Capacitor mobile, dev tools, SSG, 65+ production UI components. Lit has none of these as an application framework.
+**NativeCoreJS wins:** Built-in router, `CoreController` for page logic, `CoreComponent` `bind()`/`effect()`/ref API, optional Capacitor packaging, localhost dev tools, Puppeteer SSG (`build:ssg`), ~60 production UI components. Lit has none of these as an application framework.
 
 **Lit wins:** Smaller bundle (~5KB), simpler mental model for component-only work, Google backing, excellent for cross-framework design system components.
 
@@ -861,14 +880,14 @@ The combination that no other single framework delivers:
 - The only explicit named `bind()` API in this comparison — 6 overloads covering text, boolean attributes, class toggles, string attributes, and innerHTML, all writing surgically to pre-registered DOM nodes
 - **Ref auto-wiring** — `ref="fieldName"` in template → `this.fieldName` in code, eliminating all `querySelector` boilerplate
 - `CoreController` and `CoreComponent` share the same reactive API surface — consistent patterns for both pages and components
-- Built-in router with two-layer caching (network + rendered DOM), middleware tags, and controller lazy-loading
-- 65+ production-ready Web Component UI components shipping in the framework
-- First-class Capacitor mobile — same DOM code runs on Android and iOS with zero fork
-- Built-in 10-metric performance overlay with DOM delta memory leak detection
+- Built-in router with two-layer caching (network + rendered DOM), middleware tags, and `createLazyController` lazy-loading
+- ~60 production-ready Web Component UI components (`nc-*`) shipping with the framework / scaffold
+- Optional Capacitor mobile packaging — same DOM code can run on Android and iOS without a second component tree
+- Built-in localhost performance overlay with DOM delta memory leak detection
 - 100% Web Standards: output is real `customElements` — embeddable in React, Vue, Angular, or plain HTML with no adapter
 
 Its current gap — ecosystem maturity — is a function of age, not architecture. The reactive primitive benchmarks, the feature surface, and the Web Standards foundation are genuinely competitive with best-in-class.
 
 ---
 
-*Last updated: May 2026. Source: NativeCoreJS devdemo + packages/nativecorejs. Benchmark: `npm run bench`.*
+*Last updated: August 2026 (factual refresh: scaffold JS default, auth-not-shipped, router/SSG/API alignment). Scores last computed May 2026 — human re-review recommended before external use. Sources: `packages/nativecorejs`, `packages/create-nativecore`. Benchmark: `npm run bench`.*

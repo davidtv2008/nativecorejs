@@ -1,9 +1,10 @@
 /**
  * API Service
- * Reusable service for making backend API calls
+ * Reusable service for making backend API calls.
+ *
+ * Auth headers / token refresh are intentionally omitted from the scaffold.
+ * Wire your own auth model into request() when you add authentication.
  */
-import auth from './auth.service.js';
-
 type QueryPrimitive = string | number | boolean | null;
 type QueryKeyValue = QueryPrimitive | QueryKeyObject | QueryKeyValue[];
 type QueryKeyObject = { [key: string]: QueryKeyValue | undefined };
@@ -37,16 +38,6 @@ class ApiService {
     private inFlightRequests = new Map<string, Promise<unknown>>();
     private queryKeyIndex = new Map<string, Set<string>>();
     private tagIndex = new Map<string, Set<string>>();
-    private isRefreshing = false;
-    private refreshQueue: Array<(token: string | null) => void> = [];
-
-    constructor() {
-        auth.subscribe(event => {
-            if (event === 'logout') {
-                this.clearCache();
-            }
-        });
-    }
 
     private resolveBaseURL(): string {
         if (typeof window === 'undefined') {
@@ -64,10 +55,7 @@ class ApiService {
     private isAbsoluteURL(endpoint: string): boolean {
         return /^https?:\/\//i.test(endpoint);
     }
-    
-    /**
-     * Set base URL
-     */
+
     setBaseURL(url: string): void {
         this.baseURL = url;
     }
@@ -123,102 +111,23 @@ class ApiService {
             }
         }
     }
-    
-    /**
-     * Attempt to refresh the access token using the stored refresh token.
-     * Queues concurrent requests that arrive during an in-flight refresh.
-     */
-    private async attemptTokenRefresh(): Promise<string | null> {
-        const refreshToken = auth.getRefreshToken();
-        if (!refreshToken) return null;
 
-        if (this.isRefreshing) {
-            return new Promise(resolve => {
-                this.refreshQueue.push(resolve);
-            });
-        }
-
-        this.isRefreshing = true;
-
-        try {
-            const response = await fetch(`${this.baseURL}/auth/refresh`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ refresh_token: refreshToken }),
-            });
-
-            if (!response.ok) {
-                this.refreshQueue.forEach(cb => cb(null));
-                this.refreshQueue = [];
-                return null;
-            }
-
-            const data = await response.json();
-            const newToken: string | undefined = data.access_token;
-
-            if (!newToken) {
-                this.refreshQueue.forEach(cb => cb(null));
-                this.refreshQueue = [];
-                return null;
-            }
-
-            auth.setTokens(newToken, data.refresh_token ?? null);
-            this.refreshQueue.forEach(cb => cb(newToken));
-            this.refreshQueue = [];
-            return newToken;
-        } catch {
-            this.refreshQueue.forEach(cb => cb(null));
-            this.refreshQueue = [];
-            return null;
-        } finally {
-            this.isRefreshing = false;
-        }
-    }
-
-    /**
-     * Make HTTP request
-     */
     async request<T = any>(endpoint: string, options: RequestInit = {}): Promise<T> {
         const url = this.isAbsoluteURL(endpoint) ? endpoint : `${this.baseURL}${endpoint}`;
 
-        const buildHeaders = (): HeadersInit => ({
-            ...this.defaultHeaders,
-            ...auth.getAuthHeader(),
-            ...options.headers,
-        } as HeadersInit);
-
-        const config: RequestInit = { ...options, headers: buildHeaders() };
+        const config: RequestInit = {
+            ...options,
+            headers: {
+                ...this.defaultHeaders,
+                ...options.headers,
+            } as HeadersInit,
+        };
 
         try {
             const response = await fetch(url, config);
             const data = await this.parseResponse(response);
 
             if (!response.ok) {
-                const isAuthEndpoint = endpoint.includes('/auth/login') || endpoint.includes('/auth/refresh');
-
-                if (response.status === 401 && !isAuthEndpoint) {
-                    const newToken = await this.attemptTokenRefresh();
-
-                    if (newToken) {
-                        // Retry the original request with the fresh token
-                        const retryConfig: RequestInit = { ...options, headers: buildHeaders() };
-                        const retryResponse = await fetch(url, retryConfig);
-                        const retryData = await this.parseResponse(retryResponse);
-
-                        if (!retryResponse.ok) {
-                            auth.logout();
-                            window.dispatchEvent(new CustomEvent('unauthorized'));
-                            throw new Error('Unauthorized - please login again');
-                        }
-
-                        return retryData as T;
-                    }
-
-                    auth.logout();
-                    window.dispatchEvent(new CustomEvent('unauthorized'));
-                    throw new Error('Unauthorized - please login again');
-                }
-
                 const errorMessage = (data as any).error || (data as any).message || `HTTP ${response.status}`;
                 throw new Error(errorMessage);
             }
@@ -229,27 +138,21 @@ class ApiService {
             throw error;
         }
     }
-    
-    /**
-     * Parse response
-     */
+
     private async parseResponse(response: Response): Promise<any> {
         const contentType = response.headers.get('content-type');
-        
+
         if (contentType && contentType.includes('application/json')) {
             return await response.json();
         }
-        
+
         return await response.text();
     }
-    
-    /**
-     * GET request
-     */
+
     async get<T = any>(endpoint: string, params: Record<string, any> = {}): Promise<T> {
         const queryString = new URLSearchParams(params).toString();
         const url = queryString ? `${endpoint}?${queryString}` : endpoint;
-        
+
         return this.request<T>(url, { method: 'GET' });
     }
 
@@ -299,40 +202,28 @@ class ApiService {
         this.inFlightRequests.set(cacheKey, requestPromise as Promise<unknown>);
         return requestPromise;
     }
-    
-    /**
-     * POST request
-     */
+
     async post<T = any>(endpoint: string, body: any = {}): Promise<T> {
         return this.request<T>(endpoint, {
             method: 'POST',
             body: JSON.stringify(body),
         });
     }
-    
-    /**
-     * PUT request
-     */
+
     async put<T = any>(endpoint: string, body: any = {}): Promise<T> {
         return this.request<T>(endpoint, {
             method: 'PUT',
             body: JSON.stringify(body),
         });
     }
-    
-    /**
-     * PATCH request
-     */
+
     async patch<T = any>(endpoint: string, body: any = {}): Promise<T> {
         return this.request<T>(endpoint, {
             method: 'PATCH',
             body: JSON.stringify(body),
         });
     }
-    
-    /**
-     * DELETE request
-     */
+
     async delete<T = any>(endpoint: string): Promise<T> {
         return this.request<T>(endpoint, { method: 'DELETE' });
     }

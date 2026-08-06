@@ -1,6 +1,6 @@
-import { CoreComponent } from '@core/component.js';
-import { html, css, sanitizeURL } from '@core-utils/templates.js';
-import router from '@core/router.js';
+import { CoreComponent } from '../../.nativecore/core/component.js';
+import { html, css, sanitizeURL } from '../../.nativecore/utils/templates.js';
+import router from '../../.nativecore/core/router.js';
 
 export class NcA extends CoreComponent {
 

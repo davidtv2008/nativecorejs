@@ -9,22 +9,19 @@ const lazyController = createLazyController(import.meta.url);
 export function registerRoutes(r: Router): void {
     // @group:public
     r.group({}, (r) => {
-        r.register('/', 'src/views/public/home.html', lazyController('HomeController', '../controllers/home.controller.js'))
+        r.register('/', 'src/views/public/home.html', lazyController('homeController', '../controllers/home.controller.js'))
          .cache({ ttl: 300, revalidate: true });
-
-        r.register('/login', 'src/views/public/login.html', lazyController('loginController', '../controllers/login.controller.js'));
     });
 
+    // Protected routes — start with no middleware tags; after npm run make:middleware,
+    // change middleware: [] to e.g. middleware: ['auth'] and register it in app.ts.
     // @group:protected
-    r.group({ middleware: ['auth'] }, (r) => {
-        r.register('/dashboard', 'src/views/protected/dashboard.html', lazyController('dashboardController', '../controllers/dashboard.controller.js'))
-         .cache({ ttl: 30, revalidate: true });
+    r.group({ middleware: [] }, (r) => {
+        // npm run make:view (answer protected) inserts routes here
     });
 }
 
 /**
- * Paths that use the `auth` middleware — always read via the router after
- * `registerRoutes(router)` (for example in app shell / sidebar logic):
+ * Paths that use a middleware tag — read at runtime after registerRoutes():
  *   router.getPathsForMiddleware('auth')
  */
-

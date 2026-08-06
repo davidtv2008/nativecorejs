@@ -25,32 +25,6 @@ function getFlagValue(flag) {
     return val && !val.startsWith('--') ? val : null;
 }
 
-const VALID_TEMPLATES = ['default', 'dashboard', 'blog', 'ecommerce'];
-
-const TEMPLATE_DESCRIPTIONS = {
-    default:    'Minimal starter — home page, optional auth + dashboard route',
-    dashboard:  'Admin dashboard — stats cards, activity feed, and chart placeholder',
-    blog:       'Blog — post list with search/pagination and post detail view',
-    ecommerce:  'E-commerce — product grid with filters, product detail, and cart',
-};
-
-function resolveTemplate() {
-    const val = getFlagValue('--template');
-    if (!val) return null; // null = ask interactively
-    if (!VALID_TEMPLATES.includes(val)) {
-        console.error(`Unknown --template "${val}". Valid options: ${VALID_TEMPLATES.join(', ')}`);
-        process.exit(1);
-    }
-    return val;
-}
-
-async function askTemplate(useDefaults) {
-    // --template flag already resolved
-    const fromFlag = getFlagValue('--template');
-    if (fromFlag) return fromFlag;
-    return 'default';
-}
-
 function toKebabCase(value) {
     return value
         .trim()
@@ -66,6 +40,18 @@ function toTitleCase(value) {
         .filter(Boolean)
         .map(word => word.charAt(0).toUpperCase() + word.slice(1))
         .join(' ');
+}
+
+function resolveTargetDir(projectInput) {
+    const outDir = getFlagValue('--out-dir');
+    if (outDir) return path.resolve(process.cwd(), outDir);
+
+    // If the positional value looks like a path, treat it as a target directory.
+    const looksLikePath = path.isAbsolute(projectInput) || /[\\/]/.test(projectInput);
+    if (looksLikePath) return path.resolve(process.cwd(), projectInput);
+
+    // Otherwise, use a sanitized project-name folder under the current working dir.
+    return path.resolve(process.cwd(), toKebabCase(projectInput));
 }
 
 async function ask(question, fallback = '') {
@@ -304,8 +290,8 @@ function nativecoreConfigTemplate(config) {
         packageManager: 'npm',
         useTypeScript: config.useTypeScript,
         features: {
-            auth: config.includeAuth,
-            dashboard: config.includeDashboard,
+            auth: false,
+            dashboard: false,
             devTools: true,
             hmr: true,
             mockApi: true,
@@ -315,56 +301,34 @@ function nativecoreConfigTemplate(config) {
 }
 
 function routesTemplate(config) {
-    const loginRoute = config.includeAuth
-        ? `        router.register('/login', 'src/views/public/login.html', lazyController('loginController', '../controllers/login.controller.js'));\n`
-        : '';
-
-    // Default template protected routes
-    const dashboardRoute = config.includeDashboard
-        ? `        router.register('/dashboard', 'src/views/protected/dashboard.html', lazyController('dashboardController', '../controllers/dashboard.controller.js'))\n         .cache({ ttl: 30, revalidate: true });\n`
-        : '';
-
-    // Extra routes injected by starter templates
-    const templatePublicRoutes = {
-        blog: `        router.register('/posts', 'src/views/public/posts.html', lazyController('postsController', '../controllers/posts.controller.js'));\n` +
-              `        router.register('/posts/:slug', 'src/views/public/post-detail.html', lazyController('postDetailController', '../controllers/post-detail.controller.js'));\n`,
-        ecommerce: `        router.register('/shop', 'src/views/public/shop.html', lazyController('shopController', '../controllers/shop.controller.js'));\n` +
-                   `        router.register('/products/:id', 'src/views/public/product-detail.html', lazyController('productDetailController', '../controllers/product-detail.controller.js'));\n` +
-                   `        router.register('/cart', 'src/views/public/cart.html', lazyController('cartController', '../controllers/cart.controller.js'));\n`,
-    };
-
-    const extraPublicRoutes = config.template !== 'default'
-        ? (templatePublicRoutes[config.template] ?? '')
-        : '';
-
-    const protectedGroupRoutes = config.template !== 'default'
-        ? dashboardRoute
-        : dashboardRoute;
-
-    const hasProtectedRoutes = dashboardRoute || protectedGroupRoutes;
-
-    const protectedGroup = hasProtectedRoutes
-        ? `\n    // @group:protected\n    router.group({ middleware: ['auth'] }, (router) => {\n${protectedGroupRoutes}    });\n`
-        : '';
+    const isTs = config.useTypeScript;
+    const typeImport = isTs ? "import type { Router } from '@core/router.js';\n" : '';
+    const signature = isTs ? 'export function registerRoutes(r: Router): void' : 'export function registerRoutes(r)';
 
     return `/**
  * Route Configuration
  */
 import { createLazyController } from '@core/lazyController.js';
-import router from '@core/router.js';
-${config.useTypeScript ? "import type { Router } from '@core/router.js';\n" : ''}
+${typeImport}
 const lazyController = createLazyController(import.meta.url);
 
-export function registerRoutes(router${config.useTypeScript ? ': Router' : ''})${config.useTypeScript ? ': void' : ''} {
+${signature} {
     // @group:public
-    router.group({}, (router) => {
-        router.register('/', 'src/views/public/home.html', lazyController('homeController', '../controllers/home.controller.js'))
+    r.group({}, (r) => {
+        r.register('/', 'src/views/public/home.html', lazyController('homeController', '../controllers/home.controller.js'))
          .cache({ ttl: 300, revalidate: true });
-${loginRoute}${extraPublicRoutes}    });
-${protectedGroup}}
+    });
+
+    // Protected routes — start with no middleware tags; after npm run make:middleware,
+    // change middleware: [] to e.g. middleware: ['auth'] and register it in app.${isTs ? 'ts' : 'js'}.
+    // @group:protected
+    r.group({ middleware: [] }, (r) => {
+        // npm run make:view (answer protected) inserts routes here
+    });
+}
 
 /**
- * Paths that use the \`auth\` middleware — read at runtime after registerRoutes():
+ * Paths that use a middleware tag — read at runtime after registerRoutes():
  *   router.getPathsForMiddleware('auth')
  */
 `;
@@ -372,98 +336,46 @@ ${protectedGroup}}
 
 function appTsTemplate(config) {
     const isTs = config.useTypeScript;
-
-    const authImports = config.includeAuth
-        ? isTs
-            ? "import auth from '@services/auth.service.js';\nimport type { User } from '@services/auth.service.js';\nimport api from '@services/api.service.js';\nimport { createMiddleware } from '@core/createMiddleware.js';\nimport { authMiddleware } from '@middleware/auth.middleware.js';\n"
-            : "import auth from '@services/auth.service.js';\nimport api from '@services/api.service.js';\nimport { createMiddleware } from '@core/createMiddleware.js';\nimport { authMiddleware } from '@middleware/auth.middleware.js';\n"
-        : "";
-
-    const authVerify = config.includeAuth
-        ? isTs
-            ? `async function verifyExistingSession(): Promise<void> {
-    if (!auth.getToken()) {
-        return;
-    }
-
-    try {
-        const response = await api.get<{ authenticated: boolean; user?: User }>('/auth/verify');
-        if (!response?.authenticated || !response.user) {
-            auth.logout();
-            return;
-        }
-
-        auth.setUser(response.user);
-    } catch {
-        auth.logout();
-    }
-}
-
-`
-            : `async function verifyExistingSession() {
-    if (!auth.getToken()) {
-        return;
-    }
-
-    try {
-        const response = await api.get('/auth/verify');
-        if (!response?.authenticated || !response.user) {
-            auth.logout();
-            return;
-        }
-
-        auth.setUser(response.user);
-    } catch {
-        auth.logout();
-    }
-}
-
-`
-        : '';
-
-    const authMiddlewareSetup = config.includeAuth ? '    // @middleware — registered middleware (auto-updated by make:middleware)\n    router.use(createMiddleware(\'auth\', authMiddleware));\n' : '';
-    const authChangeHandler = config.includeAuth ? `    window.addEventListener('auth-change', () => {
-        const isAuth = auth.isAuthenticated();
-        if (!isAuth) {
-            router.replace('/login');
-            document.body.classList.remove('sidebar-enabled');
-            dom.$('#app')?.classList.add('no-sidebar');
-        } else {
-            updateSidebarVisibility();
-        }
-    });
-
-` : '';
-    const authVerificationCall = config.includeAuth ? '    await verifyExistingSession();\n' : '';
-
     const registryComment = isTs ? 'components/registry.ts' : 'components/registry.js';
     const routesComment = isTs ? 'routes/routes.ts' : 'routes/routes.js';
+    const capacitorCheck = isTs
+        ? 'if ((window as any).Capacitor?.isNativePlatform?.()) return false;'
+        : 'if (window.Capacitor?.isNativePlatform?.()) return false;';
+    const devFlag = isTs
+        ? '(window as any).__NATIVECORE_DEV__ = true;'
+        : 'window.__NATIVECORE_DEV__ = true;';
 
     return `/**
  * Main Application Entry Point
  *
  * Boot order:
- *   1. Verify any existing JWT session with the server (keeps users logged in on refresh)
- *   2. Lazy-load Web Components registered in ${registryComment}
- *   3. Expose a frozen router API on window for use inside component templates
- *   4. Register the auth middleware (redirects unauthenticated users away from protected routes)
- *   5. Register all routes from ${routesComment}
- *   6. Start the router (begins listening for navigation events and renders the first view)
- *   7. Initialize sidebar state
- *   8. Load dev tools (localhost only — never ships to production)
+ *   1. Lazy-load Web Components registered in ${registryComment}
+ *   2. Expose a frozen router API on window for use inside component templates
+ *   3. Register middleware (add your own via make:middleware — none ship by default)
+ *   4. Register all routes from ${routesComment}
+ *   5. Start the router (begins listening for navigation events and renders the first view)
+ *   6. Initialize sidebar helpers (no-op until shell chrome is opted in)
+ *   7. Load dev tools (localhost only — never ships to production)
  *
  * Keep this file minimal. Business logic belongs in controllers and services.
  * Routes belong in ${routesComment}. Components belong in ${registryComment}.
+ *
+ * Auth is intentionally not included. Add your own middleware with
+ * \`npm run make:middleware\` and register it with createMiddleware() before
+ * protecting route groups in ${routesComment}.
  */
 import router from '@core/router.js';
-${authImports}import { registerRoutes } from '@routes/routes.js';
+import { registerRoutes } from '@routes/routes.js';
 import { initSidebar } from '@utils/sidebar.js';
 import { initLazyComponents } from '@core/lazyComponents.js';
 import { dom } from '@core-utils/dom.js';
 import { pausePageCleanupCollection, resumePageCleanupCollection } from '@core/pageCleanupRegistry.js';
-import '@components/registry.js';
+import '@components/registry.js'; // side-effect import: registers all lazy components
 
 function isLocalhost()${isTs ? ': boolean' : ''} {
+    // Never treat Capacitor's WebView as localhost — it uses https://localhost as its
+    // internal origin but is a production native app, not a dev server.
+    ${capacitorCheck}
     const hostname = window.location.hostname;
     return hostname === 'localhost' ||
         hostname === '127.0.0.1' ||
@@ -471,26 +383,37 @@ function isLocalhost()${isTs ? ': boolean' : ''} {
         hostname.endsWith('.local');
 }
 
+/**
+ * Sync sidebar visibility with the current route.
+ * Skipped while the default minimal shell is active (no chrome in the DOM).
+ * When you opt into app-header / app-sidebar / app-footer, switch #app to
+ * class="no-sidebar" and this helper will show the sidebar on protected paths.
+ */
 function updateSidebarVisibility() {
-${config.includeAuth ? `    const isAuthenticated = auth.isAuthenticated();` : '    const isAuthenticated = false;'}
-    const currentPath = window.location.pathname;
-    const authProtectedPaths = router.getPathsForMiddleware('auth');
-    const isProtectedRoute = authProtectedPaths.some(route => currentPath.startsWith(route));
     const app = dom.$('#app');
+    if (!app || app.classList.contains('minimal-shell')) {
+        return;
+    }
 
-    if (isAuthenticated && isProtectedRoute) {
+    const currentPath = window.location.pathname;
+    const protectedPaths = router.getPathsForMiddleware('auth');
+    const isProtectedRoute = protectedPaths.some(route => currentPath.startsWith(route));
+
+    if (isProtectedRoute) {
         document.body.classList.add('sidebar-enabled');
-        app?.classList.remove('no-sidebar');
+        app.classList.remove('no-sidebar');
     } else {
         document.body.classList.remove('sidebar-enabled');
-        app?.classList.add('no-sidebar');
+        app.classList.add('no-sidebar');
     }
 }
 
-${authVerify}async function init() {
-${authVerificationCall}    await initLazyComponents();
+async function init() {
+    // Register and prepare lazy-loaded Web Components before the first route renders
+    await initLazyComponents();
 
-    // Expose router globally for components (frozen to prevent XSS manipulation)
+    // Expose a minimal, frozen router API on window so components can navigate
+    // without importing the router directly. Frozen to prevent runtime tampering.
     Object.defineProperty(window, 'router', {
         value: Object.freeze({
             navigate: router.navigate.bind(router),
@@ -502,21 +425,38 @@ ${authVerificationCall}    await initLazyComponents();
         configurable: false,
     });
 
-${authMiddlewareSetup}    registerRoutes(router);
+    // @middleware — register middleware here (auto-updated by make:middleware)
+    // Example after npm run make:middleware auth:
+    //   import { createMiddleware } from '@core/createMiddleware.js';
+    //   import { authMiddleware } from '@middleware/auth.middleware.js';
+    //   router.use(createMiddleware('auth', authMiddleware));
 
+    // Register all app routes (defined in ${routesComment})
+    registerRoutes(router);
+
+    // Start the router: match the current URL and render the first view.
+    // Pause collection so that any effects or trackers created during app-level
+    // bootstrap (before the first page controller runs) are never flushed by
+    // subsequent navigations.
     pausePageCleanupCollection();
     router.start();
     resumePageCleanupCollection();
 
     initSidebar();
 
-${authChangeHandler}    window.addEventListener('pageloaded', () => {
+    // After each navigation the router dispatches 'pageloaded' — re-sync sidebar visibility
+    window.addEventListener('pageloaded', () => {
         updateSidebarVisibility();
     });
 
     initDevTools();
 }
 
+/**
+ * Load HMR and the component inspector dev tools.
+ * SECURITY: guarded by isLocalhost() — these modules are never loaded in production.
+ * The build script also strips the entire .nativecore/ import block from the production bundle.
+ */
 function initDevTools()${isTs ? ': void' : ''} {
     if (!isLocalhost()) {
         return;
@@ -528,11 +468,13 @@ function initDevTools()${isTs ? ': void' : ''} {
         import('@dev/devOverlay.js'),
     ])
         .then(([, , { initDevOverlay }]) => {
-            window.__NATIVECORE_DEV__ = true;
+            console.warn('[NativeCore] Dev tools loaded');
+            ${devFlag}
             initDevOverlay();
         })
-        .catch(() => {
-            // Dev tools not available.
+        .catch((err) => {
+            // Dev tools not available in production builds; log in local so failures are visible.
+            console.error('[NativeCore] Dev tools failed to load:', err);
         });
 }
 
@@ -541,238 +483,22 @@ init();
 }
 
 function homeControllerTemplate(config) {
-    const authenticatedHref = config.includeDashboard ? '/dashboard' : '/';
-    const authenticatedLabel = config.includeDashboard ? 'Go to Dashboard' : 'Get Started';
-    const unauthenticatedHref = config.includeAuth ? '/login' : authenticatedHref;
-    const unauthenticatedLabel = config.includeAuth
-        ? 'Sign In'
-        : config.includeDashboard
-            ? 'Open Dashboard'
-            : 'Get Started';
     const isTs = config.useTypeScript;
+    const returnType = isTs ? ': () => void' : '';
 
-    if (isTs) {
-        return `import { CoreController } from '@core/controller.js';
-import auth from '@services/auth.service.js';
-import type { State } from '@core/controller.js';
+    return `import { CoreController } from '@core/controller.js';
 
 export class HomeController extends CoreController {
-
-    // --- REFS ---
-    private ctaBtn!: HTMLElement;
-
-    // --- STATE ---
-    // Initialized in onMount() — class field initializers run after super(),
-    // which already calls onMount(), so state must be created here instead.
-    private authed!: State<boolean>;
-
-    // --- LIFECYCLE ---
     onMount() {
-        this.authed = this.state(false);
-        this.bind(this.authed, this.ctaBtn, '.hero-primary--authed');
-        this._sync();
-        this.on(window, 'auth-change', () => this._sync());
-    }
-
-    // --- PRIVATE ---
-    private _sync(): void {
-        const authed = auth.isAuthenticated();
-        this.ctaBtn.setAttribute('href', authed ? '${authenticatedHref}' : '${unauthenticatedHref}');
-        this.ctaBtn.textContent = authed ? '${authenticatedLabel}' : '${unauthenticatedLabel}';
-        this.authed.value = authed;
+        // Home is a static welcome surface — add view logic here as the app grows.
     }
 }
 
 // Factory — called by the router via lazyController('homeController', ...)
-export function homeController(): () => void {
+export function homeController()${returnType} {
     const ctrl = new HomeController();
     return () => ctrl.destroy();
 }
-`;
-    }
-
-    return `import { CoreController } from '@core/controller.js';
-import auth from '@services/auth.service.js';
-
-export class HomeController extends CoreController {
-
-    onMount() {
-        this._sync();
-        this.on(window, 'auth-change', () => this._sync());
-    }
-
-    _sync() {
-        const authed = auth.isAuthenticated();
-        const ctaBtn = this.el.querySelector('[ref="ctaBtn"]');
-        if (!ctaBtn) return;
-        ctaBtn.setAttribute('href', authed ? '${authenticatedHref}' : '${unauthenticatedHref}');
-        ctaBtn.textContent = authed ? '${authenticatedLabel}' : '${unauthenticatedLabel}';
-    }
-}
-
-export function homeController() {
-    const ctrl = new HomeController();
-    return () => ctrl.destroy();
-}
-`;
-}
-
-function homeViewTemplate(config) {
-    const primaryHref = config.includeAuth ? '/login' : config.includeDashboard ? '/dashboard' : '/';
-    const primaryLabel = config.includeAuth ? 'Sign In' : config.includeDashboard ? 'Open Dashboard' : 'Get Started';
-    const badge = config.useTypeScript
-        ? 'TypeScript-first. Web Components. Dev tools included.'
-        : 'JavaScript. Web Components. Dev tools included.';
-    const tagline = config.useTypeScript
-        ? `Build modern applications with a browser-native architecture that leans on web standards,
-            not proprietary runtimes. NativeCoreJS keeps you close to the platform with Web Components,
-            TypeScript, reactive state, and high-performance patterns that stay durable as the web evolves.`
-        : `Build modern applications with a browser-native architecture that leans on web standards,
-            not proprietary runtimes. NativeCoreJS keeps you close to the platform with Web Components,
-            reactive state, and high-performance patterns that stay durable as the web evolves.`;
-
-    return `<div data-view="home">
-<section class="hero">
-    <div class="hero-inner">
-        <div class="hero-badge">${badge}</div>
-
-        <h1>NativeCoreJS</h1>
-
-        <p class="hero-tagline">
-            ${tagline}
-        </p>
-
-        <div class="hero-actions">
-            <nc-a ref="ctaBtn" variant="outline" href="${primaryHref}">${primaryLabel}</nc-a>
-            <nc-a variant="hero-ghost" href="https://nativecorejs.com/docs" target="_blank" rel="noopener noreferrer">Read the Docs</nc-a>
-            <nc-a variant="hero-ghost" href="https://nativecorejs.com/components">Component Library</nc-a>
-        </div>
-
-        <div class="hero-stats">
-            <div class="stat-item">
-                <span class="stat-number">Full</span>
-                <span class="stat-label">Project Template</span>
-            </div>
-            <div class="stat-item">
-                <span class="stat-number">Built-in</span>
-                <span class="stat-label">Dev Tools</span>
-            </div>
-            <div class="stat-item">
-                <span class="stat-number">Local</span>
-                <span class="stat-label">Mock API</span>
-            </div>
-        </div>
-    </div>
-</section>
-</div>
-`;
-}
-
-function loginViewTemplate() {
-    return `<div class="login-experience" data-view="login">
-    <div class="login-shell">
-        <!-- Product context / value proposition -->
-        <section class="login-showcase" aria-label="Demo access overview">
-            <div class="login-showcase__eyebrow">Enterprise Demo Access</div>
-            <h1 class="login-showcase__title">Demo sign in.</h1>
-            <p class="login-showcase__copy">
-                Simple access to the NativeCore dashboard demo.
-            </p>
-
-            <div class="login-showcase__grid">
-                <article class="login-showcase__card">
-                    <h2>What this demo proves</h2>
-                    <ul class="login-showcase__list">
-                        <li>Protected route gating with dashboard handoff</li>
-                        <li>API-backed authentication flow using seeded demo users</li>
-                        <li>Component-driven UI built from NativeCore primitives</li>
-                    </ul>
-                </article>
-
-                <article class="login-showcase__card login-showcase__card--accent">
-                    <h2>Included in the walkthrough</h2>
-                    <div class="login-showcase__metrics">
-                        <div>
-                            <strong>Public routes</strong>
-                            <span>Marketing site and docs entry</span>
-                        </div>
-                        <div>
-                            <strong>Protected routes</strong>
-                            <span>Dashboard access, auth state, and API data</span>
-                        </div>
-                        <div>
-                            <strong>Demo account</strong>
-                            <span>Pre-seeded credentials for fast validation</span>
-                        </div>
-                    </div>
-                </article>
-            </div>
-        </section>
-
-        <!-- Auth form surface -->
-        <section class="login-panel" aria-label="Sign in form">
-            <div class="login-panel__header">
-                <p class="login-panel__eyebrow">Secure Workspace Sign In</p>
-                <h2>Access the NativeCore demo dashboard</h2>
-                <p>Use the demo credentials below.</p>
-            </div>
-
-            <div class="login-demo-credentials" aria-label="Demo credentials">
-                <div class="login-demo-credentials__item">
-                    <span>Demo email</span>
-                    <strong>demo@example.com</strong>
-                </div>
-                <div class="login-demo-credentials__item">
-                    <span>Demo password</span>
-                    <strong>pa$$w0rd</strong>
-                </div>
-            </div>
-
-            <div id="login-error" class="login-alert alert alert-error" hidden aria-live="polite" wire-content="errorMessage"></div>
-
-            <nc-form id="loginForm" class="login-form">
-                <nc-field class="login-field" label="Work Email" for="email" required>
-                    <nc-input
-                        id="email"
-                        name="email"
-                        type="email"
-                        autocomplete="username email"
-                        placeholder="demo@example.com"
-                        value="demo@example.com"
-                        required
-                    ></nc-input>
-                </nc-field>
-
-                <nc-field class="login-field" label="Password" for="password" required>
-                    <nc-input
-                        id="password"
-                        name="password"
-                        type="password"
-                        autocomplete="current-password"
-                        placeholder="Enter your password"
-                        value="pa$$w0rd"
-                        required
-                        minlength="8"
-                        show-password-toggle
-                    ></nc-input>
-                </nc-field>
-
-                <div class="login-form__utility">
-                    <nc-checkbox id="rememberMe" name="rememberMe" label="Remember demo email" checked></nc-checkbox>
-                    <a href="/docs" data-link class="login-form__utility-link">Review the docs</a>
-                </div>
-
-                <nc-button id="loginBtn" type="submit" variant="primary" size="lg" full-width>
-                    Access Dashboard
-                </nc-button>
-            </nc-form>
-
-            <p class="login-panel__footer">
-                Demo account only. The credentials above are intentionally exposed for evaluation purposes.
-            </p>
-        </section>
-    </div>
-</div>
 `;
 }
 
@@ -872,61 +598,17 @@ export default [
 `;
 }
 
+function controllersIndexTemplate() {
+    return `/**
+ * Controller Registry
+ */
 
-function controllersIndexTemplate(config) {
-    const lines = [
-        '/**',
-        ' * Controller Registry',
-        ' */',
-        '',
-        "export { homeController } from './home.controller.js';"
-    ];
-
-    if (config.includeAuth) {
-        lines.push("export { loginController } from './login.controller.js';");
-    }
-
-    // Default template: honour includeDashboard flag
-    if (config.template === 'default' && config.includeDashboard) {
-        lines.push("export { dashboardController } from './dashboard.controller.js';");
-    }
-
-    // Starter templates: export their own controllers
-    if (config.template === 'dashboard') {
-        lines.push("export { dashboardController } from './dashboard.controller.js';");
-    }
-    if (config.template === 'blog') {
-        lines.push("export { postsController } from './posts.controller.js';");
-        lines.push("export { postDetailController } from './post-detail.controller.js';");
-    }
-    if (config.template === 'ecommerce') {
-        lines.push("export { shopController } from './shop.controller.js';");
-        lines.push("export { productDetailController } from './product-detail.controller.js';");
-        lines.push("export { cartController } from './cart.controller.js';");
-    }
-
-    return `${lines.join('\n')}\n`;
+export { homeController } from './home.controller.js';
+`;
 }
 
 async function copyTemplate(targetDir) {
     await fs.cp(templateDir, targetDir, { recursive: true, force: true });
-}
-
-/**
- * Overlay a starter-template directory on top of the base copy.
- * Only files that exist in the overlay are written — everything else keeps
- * the base template version.
- */
-async function overlayTemplate(targetDir, templateName) {
-    if (templateName === 'default') return;
-    const overlayDir = path.resolve(__dirname, `../templates/${templateName}`);
-    try {
-        await fs.access(overlayDir);
-    } catch {
-        // Overlay doesn't exist — silently skip (safe for future additions)
-        return;
-    }
-    await fs.cp(overlayDir, targetDir, { recursive: true, force: true });
 }
 
 async function customizeProject(targetDir, config) {
@@ -936,29 +618,9 @@ async function customizeProject(targetDir, config) {
     await writeFile(path.join(targetDir, 'nativecore.config.json'), nativecoreConfigTemplate(config));
     await writeFile(path.join(targetDir, `src/app.${ext}`), appTsTemplate(config));
     await writeFile(path.join(targetDir, `src/routes/routes.${ext}`), routesTemplate(config));
-    await writeFile(path.join(targetDir, `src/controllers/index.${ext}`), controllersIndexTemplate(config));
-
-    // For non-default templates the overlay already provides home + template
-    // specific views/controllers, so only generate them for the default template.
-    if (config.template === 'default') {
-        await writeFile(path.join(targetDir, `src/controllers/home.controller.${ext}`), homeControllerTemplate(config));
-        await writeFile(path.join(targetDir, 'src/views/public/home.html'), homeViewTemplate(config));
-    }
-
-    // Apply the template overlay (no-op for 'default')
-    await overlayTemplate(targetDir, config.template);
-
-    if (config.includeAuth) {
-        await writeFile(path.join(targetDir, 'src/views/public/login.html'), loginViewTemplate());
-    } else {
-        await removeIfExists(path.join(targetDir, `src/controllers/login.controller.${ext}`));
-        await removeIfExists(path.join(targetDir, 'src/views/public/login.html'));
-    }
-
-    if (!config.includeDashboard) {
-        await removeIfExists(path.join(targetDir, `src/controllers/dashboard.controller.${ext}`));
-        await removeIfExists(path.join(targetDir, 'src/views/protected/dashboard.html'));
-    }
+    await writeFile(path.join(targetDir, `src/controllers/index.${ext}`), controllersIndexTemplate());
+    await writeFile(path.join(targetDir, `src/controllers/home.controller.${ext}`), homeControllerTemplate(config));
+    // home.html ships from the template copy — enterprise starter welcome page
 
     await replaceInFile(path.join(targetDir, `src/services/api.service.${ext}`), content => content.replace("        return 'https://api.nativecorejs.com';", "        return '/api';"));
 
@@ -1007,11 +669,11 @@ async function customizeProject(targetDir, config) {
 }
 
 async function buildProject(config) {
-    const targetDir = path.resolve(process.cwd(), config.projectName);
+    const targetDir = config.targetDir;
 
     try {
         await fs.access(targetDir);
-        throw new Error(`Target directory already exists: ${config.projectName}`);
+        throw new Error(`Target directory already exists: ${targetDir}`);
     } catch (error) {
         if (error.code !== 'ENOENT') throw error;
     }
@@ -1027,8 +689,8 @@ async function buildProject(config) {
 
     await customizeProject(targetDir, config);
 
-    // Second strip pass: convert any .ts files added by the starter template
-    // overlay (blog, dashboard, ecommerce) that ran inside customizeProject.
+    // Second strip pass: convert any .ts files written during customizeProject
+    // when generating TypeScript-shaped content that still needs stripping.
     if (!config.useTypeScript) {
         await stripAllTypeScript(targetDir);
     }
@@ -1039,45 +701,27 @@ async function buildProject(config) {
 async function main() {
     console.log('\nNativeCore installer\n');
 
-    const positionalName = cliArgs.find(arg => !arg.startsWith('--'));
-    const rawName = positionalName || await ask('Project name', 'my-nativecore-app');
-    const projectName = toKebabCase(rawName);
+    const positionalInput = cliArgs.find(arg => !arg.startsWith('--'));
+    const rawInput = positionalInput || await ask('Project name', 'my-nativecore-app');
+    const resolvedTargetDir = resolveTargetDir(rawInput);
+
+    // Derive package-safe name from the final target folder.
+    const projectName = toKebabCase(path.basename(resolvedTargetDir));
     if (!projectName) {
-        console.error('Error: project name is empty after sanitization. Use only letters, numbers, and hyphens.');
+        console.error('Error: project name is empty after sanitization. Use a folder name with letters, numbers, and hyphens.');
         rl.close();
         process.exit(1);
     }
     const projectTitle = toTitleCase(projectName);
     const useDefaults = hasFlag('--defaults');
-    const template = await askTemplate(useDefaults);
 
-    if (!useDefaults && !hasFlag('--no-auth')) {
-        console.log('Auth strategy note:');
-        console.log('  The included auth flow uses JWT tokens stored in sessionStorage with');
-        console.log('  automatic refresh token rotation. Tokens are cleared when the browser');
-        console.log('  tab closes. If your project requires a different strategy (HttpOnly');
-        console.log('  cookies, OAuth, SSO, etc.) it is your responsibility to replace the');
-        console.log('  auth.service.ts and api.service.ts implementations accordingly.');
-        console.log('');
-    }
-
-    const useTypeScript = hasFlag('--js')
-        ? false
-        : hasFlag('--ts') || useDefaults
-            ? true
-            : await askYesNo('Use TypeScript?', true);
-    const includeAuth = hasFlag('--no-auth')
-        ? false
-        : useDefaults
-            ? true
-            : await askYesNo('Include auth flow?', true);
-    const includeDashboard = template !== 'default'
-        ? false  // non-default templates own their own routes
-        : hasFlag('--no-dashboard')
+    // JavaScript is the default when no language flag is set (--defaults included).
+    // Pass --ts to opt into TypeScript.
+    const useTypeScript = hasFlag('--ts')
+        ? true
+        : hasFlag('--js') || useDefaults
             ? false
-            : useDefaults
-                ? true
-                : await askYesNo('Include dashboard route?', true);
+            : await askYesNo('Use TypeScript?', false);
     const includeCapacitor = hasFlag('--capacitor')
         ? true
         : hasFlag('--no-capacitor') || useDefaults
@@ -1088,12 +732,10 @@ async function main() {
     const config = {
         projectName,
         projectTitle,
+        targetDir: resolvedTargetDir,
         useTypeScript,
-        includeAuth,
-        includeDashboard,
         includeCapacitor,
-        shouldInstall,
-        template
+        shouldInstall
     };
 
     const targetDir = await buildProject(config);
@@ -1113,7 +755,7 @@ async function main() {
         console.log('  terser            — minifies JS output for production builds');
         console.log('  vitest            — unit test runner');
         console.log('  happy-dom         — lightweight DOM environment for unit tests');
-        console.log('  puppeteer         — headless browser used for bot pre-rendering (npm run build:bots)');
+        console.log('  puppeteer         — headless browser used for SSG pre-rendering (npm run build:ssg)');
         console.log('  eslint            — linter');
         if (config.useTypeScript) {
             console.log('  typescript-eslint — TypeScript-aware ESLint rules');
@@ -1141,7 +783,11 @@ async function main() {
     }
 
     console.log('\nProject ready.');
-    console.log(`\n  cd ${config.projectName}`);
+    const cdHint = path.relative(process.cwd(), targetDir);
+    const cdPath = cdHint && !cdHint.startsWith('..') && !path.isAbsolute(cdHint)
+        ? cdHint
+        : targetDir;
+    console.log(`\n  cd ${cdPath}`);
 
     const capConfigFile = `capacitor.config.${config.useTypeScript ? 'ts' : 'js'}`;
 
@@ -1168,35 +814,6 @@ async function main() {
         }
     }
 
-    if (config.template !== 'default') {
-        const storeExt = config.useTypeScript ? 'ts' : 'js';
-        const templateHints = {
-            dashboard: [
-                'Template: dashboard',
-                '  • Your app includes an auth-protected dashboard route.',
-                '  • Open src/features/dashboard/ to find the controller, store, and view.',
-                '  • Run `npm run make:component` to add data-display components.',
-            ],
-            blog: [
-                'Template: blog',
-                '  • Your app is configured for a content-first, SEO-ready blog.',
-                '  • Run `npm run build:ssg` after `npm run build` to pre-render post pages.',
-                '  • Add posts as HTML view partials in src/views/posts/.',
-            ],
-            ecommerce: [
-                'Template: ecommerce',
-                '  • Your app includes a product listing, cart store, and checkout route.',
-                `  • Open src/stores/cart.store.${storeExt} to connect your payment provider.`,
-                '  • Run `npm run build:full` for a Cloudflare Pages-ready deployment.',
-            ],
-        };
-        const hints = templateHints[config.template];
-        if (hints) {
-            console.log('');
-            hints.forEach(h => console.log(h));
-        }
-    }
-
     if (installError) {
         console.log('\nDependency installation did not complete:');
         console.log(installError.message);
@@ -1211,5 +828,3 @@ main().catch(error => {
     rl.close();
     process.exit(1);
 });
-
-

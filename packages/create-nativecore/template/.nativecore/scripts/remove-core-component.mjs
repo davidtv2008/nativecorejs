@@ -17,11 +17,11 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 const ROOT = path.resolve(__dirname, '../..');
 
-let useTypeScript = true;
+let useTypeScript = false;
 try {
   const ncConfig = JSON.parse(fs.readFileSync(path.join(ROOT, 'nativecore.config.json'), 'utf8'));
-  if (ncConfig.useTypeScript === false) useTypeScript = false;
-} catch { /* default to TypeScript */ }
+  if (ncConfig.useTypeScript === true) useTypeScript = true;
+} catch { /* default to JavaScript (matches create-nativecore defaults) */ }
 const ext = useTypeScript ? 'ts' : 'js';
 
 // Get component name from command line
@@ -47,6 +47,7 @@ const componentsDir = path.resolve(ROOT, 'src', 'components');
 const coreDir = path.join(componentsDir, 'core');
 const componentFile = path.join(coreDir, `${componentName}.${ext}`);
 const preloadFile = path.join(componentsDir, `preloadRegistry.${ext}`);
+const frameworkFile = path.join(componentsDir, `frameworkRegistry.${ext}`);
 
 console.log(`\n🗑️  Removing core component: ${componentName}\n`);
 
@@ -73,6 +74,26 @@ if (fs.existsSync(preloadFile)) {
   }
 } else {
   console.log(`⚠️  preloadRegistry.${ext} not found`);
+}
+
+// Step 2b: Remove from frameworkRegistry.<ext>
+let removedFromFramework = false;
+if (fs.existsSync(frameworkFile)) {
+  let frameworkContent = fs.readFileSync(frameworkFile, 'utf-8');
+  const frameworkPattern = new RegExp(
+    `\\s*componentRegistry\\.register\\('${componentName}',\\s*'\\./core/${componentName}\\.js'\\);\\s*\\n?`,
+    'g'
+  );
+  if (frameworkPattern.test(frameworkContent)) {
+    frameworkContent = frameworkContent.replace(frameworkPattern, '\n');
+    fs.writeFileSync(frameworkFile, frameworkContent);
+    console.log(`✅ Removed from frameworkRegistry.${ext}`);
+    removedFromFramework = true;
+  } else {
+    console.log(`⚠️  Registration not found in frameworkRegistry.${ext}`);
+  }
+} else {
+  console.log(`⚠️  frameworkRegistry.${ext} not found`);
 }
 
 // Step 3: Find and list usages in codebase
@@ -160,6 +181,9 @@ console.log('📝 Summary:');
 console.log(`   ✓ Deleted: src/components/core/${componentName}.${ext}`);
 if (removedFromPreload) {
   console.log(`   ✓ Removed from: src/components/preloadRegistry.${ext}`);
+}
+if (removedFromFramework) {
+  console.log(`   ✓ Removed from: src/components/frameworkRegistry.${ext}`);
 }
 console.log('');
 

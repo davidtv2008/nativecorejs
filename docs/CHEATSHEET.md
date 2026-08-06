@@ -1,521 +1,350 @@
 # NativeCoreJS Cheat Sheet
 
-A single-page reference for the 20 most common patterns.
+Single-page reference for create-nativecore apps (vendored `.nativecore/`).
+Verified against the current template — see [ebook](./ebook/README.md) for narrative.
+
+**Defaults:** JavaScript scaffold · auth is BYO · prefer `CoreController` / `CoreComponent`.
 
 ---
 
-## Reactive State
+## Reactive state
 
-```javascript
+```js
 import { useState, computed, effect, batch } from '@core/state.js';
 
-// Primitive state
 const count = useState(0);
-count.value;                       // read
-count.value = 5;                   // set by assignment
-count.set(prev => prev + 1);       // set by updater
+count.value;                    // read
+count.value = 5;                // write
+count.set(prev => prev + 1);    // updater
+count.watch(v => console.log(v));
 
-// Derived state (recomputes when dependencies change)
 const doubled = computed(() => count.value * 2);
-
-// Side effect (re-runs when dependencies change)
-const stop = effect(() => {
-    console.log(doubled.value);
-});
+const stop = effect(() => { console.log(doubled.value); });
 stop(); // dispose
 
-// Batch multiple state writes → single notification pass
-batch(() => {
-    count.value = 10;
-    // other state writes…
-});
+batch(() => { count.value = 10; /* more writes */ });
 ```
+
+On controllers/components prefer instance APIs: `this.state`, `this.signal`,
+`this.compute` / `this.memo`, `this.effect` (auto-cleaned on destroy/unmount).
 
 ---
 
-## Controllers
+## Controllers (canonical)
 
-```javascript
-import { useState, effect } from '@core/state.js';
-import { trackEvents } from '@core-utils/events.js';
+```js
+import { CoreController } from '@core/controller.js';
 
-export async function pageController(params, state, loaderData) {
-    const events = trackEvents();
+export class TasksController extends CoreController {
+    onMount() {
+        this.assertRefs('titleEl', 'addBtn');
+        this.title = this.state('Tasks');
+        this.bind(this.title, this.titleEl);
+        this.on(this.addBtn, 'click', () => { this.title.value = 'Clicked'; });
+    }
+}
 
-    const items = useState([]);
-    effect(() => render(items.value)); // auto-cleaned on navigation
-
-    events.on(document, 'click', '#btn', () => { items.value = []; });
-
-    return () => {
-        // wire* / effect() cleanup is auto-registered by the framework.
-        // Return cleanup for explicit resources like tracked events or timers.
-        events.cleanup();
-    };
+export function tasksController(_params, _state, _loaderData, rootElement) {
+    const ctrl = new TasksController(rootElement);
+    return () => ctrl.destroy();
 }
 ```
+
+`lazyController('tasksController', '…')` must match the **function** export name.
+Router passes `(params, state, loaderData)` only — `rootElement` is usually
+undefined; `CoreController` falls back to `[data-view]`.
+
+Optional functional style: `trackEvents()` from `@core-utils/events.js`.
 
 ---
 
 ## Routing
 
-### `routes.js` — declaring routes
-
-```javascript
+```js
 import { createLazyController } from '@core/lazyController.js';
-import router from '@core/router.js';
 
-const lazy = createLazyController(import.meta.url);
+const lazyController = createLazyController(import.meta.url);
 
 export function registerRoutes(r) {
-    // @group:public
     r.group({}, (r) => {
         r.register('/', 'src/views/public/home.html',
-            lazy('homeController', '../controllers/home.controller.js'))
+            lazyController('homeController', '../controllers/home.controller.js'))
          .cache({ ttl: 300, revalidate: true });
 
-        r.register('/login', 'src/views/public/login.html',
-            lazy('loginController', '../controllers/login.controller.js'));
-    });
-
-    // @group:protected
-    r.group({ middleware: ['auth'] }, (r) => {
-        r.register('/dashboard', 'src/views/protected/dashboard.html',
-            lazy('dashboardController', '../controllers/dashboard.controller.js'))
-         .cache({ ttl: 30, revalidate: true });
-
-        r.register('/tasks/:id', 'src/views/protected/task.html',
-            lazy('taskController', '../controllers/task.controller.js'));
-
-        // With data loader (runs before controller)
-        r.register('/profile', 'src/views/protected/profile.html',
-            lazy('profileController', '../controllers/profile.controller.js'), {
-                loader: async (params, signal) => fetchData('/api/me', { signal })
+        r.register('/tasks/:id', 'src/views/public/task-detail.html',
+            lazyController('taskDetailController', '../controllers/task-detail.controller.js'), {
+                loader: async (params, signal) => {
+                    const res = await fetch(`/api/tasks/${params.id}`, { signal });
+                    return res.json();
+                },
             });
     });
+
+    // Attach your own tags after make:middleware — none ship by default
+    r.group({ middleware: ['session'] }, (r) => {
+        r.register('/settings', 'src/views/protected/settings.html',
+            lazyController('settingsController', '../controllers/settings.controller.js'));
+    });
 }
-
-export const protectedRoutes = router.getPathsForMiddleware('auth');
 ```
 
-`r.group({ middleware: ['auth'] }, cb)` stamps every route in the callback with the `auth` tag. Groups can be nested; inner groups inherit ancestor tags. The optional `prefix` option prepends a path segment to every route in the group.
+Params: `:id`, `:id?`, `*` → `params.wildcard`.
 
-### `app.js` — middleware and boot
-
-```javascript
+```js
 import { createMiddleware } from '@core/createMiddleware.js';
-import { authMiddleware } from './middleware/auth.middleware.js';
-import { registerRoutes } from './routes/routes.js';
+import { sessionMiddleware } from '@middleware/session.middleware.js';
 
-// @middleware — registered middleware (auto-updated by make:middleware)
-router.use(createMiddleware('auth', authMiddleware)); // only fires on 'auth'-tagged routes
-router.use(loggingMiddleware);                        // no tag → fires on every navigation
-
+router.use(createMiddleware('session', sessionMiddleware));
 registerRoutes(router);
-router.start(); // call exactly once
+router.start();
 ```
 
-`createMiddleware('tag', fn)` wraps `fn` so it **only runs** when the navigated route carries that tag (checked via `router.getTagsForPath()`).
-
-### Middleware signature
-
-```javascript
-// src/middleware/auth.middleware.js
-import router from '@core/router.js';
-
-export async function authMiddleware(route, state) {
-    if (!auth.isAuthenticated()) {
-        router.replace('/login', { redirect: route.path }); // return false to cancel
+```js
+export async function sessionMiddleware(route, state) {
+    if (!sessionStorage.getItem('deskflowSession')) {
+        window.router.navigate('/?signin=1');
         return false;
     }
-    return true; // allow navigation
+    return true;
 }
 ```
 
-Return `true` to allow, `false` to cancel. Async middleware is supported — return `Promise<boolean>`.
+**`window.router` (frozen):** `navigate`, `replace`, `back`, `getCurrentRoute`.
 
-### Navigation helpers
+Full router (import): also `prefetch`, `bustCache`, `getTagsForPath`,
+`getPathsForMiddleware`, `getCacheSnapshot`.
 
-```javascript
-router.navigate('/path');
-router.navigate('/items/42', { from: 'list' }); // state passed to middleware + controller
-router.replace('/login');                        // swap history entry (no back-stack entry)
-router.back();
-
-router.prefetch('/dashboard');
-router.bustCache('/dashboard');
-
-const route = router.getCurrentRoute(); // { path, params, config }
-```
+There is **no** shipped `auth.service` / login page.
 
 ---
 
 ## Components
 
-```javascript
-import { Component, defineComponent } from '@core/component.js';
+```js
+import { CoreComponent, defineComponent } from '@core/component.js';
+import { html } from '@core-utils/templates.js';
 
-class MyCard extends Component {
+export class TaskCard extends CoreComponent {
     static useShadowDOM = true;
-    static get observedAttributes() { return ['title', 'variant']; }
+    static observedAttributes = ['title'];
 
     template() {
-        const title = this.getAttribute('title') ?? '';
-        return `<div class="card">${escapeHTML(title)}</div>`;
-    }
-
-    onMount() {
-        this.on('click', '.card', () => this.emitEvent('nc-click'));
-    }
-
-    onAttributeChange(name, oldValue, newValue) {
-        if (name === 'title') this.render();
-    }
-
-    onUnmount() {
-        // event listeners added via this.on() are auto-removed
-    }
-}
-
-defineComponent('my-card', MyCard);
-```
-
----
-
-## Bind API (Fine-Grained Updates)
-
-```javascript
-// In a Component subclass — all subscriptions auto-disposed on unmount:
-const loading = useState(false);
-const label   = useState('Submit');
-
-this.bind(loading, '#spinner', 'hidden');    // elem.hidden = loading.value
-this.bind(label, '#btn');                    // elem.textContent = label.value
-this.bindAttr(loading, '#btn', 'disabled'); // elem.setAttribute('disabled', ...)
-this.bindClass(loading, '#btn', 'is-loading'); // elem.classList.toggle(...)
-this.bindStyle(progress, '.bar', 'width');   // elem.style.setProperty(...)
-
-// Multiple bindings at once
-this.bindAll({
-    '.stats__total':     this.total,
-    '.stats__completed': this.completed,
-});
-
-// Two-way binding — explicit (for one-offs or dynamic selectors)
-this.model(this.username, 'input[name="username"]');
-this.model(this.rating, 'nc-rating', { event: 'nc-change', prop: 'value' }); // custom
-```
-
----
-
-## Wires — Declarative Controller Bindings
-
-Standalone utilities from `@core-utils/wires.js` that auto-register cleanup via the Page Cleanup Registry (no return value needed):
-
-```javascript
-import { wireInputs, wireContents, wireAttributes, wireClasses, wireStyles } from '@core-utils/wires.js';
-
-export async function tasksController() {
-    // Two-way: [wire-input="key"] ↔ State<T>
-    const { title, done } = wireInputs();
-
-    // Display: [wire-content="key"] → State<string> (textContent)
-    const { heading, count } = wireContents();
-
-    // Attribute: [wire-attribute="key:attr-name"] → State<string> (setAttribute)
-    const { status, busy } = wireAttributes();
-    // Class: [wire-class="key:class-name"] -> State<boolean> (class toggle)
-    const { isSaving } = wireClasses();
-    // Style: [wire-style="key:css-prop"] -> State<string> (style.setProperty)
-    const { progressWidth } = wireStyles();
-
-    heading.value = 'My Tasks';         // → <h1 wire-content="heading"> updates
-    count.value   = String(items.length);
-    status.value  = 'active';           // → setAttribute('data-status', 'active')
-    isSaving.value = true;              // → toggles class from wire-class
-    progressWidth.value = '72%';        // → updates inline style
-    // title.value reflects user input two-way
-}
-```
-
-**HTML counterparts:**
-
-```html
-<div data-view="tasks">
-    <h1     wire-content="heading">Loading…</h1>
-    <span   wire-content="count">0</span>
-    <input  wire-input="title"  placeholder="Task title" />
-    <input  wire-input="done"   type="checkbox" />
-    <div    wire-attribute="status:data-status">…</div>
-    <button wire-attribute="busy:aria-busy">Save</button>
-    <button wire-class="isSaving:is-saving">Save</button>
-    <div    wire-style="progressWidth:width"></div>
-</div>
-```
-
-Optional overrides (non-standard events or an explicit root):
-
-```javascript
-const { rating } = wireInputs({ overrides: { rating: { event: 'nc-change', prop: 'value' } } });
-const { title }  = wireInputs({ root: document.querySelector('[data-view="tasks"]') });
-```
-
----
-
-## Wires — In Components (`this.wire*()`)
-
-Same pattern inside a `Component` subclass — state property names must match attribute values:
-
-```javascript
-class TaskForm extends Component {
-    static useShadowDOM = true;
-
-    title  = useState('');
-    done   = useState(false);
-    status = useState('pending');
-    rating = useState(0);
-    count  = computed(() => `${this.items.value.length} tasks`);
-
-    template() {
-        return `
-            <input  wire-input="title" />
-            <input  wire-input="done" type="checkbox" />
-            <nc-rating wire-input="rating"></nc-rating>
-            <span   wire-content="count">0 tasks</span>
-            <article wire-attribute="status:data-status">…</article>
+        return html`
+            <h3 ref="titleEl"></h3>
+            <nc-button ref="actionBtn">Go</nc-button>
+            <slot></slot>
         `;
     }
 
     onMount() {
-        // Wire all three in one call:
-        this.wires({ overrides: { rating: { event: 'nc-change', prop: 'value' } } });
+        this.titleState = this.state(this.getAttribute('title') ?? '');
+        this.bind(this.titleState, this.titleEl);
+        this.on(this.actionBtn, 'click', () => {
+            this.emit('task-card-action', { title: this.titleState.value });
+        });
+    }
 
-        // Or call individually when you only need some:
-        // this.wireInputs();
-        // this.wireContents();
-        // this.wireAttributes();
+    _handleAttributeUpdate(name, val) {
+        if (name === 'title' && this.titleState) this.titleState.value = val ?? '';
     }
 }
+
+defineComponent('task-card', TaskCard);
 ```
 
-`this.wires(options?)` is a shorthand that calls `wireInputs(options)`, `wireContents()`, and `wireAttributes()` in one go. All subscriptions are auto-disposed on unmount. Call **once from `onMount()`** only.
+- Prefer **`CoreComponent`** (not deprecated `Component`).
+- `this.on(target, type, handler)` — first arg is an EventTarget.
+- `this.bind(state, string)` sets an **instance property** — not a selector.
+  Bind to refs: `this.bind(state, this.titleEl)`.
+- Prefer `this.emit` over deprecated `emitEvent`.
+
+### `this.bind` overloads
+
+```js
+this.bind(state, el);                 // textContent
+this.bind(state, el, 'href');         // attribute
+this.bind(state, el, '?disabled');    // boolean attribute
+this.bind(state, el, '.active');      // class toggle
+this.bind(state, el, 'innerHTML');    // innerHTML
+```
+
+No `bindAttr` / `bindClass` / `bindStyle` / `bindAll` / `model` on CoreComponent.
 
 ---
 
-## Global Stores
+## Wires (optional, controllers)
 
-```javascript
-// src/stores/task.store.js
-import { useState } from '@core/state.js';
+```js
+import {
+    wireContents, wireInputs, wireAttributes,
+    wireClasses, wireStyles, wireActions,
+} from '@core-utils/wires.js';
 
-export const taskStore = useState({
-    items: [],
-    filter: 'all'
-});
-
-// In any controller or component:
-import { taskStore } from '@stores/task.store.js';
-
-taskStore.value.items;                                    // read
-taskStore.value = { ...taskStore.value, filter: 'open' }; // write
-taskStore.watch(state => render(state.items));             // subscribe
+const contents = wireContents({ root: this.el });
+const inputs = wireInputs({ root: this.el });
+const { save } = wireActions({ root: this.el });
+this.on(save.element, save.event, () => { /* … */ });
 ```
+
+| Utility | Attribute |
+|---------|-----------|
+| `wireContents` | `wire-content="key"` |
+| `wireInputs` | `wire-input="key"` |
+| `wireAttributes` | `wire-attribute="key:attr"` |
+| `wireClasses` | `wire-class="key:class"` |
+| `wireStyles` | `wire-style="key:css-prop"` |
+| `wireActions` | `wire-action="name:eventType"` |
+
+Cleanup registers with the page cleanup registry. CoreComponent has **no**
+`this.wires()` helper — use refs + `this.bind` inside components.
 
 ---
 
-## API Calls and Caching
+## Stores
 
-```javascript
+```bash
+npm.cmd run make:store -- task
+```
+
+```js
+import { taskItems, taskCount, loadTasks, addTask } from '@stores/task.store.js';
+
+await loadTasks();
+taskItems.value;
+addTask({ id: '1', title: 'Ship' });
+```
+
+Shipped examples: `appStore` (export **`appStore`**), `uiStore`
+(`sidebarCollapsed`, `theme`, `notifications`).
+
+---
+
+## API service
+
+```js
 import api from '@services/api.service.js';
 
-// Plain fetch (no cache)
-const data = await api.get('/api/users');
-await api.post('/api/users', { name: 'Alice' });
-await api.put('/api/users/1', { name: 'Alice B.' });
-await api.delete('/api/users/1');
-
-// Cached GET (ttl in seconds, tag-based invalidation)
-const tasks = await api.getCached('/api/tasks', {
-    ttl: 60,
-    tags: ['tasks']
-});
-
-// Invalidate cache by tag after a mutation
-await api.post('/api/tasks', newTask);
+// Localhost default baseURL is /api
+await api.get('/tasks');
+await api.post('/tasks', body);
+await api.getCached('/tasks', { ttl: 60, tags: ['tasks'], revalidate: true }); // ttl = seconds
 api.invalidateTags(['tasks']);
 ```
 
+Also: `storage.service`, `logger.service`. No auth service.
+
 ---
 
-## Events
+## Events helpers
 
-```javascript
-import { trackEvents, on, delegate } from '@core-utils/events.js';
+```js
+import { trackEvents, on } from '@core-utils/events.js';
 
-// Inside a controller (auto-cleans up on navigation)
 const events = trackEvents();
 events.on(window, 'resize', handler);
-events.on(document, 'keydown', '#modal', handler);  // delegated
-// cleanup fires automatically via Page Cleanup Registry
+events.delegate('#list', 'click', '.row', (e, target) => { /* … */ });
+// auto-cleaned on navigation
 
-// Standalone (manual cleanup)
 const off = on(button, 'click', handler);
-off(); // remove listener
+off();
 ```
 
 ---
 
-## Custom Events
+## Built-in `nc-*` events (scaffold)
 
-```javascript
-// Emit from inside a Component — bubbles + composed are true by default
-this.emitEvent('nc-task-complete', { taskId: 42 });
-// Override defaults only when needed
-this.emitEvent('nc-task-complete', { taskId: 42 }, { composed: false });
+Names below are what components **`emit(...)`** today — always confirm in source
+if unsure. Many use short names (`open` / `close`), not `nc-*-open`.
 
-// Listen anywhere in the tree
-document.addEventListener('nc-task-complete', (e) => {
-    console.log(e.detail.taskId);
-});
-```
+| Component | Events |
+|-----------|--------|
+| `nc-modal` / `nc-drawer` / `nc-popover` | `open`, `close` |
+| `nc-alert` / `nc-chip` | `dismiss` |
+| `nc-accordion` / `nc-collapsible` | `toggle` |
+| `nc-tabs` | `nc-tab-change` |
+| `nc-table` | `sort`, `row-click` |
+| `nc-menu` | `nc-menu-select`, `nc-menu-body-change` |
+| `nc-copy-button` | `copy`, `error` |
+| `nc-splash` | `splash-complete` |
+| `nc-pagination` / `nc-stepper` / `nc-bottom-nav` | `change` |
+| Form inputs (`nc-input`, `nc-select`, …) | `input`, `change` (+ `clear` on input) |
 
-> **Naming convention:** use `nc-{component}-{action}` for custom element events (e.g. `nc-modal-open`, `nc-table-row-click`). Form-input elements (`nc-input`, `nc-select`, etc.) keep the standard `change` / `input` names.
-
----
-
-## Built-in Component Events
-
-Quick reference for events emitted by the framework's built-in `nc-*` elements.
-
-| Component | Event | Detail |
-|---|---|---|
-| `nc-accordion-item` | `nc-accordion-toggle` | `{ open: boolean }` |
-| `nc-alert` | `nc-alert-dismiss` | `{}` |
-| `nc-animation` | `nc-animation-start` / `nc-animation-finish` / `nc-animation-cancel` | `{}` |
-| `nc-bottom-nav` | `nc-bottom-nav-change` | `{ value: string }` |
-| `nc-canvas` | `nc-canvas-ready` | `{ canvas, ctx }` |
-| `nc-canvas` | `nc-canvas-draw-start` / `nc-canvas-draw-move` | `{ x: number, y: number }` |
-| `nc-canvas` | `nc-canvas-draw-end` | `{ dataURL: string }` |
-| `nc-canvas` | `nc-canvas-clear` | `{}` |
-| `nc-chip` | `nc-chip-dismiss` | `{}` |
-| `nc-collapsible` | `nc-collapsible-toggle` | `{ open: boolean }` |
-| `nc-collapsible` | `nc-collapsible-open` / `nc-collapsible-close` | `{}` |
-| `nc-copy-button` | `nc-copy-button-copy` | `{ value: string }` |
-| `nc-copy-button` | `nc-copy-button-error` | `{ error: unknown }` |
-| `nc-drawer` | `nc-drawer-open` / `nc-drawer-close` | `{}` |
-| `nc-dropdown` | `nc-dropdown-open` / `nc-dropdown-close` | `{}` |
-| `nc-dropdown` | `nc-dropdown-select` | `{ value: string, label: string }` |
-| `nc-menu` | `nc-menu-select` | `{ item: HTMLElement, label: string }` |
-| `nc-modal` | `nc-modal-open` / `nc-modal-close` | `{}` |
-| `nc-nav-item` | `nc-nav-item-click` | `{ href: string }` |
-| `nc-pagination` | `nc-pagination-change` | `{ page: number }` |
-| `nc-popover` | `nc-popover-open` / `nc-popover-close` | `{}` |
-| `nc-splash` | `nc-splash-complete` | `{}` |
-| `nc-stepper` | `nc-stepper-change` | `{ step: number, prev: number }` |
-| `nc-table` | `nc-table-sort` | `{ key: string, direction: 'asc' \| 'desc' }` |
-| `nc-table` | `nc-table-row-click` | `{ row: object, index: number }` |
-| `nc-tabs` | `nc-tab-change` | `{ index: number, label: string \| null }` |
-| **Form inputs** | `change` | component-specific `{ value, name }` |
-| **Form inputs** | `input` | `{ value: string, name: string }` |
-
-Form inputs that keep standard event names: `nc-input`, `nc-checkbox`, `nc-radio`, `nc-select`, `nc-textarea`, `nc-slider`, `nc-number-input`, `nc-otp-input`, `nc-switch`, `nc-rating`, `nc-date-picker`, `nc-time-picker`, `nc-color-picker`, `nc-rich-text`, `nc-file-upload`, `nc-autocomplete`.
+`nc-button` uses the native **`click`** event (no custom `nc-button-click`).
 
 ---
 
-## Auth Service
-
-```javascript
-import auth from '@services/auth.service.js';
-
-auth.isAuthenticated();             // boolean
-auth.getUser();                     // User | null
-auth.getToken();                    // string | null
-await auth.login(email, password);  // fetches token, stores user
-auth.logout();                      // clears session, emits 'auth-change'
-
-window.addEventListener('auth-change', () => updateUI());
-```
-
----
-
-## Slots and Composition
+## Slots
 
 ```html
-<!-- In a component template (Shadow DOM) -->
-<slot></slot>                         <!-- default slot -->
-<slot name="header"></slot>           <!-- named slot -->
+<slot></slot>
+<slot name="header"></slot>
 
-<!-- In HTML usage -->
 <my-card>
     <h2 slot="header">Title</h2>
-    <p>Default slot content</p>
+    <p>Default slot</p>
 </my-card>
 ```
 
 ---
 
-## Accessibility Utilities
+## Package-only APIs
 
-```javascript
-import { trapFocus, announce, roving } from '@core-utils/a11y.js';
+Not vendored into create-nativecore core — import from the **`nativecorejs`**
+npm package when you use that surface:
 
-trapFocus(modalEl);           // trap Tab/Shift+Tab inside el
-trapFocus(null);              // release trap
-
-announce('3 results found');  // polite aria-live announcement
-announce('Error!', 'assertive');
-
-const release = roving(listEl, '[role=option]'); // arrow-key roving tabindex
-release(); // restore original tabindexes
+```js
+import { trapFocus, announce, roving } from 'nativecorejs/a11y';
+import { useForm } from 'nativecorejs';
+import { registerPlugin } from 'nativecorejs';
 ```
+
+Scaffold apps normally use `@testing/index.js`, not `nativecorejs/testing`.
 
 ---
 
-## Error Boundaries
-
-```html
-<nc-error-boundary fallback="Something went wrong" show-details>
-    <my-widget></my-widget>
-</nc-error-boundary>
-```
-
-```javascript
-// Catch async errors manually
-const boundary = document.querySelector('nc-error-boundary');
-try {
-    await riskyOperation();
-} catch (err) {
-    boundary?.catchError(err);
-}
-```
-
----
-
-## CLI Generators
+## CLI
 
 ```bash
-npm run make:component <name>         # src/components/ui/<name>.js
-npm run make:view <path>              # src/views/<path>.html + optional controller
-npm run make:controller <name>        # src/controllers/<name>.controller.js
-npm run make:store <name>             # src/stores/<name>.store.js
-npm run make:middleware <name>        # src/middleware/<name>.middleware.js + wires app.js
-npm run remove:component <name>       # removes component + registry entry
-npm run remove:view <path>            # removes view + controller + route entry
+# Windows: prefer npm.cmd so flags after -- survive
+npm.cmd run make:component -- task-card --defaults
+npm.cmd run make:component -- task-card --defaults --with-tests
+npm.cmd run make:core-component -- widget --defaults
+npm.cmd run make:view -- tasks --defaults
+npm.cmd run make:view -- settings --protected --defaults
+npm.cmd run make:view -- task-detail --route /tasks/:id --defaults
+npm.cmd run make:controller -- tasks
+npm.cmd run make:store -- task
+npm.cmd run make:middleware -- session
+npm.cmd run remove:component -- task-card
+npm.cmd run remove:core-component -- widget
+npm.cmd run remove:view -- tasks --yes
 ```
 
 ---
 
-## Build Commands
+## Build / test
 
 ```bash
-npm run dev          # watch + dev server + HMR
-npm run build        # production build → _deploy/
-npm run build:ssg    # pre-render public routes → _deploy/<route>/index.html
-npm run build:full   # build + build:ssg (recommended for deployment)
-npm test             # Vitest unit tests
-npm run lint         # ESLint + HTMLHint
+npm run dev           # compile watch + server + HMR (port 8000)
+npm run build         # production client pipeline
+npm run build:ssg     # pre-render static public routes → _deploy/
+npm run build:full    # build + build:ssg
+npm test              # Vitest
+npm run lint
 ```
+
+SSG skips dynamic (`:param` / `*`) routes and protected paths: either
+`export const protectedRoutes = […]` (legacy) or static routes inside
+`r.group({ middleware: […] }, …)` when the middleware array is non-empty
+(see ebook Ch. 20).
 
 ---
 
-See the full [ebook](./ebook/README.md) for deep-dive explanations of every pattern above.
+## Scaffolding
+
+```bash
+npx create-nativecore@latest my-app --defaults   # JS
+npx create-nativecore@latest my-app --ts          # TypeScript
+```
+
+Full walkthrough: [QUICK_START.md](./QUICK_START.md) · [ebook](./ebook/README.md).

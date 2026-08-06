@@ -54,6 +54,6 @@ class AppStore {
     }
 }
 
-export const store = new AppStore();
+export const appStore = new AppStore();
 
 

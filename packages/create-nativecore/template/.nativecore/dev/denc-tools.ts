@@ -17,6 +17,13 @@ import { OutlinePanel } from './outline-panel.js';
 import { DrawingOverlay } from './drawing-overlay.js';
 import { ComponentBuilder } from './component-builder.js';
 
+/**
+ * Component Builder is parked until the codegen/save/open flow is more robust.
+ * Flip to true to restore the Build button + Ctrl+Shift+B shortcut.
+ * Do not delete component-builder*. files — they remain for a future revisit.
+ */
+const COMPONENT_BUILDER_ENABLED = false;
+
 class DevTools {
     private static readonly TOGGLE_STORAGE_KEY = 'nativecore-devtools-visible';
     private overlay: ComponentOverlay | null = null;
@@ -46,7 +53,9 @@ class DevTools {
         this.outlinePanel = new OutlinePanel(this.onEditComponent.bind(this));
         this.drawingOverlay = new DrawingOverlay();
         this.drawingOverlay.init();
-        this.builder = new ComponentBuilder();
+        if (COMPONENT_BUILDER_ENABLED) {
+            this.builder = new ComponentBuilder();
+        }
         this.enabled = true;
         this.overlayVisible = this.loadOverlayVisibilityPreference();
         this.overlay.setVisible(this.overlayVisible);
@@ -223,7 +232,9 @@ class DevTools {
             </style>
             <span id="nativecore-denc-label">DEV MODE: ${this.overlayVisible ? 'ON' : 'OFF'}</span>
             <button id="nativecore-denc-brush-btn" type="button" title="Toggle annotation drawing mode">🖌️</button>
-            <button id="nativecore-denc-build-btn" type="button" title="Open Component Builder (Ctrl+Shift+B)">⚡ Build</button>
+            ${COMPONENT_BUILDER_ENABLED
+                ? '<button id="nativecore-denc-build-btn" type="button" title="Open Component Builder (Ctrl+Shift+B)">⚡ Build</button>'
+                : ''}
         `;
         indicator.classList.toggle('is-off', !this.overlayVisible);
         indicator.addEventListener('click', () => this.toggleOverlayVisibility());
@@ -236,12 +247,14 @@ class DevTools {
             brushBtn.classList.toggle('drawing-on', this.drawingOverlay?.isOn ?? false);
         });
 
-        // Build button — opens Component Builder
-        const buildBtn = indicator.querySelector('#nativecore-denc-build-btn') as HTMLButtonElement | null;
-        buildBtn?.addEventListener('click', (e) => {
-            e.stopPropagation();
-            this.builder?.toggle();
-        });
+        // Build button — opens Component Builder (gated; see COMPONENT_BUILDER_ENABLED)
+        if (COMPONENT_BUILDER_ENABLED) {
+            const buildBtn = indicator.querySelector('#nativecore-denc-build-btn') as HTMLButtonElement | null;
+            buildBtn?.addEventListener('click', (e) => {
+                e.stopPropagation();
+                this.builder?.toggle();
+            });
+        }
         
         document.body.appendChild(indicator);
         this.indicator = indicator;

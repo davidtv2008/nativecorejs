@@ -52,9 +52,9 @@ export class NcCopyButton extends CoreComponent {
             font-family: var(--nc-font-family);
             font-size: var(--nc-font-size-sm);
             font-weight: var(--nc-font-weight-medium);
-            color: ${baseColor};
-            background: ${bg};
-            border: 1px solid ${borderColor};
+            color: var(--nc-text, #1e293b);
+            background: var(--nc-bg-secondary, #f1f5f9);
+            border: 1px solid var(--nc-border, #cbd5e1);
             border-radius: var(--nc-radius-md);
             padding: 6px 14px;
             cursor: pointer;

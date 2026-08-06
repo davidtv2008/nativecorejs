@@ -63,6 +63,7 @@ const DEFAULT_ALIAS_PAIRS = [
     ['@core-types', path.join(ROOT, '.nativecore', 'types')],
     ['@core', path.join(ROOT, '.nativecore', 'core')],
     ['@dev', path.join(ROOT, '.nativecore', 'dev')],
+    ['@testing', path.join(ROOT, '.nativecore', 'testing')],
     ['@components', path.join(ROOT, 'src', 'components')],
     ['@config', path.join(ROOT, 'src', 'config')],
     ['@routes', path.join(ROOT, 'src', 'routes')],
@@ -157,6 +158,23 @@ function getEntryPoints() {
     ];
 }
 
+/** Copy plain .mjs helpers (e.g. component-builder-codegen) into dist so browser ESM can import them. */
+function copyNativecoreMjs(dir = path.join(ROOT, '.nativecore')) {
+    if (!fs.existsSync(dir)) return;
+    for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
+        const full = path.join(dir, entry.name);
+        if (entry.isDirectory()) {
+            copyNativecoreMjs(full);
+            continue;
+        }
+        if (!entry.name.endsWith('.mjs')) continue;
+        const rel = path.relative(ROOT, full);
+        const out = path.join(ROOT, 'dist', rel);
+        fs.mkdirSync(path.dirname(out), { recursive: true });
+        fs.copyFileSync(full, out);
+    }
+}
+
 // ─── esbuild watch context ────────────────────────────────────────────────────
 
 let currentCtx = null;
@@ -190,6 +208,7 @@ async function startEsbuild() {
 
     // esbuild watch: recompiles only changed files on each save.
     await ctx.watch();
+    copyNativecoreMjs();
 
     process.stdout.write('[esbuild] watching for changes…\n');
 
@@ -251,19 +270,29 @@ function watchForNewFiles() {
     const fileExtPattern = useTypeScript ? /\.ts$/ : /\.js$/;
     let restartTimer = null;
 
-    fs.watch(path.join(ROOT, 'src'), { recursive: true }, (eventType, filename) => {
-        if (eventType !== 'rename') return;
-        if (!filename || !fileExtPattern.test(filename)) return;
-        const fullPath = path.join(ROOT, 'src', filename);
-        // Only restart if the file was just created (not deleted).
-        if (!fs.existsSync(fullPath)) return;
+    const watchDir = (relativeRoot) => {
+        const absRoot = path.join(ROOT, relativeRoot);
+        if (!fs.existsSync(absRoot)) return;
 
-        clearTimeout(restartTimer);
-        restartTimer = setTimeout(async () => {
-            process.stdout.write(`[esbuild] new file detected: src/${filename.replace(/\\/g, '/')} — restarting context\n`);
-            await startEsbuild();
-        }, 200);
-    });
+        fs.watch(absRoot, { recursive: true }, (eventType, filename) => {
+            if (eventType !== 'rename') return;
+            if (!filename || !fileExtPattern.test(filename)) return;
+            const fullPath = path.join(absRoot, filename);
+            // Only restart if the file was just created (not deleted).
+            if (!fs.existsSync(fullPath)) return;
+
+            clearTimeout(restartTimer);
+            restartTimer = setTimeout(async () => {
+                process.stdout.write(`[esbuild] new file detected: ${relativeRoot}/${filename.replace(/\\/g, '/')} — restarting context\n`);
+                await startEsbuild();
+            }, 200);
+        });
+    };
+
+    // Watch app source and framework internals so newly added utils/core files
+    // become esbuild entry points without requiring a manual server restart.
+    watchDir('src');
+    watchDir('.nativecore');
 }
 
 // ─── Background type-checker ──────────────────────────────────────────────────
@@ -309,6 +338,7 @@ if (isOnce) {
             plugins: [pathAliasPlugin],
             logLevel: 'info',
         });
+        copyNativecoreMjs();
         try { fs.writeFileSync(SENTINEL_PATH, String(Date.now())); } catch { /* ignore */ }
         process.stdout.write('[esbuild] build complete\n');
     } catch {

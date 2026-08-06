@@ -21,19 +21,29 @@ const __dirname = path.dirname(__filename);
 
 // ─── Detect project language mode ───────────────────────────────────────────
 const ROOT = path.resolve(__dirname, '../..');
-let useTypeScript = true;
+let useTypeScript = false;
 try {
     const ncConfig = JSON.parse(fs.readFileSync(path.join(ROOT, 'nativecore.config.json'), 'utf8'));
-    if (ncConfig.useTypeScript === false) useTypeScript = false;
-} catch { /* default to TypeScript */ }
+    if (ncConfig.useTypeScript === true) useTypeScript = true;
+} catch { /* default to JavaScript (matches create-nativecore defaults) */ }
 const ext = useTypeScript ? 'ts' : 'js';
 
-const rawViewPath = process.argv[2];
+const cliArgs = process.argv.slice(2);
+const rawViewPath = cliArgs.find((arg) => !arg.startsWith('--'));
+const hasFlag = (flag) => cliArgs.includes(flag);
+const getFlagValue = (flag) => {
+  const idx = cliArgs.indexOf(flag);
+  if (idx === -1) return null;
+  const val = cliArgs[idx + 1];
+  return val && !val.startsWith('--') ? val : null;
+};
 
 if (!rawViewPath) {
   console.error('Error: View path is required');
   console.log('\nUsage:');
   console.log('  npm run make:view <name>');
+  console.log('  npm run make:view <name> -- --defaults');
+  console.log('  npm run make:view <name> -- --protected --route /settings --controller');
   console.log('\nExamples:');
   console.log('  npm run make:view profile');
   console.log('  npm run make:view docs/getting-started');
@@ -252,21 +262,46 @@ async function generateView() {
     const viewTitle = toTitle(normalizedViewPath);
     const defaultRoutePath = `/${normalizedViewPath}`;
 
-    const isProtectedAnswer = await question('Should this route require login? (y/n): ');
-    const isProtected = isProtectedAnswer.toLowerCase().trim() === 'y';
+    // Non-interactive: --defaults / explicit flags / piped stdin (CI & Windows pipes).
+    const nonInteractive = !process.stdin.isTTY
+      || hasFlag('--defaults')
+      || hasFlag('--yes')
+      || hasFlag('--protected')
+      || hasFlag('--public')
+      || hasFlag('--controller')
+      || hasFlag('--no-controller')
+      || hasFlag('--route');
 
-    const routePathAnswer = await question(`Route path (${defaultRoutePath}): `);
-    const routePath = normalizeRoutePath(routePathAnswer || defaultRoutePath);
-    if (!isValidRoutePath(routePath)) {
-      console.error('Error: Route path must start with / and use static segments, :params, optional :params?, or * wildcards.');
+    let isProtected;
+    let routePath;
+    let createController;
+
+    if (nonInteractive) {
+      isProtected = hasFlag('--protected') && !hasFlag('--public');
+      const routeFlag = getFlagValue('--route');
+      routePath = normalizeRoutePath(routeFlag || defaultRoutePath);
+      // Default with --defaults / pipes: create a controller unless --no-controller.
+      createController = hasFlag('--no-controller')
+        ? false
+        : hasFlag('--controller') || hasFlag('--defaults') || hasFlag('--yes') || !process.stdin.isTTY;
+      console.log(`Non-interactive: protected=${isProtected}, route=${routePath}, controller=${createController}`);
       rl.close();
-      process.exit(1);
+    } else {
+      const isProtectedAnswer = await question('Should this route require login? (y/n): ');
+      isProtected = isProtectedAnswer.toLowerCase().trim() === 'y';
+
+      const routePathAnswer = await question(`Route path (${defaultRoutePath}): `);
+      routePath = normalizeRoutePath(routePathAnswer || defaultRoutePath);
+
+      const createControllerAnswer = await question('Create a controller for this view? (y/n): ');
+      createController = createControllerAnswer.toLowerCase().trim() === 'y';
+      rl.close();
     }
 
-    const createControllerAnswer = await question('Create a controller for this view? (y/n): ');
-    const createController = createControllerAnswer.toLowerCase().trim() === 'y';
-
-    rl.close();
+    if (!isValidRoutePath(routePath)) {
+      console.error('Error: Route path must start with / and use static segments, :params, optional :params?, or * wildcards.');
+      process.exit(1);
+    }
 
     const accessFolder = isProtected ? 'protected' : 'public';
     const accessLabel = isProtected ? 'Protected Route' : 'Public Route';
@@ -311,14 +346,19 @@ async function generateView() {
     if (fs.existsSync(routesPath)) {
       let routesContent = fs.readFileSync(routesPath, 'utf8');
 
+      // registerRoutes(r) callback param is `r` — not the module-level router import.
       const routeRegistration = createController
-        ? `        router.register('${routePath}', '${viewFileRelative}', lazyController('${controllerName}Controller', '../controllers/${flatName}.controller.js'));`
-        : `        router.register('${routePath}', '${viewFileRelative}');`;
+        ? `        r.register('${routePath}', '${viewFileRelative}', lazyController('${controllerName}Controller', '../controllers/${flatName}.controller.js'));`
+        : `        r.register('${routePath}', '${viewFileRelative}');`;
 
       const groupMarker = isProtected ? '// @group:protected' : '// @group:public';
-      const markerIndex = routesContent.indexOf(groupMarker);
+      // Prefer an active (uncommented) marker line: "    // @group:…"
+      // Avoid matching commented-out examples like "    // // @group:protected".
+      const activeMarkerRe = new RegExp(`^(\\s*)${groupMarker.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\s*$`, 'm');
+      const activeMatch = routesContent.match(activeMarkerRe);
 
-      if (markerIndex !== -1) {
+      if (activeMatch) {
+        const markerIndex = activeMatch.index;
         const closingPattern = /\n    \}\);/g;
         closingPattern.lastIndex = markerIndex;
         const closingMatch = closingPattern.exec(routesContent);
@@ -329,6 +369,27 @@ async function generateView() {
             '\n' + routeRegistration +
             routesContent.slice(closingMatch.index);
           console.log(`Added route registration to src/routes/${routesFile}`);
+        } else {
+          console.log(`Warning: Found "${groupMarker}" but could not locate its group closing — add the route manually.`);
+        }
+      } else if (isProtected) {
+        // No active protected group yet — append one before the end of registerRoutes().
+        const insertPoint = routesContent.lastIndexOf('\n}');
+        if (insertPoint !== -1) {
+          const protectedBlock = `
+    // @group:protected
+    r.group({ middleware: [] }, (r) => {
+${routeRegistration}
+    });
+`;
+          routesContent =
+            routesContent.slice(0, insertPoint) +
+            protectedBlock +
+            routesContent.slice(insertPoint);
+          console.log(`Created protected route group and added route in src/routes/${routesFile}`);
+          console.log(`Note: protected group uses middleware: [] — add tags after npm run make:middleware.`);
+        } else {
+          console.log(`Warning: Could not find "${groupMarker}" in ${routesFile} — add the route manually.`);
         }
       } else {
         console.log(`Warning: Could not find "${groupMarker}" in ${routesFile} — add the route manually.`);

@@ -346,7 +346,8 @@ export class Router {
         // will produce a new html string that won't match the recorded entry,
         // and the container will always be re-rendered.
 
-        this.handleRoute(currentPath, {});
+        const path = this.currentRoute?.path ?? window.location.pathname;
+        this.handleRoute(path, {});
     }
     
     /**
@@ -442,17 +443,22 @@ export class Router {
             }
             flushPageCleanups();
 
-            if (shouldAnimateTransition) {
-                mainContent.classList.add('page-transition-exit');
-                await new Promise(resolve => setTimeout(resolve, 50));
+            // Always fetch/render view HTML on a normal navigation. Animation is
+            // optional and only used when we already have a warm HTML cache so the
+            // exit transition does not wait on a cold network fetch.
+            if (!isPrerenderedInitialRoute) {
+                if (shouldAnimateTransition) {
+                    mainContent.classList.add('page-transition-exit');
+                    await new Promise(resolve => setTimeout(resolve, 50));
 
-                // After the animation await, bail out if this navigation was superseded.
-                // Without this check, a stale navigation resuming here would overwrite
-                // whatever the newer navigation already rendered into the DOM.
-                if (signal?.aborted) {
-                    mainContent.classList.remove('page-transition-exit');
-                    if (progressBar) progressBar.classList.remove('loading');
-                    return;
+                    // After the animation await, bail out if this navigation was superseded.
+                    // Without this check, a stale navigation resuming here would overwrite
+                    // whatever the newer navigation already rendered into the DOM.
+                    if (signal?.aborted) {
+                        mainContent.classList.remove('page-transition-exit');
+                        if (progressBar) progressBar.classList.remove('loading');
+                        return;
+                    }
                 }
 
                 const contentTarget = await this.resolveContentTarget(mainContent, route);
@@ -485,8 +491,10 @@ export class Router {
                     this.renderedHtmlCache.set(contentTarget, { file: route.config.htmlFile, html });
                 }
 
-                mainContent.classList.remove('page-transition-exit');
-                mainContent.classList.add('page-transition-enter');
+                if (shouldAnimateTransition) {
+                    mainContent.classList.remove('page-transition-exit');
+                    mainContent.classList.add('page-transition-enter');
+                }
             }
             
             if (route.config.controller) {

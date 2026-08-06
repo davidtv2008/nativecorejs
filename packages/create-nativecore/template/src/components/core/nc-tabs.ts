@@ -42,6 +42,7 @@
  */
 
 import { CoreComponent } from '@core/component.js';
+import { css } from '@core-utils/templates.js';
 
 export class NcTabs extends CoreComponent {
     static useShadowDOM = true;

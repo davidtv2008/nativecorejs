@@ -19,16 +19,19 @@ const __dirname = path.dirname(__filename);
 
 // ─── Detect project language mode ───────────────────────────────────────────
 const ROOT = path.resolve(__dirname, '../..');
-let useTypeScript = true;
+let useTypeScript = false;
 try {
     const ncConfig = JSON.parse(fs.readFileSync(path.join(ROOT, 'nativecore.config.json'), 'utf8'));
-    if (ncConfig.useTypeScript === false) useTypeScript = false;
-} catch { /* default to TypeScript */ }
+    if (ncConfig.useTypeScript === true) useTypeScript = true;
+} catch { /* default to JavaScript (matches create-nativecore defaults) */ }
 const ext = useTypeScript ? 'ts' : 'js';
 
 // Get component name from command line
-const componentName = process.argv[2];
-const withTests = process.argv.includes('--with-tests');
+const cliArgs = process.argv.slice(2);
+const componentName = cliArgs.find((arg) => !arg.startsWith('--'));
+const withTests = cliArgs.includes('--with-tests');
+const forcePrefetch = cliArgs.includes('--prefetch');
+const forceNoPrefetch = cliArgs.includes('--no-prefetch') || cliArgs.includes('--defaults');
 
 if (!componentName) {
   console.error('Error: Component name is required');
@@ -79,79 +82,56 @@ if (fs.existsSync(componentFile)) {
 // ─── TypeScript template ────────────────────────────────────────────────────
 const tsTemplate = `import { CoreComponent, defineComponent } from '@core/component.js';
 import { html } from '@core-utils/templates.js';
-import { useState, computed } from '@core/state.js';
-import type { State } from '@core/state.js';
+import type { State } from '@core/component.js';
 import '@components/core/nc-button.js';
 
 export class ${className} extends CoreComponent {
     static useShadowDOM = true;
-
-    // Attributes listed here appear in the dev tools sidebar and trigger onAttributeChange.
     static observedAttributes = ['title', 'description'];
 
-    // Internal state (not reflected as attributes) can be defined like this:
-    titleState: State<string> = useState('');
-    descriptionState: State<string> = useState('');
-    titleDescComputed = computed(() => \`\${this.titleState.value} - \${this.descriptionState.value}\`);
+    private titleEl!: HTMLElement;
+    private descriptionEl!: HTMLElement;
+    private actionBtn!: HTMLElement;
 
-    constructor() {
-        super();
-    }
+    private titleState!: State<string>;
+    private descriptionState!: State<string>;
 
     template() {
         return html\`
             <style>
                 :host { display: block; }
-                .${componentName} {}
-                .${componentName}__header {}
-                .${componentName}__title {}
-                .${componentName}__description {}
+                .${componentName} { display: block; }
+                .${componentName}__header { display: flex; align-items: center; gap: 0.5rem; }
+                .${componentName}__title { margin: 0; }
+                .${componentName}__description { margin: 0.25rem 0 0; opacity: 0.8; }
             </style>
-            <div class="${componentName}" data-view="${componentName}">
+            <div class="${componentName}">
                 <header class="${componentName}__header">
-                    <h3 class="${componentName}__title" data-hook="title"></h3>
+                    <h3 class="${componentName}__title" ref="titleEl"></h3>
+                    <nc-button ref="actionBtn" class="${componentName}__action" variant="outline">Action</nc-button>
                 </header>
-                <p class="${componentName}__description" data-hook="description"></p>
-                <p class="${componentName}__title-desc" data-hook="title-desc"></p> <!-- example of using a computed state -->
-                <nc-button class="${componentName}__action" variant="outline" data-action="primary">Action</nc-button>
+                <p class="${componentName}__description" ref="descriptionEl"></p>
                 <slot></slot>
             </div>
         \`;
     }
 
-    attributeChangedCallback(name: string, oldValue: string | null, newValue: string | null): void {
-        if (oldValue === newValue || !this._mounted) return;
-        if (name === 'title') this.titleState.value = newValue ?? '';
-        if (name === 'description') this.descriptionState.value = newValue ?? '';
-    }
-
     onMount() {
-        // Seed state from initial HTML attributes.
-        this.titleState.value = this.getAttribute('title') ?? '';
-        this.descriptionState.value = this.getAttribute('description') ?? '';
+        this.titleState = this.state(this.getAttribute('title') ?? '');
+        this.descriptionState = this.state(this.getAttribute('description') ?? '');
 
-        // Wire up events and reactive bindings here.
-        // this.component scopes element access to this component's shadow root:
-        //   this.component.hook('title')    // [data-hook="title"]
-        //   this.component.action('primary') // [data-action="primary"]
-        //   this.component.view('nested').hook('row') // re-scope to a nested [data-view]
-        // nc-button emits 'nc-button-click' on itself (composed: true), so e.target
-        // is the <nc-button> element — read data-action directly from it.
-        this.on('nc-button-click', (e) => {
-            const action = (e.target as HTMLElement).getAttribute('data-action');
-            if (action) this.emitEvent('${componentName}-action', { action });
+        this.bind(this.titleState, this.titleEl);
+        this.bind(this.descriptionState, this.descriptionEl);
+
+        // nc-button uses the native click event (bubbles from the host).
+        this.on(this.actionBtn, 'click', () => {
+            this.emit('${componentName}-action', { title: this.titleState.value });
         });
-
-        this.bind(this.titleState, '[data-hook="title"]'); // surgically updates the element's textContent when state changes — no full re-render
-        this.bind(this.descriptionState, '[data-hook="description"]'); // surgically updates the element's textContent when state changes — no full re-render
-        this.bind(this.titleDescComputed, '[data-hook="title-desc"]'); // example of binding a computed state
     }
 
-    onUnmount() {
-        // Clean up after yourself — dispose any computed() instances here.
-        //example myComputed.dispose();
-        // useState() is cleaned up automatically when this.bind() unsubscribes.
-        this.titleDescComputed?.dispose();
+    protected _handleAttributeUpdate(name: string, val: string | null): void {
+        if (name === 'title' && this.titleState) this.titleState.value = val ?? '';
+        if (name === 'description' && this.descriptionState) this.descriptionState.value = val ?? '';
     }
 }
 
@@ -161,68 +141,48 @@ defineComponent('${componentName}', ${className});
 // ─── JavaScript template ────────────────────────────────────────────────────
 const jsTemplate = `import { CoreComponent, defineComponent } from '@core/component.js';
 import { html } from '@core-utils/templates.js';
-import { useState, computed } from '@core/state.js';
 import '@components/core/nc-button.js';
 
 export class ${className} extends CoreComponent {
     static useShadowDOM = true;
-
-    // Attributes listed here appear in the dev tools sidebar and trigger onAttributeChange.
     static observedAttributes = ['title', 'description'];
-
-    constructor() {
-        super();
-        // Internal state (not reflected as attributes):
-        this.titleState = useState('');
-        this.descriptionState = useState('');
-        this.titleDescComputed = computed(() => \`\${this.titleState.value} - \${this.descriptionState.value}\`);
-    }
 
     template() {
         return html\`
             <style>
                 :host { display: block; }
-                .${componentName} {}
-                .${componentName}__header {}
-                .${componentName}__title {}
-                .${componentName}__description {}
+                .${componentName} { display: block; }
+                .${componentName}__header { display: flex; align-items: center; gap: 0.5rem; }
+                .${componentName}__title { margin: 0; }
+                .${componentName}__description { margin: 0.25rem 0 0; opacity: 0.8; }
             </style>
-            <div class="${componentName}" data-view="${componentName}">
+            <div class="${componentName}">
                 <header class="${componentName}__header">
-                    <h3 class="${componentName}__title" data-hook="title"></h3>
+                    <h3 class="${componentName}__title" ref="titleEl"></h3>
+                    <nc-button ref="actionBtn" class="${componentName}__action" variant="outline">Action</nc-button>
                 </header>
-                <p class="${componentName}__description" data-hook="description"></p>
-                <p class="${componentName}__title-desc" data-hook="title-desc"></p> <!-- example of using a computed state -->
-                <nc-button class="${componentName}__action" variant="outline" data-action="primary">Action</nc-button>
+                <p class="${componentName}__description" ref="descriptionEl"></p>
                 <slot></slot>
             </div>
         \`;
     }
 
-    attributeChangedCallback(name, oldValue, newValue) {
-        if (oldValue === newValue || !this._mounted) return;
-        if (name === 'title') this.titleState.value = newValue ?? '';
-        if (name === 'description') this.descriptionState.value = newValue ?? '';
-    }
-
     onMount() {
-        // Seed state from initial HTML attributes.
-        this.titleState.value = this.getAttribute('title') ?? '';
-        this.descriptionState.value = this.getAttribute('description') ?? '';
+        this.titleState = this.state(this.getAttribute('title') ?? '');
+        this.descriptionState = this.state(this.getAttribute('description') ?? '');
 
-        // Wire up events and reactive bindings here.
-        this.on('nc-button-click', (e) => {
-            const action = e.target.getAttribute('data-action');
-            if (action) this.emitEvent('${componentName}-action', { action });
+        this.bind(this.titleState, this.titleEl);
+        this.bind(this.descriptionState, this.descriptionEl);
+
+        // nc-button uses the native click event (bubbles from the host).
+        this.on(this.actionBtn, 'click', () => {
+            this.emit('${componentName}-action', { title: this.titleState.value });
         });
-
-        this.bind(this.titleState, '[data-hook="title"]');
-        this.bind(this.descriptionState, '[data-hook="description"]');
-        this.bind(this.titleDescComputed, '[data-hook="title-desc"]');
     }
 
-    onUnmount() {
-        this.titleDescComputed?.dispose();
+    _handleAttributeUpdate(name, val) {
+        if (name === 'title' && this.titleState) this.titleState.value = val ?? '';
+        if (name === 'description' && this.descriptionState) this.descriptionState.value = val ?? '';
     }
 }
 
@@ -269,19 +229,7 @@ Custom element: \`<${componentName}>\`
 // Write component file
 fs.writeFileSync(componentFile, componentTemplate.trim());
 
-// Prompt for prefetch
-const rl = readline.createInterface({
-  input: process.stdin,
-  output: process.stdout
-});
-
-console.log('\nPerformance optimization:');
-console.log('   All components are lazy-loaded by default (loads on first use).');
-console.log('   For critical layout components (header, sidebar, footer), prefetching improves performance.\n');
-
-rl.question('Would you like to prefetch this component? (y/N): ', (answer) => {
-  const shouldPreload = answer.toLowerCase() === 'y' || answer.toLowerCase() === 'yes';
-  
+function finish(shouldPreload) {
   if (shouldPreload) {
     // Add import to preloadRegistry
     const preloadFile = path.resolve(ROOT, 'src', 'components', `preloadRegistry.${ext}`);
@@ -365,8 +313,9 @@ rl.question('Would you like to prefetch this component? (y/N): ', (answer) => {
     const testFile = path.join(testsDir, `${componentName}.test.${ext}`);
     if (!fs.existsSync(testFile)) {
       const testTemplate = useTypeScript
-        ? `import { describe, it, expect, beforeEach } from 'vitest';
-import { mountComponent, waitFor } from 'nativecorejs/testing';
+        ? `import { describe, it, expect, beforeEach, afterEach } from 'vitest';
+import { mountComponent, waitFor } from '@testing/index.js';
+import '../${componentName}.js';
 
 describe('${componentName}', () => {
     let cleanup: () => void;
@@ -395,7 +344,8 @@ describe('${componentName}', () => {
 });
 `
         : `import { describe, it, expect, beforeEach, afterEach } from 'vitest';
-import { mountComponent, waitFor } from 'nativecorejs/testing';
+import { mountComponent, waitFor } from '@testing/index.js';
+import '../${componentName}.js';
 
 describe('${componentName}', () => {
     let cleanup;
@@ -427,7 +377,25 @@ describe('${componentName}', () => {
       console.log(`✓ Created test: src/components/ui/__tests__/${componentName}.test.${ext}`);
     }
   }
+}
 
-  rl.close();
-});
+console.log('\nPerformance optimization:');
+console.log('   All components are lazy-loaded by default (loads on first use).');
+console.log('   For critical layout components (header, sidebar, footer), prefetching improves performance.\n');
+
+if (forcePrefetch || forceNoPrefetch || !process.stdin.isTTY) {
+  const shouldPreload = forcePrefetch && !forceNoPrefetch;
+  console.log(`Non-interactive: prefetch=${shouldPreload}`);
+  finish(shouldPreload);
+} else {
+  const rl = readline.createInterface({
+    input: process.stdin,
+    output: process.stdout
+  });
+  rl.question('Would you like to prefetch this component? (y/N): ', (answer) => {
+    const shouldPreload = answer.toLowerCase() === 'y' || answer.toLowerCase() === 'yes';
+    finish(shouldPreload);
+    rl.close();
+  });
+}
 

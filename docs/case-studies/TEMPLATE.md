@@ -33,7 +33,8 @@
 *Describe how you structured the project. Include details like:*
 
 - How many routes, components, and stores?
-- Did you use protected routes and auth middleware?
+- Language mode: JavaScript (scaffold default) or TypeScript (`--ts`)?
+- Did you use protected routes? Auth is not shipped — describe any middleware you added (`make:middleware` + `r.group({ middleware: [...] })`).
 - Did you use SSG (`build:ssg`) or traditional SPA deployment?
 - Did you use plugins (`registerPlugin`)?
 - Did you use the Capacitor mobile packaging path?
@@ -72,8 +73,8 @@
 
 *Share one representative pattern that others might find useful.*
 
-```typescript
-// your snippet here
+```js
+// your snippet here (JS or TS is fine)
 ```
 
 ---

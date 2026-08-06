@@ -17,11 +17,11 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 const ROOT = path.resolve(__dirname, '../..');
 
-let useTypeScript = true;
+let useTypeScript = false;
 try {
-  const ncConfig = JSON.parse(fs.readFileSync(path.join(ROOT, 'nativecore.config.json'), 'utf8'));
-  if (ncConfig.useTypeScript === false) useTypeScript = false;
-} catch { /* default to TypeScript */ }
+    const ncConfig = JSON.parse(fs.readFileSync(path.join(ROOT, 'nativecore.config.json'), 'utf8'));
+    if (ncConfig.useTypeScript === true) useTypeScript = true;
+} catch { /* default to JavaScript (matches create-nativecore defaults) */ }
 const ext = useTypeScript ? 'ts' : 'js';
 
 // Get component name from command line
@@ -116,6 +116,8 @@ function searchDirectory(dirPath) {
     const fullPath = path.join(dirPath, file.name);
     
     if (file.isDirectory()) {
+      // Generated component tests import the tag; don't treat them as app usages.
+      if (file.name === '__tests__' || file.name === 'node_modules') return;
       searchDirectory(fullPath);
     } else if (file.name.endsWith('.html') || file.name.endsWith('.ts') || file.name.endsWith('.js')) {
       const content = fs.readFileSync(fullPath, 'utf-8');
@@ -166,6 +168,15 @@ if (usages.length > 0) {
 fs.unlinkSync(componentFile);
 console.log(`\n✅ Deleted component file: ${componentName}.${ext}`);
 
+// Step 5.5: Delete generated test file if present
+const testFile = path.join(uiDir, '__tests__', `${componentName}.test.${ext}`);
+let removedTest = false;
+if (fs.existsSync(testFile)) {
+  fs.unlinkSync(testFile);
+  removedTest = true;
+  console.log(`✅ Deleted test file: src/components/ui/__tests__/${componentName}.test.${ext}`);
+}
+
 // Summary
 console.log('\n✨ Component removed successfully!\n');
 console.log('📊 Summary:');
@@ -173,6 +184,9 @@ console.log(`   🗑️  Deleted: src/components/ui/${componentName}.${ext}`);
 console.log(`   ${removedFromIndex ? '✅' : '⚠️ '} appRegistry.${ext}: ${removedFromIndex ? 'Updated' : 'Not found'}`);
 if (removedFromPreload) {
   console.log(`   ✅ preloadRegistry.${ext}: Removed`);
+}
+if (removedTest) {
+  console.log(`   ✅ Test file removed`);
 }
 console.log(`   📝 Files cleaned: ${usages.length}`);
 console.log('');

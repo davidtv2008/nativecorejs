@@ -8,7 +8,6 @@
 import { CoreComponent } from '@core/component.js';
 import { html, css } from '@core-utils/templates.js';
 import { dom } from '@core-utils/dom.js';
-import auth from '@services/auth.service.js';
 import router from '@core/router.js';
 import { uiStore } from '@stores/uiStore.js';
 
@@ -164,7 +163,6 @@ export class AppSidebar extends CoreComponent {
     // ── DOM REFS ──────────────────────────────────────────────────────────────
     private sidebarRoot!: HTMLElement;
     private collapseBtn!: HTMLElement;
-    private logoutBtn!: HTMLElement;
 
     // ── STATE ─────────────────────────────────────────────────────────────────
     private isMobileOpen = this.state(false);
@@ -183,8 +181,8 @@ export class AppSidebar extends CoreComponent {
             <div ref="sidebarRoot" class="app-sidebar" role="navigation" aria-label="Application sidebar">
                 <div class="sidebar-header">
                     <div class="sidebar-branding">
-                        <span class="sidebar-branding__eyebrow">Protected</span>
-                        <strong class="sidebar-branding__title">Workspace</strong>
+                        <span class="sidebar-branding__eyebrow">App</span>
+                        <strong class="sidebar-branding__title">Navigation</strong>
                     </div>
                     <button ref="collapseBtn" class="sidebar-collapse-btn" type="button" aria-label="Toggle sidebar">
                         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"
@@ -198,19 +196,6 @@ export class AppSidebar extends CoreComponent {
                 <nav class="sidebar-nav">
                     <slot></slot>
                 </nav>
-                <div class="sidebar-footer">
-                    <button ref="logoutBtn" class="sidebar-item" type="button">
-                        <span class="sidebar-icon">
-                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
-                                stroke-linecap="round" stroke-linejoin="round">
-                                <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path>
-                                <polyline points="16 17 21 12 16 7"></polyline>
-                                <line x1="21" y1="12" x2="9" y2="12"></line>
-                            </svg>
-                        </span>
-                        <span class="sidebar-text">Logout</span>
-                    </button>
-                </div>
             </div>
         `;
     }
@@ -253,11 +238,6 @@ export class AppSidebar extends CoreComponent {
             console.log('Collapse button clicked'); // Debug log
             e.stopPropagation();
             this.toggle();
-        });
-
-        this.on(this.logoutBtn, 'click', (e) => {
-            e.stopPropagation();
-            auth.logout();
         });
 
         // General sidebar click for nav links
@@ -303,16 +283,10 @@ export class AppSidebar extends CoreComponent {
     private readonly handleSidebarClick = (event: Event) => {
         const path = event.composedPath() as Element[];
         const isCollapseBtn = path.some(el => el === this.collapseBtn);
-        const isLogoutBtn = path.some(el => el === this.logoutBtn);
         const isNavLink = path.some(el => el instanceof Element && el.hasAttribute('data-link'));
 
         if (isCollapseBtn) {
             this.toggle();
-            return;
-        }
-
-        if (isLogoutBtn) {
-            auth.logout();
             return;
         }
 
