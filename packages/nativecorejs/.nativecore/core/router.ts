@@ -460,10 +460,11 @@ export class Router {
         }
         
         try {
-            const isPrerenderedInitialRoute =
-                previousRoute === null &&
-                mainContent.getAttribute('data-prerendered-route') === route.path &&
-                !route.config.layout;
+            const isPrerenderedInitialRoute = this.isPrerenderedInitialRoute(
+                mainContent,
+                route,
+                previousRoute
+            );
             const hasWarmHtmlCache = this.htmlCache.has(route.config.htmlFile);
             const shouldAnimateTransition =
                 !isPrerenderedInitialRoute &&
@@ -471,11 +472,13 @@ export class Router {
                 route.config.disableTransition !== true &&
                 previousRoute?.config?.htmlFile !== route.config.htmlFile;
 
-            if (progressBar) {
-                progressBar.classList.add('loading');
+            // Avoid first-paint flash on SSG pages: no progress bar / scroll jump.
+            if (!isPrerenderedInitialRoute) {
+                if (progressBar) {
+                    progressBar.classList.add('loading');
+                }
+                this.resetScrollPosition(mainContent);
             }
-
-            this.resetScrollPosition(mainContent);
 
             if (previousRoute?.path && this.pageScripts[previousRoute.path]?.cleanup) {
                 this.pageScripts[previousRoute.path].cleanup!();
@@ -553,15 +556,31 @@ export class Router {
             }
 
             if (isPrerenderedInitialRoute) {
+                // Warm caches from the already-painted SSG DOM so later navigations
+                // can animate / skip-render correctly without a redundant first fetch.
+                const prerenderHtml = mainContent.innerHTML;
+                this.renderedHtmlCache.set(mainContent, {
+                    file: route.config.htmlFile,
+                    html: prerenderHtml,
+                });
+                if (!this.htmlCache.has(route.config.htmlFile)) {
+                    this.htmlCache.set(route.config.htmlFile, {
+                        html: prerenderHtml,
+                        cachedAt: Date.now(),
+                        ttl: route.config.cachePolicy?.ttl ?? 300,
+                    });
+                }
                 mainContent.removeAttribute('data-prerendered-route');
             }
             
             window.dispatchEvent(new CustomEvent('pageloaded', { detail: route }));
             
-            // Scroll to top on page navigation
-            this.resetScrollPosition(mainContent);
+            // Scroll to top on client navigations only (SSG first paint keeps scroll).
+            if (!isPrerenderedInitialRoute) {
+                this.resetScrollPosition(mainContent);
+            }
             
-            if (progressBar) {
+            if (progressBar && !isPrerenderedInitialRoute) {
                 setTimeout(() => progressBar.classList.remove('loading'), 200);
             }
             
@@ -587,6 +606,36 @@ export class Router {
             // Show 404 page when file doesn't exist
             this.handle404(route.path);
         }
+    }
+
+    /**
+     * True when the first boot can reuse SSG HTML already in `#main-content`.
+     * Prefer the explicit `data-prerendered-route` marker written by SSG; fall back
+     * to detecting non-shell view content so a missed marker still avoids a flash.
+     */
+    private isPrerenderedInitialRoute(
+        mainContent: HTMLElement,
+        route: RouteMatch,
+        previousRoute: RouteMatch | null
+    ): boolean {
+        if (previousRoute !== null || route.config.layout) {
+            return false;
+        }
+
+        const marker = mainContent.getAttribute('data-prerendered-route');
+        if (marker != null) {
+            return marker === route.path;
+        }
+
+        // Fallback: real view content already painted (not the default spinner shell).
+        const spinnerOnly =
+            mainContent.childElementCount === 1 &&
+            Boolean(mainContent.querySelector(':scope > loading-spinner'));
+        if (spinnerOnly || mainContent.childElementCount === 0) {
+            return false;
+        }
+
+        return Boolean(mainContent.querySelector('[data-view]'));
     }
     
     /**

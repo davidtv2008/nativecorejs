@@ -14,8 +14,8 @@ import * as mockApi from './api/mockApi.js';
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-const PORT = 8000;
-const HMR_PORT = 8001;
+const PORT = Number(process.env.PORT || 8000);
+const HMR_PORT = Number(process.env.HMR_PORT || (PORT + 1));
 const ROOT_DIR = __dirname;
 
 const MIME_TYPES = {

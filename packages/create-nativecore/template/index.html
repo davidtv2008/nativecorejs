@@ -128,17 +128,7 @@
 <body>
     <div id="page-progress" role="progressbar" aria-label="Page loading progress"></div>
 
-    <!--
-      Minimal shell: content only. Shell chrome components still ship in
-      src/components/core/ — opt back in when you need them, e.g.:
-
-        <div id="app" class="no-sidebar">
-          <app-header class="app-header"></app-header>
-          <app-sidebar></app-sidebar>
-          <main class="main-content">...</main>
-          <app-footer></app-footer>
-        </div>
-    -->
+    <!-- Minimal shell: content only. Opt into app-header / app-sidebar / app-footer when needed. -->
     <div id="app" class="minimal-shell">
         <main class="main-content">
             <div id="main-content" class="page">

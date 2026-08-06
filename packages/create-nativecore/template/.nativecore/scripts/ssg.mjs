@@ -43,7 +43,7 @@ try {
 } catch { /* default to TypeScript */ }
 const routesPath = path.join(rootDir, 'src', 'routes', `routes.${useTypeScript ? 'ts' : 'js'}`);
 
-const SERVER_PORT = 8000;
+const SERVER_PORT = Number(process.env.NATIVECORE_SSG_PORT || process.env.PORT || 8000);
 const SERVER_URL = `http://localhost:${SERVER_PORT}`;
 const RENDER_TIMEOUT = 30_000;
 const RENDER_SETTLE_MS = 800;
@@ -192,6 +192,7 @@ async function startServer() {
             env: {
                 ...process.env,
                 NATIVECORE_SSG: '1',
+                PORT: String(SERVER_PORT),
             },
         });
 
@@ -335,6 +336,8 @@ async function runSsg(routes) {
             });
         });
 
+        const failures = [];
+
         for (const route of routes) {
             process.stdout.write(`  📄 ${route} ... `);
             try {
@@ -345,10 +348,32 @@ async function runSsg(routes) {
                 await new Promise(r => setTimeout(r, RENDER_SETTLE_MS));
                 await stripDevDom(page);
 
+                // Tell the client router this route is already painted — skip
+                // the first innerHTML replace that causes a visible stutter.
+                const marked = await page.evaluate((routePath) => {
+                    const main = document.getElementById('main-content');
+                    if (!main) return false;
+                    main.setAttribute('data-prerendered-route', routePath);
+                    // Drop leftover default spinner if a real view is present.
+                    if (main.querySelector('[data-view]')) {
+                        main.querySelectorAll(':scope > loading-spinner').forEach((el) => el.remove());
+                    }
+                    return main.getAttribute('data-prerendered-route') === routePath
+                        && main.childElementCount > 0
+                        && !main.querySelector(':scope > loading-spinner:only-child');
+                }, route);
+
+                if (!marked) {
+                    throw new Error('failed to mark #main-content as prerendered (empty or spinner-only)');
+                }
+
                 const rawHtml = await page.content();
                 const html = sanitizeSsgHtml(rawHtml);
                 if (DEV_UI_LEAK_RE.test(html)) {
                     throw new Error('dev-tool UI leaked into SSG HTML (Outline/HMR/DEnc)');
+                }
+                if (!html.includes(`data-prerendered-route="${route}"`)) {
+                    throw new Error(`SSG HTML missing data-prerendered-route="${route}"`);
                 }
 
                 const outPath = route === '/'
@@ -361,18 +386,24 @@ async function runSsg(routes) {
                 renderedRoutes.push(route);
                 console.log('✓');
             } catch (err) {
+                failures.push({ route, message: err.message });
                 console.log(`✗  (${err.message})`);
             }
         }
 
-        // Write sitemap
-        if (renderedRoutes.length > 0) {
-            const baseUrl = extractBaseUrl();
-            const sitemapXml = buildSitemapXml(renderedRoutes, baseUrl);
-            const sitemapPath = path.join(deployDir, 'sitemap.xml');
-            fs.writeFileSync(sitemapPath, sitemapXml, 'utf8');
-            console.log(`\n🗺️  Sitemap written → _deploy/sitemap.xml`);
+        if (failures.length > 0 || renderedRoutes.length !== routes.length) {
+            const detail = failures.map((f) => `  - ${f.route}: ${f.message}`).join('\n');
+            throw new Error(
+                `SSG failed for ${failures.length || (routes.length - renderedRoutes.length)} route(s).\n${detail}`
+            );
         }
+
+        // Write sitemap
+        const baseUrl = extractBaseUrl();
+        const sitemapXml = buildSitemapXml(renderedRoutes, baseUrl);
+        const sitemapPath = path.join(deployDir, 'sitemap.xml');
+        fs.writeFileSync(sitemapPath, sitemapXml, 'utf8');
+        console.log(`\n🗺️  Sitemap written → _deploy/sitemap.xml`);
 
         console.log(`\n✨ SSG complete — ${renderedRoutes.length} route(s) pre-rendered in _deploy/`);
         console.log('🚀 _deploy/ is ready for Cloudflare Pages, S3+CloudFront, or Netlify\n');
