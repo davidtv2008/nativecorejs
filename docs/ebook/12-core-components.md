@@ -46,22 +46,19 @@ In the view (once per page is enough):
 <nc-snackbar ref="snackEl"></nc-snackbar>
 ```
 
-In the controller after create/delete:
+Prefer the static helper (finds the first `<nc-snackbar>` in the document):
 
 ```js
+import { NcSnackbar } from '@components/core/nc-snackbar.js';
+
 this.on(this.addBtn, 'click', () => {
     this.addTask();
-    if (typeof this.snackEl.show === 'function') {
-        this.snackEl.show('Task added');
-    } else {
-        this.snackEl.setAttribute('message', 'Task added');
-        this.snackEl.setAttribute('open', '');
-    }
+    NcSnackbar.show({ message: 'Task added', variant: 'success' });
 });
 ```
 
-Confirm the exact API in `nc-snackbar` source — some builds expose `.show()`,
-others are attribute-driven. Both patterns are fine if they match your file.
+Put one `<nc-snackbar></nc-snackbar>` in `index.html` (or the page) so
+`NcSnackbar.show` has a host element.
 
 ---
 

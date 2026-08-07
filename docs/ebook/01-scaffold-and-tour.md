@@ -1,119 +1,168 @@
 # Chapter 01 — Scaffold and Tour
 
-Create Deskflow and learn the generated layout.
+In this chapter you will create the Deskflow project, start the dev server, and
+walk every generated file. By the end you will know exactly what lives where and
+why — which makes every later chapter much less mysterious.
 
-## Create the project
+## Mental model
 
-From a working directory:
+`create-nativecore` is a one-time scaffolder, not a package you keep installed.
+It copies a full project tree into your target folder and then steps aside.
+Everything under `.nativecore/` is **vendored runtime** — it belongs to your project,
+not to an npm dependency. Generators (`make:*`) read this folder to produce
+correctly-wired files. The dev server (`server.js`) is also yours — it is a plain
+Node.js file you can read and extend.
+
+## Lab: create Deskflow
+
+Open a terminal in a working directory (not inside an existing project).
 
 ```bash
-# JavaScript (default) — recommended for this book
 npx create-nativecore@latest deskflow --defaults
-
 cd deskflow
 npm run dev
 ```
 
-TypeScript instead:
+The `--defaults` flag skips every prompt (JavaScript, no Capacitor).
+If you want TypeScript instead:
 
 ```bash
-npx create-nativecore@latest deskflow-ts --ts --no-capacitor
+npx create-nativecore@latest deskflow --ts --no-capacitor
 ```
 
-Optional Capacitor at create time: add `--capacitor`.
+> **Windows PowerShell:** `npx` works here without changes. The `npm.cmd` trick
+> is only needed when passing extra flags to *generator scripts* later.
 
-Open `http://localhost:8000/`. You should see the enterprise starter home.
+Open `http://localhost:8000/`. You should see the NativeCoreJS enterprise starter
+home page. That page lives in `src/views/public/home.html` — you will replace
+its content with Deskflow's home view in a later chapter.
 
-> **Windows:** When passing flags through npm scripts later, prefer `npm.cmd run … -- <args>`.
-
-## What was generated (important paths)
+## Tour of the generated layout
 
 ```
 deskflow/
-├── index.html                 # Single shell; #main-content outlet
-├── server.js                  # Dev server + HMR + mock /api
-├── nativecore.config.json     # useTypeScript, feature flags
-├── package.json
-├── vitest.config.*
+├── index.html                  # Single HTML shell; router swaps #main-content
+├── server.js                   # Dev server, HMR websocket, mock /api routes
+├── nativecore.config.json      # useTypeScript, feature flags
+├── package.json                # All scripts — make:*, build:ssg, compile, etc.
+├── vitest.config.*             # Test runner config
 ├── .nativecore/
-│   ├── core/                  # Framework runtime (vendored)
-│   ├── utils/
-│   ├── testing/
-│   ├── dev/                   # localhost tools
-│   └── scripts/               # compile, make:*, remove:*, ssg
-├── src/
-│   ├── app.js                 # Boot only (or app.ts)
-│   ├── routes/routes.js
-│   ├── controllers/
-│   ├── views/public|protected/
-│   ├── components/            # registries + core/ + ui/
-│   ├── services/              # api, storage, logger (no auth)
-│   ├── stores/
-│   ├── middleware/            # empty until you generate
-│   └── styles/
-└── dist/                      # compile output
+│   ├── core/                   # Router, CoreController, CoreComponent, state
+│   ├── utils/                  # html helper, dom utils, templates
+│   ├── testing/                # mountComponent, waitFor for Vitest
+│   ├── dev/                    # HMR, component overlay (localhost only)
+│   └── scripts/                # make-view.mjs, make-component.mjs, ssg.mjs …
+└── src/
+    ├── app.js                  # Boot entry — keep it minimal
+    ├── routes/routes.js        # All route definitions
+    ├── controllers/            # One controller per view
+    ├── views/
+    │   ├── public/             # Unauthenticated views
+    │   └── protected/          # Middleware-guarded views
+    ├── components/
+    │   ├── registry.js         # Lazy-loads all components
+    │   ├── appRegistry.js      # Your app components (task-card, etc.)
+    │   ├── frameworkRegistry.js# nc-* core components
+    │   ├── preloadRegistry.js  # Eagerly loaded components
+    │   └── core/               # Built-in nc-* elements
+    ├── stores/                 # Shared reactive state modules
+    ├── services/               # api.service, storage.service, logger.service
+    ├── middleware/             # Empty until you run make:middleware
+    └── styles/                 # CSS variables, core.css, main.css
 ```
+
+> Do **not** hand-edit anything under `.nativecore/core/` or `.nativecore/utils/`.
+> Those files are the vendored framework. If you need a framework fix, change
+> `packages/nativecorejs` and run `npm run vendor-core` in `create-nativecore`.
 
 ## Path aliases
 
-Imports always use a `.js` extension, even in TypeScript projects:
+Every import in this project uses an alias. Always include the `.js` extension —
+even in TypeScript files, because the runtime resolves ES modules by URL.
 
-```
-@core/         → .nativecore/core/
-@core-utils/   → .nativecore/utils/
-@testing/      → .nativecore/testing/
-@components/   → src/components/
-@routes/       → src/routes/
-@services/     → src/services/
-@stores/       → src/stores/
-@middleware/   → src/middleware/
-@dev/          → .nativecore/dev/   (localhost only)
-```
+| Alias | Resolves to |
+|-------|-------------|
+| `@core/` | `.nativecore/core/` |
+| `@core-utils/` | `.nativecore/utils/` |
+| `@testing/` | `.nativecore/testing/` |
+| `@components/` | `src/components/` |
+| `@routes/` | `src/routes/` |
+| `@services/` | `src/services/` |
+| `@stores/` | `src/stores/` |
+| `@middleware/` | `src/middleware/` |
+| `@dev/` | `.nativecore/dev/` (localhost only) |
 
-## Boot sequence (`src/app.js`)
+## How the app boots (`src/app.js`)
 
-1. `initLazyComponents()`
-2. Freeze a small `window.router` helper
-3. Register middleware under `// @middleware` (generators append here)
-4. `registerRoutes(router)`
-5. Start router inside `pausePageCleanupCollection` / `resumePageCleanupCollection`
-6. On localhost: load HMR, denc-tools, performance overlay
+Open `src/app.js` and read the comment block at the top. The boot sequence is:
 
-Keep business logic out of `app.js`.
+1. `initLazyComponents()` — registers all web components from the registry
+2. Freeze a minimal `window.router` helper (navigate, replace, back, getCurrentRoute)
+3. Register middleware (none ship by default — you add them with `make:middleware`)
+4. `registerRoutes(router)` — wire up route table from `routes/routes.js`
+5. `router.start()` wrapped in `pausePageCleanupCollection` / `resumePageCleanupCollection`
+6. `initSidebar()` — no-op until you opt into the shell chrome
+7. `initDevTools()` — loads HMR and the component overlay on localhost only
 
-## Dev tools (localhost)
+The golden rule: **business logic does not belong in `app.js`**. Routes go in
+`routes/routes.js`. Component logic goes in controllers. `app.js` is just plumbing.
 
-After `npm run dev`, turn **DEV MODE** on via the bottom pill:
+## Dev tools
 
-- Component overlay / gear editor
-- Outline panel
+After the dev server loads, look for a small pill in the bottom corner of the browser.
+Toggle **DEV MODE** on to access:
+
+- Component overlay and gear editor
+- Outline panel (shows component tree)
 - Drawing annotations
-- Performance overlay (FPS, MEM, DOM, route timing, …)
+- Performance overlay (FPS, memory, DOM nodes, route timing)
 
-The Component Builder is **experimental** and **disabled by default** (`COMPONENT_BUILDER_ENABLED = false`). It is not a required feature.
+The **Component Builder** is experimental and disabled by default
+(`COMPONENT_BUILDER_ENABLED = false` in `server.js`). It is not required for any
+part of this book.
 
 ## Apply to Deskflow
 
-> **Feature:** Project exists and runs.
-> **Commands:** `npx create-nativecore@latest deskflow --defaults` then `npm run dev`
+Your task for this chapter is simply to confirm the scaffold is healthy:
 
-1. Confirm home loads.
-2. Confirm console shows `[NativeCore] Dev tools loaded` on localhost (or a clear error if something failed).
-3. Skim `nativecore.config.json` — `"useTypeScript": false` for this book’s default path.
+1. Open `nativecore.config.json`. Confirm `"useTypeScript": false` (for `--defaults`).
+2. Open `src/app.js` (not `.ts`) and skim the boot sequence.
+3. Open `src/routes/routes.js` and find the single `/` route — notice it uses
+   `r.register` and `lazyController`.
+4. Visit `http://localhost:8000/` and confirm the home page renders.
+5. Open the browser console and confirm you see
+   `[NativeCore] Dev tools loaded` (a `console.warn`).
 
 ## Verify
 
-- [ ] Dev server on port 8000
-- [ ] Home view renders
-- [ ] `src/app.js` (not `.ts`) for `--defaults`
+- [ ] Dev server running on port 8000
+- [ ] Home view renders without errors
+- [ ] `src/app.js` exists (not `app.ts`) for a `--defaults` project
+- [ ] `nativecore.config.json` shows `"useTypeScript": false`
+- [ ] `[NativeCore] Dev tools loaded` in the browser console
 
 ## Common mistakes
 
 | Mistake | Fix |
 |---------|-----|
-| Expecting login/dashboard routes | Not shipped — you will add views |
-| Editing `.nativecore/` casually | Prefer app `src/`; treat core as framework |
-| Assuming TypeScript | Only with `--ts` |
+| Expecting a login page or dashboard | Not shipped — you build your views |
+| Editing files inside `.nativecore/core/` | Treat that folder as a library you do not touch |
+| Assuming TypeScript is the default | Only enabled with `--ts` |
+| Running `npm run dev` from the wrong directory | `cd deskflow` first |
+| Port 8000 already in use | Kill the other process or change `PORT` in `.env` |
+
+## Challenges
+
+**Bronze:** Open `server.js` and find the mock `/api` route handler. What does
+`GET /api/ping` return? Make a note — you will use it in a later lab.
+
+**Silver:** Add `"appName": "Deskflow"` to `nativecore.config.json`. Then open
+`src/app.js` and add a single `console.log` that prints it on boot. Confirm it
+appears in the browser console, then remove the log before moving on.
+
+**Gold:** Read `.nativecore/core/router.ts`. Find the `pageloaded` event and
+sketch (in plain English) what data is attached to its `detail` object. You will
+use this event in a later chapter.
 
 ## Next
 

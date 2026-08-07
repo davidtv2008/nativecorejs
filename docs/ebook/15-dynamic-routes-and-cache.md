@@ -1,20 +1,65 @@
 # Chapter 15 — Dynamic Routes and Cache
 
-Task detail pages, params, HTML cache, and prefetch.
+Every task in Deskflow needs its own URL. `/tasks/42` should show exactly task 42, support a browser bookmark, and feel instant on repeated visits. This chapter covers the router's param syntax, how to pass params to a controller, optional loader functions, and the HTML cache + prefetch API that makes repeat navigation feel instant.
 
-## Param syntax (router)
+---
 
-From `router.ts` `extractParams`:
+## Mental model
 
-| Segment | Meaning |
-|---------|---------|
-| `:id` | Required param → `params.id` |
-| `:id?` | Optional param |
-| `*` | Rest → `params.wildcard` |
+```
+URL: /tasks/42
+  ↓
+router matches '/tasks/:id'  →  params = { id: '42' }
+  ↓
+loader (optional) runs first, fetches task data (loaderData)
+  ↓
+HTML file is fetched (from cache if warm)
+  ↓
+controller factory called: (params, state, loaderData, rootElement)
+  ↓
+controller reads params.id → loads the task → renders
+```
 
-Exact path matches win before dynamic matching.
+The HTML cache is separate from the API cache. The router caches the raw HTML string so the browser never re-fetches the view file on repeat visits. The API cache in `api.service` is for data. They work together but are independent.
 
-## Register a detail route
+---
+
+## Param syntax
+
+| Segment | Meaning | Accessible as |
+|---------|---------|---------------|
+| `:id` | Required named param | `params.id` |
+| `:id?` | Optional named param | `params.id` (may be `undefined`) |
+| `*` | Rest / wildcard | `params.wildcard` |
+
+Exact paths always win before dynamic matching. `/tasks/new` is matched before `/tasks/:id`.
+
+---
+
+## Lab — Build the task detail route
+
+### Step 1 — Generate the view and controller
+
+**Windows (PowerShell):**
+
+```bash
+npm.cmd run make:view -- task-detail --defaults
+```
+
+**macOS / Linux:**
+
+```bash
+npm run make:view -- task-detail --defaults
+```
+
+This creates:
+
+- `src/views/public/task-detail.html`
+- `src/controllers/task-detail.controller.js`
+
+### Step 2 — Register the dynamic route
+
+In `src/routes/routes.js`, inside the public group:
 
 ```js
 r.register(
@@ -24,87 +69,239 @@ r.register(
 ).cache({ ttl: 60, revalidate: true });
 ```
 
-`make:view` can create the view; you may need to edit the registered path to
-include `:id` if the generator used a static segment.
-
-## Controller params
-
-`lazyController('taskDetailController', …)` resolves the **factory function**
-export (`taskDetailController`), not the class. The router calls it as
-`(params, state, loaderData)`.
-
-Generated factories ignore params by default (`_params`). Wire them through:
+The `.cache(...)` call is chained directly after `register`. It applies to the last registered route. Two modes:
 
 ```js
-export function taskDetailController(params, _state, _loaderData, rootElement) {
-    const ctrl = new TaskDetailController(rootElement);
-    ctrl.taskId = params?.id;
-    return () => ctrl.destroy();
-}
+.cache({ ttl: 300 })                     // block until fresh on stale
+.cache({ ttl: 60, revalidate: true })    // serve stale instantly, refresh in background
+```
+
+`ttl` is in seconds.
+
+### Step 3 — Write the view
+
+In `src/views/public/task-detail.html`:
+
+```html
+<div data-view="task-detail">
+    <a href="/tasks">&larr; Back to tasks</a>
+    <h1 ref="titleEl">Loading…</h1>
+    <p ref="notesEl" class="notes"></p>
+    <div ref="metaEl" class="meta"></div>
+    <nc-button ref="doneBtn" variant="primary">Mark done</nc-button>
+    <p ref="errorEl" class="error" hidden></p>
+</div>
+```
+
+### Step 4 — Write the controller
+
+```js
+import { CoreController } from '@core/controller.js';
+import { taskItems } from '@stores/task.store.js';
+import api from '@services/api.service.js';
 
 export class TaskDetailController extends CoreController {
-    onMount() {
+    async onMount() {
+        this.assertRefs('titleEl', 'notesEl', 'metaEl', 'doneBtn', 'errorEl');
+
+        // Params arrive via the factory — stored as an instance property before onMount
         const id = this.taskId;
-        // load task by id from taskItems / api
+
+        if (!id) {
+            this.showError('No task ID in URL.');
+            return;
+        }
+
+        // Try the in-memory store first (fast path)
+        let task = taskItems.value.find(t => t.id === id);
+
+        // Fall back to a direct API call if the store is not yet populated
+        if (!task) {
+            try {
+                task = await api.getCached(`/tasks/${id}`, { ttl: 60, tags: ['tasks'] });
+            } catch {
+                this.showError('Task not found.');
+                return;
+            }
+        }
+
+        if (!task) {
+            this.showError('Task not found.');
+            return;
+        }
+
+        this.currentTask = this.state(task);
+        this.bind(this.currentTask, this.titleEl, null, t => t.title);
+        this.titleEl.textContent = task.title;
+        this.notesEl.textContent = task.notes ?? '';
+        this.metaEl.textContent   = task.dueDate ? `Due: ${task.dueDate}` : '';
+
+        this.on(this.doneBtn, 'click', () => this.markDone());
     }
+
+    async markDone() {
+        const id = this.taskId;
+        await api.patch(`/tasks/${id}`, { done: true });
+        api.invalidateTags(['tasks']);
+        window.router.navigate('/tasks');
+    }
+
+    showError(msg) {
+        this.errorEl.textContent = msg;
+        this.errorEl.removeAttribute('hidden');
+    }
+}
+
+export function taskDetailController(params, _state, _loaderData, rootElement) {
+    const ctrl = new TaskDetailController(rootElement);
+    ctrl.taskId = params?.id;         // pass the param before onMount runs
+    return () => ctrl.destroy();
 }
 ```
 
-Alternatively read `window.router.getCurrentRoute()?.params` inside `onMount`
-(frozen window API exposes `getCurrentRoute`).
+The factory sets `ctrl.taskId` before `onMount`. This is the standard pattern because `onMount` runs synchronously on the first tick after the element connects — you need the params stored before that happens.
+
+Alternatively, read them from the router at any time:
+
+```js
+const { params } = window.router.getCurrentRoute() ?? {};
+const id = params?.id;
+```
+
+---
 
 ## Optional loaders
 
-`RouteConfig.loader` can prefetch data before the controller runs:
+A loader runs **before** the controller and fetches data while the HTML is being injected. Use it to guarantee data arrives before the first render:
 
 ```js
-r.register('/tasks/:id', 'src/views/public/task-detail.html', controller, {
-    loader: async (params, signal) => {
-        return api.get(`/tasks/${params.id}`, { signal }); // if your api supports signal
-    },
+r.register(
+    '/tasks/:id',
+    'src/views/public/task-detail.html',
+    lazyController('taskDetailController', '../controllers/task-detail.controller.js'),
+    {
+        loader: async (params, signal) => {
+            return fetch(`/api/tasks/${params.id}`, { signal }).then(r => r.json());
+        },
+    }
+).cache({ ttl: 60, revalidate: true });
+```
+
+The loader result arrives as `loaderData` in the factory:
+
+```js
+export function taskDetailController(params, _state, loaderData, rootElement) {
+    const ctrl = new TaskDetailController(rootElement);
+    ctrl.taskId    = params?.id;
+    ctrl.loaderData = loaderData;   // already fetched
+    return () => ctrl.destroy();
+}
+```
+
+Loaders are optional. For simple cases, fetching in `onMount` is fine.
+
+---
+
+## Prefetch on hover
+
+Warm the HTML cache for a route before the user clicks:
+
+```js
+// In tasks.controller.js, when rendering list items:
+this.on(this.listEl, 'mouseover', (e) => {
+    const card = e.target.closest('task-card');
+    if (!card) return;
+    const id = card.dataset.id;
+    if (id) window.router.prefetch(`/tasks/${id}`);
 });
 ```
 
-Confirm `api.service` method signatures before copying the fetch line — use
-whatever the service actually exposes (`get` / `getCached`).
+`prefetch` fetches and caches the HTML file without navigating. When the user does click, the cached HTML is served instantly.
 
-## Cache + prefetch
+---
+
+## Navigating to a detail route
+
+From the tasks list controller:
 
 ```js
-// After register — HTML cache policy for that route
-.cache({ ttl: 300 })                      // block until fresh when stale
-.cache({ ttl: 60, revalidate: true })     // stale-while-revalidate
-
-router.prefetch('/tasks');                // warm HTML without navigating
-router.bustCache('/tasks');               // one path
-router.bustCache();                       // all
+this.on(this.listEl, 'task-card-click', (e) => {
+    const id = e.target.closest('task-card')?.dataset.id;
+    if (id) window.router.navigate(`/tasks/${id}`);
+});
 ```
 
-Dev overlay can show cache health via router debug helpers (`getCacheSnapshot`,
-`getRouteDebugInfo`).
+Or use a plain `<a href="/tasks/42">` — the router intercepts internal links automatically.
+
+---
+
+## Cache management API
+
+```js
+// On the route object (chained after register):
+.cache({ ttl: 300 })                      // block on stale
+.cache({ ttl: 60, revalidate: true })     // stale-while-revalidate
+
+// On the router instance (run in browser console or from controller):
+window.router.bustCache('/tasks');        // bust HTML cache for one path
+window.router.bustCache();               // bust all HTML cache
+window.router.prefetch('/tasks');         // warm HTML without navigating
+```
+
+Debug helpers (run in the browser console):
+
+```js
+window.__NC_ROUTER__.getCacheSnapshot();     // see all cached HTML entries
+window.__NC_ROUTER__.getRouteDebugInfo();    // see all registered routes + cache state
+```
+
+---
 
 ## Apply to Deskflow
 
-> **Feature:** Click a task → `/tasks/:id` detail view.
+> **Feature:** Clicking a task navigates to `/tasks/:id`, which shows the task detail. The second visit is served from cache.
 
-1. Add `task-detail` view + controller.
-2. Register `/tasks/:id`.
-3. From the list, `window.router.navigate(\`/tasks/${id}\`)`.
-4. Prefetch detail HTML on hover if you want snappier UX.
+1. Generate the `task-detail` view and controller.
+2. Register `/tasks/:id` in the public group with `.cache({ ttl: 60, revalidate: true })`.
+3. Emit a `task-card-click` event (or use a plain link) from the tasks list.
+4. In `taskDetailController`, set `ctrl.taskId` from `params.id`.
+5. Look up the task from the store or API in `onMount`.
+6. Add prefetch on hover for bonus points.
+
+---
 
 ## Verify
 
-- [ ] `/tasks/1` shows that task
-- [ ] Bad id shows a friendly empty/error state (your code)
-- [ ] Second visit with `.cache()` hits cached HTML (Network / overlay)
+- [ ] `/tasks/1` renders task 1; `/tasks/2` renders task 2
+- [ ] An unknown ID shows a friendly error state (not a blank page)
+- [ ] A second visit within 60 seconds does not make a new HTML network request (Network tab)
+- [ ] Back navigation works via the browser back button
+- [ ] Dynamic routes are **not** included in `build:ssg` output (expected behavior)
+
+---
+
+## Challenges
+
+**Bronze** — Add an `<a href="/tasks">Back to list</a>` link to the detail view. Confirm it uses SPA navigation (no full page reload).
+
+**Silver** — Add a `loader` function to the `/tasks/:id` route registration that fetches the task from `/api/tasks/:id` before the controller runs. Pass `loaderData` directly to the controller and skip the duplicate fetch in `onMount`.
+
+**Gold** — On the tasks list page, prefetch the detail HTML for every task card on `mouseover`. Use `window.router.prefetch` and debounce the calls so rapidly hovering over the list does not fire dozens of requests simultaneously.
+
+---
 
 ## Common mistakes
 
 | Mistake | Fix |
 |---------|-----|
-| Expecting SSG for `/tasks/:id` | Dynamic routes are skipped by `build:ssg` |
-| Using only `window.location` | Prefer `window.router.navigate` |
+| Expecting SSG to generate pages for `/tasks/:id` | Dynamic routes are intentionally skipped by `build:ssg` — serve them from the live server |
+| Using `window.location.href = ...` instead of `router.navigate` | The router's history and middleware are bypassed; always use `window.router.navigate` |
+| Setting `ctrl.taskId` inside `onMount` | Too late — set it in the factory before the constructor or before `onMount` fires |
+| `ttl: 60000` (milliseconds) | `.cache({ ttl })` is in seconds; use `ttl: 60` |
+| Calling `router.prefetch` without registering the route first | Prefetch is a no-op if the path has no matching route |
+
+---
 
 ## Next
 
-[Chapter 16 — Wires](./16-wires.md)
+[Chapter 16 — Wires (legacy)](./16-wires.md)

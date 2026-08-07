@@ -1,13 +1,30 @@
 # Chapter 07 — Deskflow Tasks
 
-Assemble chapters 02–06 into a working tasks list.
+This is the first “aha” chapter. You assemble views, controllers, state, and
+`task-card` into a real feature.
+
+## Mental model
+
+```
+View          → layout + refs (listEl, addBtn, countEl)
+Controller    → owns the tasks array, listens for events
+task-card     → paints one row, emits task-card-toggle
+```
+
+Data flows **down** through attributes (`title`, `done`, `data-id`).
+Intent flows **up** through events (`task-card-toggle`).
+
+Forms (ch. 11), stores (ch. 10), and APIs (ch. 09) will replace `prompt` and
+the in-memory array later. The event bridge stays the same forever.
+
+---
 
 ## Goal
 
 On `/tasks`:
 
 - Show a list of tasks using `<task-card>`
-- Add a task from a simple button + prompt (forms chapter upgrades this later)
+- Add a task from a button + `prompt` (forms chapter upgrades this)
 - Keep an open-count in the header via `this.compute`
 
 ## Suggested files
@@ -16,9 +33,11 @@ On `/tasks`:
 |------|------|
 | `src/views/public/tasks.html` | Layout + refs |
 | `src/controllers/tasks.controller.js` | State + events |
-| `src/components/ui/task-card.js` | Presentation |
+| `src/components/ui/task-card.js` | Presentation (from ch. 05) |
 
-## View sketch
+---
+
+## Lab — View
 
 ```html
 <div class="tasks-page" data-view="tasks">
@@ -31,7 +50,7 @@ On `/tasks`:
 </div>
 ```
 
-## Controller sketch
+## Lab — Controller
 
 ```js
 import { CoreController } from '@core/controller.js';
@@ -55,7 +74,7 @@ export class TasksController extends CoreController {
 
         this.renderList();
         this.effect(() => {
-            // re-render when tasks change
+            // Re-render when the array identity changes
             this.tasks.value;
             this.renderList();
         });
@@ -97,13 +116,15 @@ export function tasksController(_p, _s, _l, root) {
 }
 ```
 
-Adapt attribute names to match your `task-card` implementation from Chapter 05.
+Adapt attribute names to match your `task-card` from [Chapter 05](./05-first-component.md).
+
+---
 
 ## Apply to Deskflow (step by step)
 
 1. Ensure `/tasks` route + controller exist (`make:view` if needed).
-2. Ensure `<task-card>` exists from [Chapter 05](./05-first-component.md).
-3. Paste / adapt the view + controller sketches above.
+2. Ensure `<task-card>` exists from Chapter 05.
+3. Paste / adapt the view + controller above.
 4. Confirm each card gets `data-id` so `onToggle` can find the task.
 5. Keep `npm run dev` running and exercise Add + Toggle.
 
@@ -118,8 +139,7 @@ User clicks Toggle inside task-card
   → effect re-renders the list
 ```
 
-That is the whole app loop. Forms, stores, and APIs later replace `prompt` and
-the in-memory array — the event bridge stays the same.
+---
 
 ## Challenges
 
@@ -136,6 +156,15 @@ it in `onMount` (preview of stores in Chapter 10).
 - [ ] Add task updates the list and open count
 - [ ] Toggle updates count
 - [ ] Navigate to `/` and back — no duplicate listeners
+
+## Common mistakes
+
+| Mistake | Fix |
+|---------|-----|
+| Forgetting `data-id` on cards | `onToggle` cannot match the array item |
+| Mutating `this.tasks.value` in place | Assign a **new** array so reactivity fires |
+| Listening on each card instead of `listEl` | Prefer one delegated listener |
+| Missing factory `return () => ctrl.destroy()` | Handlers stack on every visit |
 
 ## Checkpoint M2
 

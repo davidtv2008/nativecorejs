@@ -133,15 +133,17 @@ Companion project docs (also kept accurate):
 ## Golden rule: use the generators
 
 ```bash
-npm run make:component task-card
-npm run make:view tasks
-npm run make:controller tasks
-npm run make:store task
-npm run make:middleware session
-npm run remove:view tasks
+# Windows
+npm.cmd run make:component -- task-card --defaults
+npm.cmd run make:view -- tasks --defaults
+npm.cmd run make:store -- task --defaults
+
+# macOS / Linux
+npm run make:component -- task-card --defaults
+npm run make:view -- tasks --defaults
 ```
 
-Keep commands short; answer prompts. Prefer `ref` / `bind` / `on` — wires utils are removed.
+Prefer `ref` / `bind` / `on`. Chapter 16 (wires) is legacy only.
 
 ---
 
@@ -170,3 +172,13 @@ Verification (Aug 2026): chapters cross-checked against a fresh
 `--defaults` scaffold + `make:*` output; generator stubs for components/stores
 were corrected so Deskflow samples match real APIs (`ref` binds, `ttl` seconds,
 `loadTasks` / `/tasks`, export `appStore`).
+
+**BNR rewrite complete (Aug 2026):** Chapters **00–25** plus appendices were
+fully rewritten in Big Nerd Ranch style. Teaching chapters follow:
+mental model → lab (Deskflow) → verify → Bronze/Silver/Gold challenges →
+common mistakes → next. Chapter 16 is a short legacy pointer. Chapter 25 and
+the appendices are reference-style with verified tables. APIs were checked
+against `packages/create-nativecore/template` and `.nativecore/` sources.
+
+Custom components remain the spine: spend the most time on chapters **05** and
+**07**, then polish with **11–13**.

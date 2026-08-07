@@ -23,7 +23,7 @@ If a row cannot be filled, the chapter is not ready to publish.
 | 13 | Slots | Composition | Card slots | Named slot content |
 | 14 | Styling | `--nc-*`, theme | Dark toggle | Theme persists |
 | 15 | Dynamic routes | `:id`, cache, prefetch | `/tasks/:id` | Detail loads; cache hits |
-| 16 | Wires | Optional `wire-*` | One wired panel | Bindings update |
+| 16 | Wires (legacy) | Historical pointer only | — | Reader uses ref/bind/on |
 | 17 | Testing | Vitest + `@testing` | Component tests | `npm test` passes |
 | 18 | Dev tools | Overlay, HMR, editor | Profile a route | Overlay metrics visible |
 | 19 | TypeScript mode | `--ts` | Notes on TS Deskflow | `typecheck` passes if used |

@@ -1,6 +1,17 @@
 # Chapter 03 — Controllers
 
-Page logic with `CoreController`.
+Page logic with `CoreController`. Controllers are the brain of each route:
+the view is HTML; the controller wires refs, state, and events.
+
+## Mental model
+
+```
+Router swaps HTML into #main-content
+  → lazy-loads your controller module
+  → calls tasksController(params, state, loaderData)
+  → you construct CoreController → onMount()
+  → navigate away → destroy() → listeners gone
+```
 
 ## What a controller is
 

@@ -14,34 +14,43 @@ NN-kebab-title.md
 
 One-line subtitle: what the reader builds in Deskflow.
 
-### 2. Accuracy note (when needed)
+### 2. Mental model
 
-If the topic is author-owned or package-only, say so in the first paragraph.
+Short paragraph or ASCII diagram — what problem this chapter solves.
 
-### 3. Concept
+### 3. Accuracy note (when needed)
 
-Explain the real API. Prefer short tables and code that matches source.
-Cite import paths with `.js` extensions.
+If the topic is author-owned or package-only, say so early.
 
-### 4. Apply to Deskflow
+### 4. Lab / Concept
+
+Explain the real API with typed code. Prefer short tables.
+Cite import paths with `.js` extensions. Windows: `npm.cmd run … --` once.
+
+### 5. Apply to Deskflow
 
 ```markdown
 ## Apply to Deskflow
 
 > **Feature:** …
-> **Commands:** …
 ```
 
-Step-by-step with exact generator commands. Prefer `npm.cmd run` on Windows notes once per chapter max.
+Step-by-step for the progressive Deskflow app.
 
-### 5. Verify
+### 6. Verify
 
-Bullet list of what to click/run to confirm success.
+Checkbox list of what to click/run.
 
-### 6. Common mistakes
+### 7. Challenges (teaching chapters)
 
-2–5 mistakes drawn from real API mismatches (not generic advice).
+- **Bronze** — follow the steps
+- **Silver** — extend the feature
+- **Gold** — stretch without peeking ahead
 
-### 7. Next
+### 8. Common mistakes
+
+2–5 mistakes drawn from real API mismatches.
+
+### 9. Next
 
 Link to the next chapter.
