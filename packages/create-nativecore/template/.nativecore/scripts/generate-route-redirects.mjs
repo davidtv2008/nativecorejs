@@ -43,17 +43,18 @@ export function extractRegisteredRoutes(routesSource) {
     return Array.from(routesSource.matchAll(/\.register\(\s*['"]([^'"]+)['"]/g), match => match[1]);
 }
 
-export function renderRouteRedirects(protectedRoutes, registeredRoutes) {
-    const routeRules = registeredRoutes
-        .filter(route => route !== '/')
-        .flatMap(route => {
-            const variants = route.endsWith('/') ? [route] : [route, `${route}/`];
-            return variants.map(routeVariant => `${routeVariant} / 200`);
-        });
-
-    return [
-        ...routeRules
-    ].join('\n') + '\n';
+/**
+ * Cloudflare Pages / Netlify SPA fallback.
+ *
+ * IMPORTANT: Do not rewrite known routes to `/`. That serves the home SSG HTML
+ * for deep links (and tab-discard reloads), which flashes the landing page
+ * before the client router swaps in the real view.
+ *
+ * Hosts serve existing static files (including …/index.html from SSG) first;
+ * this catch-all only applies when no asset matches.
+ */
+export function renderRouteRedirects(_protectedRoutes, _registeredRoutes) {
+    return '/* /index.html 200\n';
 }
 
 export function generateRouteRedirects() {

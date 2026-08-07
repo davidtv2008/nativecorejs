@@ -1280,9 +1280,20 @@ const server = http.createServer(async (req, res) => {
         return;
     }
     
-    // If file doesn't exist and no extension, serve index.html for SPA routing
-    if (!isFileRequest && (!pathExists || pathIsDirectory)) {
-        filePath = path.join(ROOT_DIR, 'index.html');
+    // Prefer …/index.html for directories and pretty URLs (SSG output).
+    // Only fall back to the app shell when no prerendered page exists.
+    if (!isFileRequest && pathIsDirectory) {
+        const dirIndex = path.join(filePath, 'index.html');
+        filePath = fs.existsSync(dirIndex) ? dirIndex : path.join(ROOT_DIR, 'index.html');
+    } else if (!isFileRequest && !pathExists) {
+        const prettyIndex = path.join(
+            ROOT_DIR,
+            urlWithoutQuery.replace(/\/$/, ''),
+            'index.html'
+        );
+        filePath = (urlWithoutQuery !== '/' && fs.existsSync(prettyIndex))
+            ? prettyIndex
+            : path.join(ROOT_DIR, 'index.html');
     }
     
     // Get file extension
