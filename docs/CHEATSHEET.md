@@ -302,7 +302,7 @@ npm.cmd run remove:view -- tasks --yes
 ## Build / test
 
 ```bash
-npm run dev           # compile watch + server + HMR (port 8000)
+npm run dev           # compile watch + server + HMR (port 3000)
 npm run build         # production client pipeline
 npm run build:ssg     # pre-render static public routes → _deploy/
 npm run build:full    # build + build:ssg

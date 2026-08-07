@@ -28,9 +28,9 @@ the script runner without reinterpretation.
 
 ---
 
-## Port 8000 is already in use / project folder is locked
+## port 3000 is already in use / project folder is locked
 
-**Symptom:** `npm run dev` exits immediately with `EADDRINUSE :8000`, or you
+**Symptom:** `npm run dev` exits immediately with `EADDRINUSE :3000`, or you
 cannot delete a project directory because a file inside it is locked.
 
 **Cause:** Stopping `npm run dev` with Ctrl-C on Windows sometimes leaves
@@ -42,8 +42,8 @@ open ports and file handles even after the parent terminal closes.
 Option A — kill the processes:
 
 ```bash
-# Find the process on port 8000:
-netstat -ano | findstr :8000
+# Find the process on port 3000:
+netstat -ano | findstr :3000
 # Kill by PID shown in the last column:
 taskkill /PID <pid> /F
 ```
@@ -51,7 +51,7 @@ taskkill /PID <pid> /F
 Option B — use npx kill-port:
 
 ```bash
-npx kill-port 8000
+npx kill-port 3000
 ```
 
 Then restart `npm run dev`.
@@ -323,19 +323,19 @@ Server did not become ready within 30 seconds
 ```
 
 **Cause:** `ssg.mjs` starts `node server.js` and waits for it to serve a valid
-HTML response on port 8000. If the server takes too long, returns JSON, or
+HTML response on port 3000. If the server takes too long, returns JSON, or
 errors before becoming ready, SSG aborts.
 
 **Fix steps:**
 
 1. Confirm `npm run build` has been run first — `ssg.mjs` requires `_deploy/`
    to exist.
-2. Start the server manually and check it serves HTML on port 8000:
+2. Start the server manually and check it serves HTML on port 3000:
    ```bash
    node server.js
-   curl http://localhost:8000
+   curl http://localhost:3000
    ```
-3. If another process is already on port 8000, stop it before running SSG.
+3. If another process is already on port 3000, stop it before running SSG.
 4. On CI, ensure Chromium is available for Puppeteer (the `puppeteer` package
    handles this automatically if `PUPPETEER_SKIP_DOWNLOAD` is not set).
 

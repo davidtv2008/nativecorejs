@@ -23,7 +23,7 @@ npx create-nativecore@latest my-app --defaults
 # 2. Enter the project
 cd my-app
 
-# 3. Dev server (compile watch + HMR) → http://localhost:8000
+# 3. Dev server (compile watch + HMR) → http://localhost:3000
 npm run dev
 
 # 4. First UI piece (Windows: use npm.cmd so flags after -- are kept)

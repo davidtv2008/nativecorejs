@@ -14,7 +14,7 @@ import * as mockApi from './api/mockApi.js';
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-const PORT = Number(process.env.PORT || 8000);
+const PORT = Number(process.env.PORT || 3000);
 const HMR_PORT = Number(process.env.HMR_PORT || (PORT + 1));
 const ROOT_DIR = __dirname;
 
@@ -161,7 +161,7 @@ function validatePath(userPath, rootDir = ROOT_DIR) {
 
 /**
  * Path portion of the request (no query string). Handles absolute-form Request-URI
- * (e.g. GET http://localhost:8000/api/foo HTTP/1.1) so /api/* routes are not missed.
+ * (e.g. GET http://localhost:3000/api/foo HTTP/1.1) so /api/* routes are not missed.
  */
 function getRequestPathname(req) {
     let raw = req.url || '/';

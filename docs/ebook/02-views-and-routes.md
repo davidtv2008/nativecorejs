@@ -306,8 +306,8 @@ r.register('/settings', 'src/views/protected/settings.html',
     lazyController('settingsController', '../controllers/settings.controller.js'));
 ```
 
-Visit `http://localhost:8000/tasks` — you should see "My Tasks".
-Visit `http://localhost:8000/settings` — you should see "Settings".
+Visit `http://localhost:3000/tasks` — you should see "My Tasks".
+Visit `http://localhost:3000/settings` — you should see "Settings".
 The settings route is not guarded yet (the middleware array is empty), so it renders
 for everyone. You will lock it down in a later chapter.
 

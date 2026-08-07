@@ -33,7 +33,7 @@ npx create-nativecore@latest deskflow --ts --no-capacitor
 > **Windows PowerShell:** `npx` works here without changes. The `npm.cmd` trick
 > is only needed when passing extra flags to *generator scripts* later.
 
-Open `http://localhost:8000/`. You should see the NativeCoreJS enterprise starter
+Open `http://localhost:3000/`. You should see the NativeCoreJS enterprise starter
 home page. That page lives in `src/views/public/home.html` — you will replace
 its content with Deskflow's home view in a later chapter.
 
@@ -129,13 +129,13 @@ Your task for this chapter is simply to confirm the scaffold is healthy:
 2. Open `src/app.js` (not `.ts`) and skim the boot sequence.
 3. Open `src/routes/routes.js` and find the single `/` route — notice it uses
    `r.register` and `lazyController`.
-4. Visit `http://localhost:8000/` and confirm the home page renders.
+4. Visit `http://localhost:3000/` and confirm the home page renders.
 5. Open the browser console and confirm you see
    `[NativeCore] Dev tools loaded` (a `console.warn`).
 
 ## Verify
 
-- [ ] Dev server running on port 8000
+- [ ] Dev server running on port 3000
 - [ ] Home view renders without errors
 - [ ] `src/app.js` exists (not `app.ts`) for a `--defaults` project
 - [ ] `nativecore.config.json` shows `"useTypeScript": false`
@@ -149,7 +149,7 @@ Your task for this chapter is simply to confirm the scaffold is healthy:
 | Editing files inside `.nativecore/core/` | Treat that folder as a library you do not touch |
 | Assuming TypeScript is the default | Only enabled with `--ts` |
 | Running `npm run dev` from the wrong directory | `cd deskflow` first |
-| Port 8000 already in use | Kill the other process or change `PORT` in `.env` |
+| port 3000 already in use | Kill the other process or change `PORT` in `.env` |
 
 ## Challenges
 

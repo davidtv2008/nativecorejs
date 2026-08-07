@@ -56,7 +56,7 @@ Companion project docs (also kept accurate):
 
 | Milestone | After chapter | You can… |
 |-----------|---------------|----------|
-| M0 | 01 | Run the scaffold at `localhost:8000` |
+| M0 | 01 | Run the scaffold at `localhost:3000` |
 | M1 | 04 | Navigate home / tasks / settings views |
 | M2 | 08 | Manage tasks with a controller + reactive UI |
 | M3 | 09 | Gate settings behind middleware you wrote |

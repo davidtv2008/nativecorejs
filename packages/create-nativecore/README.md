@@ -24,7 +24,7 @@ TypeScript:
 npx create-nativecore@latest my-app --ts
 ```
 
-Open `http://localhost:8000`.
+Open `http://localhost:3000`.
 
 ## What you get
 

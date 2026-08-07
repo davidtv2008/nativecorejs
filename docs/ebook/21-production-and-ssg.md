@@ -255,7 +255,7 @@ For a longer host checklist, see the showcase **Deploy** guide
 - SSG requires Chromium to be available on the build machine. CI environments
   typically need `puppeteer` with `--no-sandbox`. The `ssg.mjs` call already
   passes `--no-sandbox` and `--disable-setuid-sandbox` to the Puppeteer launch.
-- Port 8000 must be free when SSG starts (or already serving the NativeCore
+- port 3000 must be free when SSG starts (or already serving the NativeCore
   app). If another process answers on 8000 with JSON, SSG will abort rather
   than pre-render API responses.
 

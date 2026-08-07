@@ -43,7 +43,7 @@ try {
 } catch { /* default to TypeScript */ }
 const routesPath = path.join(rootDir, 'src', 'routes', `routes.${useTypeScript ? 'ts' : 'js'}`);
 
-const SERVER_PORT = Number(process.env.NATIVECORE_SSG_PORT || process.env.PORT || 8000);
+const SERVER_PORT = Number(process.env.NATIVECORE_SSG_PORT || process.env.PORT || 3000);
 const SERVER_URL = `http://localhost:${SERVER_PORT}`;
 const RENDER_TIMEOUT = 30_000;
 const RENDER_SETTLE_MS = 800;
@@ -180,7 +180,7 @@ async function isServerReady() {
         if (!(res.ok || res.status < 500)) return false;
         const contentType = res.headers.get('content-type') || '';
         const body = await res.text();
-        // Reject workers / mock APIs that also listen on :8000 (JSON "API is running")
+        // Reject workers / mock APIs that also listen on the app port (JSON "API is running")
         if (contentType.includes('application/json') || body.trimStart().startsWith('{')) {
             return false;
         }

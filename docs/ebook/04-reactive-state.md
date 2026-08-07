@@ -246,7 +246,7 @@ Now open `src/views/public/tasks.html` and add `ref="addBtn"` to a button:
 </div>
 ```
 
-Visit `http://localhost:8000/tasks`. The badge should show `2` (two open tasks).
+Visit `http://localhost:3000/tasks`. The badge should show `2` (two open tasks).
 Click "Add task" — the badge increments to `3` and the page title updates.
 Navigate away to `/` and back — the counter resets to its initial state (the
 controller was destroyed and re-created). That is correct and intentional.

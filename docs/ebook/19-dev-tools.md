@@ -52,7 +52,7 @@ Start (or keep running) your Deskflow dev server:
 npm.cmd run dev
 ```
 
-Open `http://localhost:8000` in your browser. Look for a small pill or button
+Open `http://localhost:3000` in your browser. Look for a small pill or button
 near one of the corners labeled **DEV MODE**. Click it.
 
 The overlay expands to show tabs. Exact labels evolve as the tooling matures —
@@ -121,11 +121,11 @@ without a full page reload when possible.
 - Changes to `app.ts` / `app.js` always trigger a full page reload.
 
 **Windows only:** Stopping `npm run dev` with Ctrl-C sometimes leaves orphaned
-`esbuild` or `watch-compile` child processes. If you see "port 8000 already in
+`esbuild` or `watch-compile` child processes. If you see "port 3000 already in
 use" after restarting, kill those processes via Task Manager or:
 
 ```bash
-npx kill-port 8000
+npx kill-port 3000
 ```
 
 ---
