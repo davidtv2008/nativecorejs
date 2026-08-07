@@ -21,6 +21,7 @@ export class AppSidebar extends CoreComponent {
             flex-direction: column;
             height: 100%;
             overflow: hidden;
+            background: var(--nc-bg-secondary, #f1f5f9);
         }
 
         .app-sidebar {

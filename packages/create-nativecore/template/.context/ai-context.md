@@ -355,6 +355,23 @@ cleanup();
 
 Optional. Only when the project was created with `--capacitor` or the author adds it later. Default web apps do not include Capacitor config.
 
+## Environment
+
+Copy `.env.example` to `.env`. Public keys are injected into `index.html` as
+`globalThis.__NC_PUBLIC_ENV__` (`npm run env:sync` / compile / build; the
+dev server also reinjects on HTML responses).
+
+```js
+import { env } from '@config/env.js';
+
+env.apiBaseUrl;   // from API_BASE_URL or NC_PUBLIC_API_BASE_URL
+env.appName;
+env.features.debugMode;
+```
+
+Do not hardcode backend URLs in services — read `env.apiBaseUrl`. Never put
+secrets in public / `NC_PUBLIC_*` / `FEATURE_*` keys.
+
 ## Common mistakes
 
 | Mistake | Fix |
@@ -370,6 +387,7 @@ Optional. Only when the project was created with `--capacitor` or the author add
 | `npm run make:view -- --defaults` under PowerShell | Use `npm.cmd run make:view -- profile --defaults` |
 | Dual `index.html` + `app.html` shells | Single `index.html` only |
 | Expecting `src/config/routes.ts` | Routes are `src/routes/routes.*` |
+| Hardcoding `http://localhost:8000` in services | Use `env.apiBaseUrl` from `@config/env.js` + `.env` |
 
 ## Debugging checklist
 

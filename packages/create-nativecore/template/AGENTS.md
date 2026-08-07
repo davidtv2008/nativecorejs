@@ -60,6 +60,7 @@ It does **not** include login, JWT auth, or a dashboard. Auth is author-owned vi
 | Dev tools | `.nativecore/dev/` (localhost only) |
 | Stores | `src/stores/` |
 | API service | `src/services/api.service.*` |
+| Client env | `src/config/env.*` (`import { env } from '@config/env.js'`) |
 | Middleware (user-owned) | `src/middleware/` via `npm run make:middleware` |
 
 ## Path Aliases

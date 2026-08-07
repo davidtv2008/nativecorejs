@@ -10,9 +10,14 @@ import path from 'path';
 import { fileURLToPath } from 'url';
 import { WebSocketServer } from 'ws';
 import * as mockApi from './api/mockApi.js';
+import { loadEnv, createEnvReloader } from './.nativecore/scripts/load-env.mjs';
+import { getPublicEnv, injectPublicEnvIntoHtml, getApiConnectOrigins } from './.nativecore/scripts/public-env.mjs';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
+
+loadEnv({ root: __dirname });
+const reloadEnvIfChanged = createEnvReloader({ root: __dirname });
 
 const PORT = Number(process.env.PORT || 3000);
 const HMR_PORT = Number(process.env.HMR_PORT || (PORT + 1));
@@ -1325,12 +1330,19 @@ const server = http.createServer(async (req, res) => {
     // In development, disable all caching for instant updates
     const isDevelopment = process.env.NODE_ENV !== 'production';
 
+    let responseBody = content;
+    if (contentType === 'text/html') {
+        reloadEnvIfChanged();
+        responseBody = injectPublicEnvIntoHtml(content.toString('utf8'), getPublicEnv());
+    }
+
     // In development, set a permissive CSP to allow HMR/devtools eval
     if (isDevelopment && contentType === 'text/html') {
         const connectSrc = [
             "'self'",
             `ws://localhost:${HMR_PORT}`,
             `ws://127.0.0.1:${HMR_PORT}`,
+            ...getApiConnectOrigins(),
         ].join(' ');
 
         headers['Content-Security-Policy'] = [
@@ -1342,12 +1354,13 @@ const server = http.createServer(async (req, res) => {
             "img-src 'self' data:"
         ].join('; ');
     } else if (!isDevelopment && contentType === 'text/html') {
+        const connectSrc = ["'self'", ...getApiConnectOrigins()].join(' ');
         headers['Content-Security-Policy'] = [
             "default-src 'self'",
-            "script-src 'self'",
+            "script-src 'self' 'unsafe-inline'",
             "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
             "font-src 'self' https://fonts.gstatic.com",
-            "connect-src 'self'",
+            `connect-src ${connectSrc}`,
             "img-src 'self' data: https:",
             "frame-ancestors 'none'"
         ].join('; ');
@@ -1371,7 +1384,7 @@ const server = http.createServer(async (req, res) => {
     }
 
     res.writeHead(200, headers);
-    res.end(content, 'utf-8');
+    res.end(responseBody, 'utf-8');
 });
 
 server.listen(PORT, () => {

@@ -57,12 +57,14 @@ How a scaffolded NativeCore app is structured and how data flows through it.
 │   │   ├── core/              # nc-* + shell chrome source
 │   │   └── ui/                # app-authored components
 │   ├── services/              # api, storage, logger (no auth service)
+│   ├── config/                # env.js — public client config from .env
 │   ├── stores/                # appStore, uiStore, make:store
 │   ├── middleware/            # empty by default; make:middleware
 │   ├── styles/
 │   ├── utils/
 │   ├── constants/
 │   └── types/
+├── .env.example               # copy to .env; PORT server-only; API_BASE_URL public
 └── dist/                      # compiled output (gitignored)
 ```
 
@@ -214,11 +216,21 @@ Production builds strip / omit `.nativecore/dev` usage.
 
 | Script | Role |
 |--------|------|
-| `npm run compile` | Dev compile + CSS bundle + import map |
+| `npm run env:sync` | Bake public `.env` keys into `index.html` |
+| `npm run compile` | Public env + dev compile + CSS bundle + import map |
 | `npm run build` / `build:client` | Production client assets |
 | `npm run build:ssg` | Puppeteer pre-render for bots |
 | `npm run build:full` | build + SSG |
 | `npm run validate` | typecheck (TS) + build:client + tests |
+
+## Environment (`.env`)
+
+Copy `.env.example` → `.env`. The Node server loads the Vite-style cascade
+(`.env` → `.env.[mode]` → `.env.local` → `.env.[mode].local`). Only public keys
+reach the browser (`NC_PUBLIC_*`, allowlisted `API_*` / `APP_*`, `FEATURE_*`),
+injected as `globalThis.__NC_PUBLIC_ENV__` in `index.html`. App code reads
+`import { env } from '@config/env.js'` (`env.apiBaseUrl`, etc.). Never put
+secrets in public keys. `PORT` / `HMR_PORT` stay server-only.
 
 ## Optional Capacitor
 

@@ -149,7 +149,7 @@ Your task for this chapter is simply to confirm the scaffold is healthy:
 | Editing files inside `.nativecore/core/` | Treat that folder as a library you do not touch |
 | Assuming TypeScript is the default | Only enabled with `--ts` |
 | Running `npm run dev` from the wrong directory | `cd deskflow` first |
-| port 3000 already in use | Kill the other process or change `PORT` in `.env` |
+| port 3000 already in use | Kill the other process or change `PORT` in `.env` (copy from `.env.example` first) |
 
 ## Challenges
 

@@ -582,8 +582,10 @@ body.sidebar-enabled .app-sidebar {
 
 /* Responsive */
 @media (max-width: 768px) {
-    /* Single column on mobile — no sidebar in grid flow */
-    #app {
+    /* Single column on mobile — no sidebar in grid flow.
+       Must beat #app.sidebar-collapsed (64px 1fr) after rotate-from-landscape. */
+    #app,
+    #app.sidebar-collapsed {
         grid-template-areas:
             "header"
             "main"
@@ -601,8 +603,8 @@ body.sidebar-enabled .app-sidebar {
         z-index: 1001;
         transform: translateX(-100%);
         transition: transform var(--transition-base);
-        background: transparent;
-        overflow: visible;
+        background: var(--nc-bg-secondary, #f1f5f9);
+        overflow: hidden;
     }
 
     app-sidebar.mobile-open {

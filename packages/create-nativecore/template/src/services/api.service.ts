@@ -4,7 +4,11 @@
  *
  * Auth headers / token refresh are intentionally omitted from the scaffold.
  * Wire your own auth model into request() when you add authentication.
+ *
+ * Base URL comes from `@config/env` (API_BASE_URL / NC_PUBLIC_API_BASE_URL).
  */
+import { env } from '@config/env.js';
+
 type QueryPrimitive = string | number | boolean | null;
 type QueryKeyValue = QueryPrimitive | QueryKeyObject | QueryKeyValue[];
 type QueryKeyObject = { [key: string]: QueryKeyValue | undefined };
@@ -40,16 +44,7 @@ class ApiService {
     private tagIndex = new Map<string, Set<string>>();
 
     private resolveBaseURL(): string {
-        if (typeof window === 'undefined') {
-            return '/api';
-        }
-
-        const hostname = window.location.hostname;
-        if (hostname === 'localhost' || hostname === '127.0.0.1' || hostname.startsWith('192.168.') || hostname.endsWith('.local')) {
-            return '/api';
-        }
-
-        return 'https://api.nativecorejs.com';
+        return env.apiBaseUrl || '/api';
     }
 
     private isAbsoluteURL(endpoint: string): boolean {
