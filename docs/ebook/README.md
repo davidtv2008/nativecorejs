@@ -18,8 +18,8 @@ You will build one progressive app: **Deskflow** — a small personal task desk
    - **Gold** — stretch without peeking ahead
 
 Custom components (`make:component` + events into controllers) are the heart of
-the framework — spend extra time on [Chapter 05](./05-first-component.md) and
-[Chapter 07](./07-deskflow-tasks.md).
+the framework — spend extra time on [Chapter 05](./05-native-web-components.md),
+[Chapter 06](./06-first-component.md), and [Chapter 08](./08-deskflow-tasks.md).
 
 ---
 
@@ -34,7 +34,7 @@ the framework — spend extra time on [Chapter 05](./05-first-component.md) and
 7. Testing helpers: **`@testing/index.js`**.
 8. Component Builder is **experimental** and **disabled by default** — not required curriculum.
 9. Code samples must match real method signatures (verify against source when unsure).
-10. Chapter **16 (wires)** is **legacy** — removed from curriculum core; use `ref` + `bind` + `on`.
+10. Chapter **17 (wires)** is **legacy** — removed from curriculum core; use `ref` + `bind` + `on`.
 
 Companion project docs (also kept accurate):
 
@@ -58,14 +58,14 @@ Companion project docs (also kept accurate):
 |-----------|---------------|----------|
 | M0 | 01 | Run the scaffold at `localhost:8000` |
 | M1 | 04 | Navigate home / tasks / settings views |
-| M2 | 07 | Manage tasks with a controller + reactive UI |
-| M3 | 08 | Gate settings behind middleware you wrote |
-| M4 | 10 | Persist via `api.service` + a store |
-| M5 | 12 | Ship polished forms and `nc-*` UI |
-| M6 | 15 | Task detail route + cache/prefetch |
-| M7 | 18 | Pass tests and profile with the overlay |
-| M8 | 20 | Produce a production / SSG build |
-| M9 | 22 | Optional Capacitor packaging |
+| M2 | 08 | Manage tasks with a controller + reactive UI |
+| M3 | 09 | Gate settings behind middleware you wrote |
+| M4 | 11 | Persist via `api.service` + a store |
+| M5 | 13 | Ship polished forms and `nc-*` UI |
+| M6 | 16 | Task detail route + cache/prefetch |
+| M7 | 19 | Pass tests and profile with the overlay |
+| M8 | 21 | Produce a production / SSG build |
+| M9 | 23 | Optional Capacitor packaging |
 
 ---
 
@@ -80,37 +80,38 @@ Companion project docs (also kept accurate):
 | 02 | [02-views-and-routes.md](./02-views-and-routes.md) | HTML views, `registerRoutes`, `make:view` |
 | 03 | [03-controllers.md](./03-controllers.md) | `CoreController`, refs, bind, on, cleanup |
 | 04 | [04-reactive-state.md](./04-reactive-state.md) | Instance state + `@core/state.js` |
-| 05 | [05-first-component.md](./05-first-component.md) | `CoreComponent`, `make:component` |
-| 06 | [06-cli-generators.md](./06-cli-generators.md) | Full `make:*` / `remove:*` surface |
-| 07 | [07-deskflow-tasks.md](./07-deskflow-tasks.md) | Build the tasks feature end-to-end |
+| 05 | [05-native-web-components.md](./05-native-web-components.md) | Custom elements vs VDOM, why WC, performance |
+| 06 | [06-first-component.md](./06-first-component.md) | `CoreComponent`, `make:component` |
+| 07 | [07-cli-generators.md](./07-cli-generators.md) | Full `make:*` / `remove:*` surface |
+| 08 | [08-deskflow-tasks.md](./08-deskflow-tasks.md) | Build the tasks feature end-to-end |
 
 ### Part 2 — Application patterns
 
 | # | File | Topic |
 |---|------|--------|
-| 08 | [08-middleware-and-protection.md](./08-middleware-and-protection.md) | BYO auth / session guard |
-| 09 | [09-services-and-api.md](./09-services-and-api.md) | `api.service`, caching, storage, logger |
-| 10 | [10-global-stores.md](./10-global-stores.md) | `make:store`, appStore / uiStore patterns |
-| 11 | [11-forms-and-nc-inputs.md](./11-forms-and-nc-inputs.md) | Forms with `nc-input`, `nc-select`, modal |
-| 12 | [12-core-components.md](./12-core-components.md) | Practical tour of shipped `nc-*` |
-| 13 | [13-slots-and-composition.md](./13-slots-and-composition.md) | Slots, composition |
-| 14 | [14-styling-and-tokens.md](./14-styling-and-tokens.md) | Shadow DOM CSS, `--nc-*` tokens, theme |
-| 15 | [15-dynamic-routes-and-cache.md](./15-dynamic-routes-and-cache.md) | `:id`, wildcards, `.cache()`, prefetch |
-| 16 | [16-wires.md](./16-wires.md) | **LEGACY** — historical pointer only (use ref/bind/on) |
+| 09 | [09-middleware-and-protection.md](./09-middleware-and-protection.md) | BYO auth / session guard |
+| 10 | [10-services-and-api.md](./10-services-and-api.md) | `api.service`, caching, storage, logger |
+| 11 | [11-global-stores.md](./11-global-stores.md) | `make:store`, appStore / uiStore patterns |
+| 12 | [12-forms-and-nc-inputs.md](./12-forms-and-nc-inputs.md) | Forms with `nc-input`, `nc-select`, modal |
+| 13 | [13-core-components.md](./13-core-components.md) | Practical tour of shipped `nc-*` |
+| 14 | [14-slots-and-composition.md](./14-slots-and-composition.md) | Slots, composition |
+| 15 | [15-styling-and-tokens.md](./15-styling-and-tokens.md) | Shadow DOM CSS, `--nc-*` tokens, theme |
+| 16 | [16-dynamic-routes-and-cache.md](./16-dynamic-routes-and-cache.md) | `:id`, wildcards, `.cache()`, prefetch |
+| 17 | [17-wires.md](./17-wires.md) | **LEGACY** — historical pointer only (use ref/bind/on) |
 
 ### Part 3 — Quality, ship, advanced
 
 | # | File | Topic |
 |---|------|--------|
-| 17 | [17-testing.md](./17-testing.md) | Vitest, `@testing`, `--with-tests` |
-| 18 | [18-dev-tools.md](./18-dev-tools.md) | HMR, overlay, editor, outline (Builder experimental, off) |
-| 19 | [19-typescript-mode.md](./19-typescript-mode.md) | Scaffolding / converting with `--ts` |
-| 20 | [20-production-and-ssg.md](./20-production-and-ssg.md) | `build`, `build:ssg`, deploy notes |
-| 21 | [21-realtime-helpers.md](./21-realtime-helpers.md) | `connectWebSocket` / `connectSSE` (helpers) |
-| 22 | [22-capacitor.md](./22-capacitor.md) | Optional native packaging |
-| 23 | [23-i18n-helper.md](./23-i18n-helper.md) | Framework `i18n` API + your catalogs |
-| 24 | [24-troubleshooting.md](./24-troubleshooting.md) | Common failures and fixes |
-| 25 | [25-api-quick-reference.md](./25-api-quick-reference.md) | Lookup tables (verified APIs only) |
+| 18 | [18-testing.md](./18-testing.md) | Vitest, `@testing`, `--with-tests` |
+| 19 | [19-dev-tools.md](./19-dev-tools.md) | HMR, overlay, editor, outline (Builder experimental, off) |
+| 20 | [20-typescript-mode.md](./20-typescript-mode.md) | Scaffolding / converting with `--ts` |
+| 21 | [21-production-and-ssg.md](./21-production-and-ssg.md) | `build`, `build:ssg`, deploy notes |
+| 22 | [22-realtime-helpers.md](./22-realtime-helpers.md) | `connectWebSocket` / `connectSSE` (helpers) |
+| 23 | [23-capacitor.md](./23-capacitor.md) | Optional native packaging |
+| 24 | [24-i18n-helper.md](./24-i18n-helper.md) | Framework `i18n` API + your catalogs |
+| 25 | [25-troubleshooting.md](./25-troubleshooting.md) | Common failures and fixes |
+| 26 | [26-api-quick-reference.md](./26-api-quick-reference.md) | Lookup tables (verified APIs only) |
 
 ### Appendix
 
@@ -143,7 +144,7 @@ npm run make:component -- task-card --defaults
 npm run make:view -- tasks --defaults
 ```
 
-Prefer `ref` / `bind` / `on`. Chapter 16 (wires) is legacy only.
+Prefer `ref` / `bind` / `on`. Chapter 17 (wires) is legacy only.
 
 ---
 
@@ -158,7 +159,7 @@ Prefer `ref` / `bind` / `on`. Chapter 16 (wires) is legacy only.
 ## Status of this rewrite
 
 This ebook was rebuilt in August 2026 to match create-nativecore **rc.16-era**
-scaffolds. Chapters **00–25** plus appendices are present under `docs/ebook/`.
+scaffolds. Chapters **00–26** plus appendices are present under `docs/ebook/`.
 
 Replaced obsolete teaching: shipped JWT auth, hand-rolled `lazyController`,
 `bindAttr` as a Component method, wires utils as curriculum, and multi-project
@@ -166,22 +167,22 @@ mega-curricula. SSG uses `build:ssg`.
 
 `build:ssg` skips middleware-gated static routes via non-empty
 `r.group({ middleware: […] }, …)` blocks (and still honors a legacy
-`export const protectedRoutes` array). See Chapter 20.
+`export const protectedRoutes` array). See Chapter 21.
 
 Verification (Aug 2026): chapters cross-checked against a fresh
 `--defaults` scaffold + `make:*` output; generator stubs for components/stores
 were corrected so Deskflow samples match real APIs (`ref` binds, `ttl` seconds,
 `loadTasks` / `/tasks`, export `appStore`).
 
-**BNR rewrite complete (Aug 2026):** Chapters **00–25** plus appendices were
+**BNR rewrite complete (Aug 2026):** Chapters **00–26** plus appendices were
 fully rewritten in Big Nerd Ranch style. Teaching chapters follow:
 mental model → lab (Deskflow) → verify → Bronze/Silver/Gold challenges →
-common mistakes → next. Chapter 16 is a short legacy pointer. Chapter 25 and
+common mistakes → next. Chapter 17 is a short legacy pointer. Chapter 26 and
 the appendices are reference-style with verified tables. APIs were checked
-against `packages/create-nativecore/template` and `.nativecore/` sources.
+against `packages/create-nativecore` template and `.nativecore/` sources.
 
-Custom components remain the spine: spend the most time on chapters **05** and
-**07**, then polish with **11–13**.
+Custom components remain the spine: read **05** (platform primer), then spend
+the most lab time on **06** and **08**, then polish with **12–14**.
 
 **API verification (Aug 2026):** Walked against a fresh `--defaults` scaffold +
 `make:view` / `make:component` / `make:store` / `make:middleware`. Corrected

@@ -1,4 +1,4 @@
-# Chapter 06 — CLI Generators
+# Chapter 07 — CLI Generators
 
 Every file in a NativeCoreJS project has a prescribed shape: the right extension
 (`.js` or `.ts`), the right registry line, the right barrel export. Doing this
@@ -125,7 +125,7 @@ npm.cmd run make:store -- task
 Generated output wraps module-level state in `pausePageCleanupCollection` /
 `resumePageCleanupCollection`, exports `taskItems` / `taskLoading` / `taskError`,
 a `taskCount` computed, and `loadTasks` / `addTask` / `removeTask` against
-`api.service`. See [Chapter 10](./10-global-stores.md) for the full shape —
+`api.service`. See [Chapter 11](./11-global-stores.md) for the full shape —
 always read the generated file before editing it.
 
 ## Views
@@ -220,7 +220,7 @@ You only need to run `compile` manually if the dev server is not running.
 
 ## Lab: generate the remaining Deskflow scaffolding
 
-At the end of Chapter 05 you have a `task-card` component. Let us make sure
+At the end of Chapter 06 you have a `task-card` component. Let us make sure
 everything was generated correctly and add the task store:
 
 ```bash
@@ -297,4 +297,4 @@ DevTools console and navigating again.
 
 ## Next
 
-[Chapter 07 — Deskflow tasks](./07-deskflow-tasks.md)
+[Chapter 08 — Deskflow tasks](./08-deskflow-tasks.md)

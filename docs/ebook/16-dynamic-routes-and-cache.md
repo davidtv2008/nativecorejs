@@ -1,4 +1,4 @@
-# Chapter 15 — Dynamic Routes and Cache
+# Chapter 16 — Dynamic Routes and Cache
 
 Every task in Deskflow needs its own URL. `/tasks/42` should show exactly task 42, support a browser bookmark, and feel instant on repeated visits. This chapter covers the router's param syntax, how to pass params to a controller, optional loader functions, and the HTML cache + prefetch API that makes repeat navigation feel instant.
 
@@ -310,4 +310,4 @@ window.__NC_ROUTER__.getRouteDebugInfo();    // see all registered routes + cach
 
 ## Next
 
-[Chapter 16 — Wires (legacy)](./16-wires.md)
+[Chapter 17 — Wires (legacy)](./17-wires.md)

@@ -1,4 +1,4 @@
-# Chapter 05 — First Component
+# Chapter 06 — First Component
 
 Custom components are the main reason to pick NativeCoreJS. Views stay HTML.
 Controllers stay thin. Reusable UI lives in **your** tags (`task-card`,
@@ -12,7 +12,7 @@ This chapter is a lab. You will:
 4. Drop it in a view and listen for its events from a controller
 
 Deskflow needs cards for each task. Build that card here; wire the full list in
-[Chapter 07](./07-deskflow-tasks.md).
+[Chapter 08](./08-deskflow-tasks.md).
 
 ---
 
@@ -281,7 +281,7 @@ this.on(this.listEl, 'task-card-toggle', (e) => {
 
 ### Challenge — Gold
 
-Without looking at Chapter 07:
+Without looking at Chapter 08:
 
 - [ ] Log `e.detail` in the controller when Toggle is clicked
 - [ ] Create a second card with `document.createElement('task-card')` and append it to `listEl`
@@ -314,9 +314,9 @@ Without looking at Chapter 07:
 
 ## What’s next
 
-- [Chapter 06 — CLI generators](./06-cli-generators.md) — full `make:*` / `remove:*` map  
-- [Chapter 07 — Deskflow tasks](./07-deskflow-tasks.md) — real list, add/delete, store the array  
-- [Chapter 13 — Slots](./13-slots-and-composition.md) — compose content inside the card  
+- [Chapter 07 — CLI generators](./07-cli-generators.md) — full `make:*` / `remove:*` map  
+- [Chapter 08 — Deskflow tasks](./08-deskflow-tasks.md) — real list, add/delete, store the array  
+- [Chapter 14 — Slots](./14-slots-and-composition.md) — compose content inside the card  
 
 You now have the core loop: **generate → customize → emit → listen**. Everything
 else in NativeCoreJS is variations on that loop.

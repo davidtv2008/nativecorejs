@@ -47,4 +47,4 @@ readers to the right place.
 
 ---
 
-[Back to Chapter 25](./25-api-quick-reference.md) | [Appendix B — Package vs Scaffold](./A-package-vs-scaffold.md)
+[Back to Chapter 26](./26-api-quick-reference.md) | [Appendix B — Package vs Scaffold](./A-package-vs-scaffold.md)

@@ -1,4 +1,4 @@
-# Chapter 10 — Global Stores
+# Chapter 11 — Global Stores
 
 A reactive signal declared inside a controller lives and dies with that controller. Navigate away and back, and the signal is reset. Sometimes that is exactly right. But a task list that should survive a trip to `/settings` and back needs a different home.
 
@@ -236,7 +236,7 @@ Use the **singular** form (`task`) to avoid double-plural names like `tasksItems
 1. Run `make:store task`.
 2. Open the generated `task.store.js` and confirm the API path is `/tasks`. Edit if needed.
 3. Update `tasks.controller.js` to import from the store instead of calling `api.service` directly.
-4. Call `addTask(...)` from the form save handler (Chapter 11 covers the form — for now you can call it from a button).
+4. Call `addTask(...)` from the form save handler (Chapter 12 covers the form — for now you can call it from a button).
 5. Navigate to `/settings` and back. Confirm the task list is still populated.
 
 ---
@@ -285,4 +285,4 @@ Use the **singular** form (`task`) to avoid double-plural names like `tasksItems
 
 ## Next
 
-[Chapter 11 — Forms and nc-inputs](./11-forms-and-nc-inputs.md)
+[Chapter 12 — Forms and nc-inputs](./12-forms-and-nc-inputs.md)

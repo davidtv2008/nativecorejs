@@ -1,4 +1,4 @@
-# Chapter 09 — Services and API
+# Chapter 10 — Services and API
 
 Controllers should not know how data arrives. A well-structured NativeCoreJS app routes every network call through `api.service`, which handles base URLs, response parsing, a built-in response cache, and tag-based invalidation. The controller calls a method, gets data, and moves on.
 
@@ -20,7 +20,7 @@ Later: api.invalidateTags(['tasks']) wipes that entry
   next getCached call hits the network again
 ```
 
-The cache lives in memory for the page session. It is separate from the HTML cache the router manages (Chapter 15). Think of `api.service` as your own lightweight React Query, minus JSX.
+The cache lives in memory for the page session. It is separate from the HTML cache the router manages (Chapter 16). Think of `api.service` as your own lightweight React Query, minus JSX.
 
 ---
 
@@ -272,4 +272,4 @@ async addTask(title) {
 
 ## Next
 
-[Chapter 10 — Global Stores](./10-global-stores.md)
+[Chapter 11 — Global Stores](./11-global-stores.md)

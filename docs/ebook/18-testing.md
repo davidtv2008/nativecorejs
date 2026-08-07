@@ -1,4 +1,4 @@
-# Chapter 17 — Testing
+# Chapter 18 — Testing
 
 Shipping code you cannot verify is a bet you will always lose eventually.
 NativeCoreJS gives you a small, purpose-built test harness: Vitest as the
@@ -78,7 +78,7 @@ that is what this chapter adds.
 npm.cmd run make:component -- task-card --defaults --with-tests
 ```
 
-If you already generated `task-card` in Chapter 05 without `--with-tests`, the
+If you already generated `task-card` in Chapter 06 without `--with-tests`, the
 generator will still write the test file alongside the existing component.
 
 ### What appeared on disk
@@ -283,7 +283,7 @@ Without looking ahead:
 
 ## What's next
 
-- [Chapter 18 — Dev tools](./18-dev-tools.md) — HMR, the DEV MODE overlay, and
+- [Chapter 19 — Dev tools](./19-dev-tools.md) — HMR, the DEV MODE overlay, and
   the experimental Component Builder
 
 Writing tests now means you can refactor with confidence when later chapters

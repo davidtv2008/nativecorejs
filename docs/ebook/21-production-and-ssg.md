@@ -1,4 +1,4 @@
-# Chapter 20 — Production and SSG
+# Chapter 21 — Production and SSG
 
 You have built Deskflow, tested it, and profiled it. Now you need a build that
 a static host can serve. This chapter covers the production build pipeline and
@@ -204,7 +204,7 @@ All static hosts need to be configured to serve `index.html` for unknown paths
 configure a custom error document pointing at `index.html`.
 
 Capacitor uses `_deploy` as `webDir` automatically when you init via the
-scaffold scripts — see [Chapter 22](./22-capacitor.md).
+scaffold scripts — see [Chapter 23](./23-capacitor.md).
 
 ---
 
@@ -255,7 +255,7 @@ scaffold scripts — see [Chapter 22](./22-capacitor.md).
 
 ## What's next
 
-- [Chapter 21 — Realtime helpers](./21-realtime-helpers.md) — WebSocket and
+- [Chapter 22 — Realtime helpers](./22-realtime-helpers.md) — WebSocket and
   SSE connection helpers for apps that need live data
 
 Milestone M8 is complete: Deskflow is deployable. The remaining chapters are

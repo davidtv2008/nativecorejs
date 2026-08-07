@@ -104,7 +104,7 @@ I want to change the DEV MODE overlay
 
 I want to add a package-only API
   → Edit packages/nativecorejs/src/index.ts to export it
-  → Document it as package-only in Chapter 25
+  → Document it as package-only in Chapter 26
   → Chapters should say: "install nativecorejs and import from the package"
 ```
 
@@ -130,4 +130,4 @@ that updating the framework requires re-vendoring and re-committing the
 
 ---
 
-[Back to Appendix A](./A-framework-comparison.md) | [Back to Chapter 25](./25-api-quick-reference.md)
+[Back to Appendix A](./A-framework-comparison.md) | [Back to Chapter 26](./26-api-quick-reference.md)

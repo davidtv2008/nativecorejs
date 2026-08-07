@@ -1,4 +1,4 @@
-# Chapter 14 — Styling and Tokens
+# Chapter 15 — Styling and Tokens
 
 NativeCoreJS ships a layered CSS architecture: a framework token layer you do not touch, a theme override layer you own, an app styles layer for page-level rules, and Shadow DOM styles local to each component. Understanding which layer to use — and never mixing them up — is what keeps Deskflow looking polished and maintainable.
 
@@ -196,7 +196,7 @@ Always use `var(--token, fallback)`. The fallback keeps the component usable if 
 
 ## CSS layers (static styles)
 
-For heavy component stylesheets you can use `static styles = css\`...\`` instead of putting CSS inside `template()`. This is slightly more efficient because the browser parses it once per class rather than once per instance. Check Chapter 12's examples of `nc-button` and `nc-snackbar` for the pattern.
+For heavy component stylesheets you can use `static styles = css\`...\`` instead of putting CSS inside `template()`. This is slightly more efficient because the browser parses it once per class rather than once per instance. Check Chapter 13's examples of `nc-button` and `nc-snackbar` for the pattern.
 
 ---
 
@@ -248,4 +248,4 @@ Optionally, style the tasks page layout in `main.css` using your `--df-*` tokens
 
 ## Next
 
-[Chapter 15 — Dynamic Routes and Cache](./15-dynamic-routes-and-cache.md)
+[Chapter 16 — Dynamic Routes and Cache](./16-dynamic-routes-and-cache.md)

@@ -1,4 +1,4 @@
-# Chapter 18 — Dev Tools
+# Chapter 19 — Dev Tools
 
 NativeCoreJS ships a localhost-only dev layer that sits on top of your running
 app without touching production code. You interact with it through a **DEV MODE**
@@ -69,7 +69,7 @@ writing, you will typically see:
 ### Reading the Cache tab
 
 After you navigate home → `/tasks` → back → `/tasks` again, open the Cache tab.
-If you added `.cache({ ttl: 30 })` to the `/tasks` route in Chapter 15, you
+If you added `.cache({ ttl: 30 })` to the `/tasks` route in Chapter 16, you
 should see a cache entry with a remaining TTL. If you navigate while the overlay
 is open you can watch it decrement.
 
@@ -213,7 +213,7 @@ completed without errors, not just `npm run build:client`.
 
 ## What's next
 
-- [Chapter 19 — TypeScript mode](./19-typescript-mode.md) — scaffolding and
+- [Chapter 20 — TypeScript mode](./20-typescript-mode.md) — scaffolding and
   converting Deskflow with `--ts`
 
 Milestone M7 is complete: Deskflow has tests and you can profile it with the

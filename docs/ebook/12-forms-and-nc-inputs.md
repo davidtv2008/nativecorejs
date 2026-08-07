@@ -1,4 +1,4 @@
-# Chapter 11 — Forms and nc-inputs
+# Chapter 12 — Forms and nc-inputs
 
 Deskflow's task creation has been a `window.prompt`. That was fine for smoke-testing. Now it is time to give users a real form — a modal overlay with a labeled text field, a priority selector, a save button, and validation feedback before anything hits the API.
 
@@ -313,4 +313,4 @@ this.on(this.titleInput, 'input', () => {
 
 ## Next
 
-[Chapter 12 — Core components](./12-core-components.md)
+[Chapter 13 — Core components](./13-core-components.md)

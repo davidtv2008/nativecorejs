@@ -1,4 +1,4 @@
-# Chapter 23 — i18n Helper
+# Chapter 24 — i18n Helper
 
 Deskflow ships in one language. When you need a second, the framework provides
 a reactive i18n primitive in `.nativecore/core/i18n.ts`. You supply the message
@@ -328,8 +328,8 @@ export function settingsController(_params, _state, _loaderData, rootElement) {
 
 ## What's next
 
-- [Chapter 24 — Troubleshooting](./24-troubleshooting.md) — quick fixes for
+- [Chapter 25 — Troubleshooting](./25-troubleshooting.md) — quick fixes for
   the most common NativeCoreJS problems
 
-The i18n helper is the last feature chapter. Chapter 24 is a reference for
-when things go wrong, and Chapter 25 is the full API quick reference.
+The i18n helper is the last feature chapter. Chapter 25 is a reference for
+when things go wrong, and Chapter 26 is the full API quick reference.

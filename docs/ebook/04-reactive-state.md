@@ -257,8 +257,8 @@ Deskflow now has a live open-task counter. Each time `tasks.value` changes, the
 computed `openCount` re-derives automatically and `this.bind` updates only the
 badge element — nothing else in the DOM is touched.
 
-When you later build the `task-card` component (Chapter 05) and the task store
-(Chapter 10), you will move `taskItems` to a shared module so the nav badge and
+When you later build the `task-card` component (Chapter 06) and the task store
+(Chapter 11), you will move `taskItems` to a shared module so the nav badge and
 the tasks page stay in sync across navigations.
 
 ## Verify
@@ -301,4 +301,4 @@ are toggled.
 
 ## Next
 
-[Chapter 05 — First component](./05-first-component.md)
+[Chapter 05 — Native Web Components](./05-native-web-components.md)

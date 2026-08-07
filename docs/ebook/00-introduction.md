@@ -44,8 +44,10 @@ You will grow it incrementally:
 | 02 | `/tasks` and `/settings` routes |
 | 03 | `TasksController` with refs and events |
 | 04 | Reactive open-task counter |
-| 05 | `task-card` component |
-| 06 | Everything generated via CLI |
+| 05 | Native Web Components primer |
+| 06 | `task-card` component |
+| 07 | Everything generated via CLI |
+| 08 | End-to-end tasks feature |
 
 Deskflow is intentionally small so each concept stays visible.
 You will not be wiring up a 300-file codebase before learning the basics.

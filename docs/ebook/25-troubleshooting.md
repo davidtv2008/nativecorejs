@@ -1,4 +1,4 @@
-# Chapter 24 — Troubleshooting
+# Chapter 25 — Troubleshooting
 
 Use this chapter as a reference when something breaks. Each entry lists a
 concrete symptom, the most likely cause, and the exact fix. Start with the
@@ -276,7 +276,7 @@ npm.cmd run make:middleware -- session
 
 Then implement the guard function to match your backend (cookie check, JWT
 validation, OAuth callback, or a simple in-memory flag for demos). See
-[Chapter 08](./08-middleware-and-protection.md).
+[Chapter 09](./09-middleware-and-protection.md).
 
 ---
 
@@ -289,7 +289,7 @@ button or a drag-and-drop panel in the DEV MODE overlay.
 
 **Fix:** This is working as intended. `COMPONENT_BUILDER_ENABLED = false` in
 `.nativecore/dev/denc-tools.ts`. Do not enable it for day-to-day development
-or for learning exercises in this ebook. See [Chapter 18](./18-dev-tools.md).
+or for learning exercises in this ebook. See [Chapter 19](./19-dev-tools.md).
 
 ---
 
@@ -343,7 +343,7 @@ errors before becoming ready, SSG aborts.
 
 ## What's next
 
-- [Chapter 25 — API quick reference](./25-api-quick-reference.md) — lookup
+- [Chapter 26 — API quick reference](./26-api-quick-reference.md) — lookup
   tables for every major API in the framework
 
 Keep this chapter bookmarked. The most time-consuming bugs in NativeCoreJS

@@ -1,4 +1,4 @@
-# Chapter 16 — Wires (Legacy)
+# Chapter 17 — Wires (Legacy)
 
 > **This chapter is a historical pointer only. Nothing here should be used in new code.**
 
@@ -30,10 +30,10 @@ If you are reading old project code that uses `wireContents` or similar, migrate
 
 - [Chapter 03 — Controllers](./03-controllers.md) — `this.on`, `this.bind`, `this.state`
 - [Chapter 04 — Reactive State](./04-reactive-state.md) — signals, effects, computed
-- [Chapter 05 — First Component](./05-first-component.md) — component version of the same APIs
+- [Chapter 06 — First Component](./06-first-component.md) — component version of the same APIs
 
 ---
 
 ## Next
 
-[Chapter 17 — Testing](./17-testing.md)
+[Chapter 18 — Testing](./18-testing.md)

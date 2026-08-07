@@ -1,4 +1,4 @@
-# Chapter 12 — Core Components
+# Chapter 13 — Core Components
 
 Built-in `nc-*` tags are batteries for Deskflow polish. Your **app** components
 (`task-card`, …) stay first-class; `nc-*` fill in buttons, overlays, and feedback
@@ -166,4 +166,4 @@ framework tags into an existing app with `npm run sync:components` when availabl
 
 ## Next
 
-[Chapter 13 — Slots and composition](./13-slots-and-composition.md)
+[Chapter 14 — Slots and composition](./14-slots-and-composition.md)

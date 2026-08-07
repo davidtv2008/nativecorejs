@@ -1,6 +1,6 @@
-# Chapter 13 — Slots and Composition
+# Chapter 14 — Slots and Composition
 
-The `task-card` component you built in Chapter 05 has a default `<slot>`. That is a start, but it is not very flexible. If you want to put a due-date badge in the footer, an action button in the header, and some notes text in the body — all optionally — you need **named slots**.
+The `task-card` component you built in Chapter 06 has a default `<slot>`. That is a start, but it is not very flexible. If you want to put a due-date badge in the footer, an action button in the header, and some notes text in the body — all optionally — you need **named slots**.
 
 This chapter teaches you how Shadow DOM slots work, extends `task-card` with a real three-zone layout, and shows how to style projected content from inside the component.
 
@@ -29,9 +29,9 @@ Rules to remember:
 
 ---
 
-## Extending `task-card` from Chapter 05
+## Extending `task-card` from Chapter 06
 
-Open `src/components/ui/task-card.js`. You will replace the template from Chapter 05 with a three-zone layout: header (title), body (default notes slot), footer (meta).
+Open `src/components/ui/task-card.js`. You will replace the template from Chapter 06 with a three-zone layout: header (title), body (default notes slot), footer (meta).
 
 ```js
 import { CoreComponent, defineComponent } from '@core/component.js';
@@ -267,4 +267,4 @@ Fallback content is hidden the moment matching content is slotted in.
 
 ## Next
 
-[Chapter 14 — Styling and Tokens](./14-styling-and-tokens.md)
+[Chapter 15 — Styling and Tokens](./15-styling-and-tokens.md)

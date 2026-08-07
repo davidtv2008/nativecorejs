@@ -1,4 +1,4 @@
-# Chapter 19 — TypeScript Mode
+# Chapter 20 — TypeScript Mode
 
 JavaScript is the scaffold default. Every chapter up to this point used `.js`
 files. TypeScript is an opt-in that the scaffolder enables when you pass `--ts`
@@ -293,7 +293,7 @@ npm.cmd run remove:component -- test-type-check
 
 ## What's next
 
-- [Chapter 20 — Production and SSG](./20-production-and-ssg.md) — build,
+- [Chapter 21 — Production and SSG](./21-production-and-ssg.md) — build,
   pre-render, and deploy Deskflow
 
 Milestone M8 starts next chapter. You have a tested, profiled app in your

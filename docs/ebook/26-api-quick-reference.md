@@ -1,4 +1,4 @@
-# Chapter 25 — API Quick Reference
+# Chapter 26 — API Quick Reference
 
 All entries verified against `packages/create-nativecore/template/.nativecore/`
 and `packages/nativecorejs/`. When in doubt, open the source file — it is the

@@ -1,4 +1,4 @@
-# Chapter 22 — Capacitor
+# Chapter 23 — Capacitor
 
 Deskflow is a Progressive Web App by default — it works in any browser and can
 be installed as a PWA. If you need distribution through the App Store or Play
@@ -202,7 +202,7 @@ The overlay is not designed to run without the dev server's companion endpoints.
 
 ## What's next
 
-- [Chapter 23 — i18n helper](./23-i18n-helper.md) — reactive locale switching
+- [Chapter 24 — i18n helper](./24-i18n-helper.md) — reactive locale switching
   and message catalogs
 
 Milestone M9 is complete when you have a native build you can run on a

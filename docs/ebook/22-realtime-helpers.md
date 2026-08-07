@@ -1,4 +1,4 @@
-# Chapter 21 — Realtime Helpers
+# Chapter 22 — Realtime Helpers
 
 Most Deskflow features work fine with request/response. But some features —
 live notifications, presence indicators, collaborative edits — need a
@@ -328,8 +328,8 @@ the factory only needs to call `ctrl.destroy()` — `destroy()` tears down
 
 ## What's next
 
-- [Chapter 22 — Capacitor](./22-capacitor.md) — optional native packaging for
+- [Chapter 23 — Capacitor](./23-capacitor.md) — optional native packaging for
   Android and iOS
 
-If you do not need native mobile packaging, you can skip Chapter 22 and move
-directly to [Chapter 23 — i18n helper](./23-i18n-helper.md).
+If you do not need native mobile packaging, you can skip Chapter 23 and move
+directly to [Chapter 24 — i18n helper](./24-i18n-helper.md).

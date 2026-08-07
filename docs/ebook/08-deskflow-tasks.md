@@ -1,4 +1,4 @@
-# Chapter 07 — Deskflow Tasks
+# Chapter 08 — Deskflow Tasks
 
 This is the first “aha” chapter. You assemble views, controllers, state, and
 `task-card` into a real feature.
@@ -116,14 +116,14 @@ export function tasksController(_p, _s, _l, root) {
 }
 ```
 
-Adapt attribute names to match your `task-card` from [Chapter 05](./05-first-component.md).
+Adapt attribute names to match your `task-card` from [Chapter 06](./06-first-component.md).
 
 ---
 
 ## Apply to Deskflow (step by step)
 
 1. Ensure `/tasks` route + controller exist (`make:view` if needed).
-2. Ensure `<task-card>` exists from Chapter 05.
+2. Ensure `<task-card>` exists from Chapter 06.
 3. Paste / adapt the view + controller above.
 4. Confirm each card gets `data-id` so `onToggle` can find the task.
 5. Keep `npm run dev` running and exercise Add + Toggle.
@@ -149,7 +149,7 @@ User clicks Toggle inside task-card
 `task-card-delete`) and remove the task from the array.
 
 **Gold** — Persist `this.tasks.value` to `sessionStorage` on change and restore
-it in `onMount` (preview of stores in Chapter 10).
+it in `onMount` (preview of stores in Chapter 11).
 
 ## Verify
 
@@ -173,4 +173,4 @@ talk to `api.service`.
 
 ## Next
 
-[Chapter 08 — Middleware and protection](./08-middleware-and-protection.md)
+[Chapter 09 — Middleware and protection](./09-middleware-and-protection.md)

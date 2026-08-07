@@ -1,4 +1,4 @@
-# Chapter 08 — Middleware and Protection
+# Chapter 09 — Middleware and Protection
 
 Every real app has pages that should not be reachable unless something is true — a session exists, a feature flag is on, a role is present. NativeCoreJS puts that decision in a **middleware function** you own. The scaffold gives you the wiring; you supply the rule.
 
@@ -223,4 +223,4 @@ Checklist:
 
 ## Next
 
-[Chapter 09 — Services and API](./09-services-and-api.md)
+[Chapter 10 — Services and API](./10-services-and-api.md)

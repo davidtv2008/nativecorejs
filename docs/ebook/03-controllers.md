@@ -140,7 +140,7 @@ Rules:
 2. `this.on` auto-removes the listener in `destroy()` — do not double-bind
 3. For lists of custom elements, prefer **one** listener on the parent (delegation)
 
-You will practice the custom-event half fully in [Chapter 05](./05-first-component.md).
+You will practice the custom-event half fully in [Chapter 06](./06-first-component.md).
 
 ## Challenges
 
