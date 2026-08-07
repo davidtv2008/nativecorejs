@@ -124,11 +124,14 @@ export function registerRoutes(r) {
 
 ```bash
 npm run build:full
-# Upload _deploy/ to Cloudflare Pages, Netlify, S3+CloudFront, etc.
+# Preview: npx --yes serve _deploy
+# Publish the _deploy/ folder to Cloudflare Pages, Netlify, etc.
 ```
 
-SSG pre-renders static public routes only (skips `:param` / `*` and any paths
-listed in `export const protectedRoutes = […]` if you add that export).
+SSG pre-renders static public routes only (skips `:param` / `*` and middleware
+groups with a non-empty list).
+
+Step-by-step host setup: [DEPLOY.md](./DEPLOY.md).
 
 ---
 
@@ -137,4 +140,5 @@ listed in `export const protectedRoutes = […]` if you add that export).
 - [ebook README](./ebook/README.md) — Deskflow curriculum (Ch. 00+)
 - [Chapter 01 — Scaffold and tour](./ebook/01-scaffold-and-tour.md)
 - [CHEATSHEET.md](./CHEATSHEET.md) — one-page API patterns
-- [NPM_PUBLISHING.md](./NPM_PUBLISHING.md) — maintainers publishing packages
+- [DEPLOY.md](./DEPLOY.md) — ship your app to a static host
+- [Chapter 21 — Production and SSG](./ebook/21-production-and-ssg.md)

@@ -189,22 +189,64 @@ app still navigates as an SPA after hydration.
 
 ## Deploy to a static host
 
-Once `_deploy/` is ready, point your host at it:
+Once `_deploy/` is ready, point your host at it. The only folder you publish is
+`_deploy/` — never the repo root or a bare `dist/`.
 
-| Host | Command / Setting |
-|------|-------------------|
-| Cloudflare Pages | Connect repo; set build output to `_deploy` |
-| Netlify | Set publish directory to `_deploy` |
-| Vercel | Set output directory to `_deploy` |
-| S3 + CloudFront | Sync `_deploy/` to a bucket; configure CloudFront distribution |
-| GitHub Pages | Copy `_deploy/` to `gh-pages` branch |
+### SPA fallback (required)
 
-All static hosts need to be configured to serve `index.html` for unknown paths
-(so SPA navigation works). On Cloudflare Pages this is automatic; on S3 you
-configure a custom error document pointing at `index.html`.
+Deep links must rewrite to `index.html` with a **200**. The scaffold ships
+`public/_redirects`:
+
+```
+/* /index.html 200
+```
+
+Cloudflare Pages and Netlify honor this automatically when it is copied into
+`_deploy/`.
+
+### Host quick settings
+
+| Host | Build command | Output / publish dir | Notes |
+|------|---------------|----------------------|--------|
+| Cloudflare Pages | `npm run build` | `_deploy` | Most reliable on Pages; add SSG locally/CI if you need pre-render |
+| Netlify | `npm run build` | `_deploy` | Uses `_redirects` |
+| Vercel | `npm run build` | `_deploy` | Add SPA rewrite to `/index.html` |
+| S3 + CloudFront | (CI runs `build`) | Sync `_deploy/` | Error document → `index.html` |
+| GitHub Pages | (CI runs `build`) | Publish `_deploy/` | Needs SPA fallback config |
+
+### Cloudflare Pages — step by step
+
+1. Push the app repo to GitHub or GitLab.
+2. Cloudflare → **Workers & Pages** → **Create** → connect the repo.
+3. Set **Build command** to `npm run build` and **Build output directory** to
+   `_deploy`. Use Node 18+.
+4. Deploy and hard-refresh a nested route (e.g. `/tasks`) to confirm the SPA
+   fallback works.
+
+Prefer `npm run build` on Cloudflare Pages. `build:ssg` needs Chromium
+(Puppeteer); run `build:full` locally or in a Chrome-capable CI job when you
+want pre-rendered HTML, then publish that `_deploy/`.
+
+Direct upload alternative:
+
+```bash
+npm run build:full
+npx wrangler pages deploy _deploy --project-name=your-app-name
+```
+
+### Preview before you ship
+
+```bash
+npx --yes serve _deploy
+```
+
+Confirm client navigation and a hard refresh on a nested path both work.
 
 Capacitor uses `_deploy` as `webDir` automatically when you init via the
 scaffold scripts — see [Chapter 23](./23-capacitor.md).
+
+For a longer host checklist, see the showcase **Deploy** guide
+(`/docs/deploy` on nativecorejs.com) or `docs/DEPLOY.md` in the monorepo.
 
 ---
 

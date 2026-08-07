@@ -313,7 +313,9 @@ npm run lint
 SSG skips dynamic (`:param` / `*`) routes and protected paths: either
 `export const protectedRoutes = […]` (legacy) or static routes inside
 `r.group({ middleware: […] }, …)` when the middleware array is non-empty
-(see ebook Ch. 20).
+(see ebook Ch. 21).
+
+Ship the `_deploy/` folder to a static host — see [DEPLOY.md](./DEPLOY.md).
 
 ---
 

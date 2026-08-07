@@ -106,7 +106,7 @@ Companion project docs (also kept accurate):
 | 18 | [18-testing.md](./18-testing.md) | Vitest, `@testing`, `--with-tests` |
 | 19 | [19-dev-tools.md](./19-dev-tools.md) | HMR, overlay, editor, outline (Builder experimental, off) |
 | 20 | [20-typescript-mode.md](./20-typescript-mode.md) | Scaffolding / converting with `--ts` |
-| 21 | [21-production-and-ssg.md](./21-production-and-ssg.md) | `build`, `build:ssg`, deploy notes |
+| 21 | [21-production-and-ssg.md](./21-production-and-ssg.md) | `build`, `build:ssg`, host deploy walkthrough |
 | 22 | [22-realtime-helpers.md](./22-realtime-helpers.md) | `connectWebSocket` / `connectSSE` (helpers) |
 | 23 | [23-capacitor.md](./23-capacitor.md) | Optional native packaging |
 | 24 | [24-i18n-helper.md](./24-i18n-helper.md) | Framework `i18n` API + your catalogs |
