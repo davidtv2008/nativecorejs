@@ -71,7 +71,7 @@
  *   </nc-animation>
  */
 
-import { Component, defineComponent } from '@core/component.js';
+import { CoreComponent, defineComponent } from '@core/component.js';
 import { css, html } from '@core-utils/templates.js';
 import {
     animate,
@@ -431,7 +431,7 @@ const PRESETS: Record<string, PresetDef> = {
 // Global set — keyframes injected into document.head, deduplicated across all instances
 const _injectedKeyframes = new Set<string>();
 
-export class NcAnimation extends Component {
+export class NcAnimation extends CoreComponent {
     static useShadowDOM = true;
 
     static get observedAttributes() {

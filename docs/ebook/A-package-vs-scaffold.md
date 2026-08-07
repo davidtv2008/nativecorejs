@@ -21,7 +21,14 @@ the full scaffold can install `nativecorejs` directly.
 
 The CLI (`npm create nativecore@latest my-app`) copies a template into a new
 project directory. That template vendors the runtime into the app's own
-`.nativecore/` folder so the app has zero runtime npm dependencies.
+`.nativecore/` folder so the **framework** has zero runtime production
+dependencies.
+
+That does **not** forbid npm in your app. Add charts, date libraries, icon
+sets, or other Web Component packages with normal `npm install`. The scaffold
+runs `sync-importmap` during `dev` / `compile` so bare imports resolve in the
+browser (and CommonJS packages are often ESM-shimmed under
+`.nativecore/esm-shims/`).
 
 The vendor step runs manually (for contributors) via:
 
@@ -112,11 +119,13 @@ I want to add a package-only API
 
 ## Why vendoring instead of a direct npm dependency?
 
-Vendoring lets a scaffolded app be **self-contained**: no npm package manager
-needed at runtime, no dependency version mismatches, and no network access
-required to build. The framework is literally inside the app. The trade-off is
-that updating the framework requires re-vendoring and re-committing the
-`.nativecore/core/` files.
+Vendoring lets a scaffolded app be **self-contained for the framework**: no
+required npm package for CoreController / router / signals at runtime, and no
+framework version mismatch with a shared lockfile. Your **application**
+dependencies (lodash, dayjs, chart libs, third-party Web Components, …) still
+install and import like any modern ESM project — that is a feature, not a
+contradiction. The trade-off is that updating the framework itself requires
+re-vendoring and re-committing the `.nativecore/core/` files.
 
 ---
 

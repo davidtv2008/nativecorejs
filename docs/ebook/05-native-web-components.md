@@ -54,6 +54,28 @@ HTML tag, not a proprietary module graph.
 That is why NativeCoreJS can ship UI as `<nc-*>` tags you drop into plain HTML
 views — the same views the router swaps into `#main-content`.
 
+### Not limited to `nc-*`
+
+Because the unit of UI is a **browser custom element**, any npm package that
+ships Web Components (or plain JS/ESM utilities) can sit beside NativeCoreJS:
+
+```bash
+npm install some-chart-lib
+```
+
+```js
+import { Chart } from 'some-chart-lib';
+// or drop <some-chart></some-chart> if the package defines a custom element
+```
+
+The scaffold’s `sync-importmap` step (part of `npm run dev` / `compile`) reads
+`package.json` dependencies, resolves a browser entry, and — when needed —
+pre-bundles CommonJS packages into ESM shims under `.nativecore/esm-shims/`.
+You do not hand-edit an import map for every install.
+
+Shipped `nc-*` components are a convenience layer. The platform + npm is the
+open door. Chapter 06 walks through a concrete install.
+
 ---
 
 ## How they work (browser lifecycle)

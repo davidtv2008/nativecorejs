@@ -279,7 +279,84 @@ this.on(this.listEl, 'task-card-toggle', (e) => {
 });
 ```
 
+---
+
+## Using npm packages (you are not locked to `nc-*`)
+
+NativeCoreJS ships a large built-in UI set, but Deskflow (and any real app) will
+need libraries from npm — date helpers, charts, Markdown, icon packs, other
+Web Component libraries. That is supported on purpose.
+
+### Mental model
+
+```
+npm install lodash-es
+        ↓
+package.json dependencies updated
+        ↓
+npm run dev  (or compile) runs sync-importmap.mjs
+        ↓
+index.html <script type="importmap"> gains "lodash-es": "…"
+        ↓
+import { debounce } from 'lodash-es'   // works in controllers / components
+```
+
+- **Framework runtime** is vendored under `.nativecore/` (zero *framework*
+  production npm deps).
+- **Your app** may freely add `dependencies` / `devDependencies`.
+- Browser imports use the generated **import map**. CJS packages are often
+  shimmed to ESM automatically under `.nativecore/esm-shims/`.
+
+### Lab — install and import a package
+
+From the Deskflow app root:
+
+```bash
+npm.cmd install dayjs
+```
+
+Then in a controller or component:
+
+```js
+import dayjs from 'dayjs';
+
+// … later
+this.dueEl.textContent = dayjs(task.due).format('MMM D, YYYY');
+```
+
+Restart or let the running `npm run dev` recompile so the import map refreshes.
+If the bare specifier fails to resolve, run `npm run compile` once and check
+that `index.html` contains an import-map entry for `dayjs`.
+
+### Web Component libraries from npm
+
+Any package that calls `customElements.define('some-tag', …)` works the same
+way as your `task-card`:
+
+1. `npm install` the package
+2. Import it once so the define runs (e.g. from `app.js` or a registry module)
+3. Use `<some-tag>` in HTML views
+
+You do **not** have to wrap third-party tags in `CoreComponent` unless you want
+NativeCoreJS signals / `this.bind` inside them.
+
+### Challenge — Silver (npm)
+
+- [ ] Install a small ESM utility (e.g. `dayjs` or `lodash-es`)
+- [ ] Import it from `TasksController` (or a component) and use it in the UI
+- [ ] Confirm the import map lists the package after `compile` / `dev`
+
 ### Challenge — Gold
+
+Without looking ahead:
+
+- [ ] Find a Web Component package on npm, install it, import the side-effect
+  module, and drop its tag into `tasks.html`
+- [ ] Note whether it uses Shadow DOM (inspect in DevTools)
+
+---
+
+### Challenge — Gold (cards)
 
 Without looking at Chapter 08:
 
@@ -299,7 +376,8 @@ Without looking at Chapter 08:
 | `this.on('click', fn)` | Signature is `this.on(target, type, fn)` |
 | Expecting `nc-button` to emit `nc-button-click` | Use native `click` |
 | Forgetting `composed` events | Use `this.emit` — it sets `composed: true` for you |
-| Binding with a CSS selector string as the element | `this.bind(state, this.titleEl)` — pass the ref element |
+| Expecting only `nc-*` to work | Install any npm package; import map sync wires bare specifiers |
+| Importing an npm package before `compile` / `dev` refresh | Re-run compile or restart `dev` so `sync-importmap` updates `index.html` |
 
 ---
 

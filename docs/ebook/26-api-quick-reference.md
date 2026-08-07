@@ -103,11 +103,41 @@ window.router.getCurrentRoute();
 
 ### Registration (inside `registerRoutes(r)`)
 
+```js
+r.register(path, htmlFile, controller?, options?)
+// returns r — chain .cache(...) on the route just registered
+```
+
+| Argument | Type | Required | Notes |
+|----------|------|----------|-------|
+| `path` | `string` | yes | URL pattern: `/tasks`, `/tasks/:id`, `/tasks/:id?`, `/files/*` |
+| `htmlFile` | `string` | yes | Project-relative view path, e.g. `src/views/public/tasks.html` |
+| `controller` | `ControllerFunction \| null` | no | Prefer `lazyController('exportName', '../controllers/….js')`; omit/`null` for HTML-only |
+| `options` | `Partial<RouteConfig>` | no | See options table below |
+
+**`ControllerFunction`:**
+
+```js
+(params: Record<string, string>, state?: any, loaderData?: unknown)
+  => (() => void) | void | Promise<(() => void) | void>
+```
+
+Always return cleanup from factories: `() => ctrl.destroy()`.
+
+**`options` / `RouteConfig` fields:**
+
+| Key | Type | Notes |
+|-----|------|-------|
+| `loader` | `(params, signal: AbortSignal) => Promise<unknown>` | Runs before controller; result → `loaderData` |
+| `layout` | `string` | Path of another registered route used as layout |
+| `disableTransition` | `boolean` | Skip page transition for this route |
+| `cachePolicy` | `{ ttl: number, revalidate?: boolean }` | Prefer `.cache()` chain instead |
+
 | Method | Signature | Notes |
 |--------|-----------|-------|
-| `r.register` | `(path, htmlFile, controller?, options?)` | Register a route |
-| `.cache` | `({ ttl: number, revalidate?: boolean })` | Chain after `r.register` |
-| `r.group` | `({ middleware?, prefix? }, fn)` | Group routes under shared options |
+| `r.register` | `(path, htmlFile, controller?, options?)` | Register a route; returns `this` |
+| `.cache` | `({ ttl: number, revalidate?: boolean })` | Chain after `r.register`; `ttl` in **seconds** |
+| `r.group` | `({ middleware?: string[]; prefix?: string }, fn)` | Shared middleware tags and/or path prefix |
 
 ### Path syntax
 

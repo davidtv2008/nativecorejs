@@ -151,6 +151,7 @@ export class NcCode extends CoreComponent {
     declare hiddenSlotEl: HTMLDivElement;
 
     private _code: string | null = null;
+    private _rawSource = '';
 
     get code(): string { return this._code ?? ''; }
     set code(v: string) { this._code = v; if (this.isConnected) this._renderCode(); }
@@ -311,6 +312,7 @@ export class NcCode extends CoreComponent {
             }
         }
         raw = raw.replace(/^\n/, '').replace(/\n$/, '');
+        this._rawSource = raw;
 
         const tokens    = tokenize(raw, lang);
         const tokenLines = tokens.split('\n');
@@ -323,7 +325,7 @@ export class NcCode extends CoreComponent {
     }
 
     private _copy(btn: HTMLButtonElement) {
-        const raw = this._code ?? this.codeEl?.textContent?.replace(/\u200B/g, '') ?? '';
+        const raw = this._rawSource || this._code || '';
         navigator.clipboard.writeText(raw).then(() => {
             btn.textContent = 'Copied!';
             btn.classList.add('done');

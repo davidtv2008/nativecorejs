@@ -1,6 +1,6 @@
 {
   "name": "nativecorejs",
-  "version": "2.0.5",
+  "version": "2.0.6",
   "description": "NativeCoreJS runtime: CoreController, CoreComponent, router, signals, and nc-* Web Components",
   "keywords": [
     "nativecore",

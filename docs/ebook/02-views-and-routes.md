@@ -79,6 +79,139 @@ Rules you must follow every time you add a route:
 4. Protected routes go inside the `r.group({ middleware: [] })` block. You will
    add real middleware tags in a later chapter.
 
+## `r.register` signature
+
+```js
+r.register(path, htmlFile, controller?, options?)
+```
+
+`register` returns `this` (the same router/`r`), so you can chain `.cache(...)`
+on the route you just registered.
+
+### Parameter 1 — `path` (`string`)
+
+The URL pattern the browser shows. Leading slash required.
+
+| Pattern | Matches | Params |
+|---------|---------|--------|
+| `/` | Home only | `{}` |
+| `/tasks` | Exact `/tasks` | `{}` |
+| `/tasks/:id` | `/tasks/42`, `/tasks/abc` | `{ id: '42' }` |
+| `/tasks/:id?` | `/tasks` or `/tasks/42` | `{ id?: string }` |
+| `/files/*` | `/files/a/b/c` | `{ wildcard: 'a/b/c' }` |
+
+Exact paths win over dynamic ones. Register `/tasks/new` before `/tasks/:id` if
+both exist. Deep dive on params and loaders: [Chapter 16](./16-dynamic-routes-and-cache.md).
+
+### Parameter 2 — `htmlFile` (`string`)
+
+Project-relative path to the view HTML the router fetches and injects into
+`#main-content`.
+
+```js
+'src/views/public/tasks.html'
+'src/views/protected/settings.html'
+```
+
+Use the real file path from the project root (same style the generators emit).
+Do not put a leading `/` on the file path.
+
+### Parameter 3 — `controller` (`ControllerFunction | null`)
+
+Optional. Defaults to `null` (view-only route — HTML only, no page logic).
+
+Recommended form — lazy factory from `createLazyController`:
+
+```js
+lazyController('tasksController', '../controllers/tasks.controller.js')
+```
+
+| Piece | Meaning |
+|-------|---------|
+| `'tasksController'` | **Export name** in the controller module (`export function tasksController…`) |
+| `'../controllers/….js'` | Path **relative to `routes.js`**, always with `.js` |
+
+The factory the router calls has this shape:
+
+```js
+(params, state?, loaderData?) => (() => void) | void | Promise<…>
+```
+
+| Argument | What it is |
+|----------|------------|
+| `params` | Path params from the match (`{ id: '42' }`) |
+| `state` | History state from `navigate(path, state)` / `popstate` |
+| `loaderData` | Result of `options.loader` if you registered one; otherwise `undefined` |
+
+Return a cleanup function — almost always `() => ctrl.destroy()`. Generated stubs
+may also declare a 4th `rootElement` argument; the router does not pass it.
+`CoreController` finds `[data-view]` (or `#main-content` for class controllers).
+
+You may pass `null` or omit the third argument for a static HTML page with no
+controller.
+
+### Parameter 4 — `options` (`Partial<RouteConfig>`)
+
+Optional object merged into the route config. Keys you can set:
+
+| Option | Type | Purpose |
+|--------|------|---------|
+| `loader` | `(params, signal) => Promise<unknown>` | Runs **before** the controller; result becomes `loaderData`. Use `signal` to abort on navigation cancel. |
+| `layout` | `string` | Path of another registered route to use as a layout shell (advanced). |
+| `disableTransition` | `boolean` | Skip page enter/exit transition for this route. |
+| `cachePolicy` | `{ ttl, revalidate? }` | Same shape as `.cache()` — prefer chaining `.cache()` for readability. |
+| `controller` | — | Prefer the 3rd argument; do not duplicate here. |
+| `htmlFile` | — | Prefer the 2nd argument. |
+
+Example with a loader:
+
+```js
+r.register(
+    '/tasks/:id',
+    'src/views/public/task-detail.html',
+    lazyController('taskDetailController', '../controllers/task-detail.controller.js'),
+    {
+        loader: async (params, signal) => {
+            const res = await fetch(`/api/tasks/${params.id}`, { signal });
+            if (!res.ok) throw new Error('Task not found');
+            return res.json();
+        },
+    }
+);
+```
+
+### Chaining after `register`
+
+```js
+r.register('/tasks', 'src/views/public/tasks.html',
+    lazyController('tasksController', '../controllers/tasks.controller.js'))
+  .cache({ ttl: 60, revalidate: true });
+```
+
+| Chain | Meaning |
+|-------|---------|
+| `.cache({ ttl })` | Cache view HTML for `ttl` **seconds**. On stale: **block** until refetch. |
+| `.cache({ ttl, revalidate: true })` | Serve stale HTML immediately; refresh in the background. |
+
+Default TTL when no policy is set is **300 seconds** (router default). Prefetch
+and busting are covered in Chapter 16 (`router.prefetch`, `bustCache`).
+
+### `r.group` (wraps many `register` calls)
+
+```js
+r.group({ middleware?: string[]; prefix?: string }, (r) => {
+    r.register(…);
+});
+```
+
+| Option | Effect |
+|--------|--------|
+| `middleware: ['auth']` | Every route registered inside inherits those middleware **tags** (resolved in `app.js`). |
+| `prefix: '/app'` | Prepended to each path (`register('/tasks', …)` → `/app/tasks`). |
+
+Groups nest. The scaffold’s protected block starts as `middleware: []` until you
+add real tags in [Chapter 09](./09-middleware-and-protection.md).
+
 ## Generator: `make:view`
 
 Rather than creating files by hand, use the generator. It creates the HTML view,
@@ -222,7 +355,9 @@ the router knows about.
 | `<script>` tag inside a view HTML file | Move logic to the controller |
 | Missing `data-view` attribute | `CoreController` constructor will throw — add it |
 | Forgetting `() => ctrl.destroy()` in the factory | Listeners leak across navigations |
-| Running `npm run make:view` on Windows without `npm.cmd` | Flags get dropped — use `npm.cmd run make:view -- ...` |
+| Missing 3rd/4th argument confusion | Order is `path`, `htmlFile`, `controller`, `options` — loaders go in `options`, not as a 3rd arg |
+| Absolute file path or leading `/` on `htmlFile` | Use `src/views/…` relative to the project root |
+| Export name mismatch in `lazyController('foo', …)` | Must match `export function foo` / `export class Foo` exactly |
 
 ## Challenges
 

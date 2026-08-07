@@ -16,10 +16,14 @@ Instead, you get:
 - **Page controllers** that own a view's logic via `CoreController`
 - A **History API router** that swaps HTML views into `#main-content`
 - **Reactive signals** built into every controller and component
+- **npm packages** as normal ES module dependencies — charts, date libs,
+  Web Component libraries, anything the browser can import
 
-The scaffold (`npx create-nativecore@latest`) vendors the entire runtime into
-`.nativecore/` inside your project. You own the code — there is nothing to
-upgrade except by choice.
+The scaffold (`npx create-nativecore@latest`) vendors the framework runtime into
+`.nativecore/` so the **framework itself** has zero runtime production deps.
+That does **not** lock you into only `nc-*` UI. Install any npm package, and
+the import-map sync (runs with `npm run dev` / `compile`) wires it for the
+browser. You will practice that in [Chapter 06](./06-first-component.md).
 
 ## What it is not
 
@@ -32,6 +36,7 @@ A quick myth-busting table you will want to read now rather than discover later:
 | `build:bots` or `build:ssr` | Use `build:ssg` for static pre-rendering |
 | `createStore` / `useSignal` APIs | Not in the scaffold — use `useState` from `@core/state.js` |
 | Component Builder always on | Experimental, disabled by default — you will not need it |
+| Only `nc-*` components allowed | No — any npm module / Web Component library works via import map |
 
 ## The app you will build: Deskflow
 

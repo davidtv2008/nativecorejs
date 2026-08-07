@@ -273,10 +273,16 @@ export abstract class CoreComponent extends HTMLElement {
         root.querySelectorAll('[ref]').forEach(el => {
             const refName = (el as HTMLElement).getAttribute('ref')!;
             if (Object.prototype.hasOwnProperty.call(this, refName)) {
-                console.warn(
-                    `[${tag}] ref="${refName}" collides with an existing instance property. ` +
-                    `Rename either the ref or the field to avoid overwriting reactive state.`
-                );
+                const existing = (this as Record<string, unknown>)[refName];
+                // Typed class fields (`closeBtn;`) initialize as own props with
+                // value `undefined`. That is the normal ref pattern — only warn
+                // when overwriting a real value (State, method, etc.).
+                if (existing != null && !(existing instanceof Node)) {
+                    console.warn(
+                        `[${tag}] ref="${refName}" collides with an existing instance property. ` +
+                        `Rename either the ref or the field to avoid overwriting reactive state.`
+                    );
+                }
             }
             this[refName] = el;
         });
@@ -315,3 +321,6 @@ export function defineComponent(tag: string, cls: CustomElementConstructor): voi
 
 export type ComponentConstructor = CustomElementConstructor;
 export type ComponentState<T = unknown> = State<T>;
+
+/** @deprecated Use CoreComponent — kept for older generated components. */
+export { CoreComponent as Component };
