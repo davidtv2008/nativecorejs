@@ -138,7 +138,7 @@ npm.cmd run build:ssg
 
 SSG will:
 
-1. Detect whether `localhost:8000` is already serving the app
+1. Detect whether `localhost:3000` is already serving the app
 2. Start the app server if not (`node server.js`)
 3. Launch a headless Chromium browser via Puppeteer
 4. Visit each eligible route, capture the rendered HTML
@@ -256,7 +256,7 @@ For a longer host checklist, see the showcase **Deploy** guide
   typically need `puppeteer` with `--no-sandbox`. The `ssg.mjs` call already
   passes `--no-sandbox` and `--disable-setuid-sandbox` to the Puppeteer launch.
 - port 3000 must be free when SSG starts (or already serving the NativeCore
-  app). If another process answers on 8000 with JSON, SSG will abort rather
+  app). If another process answers on 3000 with JSON, SSG will abort rather
   than pre-render API responses.
 
 ---

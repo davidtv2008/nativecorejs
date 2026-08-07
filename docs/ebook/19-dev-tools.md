@@ -98,7 +98,7 @@ current page session.
 
 ### Challenge — Bronze
 
-- [ ] DEV MODE pill appears on `localhost:8000`
+- [ ] DEV MODE pill appears on `localhost:3000`
 - [ ] Click through at least two tabs and read what is shown for `/tasks`
 - [ ] Hover over `task-card` and observe the gear icon
 - [ ] Navigate home → tasks → detail; check the Cache row before and after
@@ -204,7 +204,7 @@ completed without errors, not just `npm run build:client`.
 
 ## Verify
 
-- [ ] DEV MODE pill appears on `localhost:8000` and does not appear after `npm run build`
+- [ ] DEV MODE pill appears on `localhost:3000` and does not appear after `npm run build`
 - [ ] Overlay expands without console errors
 - [ ] You confirmed `COMPONENT_BUILDER_ENABLED = false` in `denc-tools.ts`
 - [ ] You watched a cache entry appear in the Cache tab after navigating to a cached route

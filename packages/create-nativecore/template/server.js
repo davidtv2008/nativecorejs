@@ -1329,7 +1329,8 @@ const server = http.createServer(async (req, res) => {
     if (isDevelopment && contentType === 'text/html') {
         const connectSrc = [
             "'self'",
-            'ws://localhost:8001',
+            `ws://localhost:${HMR_PORT}`,
+            `ws://127.0.0.1:${HMR_PORT}`,
         ].join(' ');
 
         headers['Content-Security-Policy'] = [

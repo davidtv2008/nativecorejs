@@ -47,7 +47,9 @@ if (window.location.hostname === 'localhost' || window.location.hostname === '12
 
         function connect(): void {
             try {
-                ws = new WebSocket('ws://localhost:8001');
+                const pagePort = Number(window.location.port || (window.location.protocol === 'https:' ? 443 : 80));
+                const hmrPort = Number.isFinite(pagePort) && pagePort > 0 ? pagePort + 1 : 3001;
+                ws = new WebSocket(`ws://${window.location.hostname}:${hmrPort}`);
             } catch (err) {
                 console.error('[HMR] could not open WebSocket:', err);
                 scheduleReconnect();
