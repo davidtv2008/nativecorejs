@@ -160,7 +160,15 @@ async function stripDevDom(page) {
     });
 }
 
-const DEV_UI_LEAK_RE = /nc-outline-panel|nc-outline-tab|hmr-indicator|nativecore-denc|nc-denc-control|DEV MODE:/i;
+/** True only for leaked *elements*, not docs that mention the selector names. */
+const DEV_UI_LEAK_RE =
+    /<(?:div|button|style|aside|span)\b[^>]*(?:\bid\s*=\s*["'](?:hmr-indicator|nativecore-denc)[^"']*["']|\bclass\s*=\s*["'][^"']*\b(?:nc-outline-panel|nc-outline-tab|nc-denc-control)\b)/i;
+
+function assertNoDevUiLeak(html) {
+    if (DEV_UI_LEAK_RE.test(html) || />\s*DEV MODE:\s*</i.test(html)) {
+        throw new Error('dev-tool UI leaked into SSG HTML (Outline/HMR/DEnc)');
+    }
+}
 
 // ---------------------------------------------------------------------------
 // Server lifecycle
@@ -369,9 +377,7 @@ async function runSsg(routes) {
 
                 const rawHtml = await page.content();
                 const html = sanitizeSsgHtml(rawHtml);
-                if (DEV_UI_LEAK_RE.test(html)) {
-                    throw new Error('dev-tool UI leaked into SSG HTML (Outline/HMR/DEnc)');
-                }
+                assertNoDevUiLeak(html);
                 if (!html.includes(`data-prerendered-route="${route}"`)) {
                     throw new Error(`SSG HTML missing data-prerendered-route="${route}"`);
                 }
