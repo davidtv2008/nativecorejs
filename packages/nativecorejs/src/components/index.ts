@@ -48,7 +48,6 @@ export { NcSelect } from './nc-select.js';
 export { NcSkeleton } from './nc-skeleton.js';
 export { NcSlider } from './nc-slider.js';
 export { NcSnackbar } from './nc-snackbar.js';
-export { NcSplash } from './nc-splash.js';
 export { NcStep, NcStepper } from './nc-stepper.js';
 export { NcSwitch } from './nc-switch.js';
 export { NcTabItem } from './nc-tab-item.js';

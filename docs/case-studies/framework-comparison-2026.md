@@ -374,7 +374,7 @@ nc-error-boundary nc-file-upload nc-form           nc-image         nc-input
 nc-kbd          nc-menu          nc-menu-item      nc-modal         nc-nav-item
 nc-number-input nc-otp-input     nc-pagination     nc-popover       nc-progress
 nc-progress-circular nc-radio    nc-rating         nc-rich-text     nc-scroll-top
-nc-select       nc-skeleton      nc-slider         nc-snackbar      nc-splash
+nc-select       nc-skeleton      nc-slider         nc-snackbar
 nc-stepper      nc-switch        nc-tab-item       nc-table         nc-tabs
 nc-tag-input    nc-textarea      nc-time-picker    nc-timeline      nc-tooltip
 nc-transition   nc-view-transition

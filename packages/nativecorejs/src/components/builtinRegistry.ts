@@ -54,7 +54,6 @@ export const builtinComponentManifest = [
     ['nc-skeleton', './components/nc-skeleton.js'],
     ['nc-slider', './components/nc-slider.js'],
     ['nc-snackbar', './components/nc-snackbar.js'],
-    ['nc-splash', './components/nc-splash.js'],
     ['nc-step', './components/nc-stepper.js'],
     ['nc-stepper', './components/nc-stepper.js'],
     ['nc-switch', './components/nc-switch.js'],

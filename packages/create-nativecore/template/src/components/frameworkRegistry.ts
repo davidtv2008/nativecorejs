@@ -52,7 +52,6 @@ export function registerFrameworkComponents(): void {
     componentRegistry.register('nc-select', './core/nc-select.js');
     componentRegistry.register('nc-skeleton', './core/nc-skeleton.js');
     componentRegistry.register('nc-slider', './core/nc-slider.js');
-    componentRegistry.register('nc-splash', './core/nc-splash.js');
     componentRegistry.register('nc-step', './core/nc-stepper.js');
     componentRegistry.register('nc-stepper', './core/nc-stepper.js');
     componentRegistry.register('nc-switch', './core/nc-switch.js');

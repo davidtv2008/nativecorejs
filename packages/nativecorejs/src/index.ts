@@ -63,7 +63,6 @@ export {
 	,NcSkeleton
 	,NcSlider
 	,NcSnackbar
-	,NcSplash
 	,NcStep
 	,NcStepper
 	,NcSwitch

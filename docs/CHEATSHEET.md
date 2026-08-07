@@ -243,7 +243,6 @@ if unsure. Many use short names (`open` / `close`), not `nc-*-open`.
 | `nc-table` | `sort`, `row-click` |
 | `nc-menu` | `nc-menu-select`, `nc-menu-body-change` |
 | `nc-copy-button` | `copy`, `error` |
-| `nc-splash` | `splash-complete` |
 | `nc-pagination` / `nc-stepper` / `nc-bottom-nav` | `change` |
 | Form inputs (`nc-input`, `nc-select`, …) | `input`, `change` (+ `clear` on input) |
 
