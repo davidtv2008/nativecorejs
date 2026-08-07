@@ -16,11 +16,15 @@ common mistakes regardless — the reactive `locale` state pattern applies broad
 ## Mental model (30 seconds)
 
 ```
-configureI18n({ messages, defaultLocale, persist })
-  → seeds the singleton i18n instance
-  → detects locale from localStorage → navigator.language → defaultLocale
+I18n singleton constructed at import time
+  → detects locale from localStorage → navigator.language → 'en'
+  → wires persist (localStorage 'nc:locale') in the constructor
 
-t('tasks.title')           → looks up key in active locale → falls back to defaultLocale
+configureI18n({ messages })
+  → mainly merges catalogs via i18n.extend(messages)
+  → defaultLocale / fallbackLocale / persist on configureI18n are largely ignored
+
+t('tasks.title')           → looks up key in active locale → falls back to fallbackLocale
 i18n.setLocale('es')       → updates the reactive i18n.locale State
 i18n.locale is a State<string> from @core/state.js
   → watch it to re-render labels when the locale changes
@@ -42,12 +46,10 @@ Call `configureI18n` once, early in your app lifecycle. The right place is
 `src/app.js` (or `app.ts`) before the router starts.
 
 ```js
-import { configureI18n } from '@core/i18n.js';
+import { configureI18n, i18n } from '@core/i18n.js';
 
+// Seed catalogs — this is what configureI18n is for
 configureI18n({
-    defaultLocale: 'en',
-    fallbackLocale: 'en',
-    persist: true,             // saves chosen locale to localStorage as 'nc:locale'
     messages: {
         en: {
             'app.title': 'Deskflow',
@@ -67,16 +69,29 @@ configureI18n({
         },
     },
 });
+
+// Switch locale explicitly when needed
+// i18n.setLocale('es');
 ```
 
 ### What `configureI18n` does
 
-1. Merges the `messages` object into the singleton (does not replace existing keys)
-2. If a locale is already stored in `localStorage` under `nc:locale`, that
-   locale is used and `defaultLocale` is ignored
-3. If no stored locale exists, the helper checks `navigator.language` and
-   picks the closest match from your message keys
-4. If no match is found, `defaultLocale` is used
+The real implementation is small:
+
+```js
+export function configureI18n(options) {
+  if (options.messages) i18n.extend(options.messages);
+  if (options.defaultLocale && !i18n.locale.value) i18n.setLocale(options.defaultLocale);
+}
+```
+
+So in practice:
+
+1. Call `configureI18n({ messages })` to seed / merge catalogs via `i18n.extend`
+2. Use `i18n.setLocale(code)` for locale switches
+3. Detection, persistence (`nc:locale`), and fallback already ran in the `I18n`
+   singleton constructor — `defaultLocale` / `fallbackLocale` / `persist` passed
+   to `configureI18n` are largely ignored (the constructor already finished)
 
 ---
 
@@ -146,8 +161,9 @@ i18n.listLocales();   // ['en', 'es']
 i18n.has('tasks.heading');   // true
 ```
 
-When `persist: true` (the default), `setLocale` also writes the new locale to
-`localStorage` so a page reload preserves the choice.
+Persistence is wired in the `I18n` constructor (default on): `setLocale`
+updates the reactive `locale` state, and the constructor's watcher writes
+`nc:locale` to `localStorage` so a page reload preserves the choice.
 
 ---
 
@@ -263,7 +279,7 @@ export function settingsController(_params, _state, _loaderData, rootElement) {
 
 1. Open `/settings`
 2. Click Español — the heading changes to "Configuracion"
-3. Reload the page — the heading is still "Configuracion" (because `persist: true`)
+3. Reload the page — the heading is still "Configuracion" (locale persisted via `nc:locale`)
 4. Click English — heading reverts to "Settings"
 
 ---
@@ -306,7 +322,7 @@ export function settingsController(_params, _state, _loaderData, rootElement) {
 
 - [ ] `configureI18n` is called once at boot
 - [ ] Switching locale updates all bound strings without a page reload
-- [ ] Reloading the page restores the last-chosen locale when `persist: true`
+- [ ] Reloading the page restores the last-chosen locale (constructor persist / `nc:locale`)
 
 ---
 

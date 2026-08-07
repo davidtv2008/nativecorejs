@@ -156,15 +156,17 @@ Now test: click sign in, navigate to `/settings` — you should land there. Clic
 
 ### Step 5 — Inspect which paths carry a tag (optional)
 
-The router exposes two introspection helpers. Call these from the browser console while the dev server is running:
+`window.router` only exposes `navigate`, `replace`, `back`, and `getCurrentRoute`.
+Introspection helpers live on the full router instance (`window.__NC_ROUTER__`).
+Call these from the browser console while the dev server is running:
 
 ```js
 // Which paths carry the 'session' tag?
-window.router.getPathsForMiddleware('session');
+window.__NC_ROUTER__.getPathsForMiddleware('session');
 // → ['/settings']
 
 // Which tags does /settings carry?
-window.router.getTagsForPath('/settings');
+window.__NC_ROUTER__.getTagsForPath('/settings');
 // → ['session']
 ```
 

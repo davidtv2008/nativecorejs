@@ -22,14 +22,14 @@ nativecore.config.json  →  "useTypeScript": true
   ↓
 Generators emit .ts files instead of .js
   ↓
-npm run compile   →  tsc transpiles src/ to dist/
-npm run typecheck →  tsc --noEmit (type errors only, no output)
+npm run compile   →  .nativecore/scripts/watch-compile.mjs (esbuild, --once)
+npm run typecheck →  tsc --noEmit (TS projects only; type errors, no emit)
 ```
 
 Without `--ts`, `"useTypeScript"` is absent or `false`, generators emit `.js`,
-and there is no `typecheck` script. The `.nativecore/core/` files are TypeScript
-either way — they are compiled during `npm run compile` / `npm run build` via
-`tsconfig.build.json`.
+and there is no `typecheck` script. Either way, `compile` runs the esbuild-based
+`watch-compile.mjs` pipeline — not `tsc`. TypeScript projects may still use
+`tsc` via `npm run typecheck`; check your scaffold's `package.json` if unsure.
 
 ---
 
@@ -60,7 +60,7 @@ npm.cmd run make:view -- tasks --defaults
 # → src/controllers/tasks.controller.ts
 
 npm.cmd run make:store -- task
-# → src/stores/taskStore.ts
+# → src/stores/task.store.ts
 ```
 
 The `npm run typecheck` script is also added:
@@ -276,7 +276,8 @@ npm.cmd run remove:component -- test-type-check
 |---------|-----|
 | Mixing `.ts` and `.js` source files in the same app | Pick one mode per app; use `nativecore.config.json` |
 | Omitting `.js` extension in TS import paths | Always include `.js`; the bundler and type-checker both expect it |
-| Running only `compile` without `typecheck` | `compile` may succeed while type errors lurk; run both |
+| Assuming `compile` means `tsc` | `compile` is esbuild via `watch-compile.mjs`; use `typecheck` for `tsc --noEmit` |
+| Running only `compile` without `typecheck` (TS apps) | `compile` may succeed while type errors lurk; run both |
 | Changing `useTypeScript` mid-project without renaming files | Generators will emit the new extension; old files keep the old extension — rename manually |
 | Expecting an auto-migrator | None exists; rename and annotate incrementally |
 

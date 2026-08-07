@@ -182,3 +182,9 @@ against `packages/create-nativecore/template` and `.nativecore/` sources.
 
 Custom components remain the spine: spend the most time on chapters **05** and
 **07**, then polish with **11–13**.
+
+**API verification (Aug 2026):** Walked against a fresh `--defaults` scaffold +
+`make:view` / `make:component` / `make:store` / `make:middleware`. Corrected
+drift for `__NC_ROUTER__` advanced APIs, `*.store.js` generator output,
+default service imports, async `onMount` (not awaited), and `configureI18n`
+behavior.

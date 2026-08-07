@@ -113,19 +113,27 @@ setCount(1);      // write
 setCount(n => n + 1); // updater function
 ```
 
-`this.signal` is a stylistic alternative to `this.state`. Both work the same way
-under the hood. Prefer `this.state` in this book for consistency.
+`this.signal` wraps `this.state` under the hood but the APIs differ:
+`this.signal` returns a `[get, set]` tuple; `this.state` returns `{ value }`.
+Prefer `this.state` in this book for consistency.
 
 ## Module-level state (`@core/state.js`)
 
 When two routes need to share a value — say, a task list loaded on the tasks page
 and displayed in a nav badge — put that state in a store module under `src/stores/`.
 
-```js
-// src/stores/taskStore.js
-import { useState, computed, effect, batch } from '@core/state.js';
+Prefer `npm run make:store -- task` — it emits `src/stores/task.store.js` with
+the `pausePageCleanupCollection` / `resumePageCleanupCollection` wrapper so
+module-level signals survive navigation. A minimal hand-written shape:
 
+```js
+// src/stores/task.store.js
+import { useState, computed, batch } from '@core/state.js';
+import { pausePageCleanupCollection, resumePageCleanupCollection } from '@core/pageCleanupRegistry.js';
+
+pausePageCleanupCollection();
 export const taskItems = useState([]);
+resumePageCleanupCollection();
 
 export const openCount = computed(() =>
     taskItems.value.filter(t => !t.done).length
@@ -140,7 +148,7 @@ export function loadTasks(items) {
 Then in any controller or component:
 
 ```js
-import { taskItems, openCount, loadTasks } from '@stores/taskStore.js';
+import { taskItems, openCount, loadTasks } from '@stores/task.store.js';
 
 onMount() {
     loadTasks([{ text: 'Build Deskflow', done: false }]);
@@ -284,10 +292,12 @@ you will need to call `_renderList()` after toggling, unless you use `this.bind`
 on individual items.)
 
 **Gold:** Move `taskItems` and `openCount` to a new store file
-`src/stores/taskStore.js` using `useState` and `computed` from `@core/state.js`.
-Update `TasksController` to import from the store. Then add a second computed to
-`taskStore.js` that returns the `done` count, and bind it to a new `ref="doneEl"`
-in the view. Confirm both counters update when tasks are toggled.
+`src/stores/task.store.js` (prefer `make:store -- task`) using `useState` and
+`computed` from `@core/state.js`, wrapped in `pausePageCleanupCollection` /
+`resumePageCleanupCollection`. Update `TasksController` to import from the
+store. Then add a second computed that returns the `done` count, and bind it
+to a new `ref="doneEl"` in the view. Confirm both counters update when tasks
+are toggled.
 
 ## Next
 

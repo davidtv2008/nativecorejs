@@ -207,7 +207,7 @@ export function tasksController(_params, _state, _loaderData, rootElement) {
 
 Key points:
 
-- `onMount` can be `async` — the router waits for it to resolve before the page is considered mounted.
+- `onMount` may be `async`, but the constructor does **not** await it — it is fire-and-forget. Handle loading / error state yourself (a signal, a spinner, etc.).
 - `this.tasks = this.state([])` gives you a reactive signal. `this.effect(...)` re-runs `renderList` any time `tasks.value` changes.
 - `revalidate: true` means the first visit returns cached data instantly; the cache refreshes in the background so the next visit is always up to date.
 
@@ -266,7 +266,7 @@ async addTask(title) {
 | Calling `api.getCached` without `tags` | You will not be able to invalidate by tag later — always supply `tags` |
 | Expecting auth headers to be set automatically | Wire your own `Authorization` header inside `api.service.request()` |
 | Using `fetch` directly in a controller | Route it through `api.service` so caching and error handling work consistently |
-| `onMount` is `async` but controller factory is not awaited | The factory returns a cleanup function, not a Promise — `onMount` being async is fine; the factory stays synchronous |
+| Expecting the router to wait for `async onMount` | `onMount` is not awaited — paint immediately, then update signals when the fetch resolves |
 
 ---
 

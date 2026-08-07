@@ -17,8 +17,8 @@ import { CoreController } from '@core/controller.js';
 | `constructor` | `(root?: HTMLElement)` | Defaults to `document.querySelector('[data-view]')` |
 | `onMount` | `(): void` | Override; runs after the controller is bound to the view |
 | `destroy` | `(): void` | Call from the factory cleanup; removes all `this.on` listeners |
-| `this.state` | `<T>(initial: T): State<T>` | Creates a reactive `State` scoped to this controller |
-| `this.signal` | Same as `useState` | Alias for `this.state` |
+| `this.state` | `<T>(initial: T): State<T>` | Creates a reactive `State` scoped to this controller (`{ value }`) |
+| `this.signal` | `<T>(initial: T): [get, set]` | Returns a `[getter, setter]` tuple (not an alias of `this.state`) |
 | `this.compute` | `<T>(fn: () => T): State<T>` | Derived reactive value |
 | `this.effect` | `(fn: () => void \| (() => void)): void` | Runs immediately; re-runs on signal reads inside `fn` |
 | `this.bind` | `(state, el, classOrAttr?)` | `textContent` bind, or class toggle / attribute bind when third arg is provided |
@@ -137,7 +137,9 @@ window.router.getCurrentRoute();
 
 **`window.router` (frozen subset):** `navigate`, `replace`, `back`,
 `getCurrentRoute` only. Do not rely on any other property of `window.router`
-being present — it is a frozen proxy, not the full router.
+being present — it is a frozen proxy, not the full router. Advanced APIs
+(`prefetch`, `bustCache`, `getPathsForMiddleware`, …) live on
+`window.__NC_ROUTER__` or `import router from '@core/router.js'`.
 
 ---
 
@@ -197,7 +199,7 @@ full service layer used by Deskflow, use `src/services/api.service.js` instead.
 ### `api.service`
 
 ```js
-import { api } from '@services/api.service.js';
+import api from '@services/api.service.js';
 
 api.setBaseURL('https://api.example.com');
 await api.get('/tasks');
@@ -207,16 +209,16 @@ await api.patch('/tasks/1', body);
 await api.delete('/tasks/1');
 await api.getCached('/tasks', { ttl: 60 });
 api.invalidateTags(['tasks']);
-api.invalidateQuery('/tasks');
+api.invalidateQuery(['tasks', 'list']);   // query key array, not a path string
 api.clearCache();
 ```
 
 ### `storage.service`
 
 ```js
-import { storage } from '@services/storage.service.js';
+import storage from '@services/storage.service.js';
 
-storage.strategy('local');    // 'memory' | 'session' | 'local'
+storage.setStrategy('local');    // 'memory' | 'session' | 'local'
 storage.set('key', value);
 storage.get('key');
 storage.remove('key');
@@ -226,7 +228,7 @@ storage.clear();
 ### `logger.service`
 
 ```js
-import { logger } from '@services/logger.service.js';
+import logger from '@services/logger.service.js';
 
 logger.debug('msg', data);
 logger.info('msg', data);
@@ -249,8 +251,9 @@ logger.error('msg', data);
 
 ```bash
 npm.cmd run make:store -- task
-# → src/stores/taskStore.js
-# Exports: taskItems (State), loadTasks (async fn)
+# → src/stores/task.store.js
+# Exports: taskItems, taskLoading, taskError, taskCount (computed),
+#          loadTasks, addTask, removeTask
 ```
 
 ---
@@ -324,9 +327,9 @@ import { configureI18n, i18n, t } from '@core/i18n.js';
 
 | API | Notes |
 |-----|-------|
-| `configureI18n({ messages, defaultLocale, fallbackLocale, persist })` | Call once at boot |
+| `configureI18n({ messages })` | Mainly merges catalogs via `i18n.extend`; `defaultLocale` / `fallbackLocale` / `persist` on this call are largely ignored (constructor already ran) |
 | `t(key, params?)` | Translate; params use `{name}` placeholder syntax |
-| `i18n.setLocale(code)` | Switch active locale; persists if `persist: true` |
+| `i18n.setLocale(code)` | Switch active locale; constructor wires `localStorage` persist by default |
 | `i18n.locale` | `State<string>` — watch inside `effect` to react to locale changes |
 | `i18n.extend({ locale: { key: value } })` | Merge new keys; does not replace existing |
 | `i18n.listLocales()` | Returns `string[]` of known locale codes |
@@ -375,6 +378,8 @@ npm.cmd run make:middleware -- <name>
 npm.cmd run remove:component -- <name>
 npm.cmd run remove:core-component -- <name>
 npm.cmd run remove:view -- <name> [--yes]
+npm.cmd run remove:store -- <name>
+npm.cmd run remove:middleware -- <name>
 ```
 
 ### Build and test
@@ -390,7 +395,7 @@ npm.cmd run remove:view -- <name> [--yes]
 | `npm.cmd test -- --run` | Vitest single pass |
 | `npm run test:coverage` | Coverage report |
 | `npm run typecheck` | `tsc --noEmit` (TypeScript projects only) |
-| `npm run compile` | `tsc` (compile, with output) |
+| `npm run compile` | esbuild via `.nativecore/scripts/watch-compile.mjs --once` (JS + TS scaffolds) |
 
 ### Capacitor
 

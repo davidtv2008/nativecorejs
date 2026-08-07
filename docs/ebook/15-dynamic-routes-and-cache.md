@@ -15,10 +15,14 @@ loader (optional) runs first, fetches task data (loaderData)
   ↓
 HTML file is fetched (from cache if warm)
   ↓
-controller factory called: (params, state, loaderData, rootElement)
+controller factory called: (params, state, loaderData)
   ↓
 controller reads params.id → loads the task → renders
 ```
+
+The router / `lazyController` forwards only three arguments. Generated stubs still
+declare a 4th `rootElement` parameter, but it is usually `undefined` —
+`CoreController` falls back to `document.querySelector('[data-view]')`.
 
 The HTML cache is separate from the API cache. The router caches the raw HTML string so the browser never re-fetches the view file on repeat visits. The API cache in `api.service` is for data. They work together but are independent.
 
@@ -212,11 +216,12 @@ this.on(this.listEl, 'mouseover', (e) => {
     const card = e.target.closest('task-card');
     if (!card) return;
     const id = card.dataset.id;
-    if (id) window.router.prefetch(`/tasks/${id}`);
+    // prefetch is not on window.router — use the full instance
+    if (id) window.__NC_ROUTER__.prefetch(`/tasks/${id}`);
 });
 ```
 
-`prefetch` fetches and caches the HTML file without navigating. When the user does click, the cached HTML is served instantly.
+`prefetch` fetches and caches the HTML file without navigating. When the user does click, the cached HTML is served instantly. (`window.router` only has navigate/replace/back/getCurrentRoute.)
 
 ---
 
@@ -242,10 +247,11 @@ Or use a plain `<a href="/tasks/42">` — the router intercepts internal links a
 .cache({ ttl: 300 })                      // block on stale
 .cache({ ttl: 60, revalidate: true })     // stale-while-revalidate
 
-// On the router instance (run in browser console or from controller):
-window.router.bustCache('/tasks');        // bust HTML cache for one path
-window.router.bustCache();               // bust all HTML cache
-window.router.prefetch('/tasks');         // warm HTML without navigating
+// On the full router instance (not the frozen window.router subset):
+window.__NC_ROUTER__.bustCache('/tasks');  // bust HTML cache for one path
+window.__NC_ROUTER__.bustCache();         // bust all HTML cache
+window.__NC_ROUTER__.prefetch('/tasks');   // warm HTML without navigating
+// Or: import router from '@core/router.js' and call router.prefetch / bustCache
 ```
 
 Debug helpers (run in the browser console):
@@ -286,7 +292,7 @@ window.__NC_ROUTER__.getRouteDebugInfo();    // see all registered routes + cach
 
 **Silver** — Add a `loader` function to the `/tasks/:id` route registration that fetches the task from `/api/tasks/:id` before the controller runs. Pass `loaderData` directly to the controller and skip the duplicate fetch in `onMount`.
 
-**Gold** — On the tasks list page, prefetch the detail HTML for every task card on `mouseover`. Use `window.router.prefetch` and debounce the calls so rapidly hovering over the list does not fire dozens of requests simultaneously.
+**Gold** — On the tasks list page, prefetch the detail HTML for every task card on `mouseover`. Use `window.__NC_ROUTER__.prefetch` (or `import router from '@core/router.js'`) and debounce the calls so rapidly hovering over the list does not fire dozens of requests simultaneously.
 
 ---
 

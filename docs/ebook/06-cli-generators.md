@@ -107,8 +107,11 @@ export function tasksController(_params, _state, _loaderData, rootElement) {
 ```
 
 Notice the factory signature: `_params, _state, _loaderData, rootElement`.
-The router passes these in order. If you do not need them, prefix with `_`
-to signal intent.
+Generators still emit four parameters, but the router / `lazyController` only
+forwards three args — `(params, state, loaderData)`. The 4th `rootElement` is
+usually `undefined`; `CoreController` resolves the view root itself via
+`[data-view]`. Keep the generated stub as-is. If you do not need a param,
+prefix it with `_` to signal intent.
 
 ## Stores
 
@@ -119,20 +122,11 @@ the stores barrel:
 npm.cmd run make:store -- task
 ```
 
-Generated stub:
-
-```js
-import { useState } from '@core/state.js';
-
-export const taskItems = useState([]);
-
-export function loadTasks(items) {
-    taskItems.value = items;
-}
-```
-
-Edit this file to add your own `computed` and `batch` calls. The generated
-`useState` import is already correct.
+Generated output wraps module-level state in `pausePageCleanupCollection` /
+`resumePageCleanupCollection`, exports `taskItems` / `taskLoading` / `taskError`,
+a `taskCount` computed, and `loadTasks` / `addTask` / `removeTask` against
+`api.service`. See [Chapter 10](./10-global-stores.md) for the full shape —
+always read the generated file before editing it.
 
 ## Views
 
@@ -240,20 +234,13 @@ npm.cmd run make:store -- task
 npm run compile
 ```
 
-Open `src/stores/task.store.js`. Add a `computed` for the open count:
+Open `src/stores/task.store.js`. Keep the generated pause/resume + API actions.
+Add a computed for the open count alongside the generated `taskCount`:
 
 ```js
-import { useState, computed } from '@core/state.js';
-
-export const taskItems = useState([]);
-
 export const openCount = computed(() =>
     taskItems.value.filter(t => !t.done).length
 );
-
-export function loadTasks(items) {
-    taskItems.value = items;
-}
 ```
 
 Then update `TasksController` to import from the store instead of using

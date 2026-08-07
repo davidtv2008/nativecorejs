@@ -86,38 +86,75 @@ npm.cmd run make:store -- task
 npm run make:store -- task
 ```
 
-This creates `src/stores/task.store.js` and adds it to the stores barrel export. The generated file looks roughly like:
+This creates `src/stores/task.store.js` and adds it to the stores barrel export. The JS generator output looks like this (comments trimmed):
 
 ```js
-import { useState } from '@core/state.js';
+import { useState, computed, batch } from '@core/state.js';
 import { pausePageCleanupCollection, resumePageCleanupCollection } from '@core/pageCleanupRegistry.js';
 import api from '@services/api.service.js';
 
 pausePageCleanupCollection();
-export const taskItems = useState([]);
-export const taskCount = useState(0);
+
+export const taskItems   = useState([]);
+export const taskLoading = useState(false);
+export const taskError   = useState(null);
+
 resumePageCleanupCollection();
 
-export async function loadTasks() {
-    const data = await api.getCached('/tasks', { ttl: 60, tags: ['tasks'] });
-    taskItems.value = data;
-    taskCount.value = data.length;
+export const taskCount = computed(() => taskItems.value.length);
+
+export async function loadTasks(force = false) {
+    if (taskLoading.value) return;
+
+    batch(() => {
+        taskLoading.value = true;
+        taskError.value   = null;
+    });
+
+    try {
+        const data = await api.getCached('/tasks', {
+            ttl:        60,
+            revalidate: !force,
+            queryKey:   ['tasks', 'list'],
+            tags:       ['tasks'],
+        });
+        batch(() => {
+            taskItems.value   = data;
+            taskLoading.value = false;
+        });
+    } catch (err) {
+        batch(() => {
+            taskError.value   = err instanceof Error ? err.message : 'Failed to load tasks';
+            taskLoading.value = false;
+        });
+    }
 }
 
-export async function addTask(task) {
-    await api.post('/tasks', task);
-    api.invalidateTags(['tasks']);
-    await loadTasks();
+export async function addTask(item) {
+    try {
+        const created = await api.post('/tasks', item);
+        taskItems.value = [...taskItems.value, created];
+        api.invalidateTags(['tasks']);
+    } catch (err) {
+        taskError.value = err instanceof Error ? err.message : 'Failed to add task';
+    }
 }
 
 export async function removeTask(id) {
-    await api.delete(`/tasks/${id}`);
-    api.invalidateTags(['tasks']);
-    await loadTasks();
+    const previous = taskItems.value;
+    taskItems.value = previous.filter(item => item.id !== id);
+
+    try {
+        await api.delete(`/tasks/${id}`);
+        api.invalidateTags(['tasks']);
+    } catch (err) {
+        taskItems.value = previous;
+        taskError.value = err instanceof Error ? err.message : 'Failed to remove task';
+    }
 }
 ```
 
-The exact output depends on your scaffold version — always read the generated file before editing it. The key pattern is always: pause → declare module-level state → resume.
+Always read the generated file before editing it. The key pattern is always: pause → declare module-level state → resume; derived state (`taskCount`) lives outside the pause/resume block.
 
 ---
 
