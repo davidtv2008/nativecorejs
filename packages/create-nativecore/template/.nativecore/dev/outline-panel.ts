@@ -10,7 +10,7 @@ export class OutlinePanel {
     private panel: HTMLElement | null = null;
     private tab: HTMLElement | null = null;
     private isOpen: boolean = false;
-    private isVisible: boolean = true;
+    private isVisible: boolean = false;
     private mutationObserver: MutationObserver | null = null;
     private refreshTimeout: number | null = null;
 

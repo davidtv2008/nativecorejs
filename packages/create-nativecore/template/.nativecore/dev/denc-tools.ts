@@ -33,7 +33,7 @@ class DevTools {
     private builder: ComponentBuilder | null = null;
     private indicator: HTMLButtonElement | null = null;
     private enabled: boolean = false;
-    private overlayVisible: boolean = true;
+    private overlayVisible: boolean = false;
 
     /**
      * Initialize dev tools - only works on localhost
@@ -59,6 +59,7 @@ class DevTools {
         this.enabled = true;
         this.overlayVisible = this.loadOverlayVisibilityPreference();
         this.overlay.setVisible(this.overlayVisible);
+        this.outlinePanel.setVisible(this.overlayVisible);
         
         // Add dev mode indicator
         this.addDevIndicator();
