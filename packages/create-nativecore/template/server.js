@@ -11,7 +11,7 @@ import { fileURLToPath } from 'url';
 import { WebSocketServer } from 'ws';
 import * as mockApi from './api/mockApi.js';
 import { loadEnv, createEnvReloader } from './.nativecore/scripts/load-env.mjs';
-import { getPublicEnv, injectPublicEnvIntoHtml, getApiConnectOrigins } from './.nativecore/scripts/public-env.mjs';
+import { getPublicEnv, injectPublicEnvIntoHtml, getApiConnectOrigins, buildContentSecurityPolicy } from './.nativecore/scripts/public-env.mjs';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -1345,25 +1345,25 @@ const server = http.createServer(async (req, res) => {
             ...getApiConnectOrigins(),
         ].join(' ');
 
-        headers['Content-Security-Policy'] = [
+        headers['Content-Security-Policy'] = buildContentSecurityPolicy([
             "default-src 'self'",
             "script-src 'self' 'unsafe-inline' 'unsafe-eval'",
             "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
             "font-src 'self' https://fonts.gstatic.com",
             `connect-src ${connectSrc}`,
-            "img-src 'self' data:"
-        ].join('; ');
+            "img-src 'self' data: https:",
+        ]);
     } else if (!isDevelopment && contentType === 'text/html') {
         const connectSrc = ["'self'", ...getApiConnectOrigins()].join(' ');
-        headers['Content-Security-Policy'] = [
+        headers['Content-Security-Policy'] = buildContentSecurityPolicy([
             "default-src 'self'",
             "script-src 'self' 'unsafe-inline'",
             "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
             "font-src 'self' https://fonts.gstatic.com",
             `connect-src ${connectSrc}`,
             "img-src 'self' data: https:",
-            "frame-ancestors 'none'"
-        ].join('; ');
+            "frame-ancestors 'none'",
+        ]);
         headers['Strict-Transport-Security'] = 'max-age=31536000; includeSubDomains';
     }
 

@@ -5,6 +5,15 @@ NativeCoreJS ships **static + hydrate** SPAs (optional `build:ssg`). This is not
 ## Security
 
 - Ship CSP via `public/_headers` (Cloudflare/Netlify) or your host’s header config.
+- `server.js` sets CSP on HTML responses in dev and prod. Dev and prod both allow `img-src https:` so external images behave the same locally.
+- Optional embeds (Vimeo, external audio/CDN): set server-only env vars read by `server.js`:
+
+```env
+CSP_FRAME_SRC=https://player.vimeo.com
+CSP_MEDIA_SRC=https://cdn.example.com https:
+```
+
+- For static hosts using `_headers`, add matching `frame-src` / `media-src` directives there as well.
 - Suggested starter CSP (tune for your CDNs/fonts):
 
 ```

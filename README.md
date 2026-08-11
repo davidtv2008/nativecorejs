@@ -17,7 +17,7 @@ Monorepo for the NativeCore framework runtime and the official app scaffolder.
 | `packages/nativecorejs` | Publishable runtime (`import … from 'nativecorejs'`) |
 | `packages/create-nativecore` | CLI scaffolder (`npx create-nativecore`) |
 
-Current version: **`2.0.10`**.
+Current version: **`2.0.11`**.
 
 ## Product shape (current)
 

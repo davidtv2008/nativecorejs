@@ -111,6 +111,63 @@ export function getApiConnectOrigins(env = getPublicEnv()) {
     }
 }
 
+/**
+ * Parse space- or comma-separated CSP source tokens from an env value.
+ * @param {string | undefined} value
+ * @returns {string[]}
+ */
+export function parseCspSources(value) {
+    if (!value || typeof value !== 'string') return [];
+    return value
+        .split(/[\s,]+/)
+        .map((part) => part.trim())
+        .filter(Boolean);
+}
+
+/**
+ * Optional CSP directives from server-only env (not exposed to the browser).
+ *
+ * CSP_FRAME_SRC=https://player.vimeo.com
+ * CSP_MEDIA_SRC=https://cdn.example.com https:
+ *
+ * @param {NodeJS.ProcessEnv} [env]
+ * @returns {string[]}
+ */
+export function getCspExtraDirectives(env = process.env) {
+    /** @type {string[]} */
+    const directives = [];
+
+    const frameSrc = parseCspSources(env.CSP_FRAME_SRC);
+    if (frameSrc.length) {
+        directives.push(`frame-src 'self' ${frameSrc.join(' ')}`);
+    }
+
+    const mediaSrc = parseCspSources(env.CSP_MEDIA_SRC);
+    if (mediaSrc.length) {
+        directives.push(`media-src 'self' ${mediaSrc.join(' ')}`);
+    }
+
+    return directives;
+}
+
+/**
+ * Join base CSP directives with optional env-driven extras.
+ * @param {string[]} baseDirectives
+ * @param {NodeJS.ProcessEnv} [env]
+ * @returns {string}
+ */
+export function buildContentSecurityPolicy(baseDirectives, env = process.env) {
+    const imgExtra = parseCspSources(env.CSP_IMG_SRC);
+    const merged = imgExtra.length
+        ? baseDirectives.map((directive) => {
+            if (!directive.startsWith('img-src ')) return directive;
+            return `${directive} ${imgExtra.join(' ')}`;
+        })
+        : baseDirectives;
+
+    return [...merged, ...getCspExtraDirectives(env)].join('; ');
+}
+
 export const PUBLIC_ENV_HTML_MARKERS = {
     start: HTML_MARKER_START,
     end: HTML_MARKER_END,
