@@ -7,6 +7,8 @@ import {
     injectPublicEnvIntoHtml,
     getApiConnectOrigins,
     buildContentSecurityPolicy,
+    buildScriptSrcDirective,
+    buildConnectSrcDirective,
     getCspExtraDirectives,
 } from '../public-env.mjs';
 
@@ -39,16 +41,29 @@ const html = '<html><head><script>globalThis.__NC_PUBLIC_ENV__=/*@nc-public-env*
 const baked = injectPublicEnvIntoHtml(html, { API_BASE_URL: '/api' });
 assert.match(baked, /\/\*@nc-public-env\*\/\{"API_BASE_URL":"\/api"\}\/\*@\/nc-public-env\*\//);
 
-assert.deepEqual(getCspExtraDirectives({}), []);
+assert.deepEqual(getCspExtraDirectives({}), ["frame-src 'self' https://player.vimeo.com"]);
 assert.deepEqual(
     getCspExtraDirectives({ CSP_FRAME_SRC: 'https://player.vimeo.com' }),
     ["frame-src 'self' https://player.vimeo.com"]
 );
 assert.match(
+    buildScriptSrcDirective({ development: true }),
+    /script-src 'self' 'unsafe-inline' 'unsafe-eval' https:\/\/player\.vimeo\.com/
+);
+assert.match(
+    buildConnectSrcDirective({
+        development: true,
+        hmrPort: 3001,
+        publicEnv: { API_BASE_URL: 'http://localhost:8000/api' },
+        env: { CSP_CONNECT_SRC: 'https://student.firsttuesday.us' },
+    }),
+    /connect-src 'self' ws:\/\/localhost:3001 ws:\/\/127\.0\.0\.1:3001 http:\/\/localhost:8000 https:\/\/\*\.vimeo\.com https:\/\/vimeo\.com https:\/\/student\.firsttuesday\.us/
+);
+assert.match(
     buildContentSecurityPolicy(["default-src 'self'", "img-src 'self' data: https:"], {
         CSP_MEDIA_SRC: 'https://cdn.example.com https:',
     }),
-    /default-src 'self'; img-src 'self' data: https:; media-src 'self' https:\/\/cdn\.example\.com https:/
+    /default-src 'self'; img-src 'self' data: https:; frame-src 'self' https:\/\/player\.vimeo\.com; media-src 'self' https:\/\/cdn\.example\.com https:/
 );
 assert.match(
     buildContentSecurityPolicy(["img-src 'self' data: https:"], {

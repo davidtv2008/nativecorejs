@@ -111,6 +111,63 @@ export function getApiConnectOrigins(env = getPublicEnv()) {
     }
 }
 
+/** Sensible defaults for embedded video players (Vimeo) in course-style apps. */
+export const EMBED_CSP_DEFAULTS = {
+    scriptSrc: ['https://player.vimeo.com'],
+    connectSrc: ['https://*.vimeo.com', 'https://vimeo.com'],
+    frameSrc: ['https://player.vimeo.com'],
+};
+
+/**
+ * Extra script-src tokens (defaults + CSP_SCRIPT_SRC).
+ * @param {NodeJS.ProcessEnv} [env]
+ * @returns {string[]}
+ */
+export function getCspScriptSources(env = process.env) {
+    return [...EMBED_CSP_DEFAULTS.scriptSrc, ...parseCspSources(env.CSP_SCRIPT_SRC)];
+}
+
+/**
+ * Extra connect-src tokens (defaults + CSP_CONNECT_SRC).
+ * @param {NodeJS.ProcessEnv} [env]
+ * @returns {string[]}
+ */
+export function getCspConnectSources(env = process.env) {
+    return [...EMBED_CSP_DEFAULTS.connectSrc, ...parseCspSources(env.CSP_CONNECT_SRC)];
+}
+
+/**
+ * Build the script-src CSP directive.
+ * @param {{ development?: boolean, env?: NodeJS.ProcessEnv }} [options]
+ * @returns {string}
+ */
+export function buildScriptSrcDirective({ development = false, env = process.env } = {}) {
+    const parts = ["'self'", "'unsafe-inline'"];
+    if (development) parts.push("'unsafe-eval'");
+    parts.push(...getCspScriptSources(env));
+    return `script-src ${[...new Set(parts)].join(' ')}`;
+}
+
+/**
+ * Build the connect-src CSP directive (API, HMR, embeds, env extras).
+ * @param {{ development?: boolean, hmrPort?: number, publicEnv?: Record<string, string>, env?: NodeJS.ProcessEnv }} [options]
+ * @returns {string}
+ */
+export function buildConnectSrcDirective({
+    development = false,
+    hmrPort = 3001,
+    publicEnv = getPublicEnv(),
+    env = process.env,
+} = {}) {
+    const parts = ["'self'"];
+    if (development) {
+        parts.push(`ws://localhost:${hmrPort}`, `ws://127.0.0.1:${hmrPort}`);
+    }
+    parts.push(...getApiConnectOrigins(publicEnv));
+    parts.push(...getCspConnectSources(env));
+    return `connect-src ${[...new Set(parts)].join(' ')}`;
+}
+
 /**
  * Parse space- or comma-separated CSP source tokens from an env value.
  * @param {string | undefined} value
@@ -137,7 +194,7 @@ export function getCspExtraDirectives(env = process.env) {
     /** @type {string[]} */
     const directives = [];
 
-    const frameSrc = parseCspSources(env.CSP_FRAME_SRC);
+    const frameSrc = [...new Set([...EMBED_CSP_DEFAULTS.frameSrc, ...parseCspSources(env.CSP_FRAME_SRC)])];
     if (frameSrc.length) {
         directives.push(`frame-src 'self' ${frameSrc.join(' ')}`);
     }

@@ -11,7 +11,7 @@ import { fileURLToPath } from 'url';
 import { WebSocketServer } from 'ws';
 import * as mockApi from './api/mockApi.js';
 import { loadEnv, createEnvReloader } from './.nativecore/scripts/load-env.mjs';
-import { getPublicEnv, injectPublicEnvIntoHtml, getApiConnectOrigins, buildContentSecurityPolicy } from './.nativecore/scripts/public-env.mjs';
+import { getPublicEnv, injectPublicEnvIntoHtml, buildContentSecurityPolicy, buildScriptSrcDirective, buildConnectSrcDirective } from './.nativecore/scripts/public-env.mjs';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -1338,30 +1338,24 @@ const server = http.createServer(async (req, res) => {
 
     // In development, set a permissive CSP to allow HMR/devtools eval
     if (isDevelopment && contentType === 'text/html') {
-        const connectSrc = [
-            "'self'",
-            `ws://localhost:${HMR_PORT}`,
-            `ws://127.0.0.1:${HMR_PORT}`,
-            ...getApiConnectOrigins(),
-        ].join(' ');
-
         headers['Content-Security-Policy'] = buildContentSecurityPolicy([
             "default-src 'self'",
-            "script-src 'self' 'unsafe-inline' 'unsafe-eval'",
+            buildScriptSrcDirective({ development: true }),
             "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
             "font-src 'self' https://fonts.gstatic.com",
-            `connect-src ${connectSrc}`,
+            buildConnectSrcDirective({ development: true, hmrPort: HMR_PORT }),
             "img-src 'self' data: https:",
+            "media-src 'self' https:",
         ]);
     } else if (!isDevelopment && contentType === 'text/html') {
-        const connectSrc = ["'self'", ...getApiConnectOrigins()].join(' ');
         headers['Content-Security-Policy'] = buildContentSecurityPolicy([
             "default-src 'self'",
-            "script-src 'self' 'unsafe-inline'",
+            buildScriptSrcDirective({ development: false }),
             "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
             "font-src 'self' https://fonts.gstatic.com",
-            `connect-src ${connectSrc}`,
+            buildConnectSrcDirective({ development: false, hmrPort: HMR_PORT }),
             "img-src 'self' data: https:",
+            "media-src 'self' https:",
             "frame-ancestors 'none'",
         ]);
         headers['Strict-Transport-Security'] = 'max-age=31536000; includeSubDomains';
