@@ -1345,7 +1345,7 @@ const server = http.createServer(async (req, res) => {
             "font-src 'self' https://fonts.gstatic.com",
             buildConnectSrcDirective({ development: true, hmrPort: HMR_PORT }),
             "img-src 'self' data: https:",
-            "media-src 'self' https:",
+            "media-src 'self' blob: https:",
         ]);
     } else if (!isDevelopment && contentType === 'text/html') {
         headers['Content-Security-Policy'] = buildContentSecurityPolicy([
@@ -1355,7 +1355,7 @@ const server = http.createServer(async (req, res) => {
             "font-src 'self' https://fonts.gstatic.com",
             buildConnectSrcDirective({ development: false, hmrPort: HMR_PORT }),
             "img-src 'self' data: https:",
-            "media-src 'self' https:",
+            "media-src 'self' blob: https:",
             "frame-ancestors 'none'",
         ]);
         headers['Strict-Transport-Security'] = 'max-age=31536000; includeSubDomains';
