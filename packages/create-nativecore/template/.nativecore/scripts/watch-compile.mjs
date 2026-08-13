@@ -23,7 +23,12 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 const ROOT = path.resolve(__dirname, '..', '..');
-const SENTINEL_PATH = path.join(ROOT, 'dist', '.hmr-ready');
+const outdirIndex = process.argv.indexOf('--outdir');
+const requestedOutdir = outdirIndex >= 0 ? process.argv[outdirIndex + 1] : null;
+const OUTPUT_DIR = requestedOutdir
+    ? path.resolve(ROOT, requestedOutdir)
+    : path.join(ROOT, 'dist');
+const SENTINEL_PATH = path.join(OUTPUT_DIR, '.hmr-ready');
 
 // ─── Detect project language mode ────────────────────────────────────────────
 // Read nativecore.config.json to determine whether this is a TS or JS project.
@@ -52,7 +57,7 @@ const SOURCE_LOADER = useTypeScript ? 'ts' : 'js';
 //   import { useState } from '@core/state.js'
 //   → import { useState } from '../../.nativecore/core/state.js'
 // The relative path is calculated from the source file's directory, which
-// maps correctly to the mirrored dist/ structure produced by outbase: ROOT.
+// maps correctly to the mirrored output structure produced by outbase: ROOT.
 
 // Read path aliases from tsconfig.json if present, otherwise use built-in defaults.
 // The defaults mirror the standard NativeCore project layout so JS projects
@@ -134,8 +139,8 @@ const pathAliasPlugin = {
 
 // ─── Entry-point discovery ────────────────────────────────────────────────────
 // Glob every .ts file under src/ and .nativecore/ as esbuild entry points.
-// esbuild writes each file to dist/ preserving the directory structure,
-// matching what tsc --outDir dist would produce.
+// esbuild writes each file to OUTPUT_DIR preserving the directory structure,
+// matching what tsc --outDir would produce.
 
 function collectEntries(dir, base = dir) {
     const entries = [];
@@ -161,18 +166,18 @@ function getEntryPoints() {
     ];
 }
 
-/** Copy plain .mjs helpers (e.g. component-builder-codegen) into dist so browser ESM can import them. */
-function copyNativecoreMjs(dir = path.join(ROOT, '.nativecore')) {
+/** Copy plain .mjs helpers so browser ESM can import them. */
+function copyNativecoreMjs(dir = path.join(ROOT, '.nativecore'), outputDir = OUTPUT_DIR) {
     if (!fs.existsSync(dir)) return;
     for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
         const full = path.join(dir, entry.name);
         if (entry.isDirectory()) {
-            copyNativecoreMjs(full);
+            copyNativecoreMjs(full, outputDir);
             continue;
         }
         if (!entry.name.endsWith('.mjs')) continue;
         const rel = path.relative(ROOT, full);
-        const out = path.join(ROOT, 'dist', rel);
+        const out = path.join(outputDir, rel);
         fs.mkdirSync(path.dirname(out), { recursive: true });
         fs.copyFileSync(full, out);
     }
@@ -197,7 +202,7 @@ async function startEsbuild() {
     const ctx = await esbuild.context({
         entryPoints: getEntryPoints(),
         outbase: ROOT,
-        outdir: path.join(ROOT, 'dist'),
+        outdir: OUTPUT_DIR,
         bundle: false,          // preserve module boundaries — no bundling
         format: 'esm',
         target: 'es2020',
@@ -211,15 +216,14 @@ async function startEsbuild() {
 
     // esbuild watch: recompiles only changed files on each save.
     await ctx.watch();
-    copyNativecoreMjs();
+    copyNativecoreMjs(path.join(ROOT, '.nativecore'), OUTPUT_DIR);
 
     process.stdout.write('[esbuild] watching for changes…\n');
 
     // After each rebuild, write the sentinel so server.js fires one reload.
-    const distDir = path.join(ROOT, 'dist');
     let debounceTimer = null;
 
-    const distWatcher = fs.watch(distDir, { recursive: true }, (_, filename) => {
+    const outputWatcher = fs.watch(OUTPUT_DIR, { recursive: true }, (_, filename) => {
         if (!filename?.endsWith('.js') || filename.endsWith('.d.ts')) return;
         clearTimeout(debounceTimer);
         debounceTimer = setTimeout(() => {
@@ -227,7 +231,7 @@ async function startEsbuild() {
         }, 80);
     });
 
-    distWatcherCleanup = () => { try { distWatcher.close(); } catch { /* ignore */ } };
+    distWatcherCleanup = () => { try { outputWatcher.close(); } catch { /* ignore */ } };
 }
 
 function watchCssBundle() {
@@ -240,7 +244,7 @@ function watchCssBundle() {
 
     const runCssBundle = async () => {
         try {
-            await bundleCSS();
+            await bundleCSS(OUTPUT_DIR);
             try { fs.writeFileSync(SENTINEL_PATH, String(Date.now())); } catch { /* ignore */ }
         } catch {
             // bundle-css already logs actionable details.
@@ -332,7 +336,7 @@ if (isOnce) {
         await esbuild.build({
             entryPoints: getEntryPoints(),
             outbase: ROOT,
-            outdir: path.join(ROOT, 'dist'),
+            outdir: OUTPUT_DIR,
             bundle: false,
             format: 'esm',
             target: 'es2020',
@@ -341,7 +345,7 @@ if (isOnce) {
             plugins: [pathAliasPlugin],
             logLevel: 'info',
         });
-        copyNativecoreMjs();
+        copyNativecoreMjs(path.join(ROOT, '.nativecore'), OUTPUT_DIR);
         try { fs.writeFileSync(SENTINEL_PATH, String(Date.now())); } catch { /* ignore */ }
         process.stdout.write('[esbuild] build complete\n');
     } catch {

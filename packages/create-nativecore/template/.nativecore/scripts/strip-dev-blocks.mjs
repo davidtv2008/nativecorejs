@@ -4,12 +4,14 @@
 import { readFile, writeFile } from 'fs/promises';
 import { resolve } from 'path';
 
-const files = [
+const defaultFiles = [
   'index.html',
   // SSG writes per-route index.html files; strip-dev-blocks is run before
   // ssg.mjs, so we only need to handle the SPA shell here.
   // Add other HTML entry points below as needed.
 ];
+const requestedFiles = process.argv.slice(2).filter((file) => !file.startsWith('--'));
+const files = requestedFiles.length > 0 ? requestedFiles : defaultFiles;
 
 const DEV_BLOCK_REGEX = /<!-- DEnc-ONLY-START -->(.|\n|\r)*?<!-- DEnc-ONLY-END -->/g;
 const ERROR_BOUNDARY_DEV_REGEX = /(<nc-error-boundary\b[^>]*)\bmode="dev"([^>]*>)/g;

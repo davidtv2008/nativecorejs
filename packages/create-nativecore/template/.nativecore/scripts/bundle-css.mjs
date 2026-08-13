@@ -3,7 +3,7 @@
  * Bundle CSS files into a single optimized stylesheet
  * Combines multiple CSS files to reduce critical rendering path
  * 
- * Usage: node bundle-css.mjs
+ * Usage: node bundle-css.mjs [--outdir dist-prod]
  */
 
 import fs from 'fs';
@@ -21,10 +21,18 @@ const cssFiles = [
     'src/styles/main.css',
 ];
 
-const outputPath = path.join(rootDir, 'dist/src/styles/bundle.css');
+function getOutputRoot() {
+    const outdirIndex = process.argv.indexOf('--outdir');
+    const requestedOutdir = outdirIndex >= 0 ? process.argv[outdirIndex + 1] : null;
+    return requestedOutdir
+        ? path.resolve(rootDir, requestedOutdir)
+        : path.join(rootDir, 'dist');
+}
 
-export async function bundleCSS() {
+export async function bundleCSS(outputRoot = getOutputRoot()) {
     try {
+        const outputPath = path.join(outputRoot, 'src/styles/bundle.css');
+
         // Ensure output directory exists
         const outputDir = path.dirname(outputPath);
         if (!fs.existsSync(outputDir)) {
@@ -53,7 +61,8 @@ export async function bundleCSS() {
         const sizeKb = (stats.size / 1024).toFixed(2);
         
         console.log(`✅ CSS bundled successfully`);
-        console.log(`   Output: dist/src/styles/bundle.css (${sizeKb} KB)`);
+        const relativeOutput = path.relative(rootDir, outputPath).replace(/\\/g, '/');
+        console.log(`   Output: ${relativeOutput} (${sizeKb} KB)`);
         
     } catch (error) {
         console.error('❌ CSS bundling failed:', error.message);

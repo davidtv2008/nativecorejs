@@ -65,7 +65,8 @@ How a scaffolded NativeCore app is structured and how data flows through it.
 │   ├── constants/
 │   └── types/
 ├── .env.example               # copy to .env; PORT server-only; API_BASE_URL public
-└── dist/                      # compiled output (gitignored)
+├── dist/                      # development compiled output (gitignored)
+└── dist-prod/                 # isolated production compile output (gitignored)
 ```
 
 What is **not** present by default:

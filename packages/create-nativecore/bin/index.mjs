@@ -157,12 +157,13 @@ function packageJsonTemplate(config) {
             : 'npm run build:client && npm run test -- --run',
         dev: 'npm run compile && node .nativecore/scripts/inject-version.mjs && node .nativecore/scripts/sync-importmap.mjs && concurrently --kill-others --names "watch,server" -c "blue,green" "node .nativecore/scripts/watch-compile.mjs" "node server.js"',
         'dev:watch': 'node .nativecore/scripts/watch-compile.mjs',
-        clean: 'node -e "const fs=require(\'fs\'); fs.rmSync(\'dist\',{recursive:true,force:true}); fs.rmSync(\'_deploy\',{recursive:true,force:true})"',
+        clean: 'node -e "const fs=require(\'fs\'); fs.rmSync(\'dist\',{recursive:true,force:true}); fs.rmSync(\'dist-prod\',{recursive:true,force:true}); fs.rmSync(\'_deploy\',{recursive:true,force:true})"',
+        'clean:prod': 'node .nativecore/scripts/clean-prod.mjs',
         prebuild: config.useTypeScript
-            ? 'npm run clean && npm run lint && npm run typecheck'
-            : 'npm run clean && npm run lint',
-        build: 'node .nativecore/scripts/write-public-env.mjs && node .nativecore/scripts/inject-version.mjs && npm run compile:prod && node .nativecore/scripts/minify.mjs && node .nativecore/scripts/prepare-static-assets.mjs && node .nativecore/scripts/strip-dev-blocks.mjs && node .nativecore/scripts/remove-dev.mjs',
-        'build:client': 'node .nativecore/scripts/write-public-env.mjs && node .nativecore/scripts/inject-version.mjs && npm run compile:prod && node .nativecore/scripts/minify.mjs && node .nativecore/scripts/prepare-static-assets.mjs',
+            ? 'npm run clean:prod && npm run lint && npm run typecheck'
+            : 'npm run clean:prod && npm run lint',
+        build: 'node .nativecore/scripts/write-public-env.mjs && node .nativecore/scripts/inject-version.mjs && npm run compile:prod && node .nativecore/scripts/prepare-static-assets.mjs --source dist-prod && node .nativecore/scripts/minify.mjs --dir _deploy/dist && node .nativecore/scripts/strip-dev-blocks.mjs _deploy/index.html && node .nativecore/scripts/remove-dev.mjs',
+        'build:client': 'node .nativecore/scripts/write-public-env.mjs && node .nativecore/scripts/inject-version.mjs && npm run compile:prod && node .nativecore/scripts/prepare-static-assets.mjs --source dist-prod && node .nativecore/scripts/minify.mjs --dir _deploy/dist && node .nativecore/scripts/strip-dev-blocks.mjs _deploy/index.html && node .nativecore/scripts/remove-dev.mjs',
         'build:ssg': 'node .nativecore/scripts/ssg.mjs --yes',
         'build:full': 'npm run build && npm run build:ssg',
         'env:sync': 'node .nativecore/scripts/write-public-env.mjs',
@@ -171,7 +172,7 @@ function packageJsonTemplate(config) {
         'sync:importmap': 'node .nativecore/scripts/sync-importmap.mjs',
         'sync:core': 'node .nativecore/scripts/sync-core.mjs',
         'sync:components': 'node .nativecore/scripts/sync-components.mjs',
-        'compile:prod': 'node .nativecore/scripts/write-public-env.mjs && node .nativecore/scripts/watch-compile.mjs --once && node .nativecore/scripts/bundle-css.mjs && node .nativecore/scripts/remove-dev.mjs',
+        'compile:prod': 'npm run clean:prod && node .nativecore/scripts/write-public-env.mjs && node .nativecore/scripts/watch-compile.mjs --once --outdir dist-prod && node .nativecore/scripts/bundle-css.mjs --outdir dist-prod',
         'make:component': 'node .nativecore/scripts/make-component.mjs',
         'make:core-component': 'node .nativecore/scripts/make-core-component.mjs',
         'make:controller': 'node .nativecore/scripts/make-controller.mjs',
@@ -461,7 +462,7 @@ async function init() {
  * Load HMR and the component inspector dev tools.
  * SECURITY: localhost only — never in production, Capacitor, SSG, or automation
  * (Puppeteer sets navigator.webdriver; SSG also sets window.__NATIVECORE_SSG__).
- * Production builds also delete dist/.nativecore/dev via remove-dev.mjs.
+ * Production deployment preparation excludes .nativecore/dev from _deploy.
  */
 function initDevTools()${isTs ? ': void' : ''} {
     if (

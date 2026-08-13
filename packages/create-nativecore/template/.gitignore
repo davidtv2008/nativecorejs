@@ -4,6 +4,7 @@ yarn.lock
 
 # Build outputs
 dist/
+dist-prod/
 _deploy/
 build/
 *.min.js

@@ -18,7 +18,11 @@ import * as esbuild from 'esbuild';
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 const rootDir = path.resolve(__dirname, '../..');
-const distDir = path.join(rootDir, 'dist');
+const sourceIndex = process.argv.indexOf('--source');
+const requestedSource = sourceIndex >= 0 ? process.argv[sourceIndex + 1] : null;
+const distDir = requestedSource
+    ? path.resolve(rootDir, requestedSource)
+    : path.join(rootDir, 'dist');
 const deployDir = path.join(rootDir, '_deploy');
 
 function ensureDir(dirPath) {
@@ -41,6 +45,14 @@ function copyFile(sourcePath, destinationPath) {
     fs.copyFileSync(sourcePath, destinationPath);
 }
 
+function isDevBundlePath(sourcePath) {
+    const relativePath = path.relative(distDir, sourcePath).replace(/\\/g, '/');
+    return relativePath === 'dev' ||
+        relativePath.startsWith('dev/') ||
+        relativePath === '.nativecore/dev' ||
+        relativePath.startsWith('.nativecore/dev/');
+}
+
 function copyDirectory(sourceDir, destinationDir, filter) {
     if (!fs.existsSync(sourceDir)) {
         return;
@@ -51,6 +63,10 @@ function copyDirectory(sourceDir, destinationDir, filter) {
     for (const entry of fs.readdirSync(sourceDir, { withFileTypes: true })) {
         const sourcePath = path.join(sourceDir, entry.name);
         const destinationPath = path.join(destinationDir, entry.name);
+
+        if (isDevBundlePath(sourcePath)) {
+            continue;
+        }
 
         if (entry.isDirectory()) {
             copyDirectory(sourcePath, destinationPath, filter);
@@ -199,6 +215,10 @@ async function prepareDeployDirectory() {
         // and the browser fetches it as /dist/src/app.js, /dist/src/components/... etc.
         if (['docs', 'bot', 'index.html', 'manifest.json',
              'robots.txt', 'sitemap.xml', '.well-known'].includes(entry.name)) {
+            continue;
+        }
+
+        if (isDevBundlePath(sourcePath)) {
             continue;
         }
 
