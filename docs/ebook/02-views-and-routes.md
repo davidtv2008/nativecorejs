@@ -157,7 +157,7 @@ Optional object merged into the route config. Keys you can set:
 | Option | Type | Purpose |
 |--------|------|---------|
 | `loader` | `(params, signal) => Promise<unknown>` | Runs **before** the controller; result becomes `loaderData`. Use `signal` to abort on navigation cancel. |
-| `layout` | `string` | Path of another registered route to use as a layout shell (advanced). |
+| `layout` | `string` | Path of another registered route used as a layout shell. That route may also set `layout`, forming an outer-to-inner chain. Each layout file needs `#route-outlet` (or `data-route-outlet`). |
 | `disableTransition` | `boolean` | Skip page enter/exit transition for this route. |
 | `cachePolicy` | `{ ttl, revalidate? }` | Same shape as `.cache()` — prefer chaining `.cache()` for readability. |
 | `controller` | — | Prefer the 3rd argument; do not duplicate here. |

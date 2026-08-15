@@ -217,7 +217,7 @@ Default shell is minimal (`#app.minimal-shell`). `app-header`, `app-sidebar`, an
 ## Testing
 
 - Runner: Vitest + happy-dom (`vitest.config.*`).
-- Helpers: `import { mountComponent, waitFor, fireEvent } from '@testing/index.js'`.
+- Helpers: `import { mountComponent, mountController, navigateAndWait, waitFor, fireEvent } from '@testing/index.js'`.
 - Generated component tests live in `src/components/ui/__tests__/`.
 
 ## DO / DON'T
@@ -227,6 +227,7 @@ Default shell is minimal (`#app.minimal-shell`). `app-header`, `app-sidebar`, an
 - Use generators for components, views, controllers, stores, middleware
 - Keep `app.*` as boot-only (middleware registration + `registerRoutes` + start)
 - Escape untrusted HTML (`escapeHtml` / trusted helpers)
+- Use `dom.create` / `dom.query` / `dom.within` for generated DOM. Put HTML attributes in `attrs` and custom-element fields in `props`.
 - Keep business logic in controllers and services
 
 **Don't**

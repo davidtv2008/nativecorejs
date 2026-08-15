@@ -13,6 +13,8 @@ import {
     computed,
     effect,
     batch,
+    untrack,
+    peek,
 } from '../../.nativecore/core/state.js';
 
 // ─── useState ────────────────────────────────────────────────────────────────
@@ -244,6 +246,56 @@ describe('effect', () => {
         stop();
         s.value = 99;
         expect(spy).toHaveBeenCalledOnce(); // only the initial run
+    });
+});
+
+// ─── untrack / peek ──────────────────────────────────────────────────────────
+
+describe('untrack', () => {
+    it('reads a signal without subscribing the current effect', () => {
+        const tracked = useState(0);
+        const ignored = useState(0);
+        const spy = vi.fn();
+        const stop = effect(() => {
+            spy(tracked.value, untrack(() => ignored.value));
+        });
+        expect(spy).toHaveBeenCalledTimes(1);
+        ignored.value = 1;
+        expect(spy).toHaveBeenCalledTimes(1);
+        tracked.value = 1;
+        expect(spy).toHaveBeenCalledTimes(2);
+        stop();
+    });
+
+    it('restores the previous tracker after nested untrack', () => {
+        const a = useState(0);
+        const b = useState(0);
+        const spy = vi.fn();
+        const stop = effect(() => {
+            spy(a.value + untrack(() => untrack(() => b.value)));
+        });
+        b.value = 5;
+        expect(spy).toHaveBeenCalledTimes(1);
+        a.value = 1;
+        expect(spy).toHaveBeenCalledTimes(2);
+        stop();
+    });
+});
+
+describe('peek', () => {
+    it('reads state.value without creating a dependency', () => {
+        const tracked = useState(1);
+        const ignored = useState(10);
+        const spy = vi.fn();
+        const stop = effect(() => {
+            spy(tracked.value + peek(ignored));
+        });
+        expect(spy).toHaveBeenCalledWith(11);
+        ignored.value = 20;
+        expect(spy).toHaveBeenCalledTimes(1);
+        tracked.value = 2;
+        expect(spy).toHaveBeenCalledWith(22);
+        stop();
     });
 });
 

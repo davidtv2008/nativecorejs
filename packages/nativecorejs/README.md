@@ -32,7 +32,7 @@ import { trapFocus, announce } from 'nativecorejs/a11y';
 
 ## Canonical API
 
-- **DOM:** `ref="name"` → `this.name`
+- **DOM:** `ref="name"` → `this.name`; generated nodes via `dom` from `@core-utils/dom.js` (`create`, `query`, `setProps`, `removeAttrs`)
 - **State:** `this.state` / `this.signal` / `this.compute` / `this.effect` (instance) or module `useState` / `computed` / `effect` / `batch`
 - **Sync:** `this.bind(source, el[, binding])`
 - **Events:** `this.on(target, type, handler)` + auto cleanup; components use `this.emit(...)`

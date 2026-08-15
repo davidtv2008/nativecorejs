@@ -43,7 +43,7 @@ This copies:
 |------------------|------------------------|-------|
 | `core/` | `.nativecore/core/` | Router, CoreController, CoreComponent, state, lazyController, createMiddleware, http, ws, sse, i18n, … |
 | `utils/` | `.nativecore/utils/` | templates, dom helpers. **Wires utils are removed** — use `ref`/`bind`/`on` |
-| `testing/` | `.nativecore/testing/` | `mountComponent`, `waitFor`, `fireEvent` |
+| `testing/` | `.nativecore/testing/` | `mountComponent`, `mountController`, `navigateAndWait`, `waitFor`, `fireEvent` |
 
 **Do not hand-edit vendored files** in `.nativecore/core/` or `.nativecore/utils/`
 — either in the template or in your scaffolded app. Change the package source
@@ -75,20 +75,22 @@ labeled **package-only**.
 | API | Import | Notes |
 |-----|--------|-------|
 | `registerPlugin` / `unregisterPlugin` | `import { registerPlugin } from 'nativecorejs'` | Observability / lifecycle hooks |
-| `useForm` | `import { useForm } from 'nativecorejs'` | Reactive form helpers |
-| Validators | `import { required, email, … } from 'nativecorejs'` | Form validation rules |
-| `nativecorejs/a11y` | `import { trapFocus, announce, roving } from 'nativecorejs/a11y'` | Used internally by `nc-modal` and `nc-drawer`; not re-exported from scaffold core |
+| `nativecorejs/a11y` | `import { trapFocus, announce, roving } from 'nativecorejs/a11y'` | Focus trap, live regions, roving tabindex. `lockBodyScroll` is also on `@core-utils/a11y.js` in the scaffold |
+| `onError` / `handleError` | `import { onError, handleError } from 'nativecorejs'` | Lazy global error subscribe; window listeners install on first call |
 
-If you need these in a scaffolded app, install `nativecorejs` as a dependency
-and import from the package:
+`useForm`, `useFieldArray`, and validators are vendored (`@core/form.js`,
+`@core/validators.js`) and also exported from `nativecorejs`.
+
+If you need the remaining package-only APIs in a scaffolded app, install
+`nativecorejs` as a dependency:
 
 ```bash
 npm install nativecorejs
 ```
 
 ```js
-import { useForm } from 'nativecorejs';
 import { trapFocus } from 'nativecorejs/a11y';
+import { onError } from 'nativecorejs';
 ```
 
 ---

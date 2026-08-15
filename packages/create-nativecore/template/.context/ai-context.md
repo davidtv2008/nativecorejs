@@ -32,12 +32,13 @@ Scaffold defaults:
 4. Prefer `CoreController` / `CoreComponent` for new code
 5. Controllers must return a cleanup function
 6. Use `this.on(target, type, handler)` — do not leak listeners
-7. No `<style>` / `<script>` in view HTML files
-8. Keep `app.*` boot-only; routes live in `src/routes/routes.*`
-9. Do not invent JWT/login/dashboard unless the user asks
-10. Do not casually edit `.nativecore/` (framework internals)
-11. Prefer generators (`make:*` / `remove:*`) over hand-editing registries/routes
-12. Inside `registerRoutes(r)`, call `r.register` (not `router.register`)
+7. In controllers and non-core UI components, use `dom` from `@core-utils/dom.js` for DOM queries and creation instead of direct document APIs
+8. No `<style>` / `<script>` in view HTML files
+9. Keep `app.*` boot-only; routes live in `src/routes/routes.*`
+10. Do not invent JWT/login/dashboard unless the user asks
+11. Do not casually edit `.nativecore/` (framework internals)
+12. Prefer generators (`make:*` / `remove:*`) over hand-editing registries/routes
+13. Inside `registerRoutes(r)`, call `r.register` (not `router.register`)
 
 ## Language modes
 
@@ -167,24 +168,88 @@ Factory is the recommended export. `createLazyController` also supports class ex
 Use for shared app data (stores), not every local UI bit.
 
 ```js
-import { useState, computed, effect, batch } from '@core/state.js';
+import { useState, computed, effect, batch, untrack, peek } from '@core/state.js';
+import { persistState } from '@core-utils/persist.js';
+import { debounce } from '@core-utils/timing.js';
+import { lockBodyScroll } from '@core-utils/a11y.js';
 
 export const count = useState(0);
 export const double = computed(() => count.value * 2);
+export const theme = persistState('theme', 'light');
 
 effect(() => {
-    console.log(double.value);
+    console.log(double.value, untrack(() => count.value));
+    console.log(peek(theme));
 });
 
 batch(() => {
     count.value++;
 });
 
+const search = debounce((q) => console.log(q), 300);
+search.cancel();
+
 // later
 double.dispose();
 ```
 
 App stores live under `src/stores/` (`appStore`, `uiStore`, `make:store`).
+Use `persistState` for a single storage-backed cell. Use `untrack` / `peek`
+when an effect must read a value without subscribing.
+
+`this.state` / `this.compute` / `this.effect` share the module signal engine
+(`.set`, `.watch`, `batch`) and dispose with the instance.
+
+```js
+import { reconcile } from '@core-utils/reconcile.js';
+import { createContext, provide, inject } from '@core/context.js';
+import { resource } from '@core/resource.js';
+
+reconcile(listEl, items, item => item.id, item => {
+    const li = document.createElement('li');
+    li.textContent = item.label;
+    return li;
+}, (el, item) => { el.textContent = item.label; });
+
+const Theme = createContext('theme');
+provide(host, Theme, theme);
+inject(child, Theme, value => { child.dataset.theme = value; });
+
+const box = resource(async (id, signal) => {
+    const res = await fetch(`/api/items/${id}`, { signal });
+    return res.json();
+}, { source: itemId });
+```
+
+```js
+import { useForm, useFieldArray } from '@core/form.js';
+import { required, email } from '@core/validators.js';
+import { clickOutside, mediaQuery, observe } from '@core-utils/observe.js';
+import { portal } from '@core-utils/portal.js';
+
+const form = useForm({
+    initialValues: { email: '' },
+    rules: { email: [required(), email()] },
+    asyncRules: { email: [async (v) => null] },
+});
+form.bindField('email', host);
+await form.handleSubmit(onSave)();
+
+const rows = useFieldArray([]);
+const stopOutside = clickOutside(el, () => {});
+const mq = mediaQuery('(min-width: 768px)');
+const stopObserve = observe(el, { resize: () => {}, intersect: () => {} });
+const restore = portal(node, document.body);
+```
+
+`t(key, { count })` uses `Intl.PluralRules` (`key.one` / `key.other`).
+`r.register` accepts `title`, `meta`, and `layout`. `layout` may nest
+(each layout file needs `#route-outlet` or `data-route-outlet`). Shared
+prefix is reused; layout controllers stay mounted until that frame leaves
+the chain. Failed loads dispatch `nativecore:route-error` on `window`.
+
+`<nc-animation name="…">` picks CSS compositor, WAAPI (GPU transform/opacity),
+or a canvas particle overlay from the preset — do not pick the engine yourself.
 
 ## Router
 
@@ -265,7 +330,29 @@ import { dom } from '@core-utils/dom.js';
 
 - Escape untrusted strings before injecting HTML
 - Use `trusted(...)` only for known-safe HTML fragments
-- App DOM helpers: `@core-utils/dom.js`
+- Use `dom.query` / `dom.$` for document queries and `dom.within` / `dom.withinAll` for scoped queries.
+- Use `dom.create(tag, attrs, ...children)` for generated elements. Put static classes, attributes, and text in its arguments rather than assigning them in separate statements.
+- HTML attributes go in the flat map or `attrs`. DOM and custom-element fields go in `props`. Do not pass objects through the flat attribute map.
+- Do not attach listeners in `create()`. Use `this.on()` so they are cleaned up with the controller or component.
+- `document.createElementNS` is unnecessary when `ns: 'svg'` is passed to `create()`.
+- Keep browser-global APIs such as `document.title`, fullscreen controls, and scrolling metrics when the helper has no equivalent.
+
+```js
+const frame = dom.create('iframe', {
+    attrs: {
+        title: 'Preview',
+        allow: 'autoplay; fullscreen; picture-in-picture',
+        allowfullscreen: '',
+    },
+    props: {
+        src: url,
+        allowFullscreen: true,
+    },
+});
+
+dom.setProps(player, { questions, open: true });
+dom.removeAttrs(button, 'disabled');
+```
 
 ## Page cleanup
 
@@ -328,11 +415,14 @@ Component Builder (`component-builder*`) is experimental and disabled by default
 
 ```js
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
-import { mountComponent, waitFor, fireEvent } from '@testing/index.js';
+import { mountComponent, mountController, navigateAndWait, waitFor, fireEvent } from '@testing/index.js';
 
 const { element, cleanup } = mountComponent('my-card', { title: 'Hi' });
 await waitFor(() => element.shadowRoot !== null);
 cleanup();
+
+const page = mountController('<h1 ref="titleEl">Hi</h1>', homeController);
+await navigateAndWait(router, '/');
 ```
 
 - Environment: happy-dom

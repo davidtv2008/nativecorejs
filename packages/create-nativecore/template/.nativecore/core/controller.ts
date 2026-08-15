@@ -1,13 +1,10 @@
-import { html, TrustedHtml, escapeHtml } from '../utils/templates.js';
+import { computed, effect, useState, type ComputedState, type State } from './state.js';
 
-export interface State<T> {
-    value: T;
-}
+export type { State };
 
 export abstract class CoreController {
     public el: HTMLElement;
     protected _unsubs = new Set<() => void>();
-    private _activeEffect: (() => void) | null = null;
 
     [key: string]: any;
 
@@ -49,20 +46,7 @@ export abstract class CoreController {
     // --- REACTIVITY ENGINE ---
 
     protected state<T>(val: T): State<T> {
-        let _val = val;
-        const subs = new Set<() => void>();
-        const self = this;
-        return {
-            get value(): T {
-                if (self._activeEffect) subs.add(self._activeEffect);
-                return _val;
-            },
-            set value(newVal: T) {
-                if (_val === newVal) return;
-                _val = newVal;
-                subs.forEach(fn => fn());
-            }
-        };
+        return useState(val);
     }
 
     /**
@@ -90,22 +74,14 @@ export abstract class CoreController {
      *   const double = this.compute(() => this.count.value * 2);
      *   double.value  // always fresh
      */
-    protected compute<T>(fn: () => T): State<T> {
-        const s = this.state<T>(undefined as any);
-        let disposed = false;
-        const runner = () => {
-            if (disposed) return;
-            this._activeEffect = runner;
-            try { s.value = fn(); }
-            finally { this._activeEffect = null; }
-        };
-        runner();
-        this._unsubs.add(() => { disposed = true; });
-        return s;
+    protected compute<T>(fn: () => T): ComputedState<T> {
+        const derived = computed(fn, { pageCleanup: false });
+        this._unsubs.add(() => derived.dispose());
+        return derived;
     }
 
     /** Alias for compute() — familiar to React developers (useMemo). */
-    protected memo<T>(fn: () => T): State<T> {
+    protected memo<T>(fn: () => T): ComputedState<T> {
         return this.compute(fn);
     }
 
@@ -115,16 +91,8 @@ export abstract class CoreController {
      * React: useEffect  |  Solid: createEffect
      *   this.effect(() => { document.title = this.title.value; });
      */
-    protected effect(fn: () => void): void {
-        let disposed = false;
-        const runner = () => {
-            if (disposed) return;
-            this._activeEffect = runner;
-            try { fn(); }
-            finally { this._activeEffect = null; }
-        };
-        runner();
-        this._unsubs.add(() => { disposed = true; });
+    protected effect(fn: () => void | (() => void)): void {
+        this._unsubs.add(effect(fn, { pageCleanup: false }));
     }
 
     // --- DOM BINDING ---
@@ -139,12 +107,9 @@ export abstract class CoreController {
      *   bind(state, el, '.active .bold')   → class toggle(s)
      *   bind(state, el, 'innerHTML')       → sets innerHTML
      */
-    protected bind<T>(source: State<T> | (() => T), el: Element, binding?: string): void {
-        const runner = () => {
-            this._activeEffect = runner;
-            // state → .value; signal getter → call as function
+    protected bind<T>(source: State<T> | ComputedState<T> | (() => T), el: Element, binding?: string): void {
+        this.effect(() => {
             const v = typeof source === 'function' ? (source as () => T)() : source.value;
-            this._activeEffect = null;
 
             const isValidElement = !!el && typeof (el as any).setAttribute === 'function';
             if (!isValidElement) {
@@ -180,9 +145,7 @@ export abstract class CoreController {
             }
 
             el.setAttribute(binding, String(v));
-        };
-
-        runner();
+        });
     }
 
     // --- DOM HELPERS ---

@@ -8,7 +8,16 @@ export { Router } from '../.nativecore/core/router.js';
 export { createLazyController } from '../.nativecore/core/lazyController.js';
 export { createMiddleware } from '../.nativecore/core/createMiddleware.js';
 export { componentRegistry, initLazyComponents } from '../.nativecore/core/lazyComponents.js';
-export { useState, computed, effect, batch } from '../.nativecore/core/state.js';
+export { useState, computed, effect, batch, untrack, peek } from '../.nativecore/core/state.js';
+export { createContext, inject, provide, ContextRequestEvent, CONTEXT_REQUEST } from '../.nativecore/core/context.js';
+export type { ContextKey } from '../.nativecore/core/context.js';
+export { resource } from '../.nativecore/core/resource.js';
+export type { Resource, ResourceOptions } from '../.nativecore/core/resource.js';
+export { reconcile } from '../.nativecore/utils/reconcile.js';
+export type { ReconcileKey } from '../.nativecore/utils/reconcile.js';
+export { clickOutside, mediaQuery, observe } from '../.nativecore/utils/observe.js';
+export type { MediaQueryHandle, ObserveOptions } from '../.nativecore/utils/observe.js';
+export { portal } from '../.nativecore/utils/portal.js';
 export { mountDevTools } from '../.nativecore/core/devtools.js';
 export {
 	LoadingSpinner,
@@ -96,16 +105,39 @@ export {
 	throttle
 } from '../.nativecore/core/gpu-animation.js';
 export { bustCache, cacheVersion, importWithBust } from '../.nativecore/utils/cacheBuster.js';
-export { trapFocus, announce, roving } from './a11y/index.js';
+export { trapFocus, announce, roving, lockBodyScroll } from './a11y/index.js';
+export { debounce } from '../.nativecore/utils/timing.js';
+export { persistState } from '../.nativecore/utils/persist.js';
+export type { Debounced } from '../.nativecore/utils/timing.js';
+export type { PersistStateOptions, PersistStorage } from '../.nativecore/utils/persist.js';
+export { onError, handleError } from '../.nativecore/core/errorHandler.js';
+export type { ErrorInfo } from '../.nativecore/core/errorHandler.js';
 export { dom } from '../.nativecore/utils/dom.js';
+export type {
+	AttrMap,
+	AttrValue,
+	Child,
+	CreateOptions,
+	PropMap,
+} from '../.nativecore/utils/dom.js';
 export { css, html, unsafeHTML, escapeHTML, sanitizeURL, raw } from '../.nativecore/utils/templates.js';
 export {
 	bindEvents,
 	delegate,
 	on,
+	onBlur,
 	onChange,
 	onClick,
+	onDblclick,
+	onFocus,
+	onFocusin,
+	onFocusout,
 	onInput,
+	onKeydown,
+	onKeyup,
+	onMouseenter,
+	onMouseleave,
+	onScroll,
 	onSubmit,
 	trackEvents,
 	trackSubscriptions
@@ -123,8 +155,8 @@ export type {
 	ResponseInterceptor
 } from '../.nativecore/core/http.js';
 
-export { useForm } from '../.nativecore/core/form.js';
-export type { UseFormOptions, UseFormResult } from '../.nativecore/core/form.js';
+export { useForm, useFieldArray } from '../.nativecore/core/form.js';
+export type { FieldArray, UseFormOptions, UseFormResult } from '../.nativecore/core/form.js';
 
 export {
 	required,
@@ -138,7 +170,7 @@ export {
 	oneOf,
 	compose
 } from '../.nativecore/core/validators.js';
-export type { Validator } from '../.nativecore/core/validators.js';
+export type { AsyncValidator, Validator } from '../.nativecore/core/validators.js';
 
 export { I18n, i18n, t, configureI18n } from '../.nativecore/core/i18n.js';
 export type {
@@ -163,6 +195,7 @@ export type {
 	ComponentState
 } from '../.nativecore/core/component.js';
 
+export { ROUTE_ERROR_EVENT } from '../.nativecore/core/router.js';
 export type {
 	CachePolicy,
 	ControllerFunction,

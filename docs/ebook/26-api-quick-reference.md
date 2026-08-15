@@ -71,22 +71,85 @@ const inner = this.shadowRoot.querySelector('.inner');
 ## State (`@core/state.js`)
 
 ```js
-import { useState, computed, effect, batch } from '@core/state.js';
+import { useState, computed, effect, batch, untrack, peek } from '@core/state.js';
 ```
 
 | Export | Signature | Notes |
 |--------|-----------|-------|
 | `useState` | `<T>(initial: T): State<T>` | Creates a reactive state cell |
-| `computed` | `<T>(fn: () => T): State<T>` | Derived; re-evaluates when dependencies change |
-| `effect` | `(fn: () => void \| (() => void)): void` | Runs immediately; re-runs on dependency change |
+| `computed` | `<T>(fn: () => T, options?): ComputedState<T>` | Derived; `{ pageCleanup: false }` skips router flush |
+| `effect` | `(fn, options?): () => void` | Runs immediately; `{ pageCleanup: false }` for instance scope |
 | `batch` | `(fn: () => void): void` | Defers signal notifications until `fn` completes |
+| `untrack` | `<T>(fn: () => T): T` | Run `fn` without registering signal reads as dependencies |
+| `peek` | `<T>(state): T` | Read `state.value` without subscribing |
 
 ### `State<T>` interface
 
 | Member | Notes |
 |--------|-------|
 | `.value` | Read or write |
-| `.watch(fn)` | Runs `fn(value)` immediately and on every change |
+| `.set(value \| updater)` | Write, or updater `(prev) => next` |
+| `.watch(fn)` | Subscribe to later writes; returns an unsubscribe function |
+
+`this.state` / `this.compute` / `this.effect` on controllers and components use
+this same engine. Instance compute/effect pass `{ pageCleanup: false }` and
+dispose on `destroy()` / disconnect.
+
+---
+
+## Reconcile (`@core-utils/reconcile.js`)
+
+```js
+import { reconcile } from '@core-utils/reconcile.js';
+
+reconcile(container, items, item => item.id, item => {
+    const li = document.createElement('li');
+    li.textContent = item.label;
+    return li;
+}, (el, item) => { el.textContent = item.label; });
+```
+
+Keyed list: reuse nodes for the same key, move to match order, remove leftovers.
+`create` runs only for new keys. Optional `update` patches reused nodes.
+Keys are stored on `data-nc-key`. After inserting nodes with `ref` attributes,
+call `this.rebind(container)`.
+
+---
+
+## Context (`@core/context.js`)
+
+```js
+import { createContext, provide, inject } from '@core/context.js';
+
+const Theme = createContext('theme');
+const stop = provide(host, Theme, themeState); // State or static value
+const value = inject(child, Theme);
+const unsub = inject(child, Theme, next => { /* subscribe */ });
+```
+
+Web Components context-request protocol (`composed`, bubbles through Shadow DOM).
+Use for theme, locale, or the current user — not as a global store.
+
+---
+
+## Resource (`@core/resource.js`)
+
+```js
+import { resource } from '@core/resource.js';
+
+const box = resource(async (id, signal) => {
+    const res = await fetch(`/api/items/${id}`, { signal });
+    return res.json();
+}, { source: itemId });
+
+box.data.value;
+box.loading.value;
+box.error.value;
+await box.refetch();
+```
+
+Aborts the in-flight request when `source` changes, on `refetch()`, and on
+page navigation (`pageCleanup` defaults to true).
 
 ---
 
@@ -129,9 +192,15 @@ Always return cleanup from factories: `() => ctrl.destroy()`.
 | Key | Type | Notes |
 |-----|------|-------|
 | `loader` | `(params, signal: AbortSignal) => Promise<unknown>` | Runs before controller; result → `loaderData` |
-| `layout` | `string` | Path of another registered route used as layout |
+| `layout` | `string` | Path of another registered route used as a layout. May nest: each layout can set `layout` too. Every layout file needs `#route-outlet` or `[data-route-outlet]`. Shared prefix is reused; layout controllers stay mounted until that frame leaves the chain. |
 | `disableTransition` | `boolean` | Skip page transition for this route |
 | `cachePolicy` | `{ ttl: number, revalidate?: boolean }` | Prefer `.cache()` chain instead |
+| `title` | `string \| ((match) => string)` | Sets `document.title` after a successful load |
+| `meta` | `Record<string, string> \| ((match) => Record<string, string>)` | Sets or creates `<meta name>` tags |
+
+Failed loads dispatch `nativecore:route-error` on `window` (`ROUTE_ERROR_EVENT`).
+Listen for a custom error UI; the router still shows its 404 fallback. The
+event is for the failed page load, not each layout frame.
 
 | Method | Signature | Notes |
 |--------|-----------|-------|
@@ -357,8 +426,8 @@ import { configureI18n, i18n, t } from '@core/i18n.js';
 
 | API | Notes |
 |-----|-------|
-| `configureI18n({ messages })` | Mainly merges catalogs via `i18n.extend`; `defaultLocale` / `fallbackLocale` / `persist` on this call are largely ignored (constructor already ran) |
-| `t(key, params?)` | Translate; params use `{name}` placeholder syntax |
+| `configureI18n(options)` | Merges `messages`; applies `fallbackLocale`, `persist`, and `defaultLocale` (stored `nc:locale` wins over `defaultLocale`) |
+| `t(key, params?)` | Translate; `{name}` placeholders. When `params.count` is a number, looks up `key.{plural}` via `Intl.PluralRules`, then `key.other`, then `key` |
 | `i18n.setLocale(code)` | Switch active locale; constructor wires `localStorage` persist by default |
 | `i18n.locale` | `State<string>` — watch inside `effect` to react to locale changes |
 | `i18n.extend({ locale: { key: value } })` | Merge new keys; does not replace existing |
@@ -377,12 +446,14 @@ import { configureI18n, i18n, t } from '@core/i18n.js';
 ## Testing (`@testing/index.js`)
 
 ```js
-import { mountComponent, waitFor, fireEvent } from '@testing/index.js';
+import { mountComponent, mountController, navigateAndWait, waitFor, fireEvent } from '@testing/index.js';
 ```
 
 | Helper | Signature | Notes |
 |--------|-----------|-------|
 | `mountComponent` | `(tag, attrs?) → { element, cleanup }` | Appends to `document.body`; call `cleanup()` after every test |
+| `mountController` | `(html, factory) → { root, cleanup }` | Mounts a `[data-view]` root, runs the factory, cleans controller + DOM |
+| `navigateAndWait` | `(router, path, timeout?) → Promise` | Resolves on `pageloaded`; rejects on `nativecore:route-error` or timeout |
 | `waitFor` | `(predicate, timeout?) → Promise<void>` | Polls until truthy; default timeout 1000 ms |
 | `fireEvent` | `(element, eventName, detail?)` | Dispatches `CustomEvent` with `bubbles: true, composed: true` |
 
@@ -442,13 +513,106 @@ npm.cmd run remove:middleware -- <name>
 ## Events utility (`@core-utils/events.js`)
 
 ```js
-import { trackEvents } from '@core-utils/events.js';
+import { on, delegate, trackEvents, onClick, onKeydown, onFocus } from '@core-utils/events.js';
 ```
 
-`trackEvents()` is an optional helper. Inside Deskflow, prefer `this.on(target,
-type, handler)` — it handles cleanup automatically and is the pattern all
-chapters teach. `trackEvents` is available for cases outside a controller
-context.
+Prefer `this.on(target, type, handler)` inside controllers. Standalone helpers
+return a disposer. Shorthands: `onClick`, `onChange`, `onInput`, `onSubmit`,
+`onKeydown`, `onKeyup`, `onFocus`, `onBlur`, `onFocusin`, `onFocusout`,
+`onScroll`, `onMouseenter`, `onMouseleave`, `onDblclick`.
+
+---
+
+## DOM utilities (`@core-utils/dom.js`)
+
+```js
+import { dom } from '@core-utils/dom.js';
+```
+
+| API | Notes |
+|-----|-------|
+| `dom.create(tag, attrs?, ...children)` | Flat map = HTML attributes. Options bag `{ attrs, props, dataset, ns, class }` when `attrs` / `props` / `ns` is present |
+| `dom.setAttrs(el, map)` | `setAttribute` writes |
+| `dom.removeAttrs(el, ...names)` | Remove attributes |
+| `dom.setProps(el, map)` | Assign IDL / custom-element properties |
+| `dom.assign(el, { attrs, props, dataset, class })` | Mutate an existing node |
+| `dom.query` / `dom.$` / `dom.queryAll` / `dom.$$` | Document queries |
+| `dom.within` / `dom.withinAll` | Scoped queries |
+| `dom.view(name)` | `[data-view]` / `[data-hook]` / `[data-action]` helpers |
+| `dom.listen(el, type, handler)` | Listener + disposer; prefer `this.on` in controllers |
+
+Flat maps are HTML attributes. Objects, arrays, and IDL booleans belong in
+`props`. Do not attach listeners in `create()`.
+
+```js
+const frame = dom.create('iframe', {
+    attrs: { title: 'Preview', allowfullscreen: '' },
+    props: { src: url, allowFullscreen: true },
+});
+dom.setProps(player, { questions, open: true });
+```
+
+---
+
+## Persist and timing
+
+```js
+import { persistState } from '@core-utils/persist.js';
+import { debounce } from '@core-utils/timing.js';
+```
+
+| API | Notes |
+|-----|-------|
+| `persistState(key, initial, { storage? })` | `useState` hydrated from `localStorage` (or `session`). JSON + quota-safe |
+| `debounce(fn, wait?)` | Delayed call; `.cancel()` clears a pending invocation |
+
+`throttle` / `rafThrottle` remain on `@core/gpu-animation.js`.
+
+---
+
+## Observe and portal
+
+```js
+import { clickOutside, mediaQuery, observe } from '@core-utils/observe.js';
+import { portal } from '@core-utils/portal.js';
+```
+
+| API | Notes |
+|-----|-------|
+| `clickOutside(el, fn)` | `pointerdown` outside `el`; returns disposer |
+| `mediaQuery(query)` | `{ matches: State<boolean>, dispose() }` |
+| `observe(el, { resize?, intersect?, threshold?, root?, rootMargin? })` | ResizeObserver and/or IntersectionObserver; returns disposer |
+| `portal(node, target)` | Move `node` into `target` (element or selector); disposer restores original position |
+
+---
+
+## Forms (`@core/form.js`)
+
+```js
+import { useForm, useFieldArray } from '@core/form.js';
+import { required, email } from '@core/validators.js';
+```
+
+| API | Notes |
+|-----|-------|
+| `useForm({ initialValues, rules?, asyncRules?, onSubmit? })` | Reactive fields, `errors`, `asyncErrors`, `bindField`, `handleSubmit` |
+| `form.bindField(name, el)` | Syncs value via `on()` (`input` / `change` + `blur`); returns disposer |
+| `form.validateAsync()` | Runs `asyncRules`; first message string wins per field |
+| `form.handleSubmit(fn?)` | Returns `(event?) => Promise<boolean>` — sync errors, then async, then `fn` |
+| `useFieldArray(initial)` | `{ items, append, remove, move, replace }` |
+
+`handleSubmit` is a factory: `await form.handleSubmit(onSave)()`.
+
+---
+
+## Accessibility (`@core-utils/a11y.js`)
+
+```js
+import { lockBodyScroll } from '@core-utils/a11y.js';
+```
+
+`lockBodyScroll()` is reference-counted and restores overflow + scrollbar
+compensation. Also exported from `nativecorejs` and `nativecorejs/a11y`.
 
 ---
 
@@ -461,11 +625,30 @@ vendored copy inside a scaffolded app.
 | API | Import |
 |-----|--------|
 | `registerPlugin` / `unregisterPlugin` | `import { registerPlugin } from 'nativecorejs'` |
-| `useForm` + validators | `import { useForm } from 'nativecorejs'` |
+| `useForm` + validators | Scaffold: `@core/form.js` / `@core/validators.js`. Also `nativecorejs` |
+| `onError` / `handleError` | `import { onError, handleError } from 'nativecorejs'` — lazy; does not install window listeners until first call |
 | `trapFocus` / `announce` / `roving` | `import { trapFocus } from 'nativecorejs/a11y'` |
+| `lockBodyScroll` | Scaffold: `@core-utils/a11y.js`. Also `nativecorejs` / `nativecorejs/a11y` |
 
 See [Appendix B — Package vs Scaffold](./A-package-vs-scaffold.md) for the
 full breakdown.
+
+---
+
+## `nc-animation` (path-picking component)
+
+You choose a **preset name**. The component chooses CSS compositor, Web
+Animations API (GPU `transform` / `opacity`), or a canvas particle overlay —
+whichever is cheapest for that preset. See [Chapter 13](./13-core-components.md).
+
+| Path | Presets | Engine |
+|------|---------|--------|
+| `css` | `spin`, `ping`, `float`, `glow` | Compositor `@keyframes`, no JS after start |
+| `waapi` | `fade-in`, `slide-*`, `pulse`, `shake`, … | `gpu-animation.ts` / Web Animations API |
+| `particle` | `confetti`, `sparkles`, `firework`, … | canvas2d overlay (CPU). Generic WebGL lives in `gpu-animation.ts` |
+
+Triggers: `mount` \| `visible` \| `hover` \| `click` \| `manual`. Methods:
+`play()`, `pause()` (WAAPI only), `cancel()`. Events: `start`, `finish`, `cancel`.
 
 ---
 

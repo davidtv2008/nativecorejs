@@ -1,14 +1,11 @@
-/* eslint-disable @typescript-eslint/no-this-alias */
-// Define locally to avoid extra file imports
-export interface State<T> {
-    value: T;
-}
+import { computed, effect, useState, type ComputedState, type State } from './state.js';
+
+export type { State };
 
 export abstract class CoreComponent extends HTMLElement {
     static useShadowDOM: boolean = true;
 
     protected _unsubs = new Set<() => void>();
-    private _activeEffect: (() => void) | null = null;
     private _hasSetup = false;
     private static _templateCache = new Map<string, HTMLTemplateElement>();
 
@@ -61,26 +58,7 @@ export abstract class CoreComponent extends HTMLElement {
 
     // --- REACTIVITY ---
     protected state<T>(val: T): State<T> {
-        let _val = val;
-        const subs = new Set<() => void>();
-        
-        // Capture the component instance in a closure-friendly way 
-        // that won't trigger the "no-this-alias" warning
-        const component = this; 
-
-        return {
-            get value(): T {
-                if (component._activeEffect) {
-                    subs.add(component._activeEffect);
-                }
-                return _val;
-            },
-            set value(newVal: T) {
-                if (_val === newVal) return;
-                _val = newVal;
-                subs.forEach(fn => fn());
-            }
-        };
+        return useState(val);
     }
 
     /**
@@ -108,22 +86,14 @@ export abstract class CoreComponent extends HTMLElement {
      *   const double = this.compute(() => this.count.value * 2);
      *   double.value  // always fresh
      */
-    protected compute<T>(fn: () => T): State<T> {
-        const s = this.state<T>(undefined as any);
-        let disposed = false;
-        const runner = () => {
-            if (disposed) return;
-            this._activeEffect = runner;
-            try { s.value = fn(); }
-            finally { this._activeEffect = null; }
-        };
-        runner();
-        this._unsubs.add(() => { disposed = true; });
-        return s;
+    protected compute<T>(fn: () => T): ComputedState<T> {
+        const derived = computed(fn, { pageCleanup: false });
+        this._unsubs.add(() => derived.dispose());
+        return derived;
     }
 
     /** Alias for compute() — familiar to React developers (useMemo). */
-    protected memo<T>(fn: () => T): State<T> {
+    protected memo<T>(fn: () => T): ComputedState<T> {
         return this.compute(fn);
     }
 
@@ -133,16 +103,8 @@ export abstract class CoreComponent extends HTMLElement {
      * React: useEffect  |  Solid: createEffect
      *   this.effect(() => { document.title = this.title.value; });
      */
-    protected effect(fn: () => void): void {
-        let disposed = false;
-        const runner = () => {
-            if (disposed) return;
-            this._activeEffect = runner;
-            try { fn(); }
-            finally { this._activeEffect = null; }
-        };
-        runner();
-        this._unsubs.add(() => { disposed = true; });
+    protected effect(fn: () => void | (() => void)): void {
+        this._unsubs.add(effect(fn, { pageCleanup: false }));
     }
 
     // --- DOM HELPERS ---
@@ -157,12 +119,9 @@ export abstract class CoreComponent extends HTMLElement {
         return (this.shadowRoot ?? this).querySelectorAll<T>(selector);
     }
 
-    protected bind(source: State<any> | (() => any), el: Element, binding?: string): void {
-        const runner = () => {
-            this._activeEffect = runner;
-            // state → .value; signal getter → call as function
+    protected bind(source: State<any> | ComputedState<any> | (() => any), el: Element, binding?: string): void {
+        this.effect(() => {
             const v = typeof source === 'function' ? source() : source.value;
-            this._activeEffect = null;
 
             if (!el || typeof (el as any).setAttribute !== 'function') {
                 throw new Error(
@@ -171,13 +130,11 @@ export abstract class CoreComponent extends HTMLElement {
                 );
             }
 
-            // Overload 2: bind(state, el) — no binding arg → textContent
             if (!binding) {
                 el.textContent = String(v);
                 return;
             }
 
-            // Overload 3: bind(state, el, '?disabled') — boolean attribute
             if (binding.startsWith('?')) {
                 const attr = binding.slice(1);
                 if (v) el.setAttribute(attr, '');
@@ -185,7 +142,6 @@ export abstract class CoreComponent extends HTMLElement {
                 return;
             }
 
-            // Overload 4: bind(state, el, '.active .bold') — class toggle(s)
             if (binding.startsWith('.')) {
                 const classes = binding.slice(1).split(/\s+\.?/).filter(Boolean);
                 if (v) el.classList.add(...classes);
@@ -193,17 +149,13 @@ export abstract class CoreComponent extends HTMLElement {
                 return;
             }
 
-            // Overload 5: bind(state, el, 'innerHTML') — raw HTML
             if (binding === 'innerHTML') {
                 (el as HTMLElement).innerHTML = String(v);
                 return;
             }
 
-            // Overload 6: bind(state, el, 'href') — string attribute
             el.setAttribute(binding, String(v));
-        };
-
-        runner();
+        });
     }
 
     // --- DOM HELPERS ---

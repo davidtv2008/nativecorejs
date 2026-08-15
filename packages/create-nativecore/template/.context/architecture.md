@@ -37,9 +37,9 @@ How a scaffolded NativeCore app is structured and how data flows through it.
 ├── .context/                  # AI / human project guidance
 ├── .nativecore/
 │   ├── core/                  # Framework runtime (router, CoreComponent, …)
-│   ├── utils/                 # dom, events, templates, cacheBuster (wires.js = legacy)
+│   ├── utils/                 # dom, events, templates, persist, timing, a11y, reconcile, observe, portal
 │   ├── types/
-│   ├── testing/               # mountComponent, waitFor, fireEvent
+│   ├── testing/               # mountComponent, mountController, navigateAndWait, waitFor, fireEvent
 │   ├── dev/                   # HMR, denc-tools, overlays (dev-only)
 │   └── scripts/               # compile, make:*, remove:*, build helpers
 ├── src/
@@ -94,13 +94,18 @@ Keep business logic out of `app.*`.
 |--------|------|
 | `component.ts` | `CoreComponent` (canonical); legacy `Component` / `defineComponent` shim |
 | `controller.ts` | `CoreController` — refs, state/signal/compute/effect, bind, on, destroy |
-| `router.ts` | History router: register, group, middleware, cache, prefetch, loaders |
+| `router.ts` | History router: register, group, middleware, cache, prefetch, loaders, title/meta, nested layouts |
+| `form.ts` | `useForm`, `useFieldArray`, `bindField` |
+| `validators.ts` | `required`, `email`, `AsyncValidator`, … |
 | `lazyController.ts` | `createLazyController(import.meta.url)` → lazy `lazyController(name, path)` |
 | `createMiddleware.ts` | `createMiddleware(tag, fn)` for `router.use` / `r.group({ middleware })` |
-| `state.ts` | Global `useState`, `computed`, `effect`, `batch`, stores |
+| `state.ts` | Global `useState`, `computed`, `effect`, `batch`, `untrack`, `peek` |
+| `context.ts` | `createContext`, `provide`, `inject` |
+| `resource.ts` | Async `{ data, loading, error, refetch }` |
+| `i18n.ts` | `configureI18n`, `t` (incl. `Intl.PluralRules` when `count` is set) |
 | `lazyComponents.ts` | Lazy custom-element loading from registries |
 | `pageCleanupRegistry.ts` | Track page-scoped cleanups across navigations |
-| `gpu-animation.ts` | GPU-friendly animation helpers |
+| `gpu-animation.ts` | GPU-friendly WAAPI helpers used by `<nc-animation>` |
 
 ### Lazy controllers
 

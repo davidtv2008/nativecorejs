@@ -21,6 +21,16 @@ export interface EffectOptions {
      * Use 0 to disable the guard intentionally.
      */
     maxRunsPerFlush?: number;
+    /**
+     * When false, skip the router page-cleanup registry.
+     * Use for instance-scoped effects on controllers and components.
+     */
+    pageCleanup?: boolean;
+}
+
+export interface ComputedOptions {
+    /** When false, skip the router page-cleanup registry. Defaults to true. */
+    pageCleanup?: boolean;
 }
 
 export interface EffectLoopGuardDetail {
@@ -97,6 +107,27 @@ export function batch(fn: () => void): void {
             });
         }
     }
+}
+
+/**
+ * Run `fn` without registering signal reads as effect/computed dependencies.
+ * Nested `untrack` calls restore the previous tracker on exit.
+ */
+export function untrack<T>(fn: () => T): T {
+    const previous = currentTracker;
+    currentTracker = null;
+    try {
+        return fn();
+    } finally {
+        currentTracker = previous;
+    }
+}
+
+/**
+ * Read `state.value` without subscribing the current effect or computed.
+ */
+export function peek<T>(state: { value: T }): T {
+    return untrack(() => state.value);
 }
 // ─────────────────────────────────────────────────────────────────────────────
 
@@ -187,7 +218,7 @@ export function useState<T>(initialValue: T): State<T> {
     return trackedState;
 }
 
-export function computed<T>(computeFn: () => T): ComputedState<T> {
+export function computed<T>(computeFn: () => T, options: ComputedOptions = {}): ComputedState<T> {
     const derivedState = createState<T>(undefined as T);
     const trackedDeps = new Set<Watchable<any>>();
     const depUnsubscribers = new Map<Watchable<any>, () => void>();
@@ -237,7 +268,7 @@ export function computed<T>(computeFn: () => T): ComputedState<T> {
         }
     };
 
-    registerPageCleanup(dispose);
+    if (options.pageCleanup !== false) registerPageCleanup(dispose);
     return computedState;
 }
 
@@ -269,7 +300,7 @@ export function effect(effectFn: EffectCallback, options: EffectOptions = {}): (
 
     runEffect();
 
-    registerPageCleanup(disposer);
+    if (options.pageCleanup !== false) registerPageCleanup(disposer);
     return disposer;
 
     function runEffect(): void {

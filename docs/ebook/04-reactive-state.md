@@ -23,6 +23,11 @@ There are two scopes:
 Start with instance state. Reach for the module-level API only when you actually
 need two different controllers to share a value.
 
+`this.state`, `this.compute`, and `this.effect` use the same engine as
+`useState` / `computed` / `effect`. Instance cells have `.set` and `.watch`.
+Instance compute/effect skip the router page-cleanup registry and dispose when
+the controller is destroyed or the component disconnects.
+
 > There is no `createStore`, `useSignal`, or `getStore` API in the scaffold.
 > Those names do not exist — do not invent them.
 
@@ -154,6 +159,25 @@ onMount() {
     loadTasks([{ text: 'Build Deskflow', done: false }]);
     this.bind(openCount, this.countEl);
 }
+```
+
+### `untrack` and `peek`
+
+Module-level effects subscribe to every `state.value` read. Use `untrack` or
+`peek` when you need the current value without creating a dependency:
+
+```js
+import { useState, effect, untrack, peek } from '@core/state.js';
+
+const query = useState('');
+const page = useState(1);
+
+effect(() => {
+    // Re-run when query changes, but not when page changes
+    fetchResults(query.value, untrack(() => page.value));
+    // equivalent one-cell read:
+    const currentPage = peek(page);
+});
 ```
 
 The `batch` helper defers notifications until the batch function returns — useful

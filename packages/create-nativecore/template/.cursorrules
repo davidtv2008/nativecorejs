@@ -42,6 +42,7 @@ Also read: `AGENTS.md`, `.context/ai-context.md`, `.context/architecture.md`,
 14. Component Builder is experimental (disabled by default)
 15. Do not use wires utils — use `ref` + `this.bind` + `this.on`
 16. Do not use `createStore` — use `make:store` / `src/stores/*` patterns
+17. In controllers and non-core UI components, use `dom` from `@core-utils/dom.js` for DOM queries and creation instead of direct document APIs
 
 ## Path Aliases
 
@@ -184,6 +185,7 @@ Vitest + happy-dom. See `.context/ai-context.md`.
 
 - Return a cleanup function from every controller factory
 - Use `this.on(el, type, handler)` and `this.bind(state, el)`
+- Use `dom.query`, `dom.within`, `dom.withinAll`, and `dom.create` for DOM access. Put HTML attributes in `attrs` and DOM / custom-element fields in `props`.
 - Use `html` tagged template for user data; `sanitizeURL` for user URLs
 - Use generators for scaffolding
 - Use `.js` extensions and path aliases

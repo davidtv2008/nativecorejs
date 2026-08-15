@@ -17,7 +17,38 @@ View HTML                    Controller
 </nc-modal>
 ```
 
-NativeCoreJS does not ship a `useForm` hook or a central form manager. Each `nc-input` is an autonomous web component that exposes a `.value` property and fires `input` / `change` events. You validate and submit in the controller. This keeps the component library framework-agnostic and your validation logic fully visible.
+Each `nc-input` is an autonomous web component that exposes a `.value` property and fires `input` / `change` events. You can validate and submit in the controller — that is what the lab below does.
+
+For larger forms, `useForm` / `useFieldArray` live in `@core/form.js` (also on the `nativecorejs` package). They own field state, sync/async validators, and `bindField` via tracked `on()` listeners:
+
+```js
+import { useForm, useFieldArray } from '@core/form.js';
+import { required, email } from '@core/validators.js';
+
+const form = useForm({
+    initialValues: { email: '', title: '' },
+    rules: {
+        email: [required(), email()],
+        title: [required()],
+    },
+    asyncRules: {
+        email: [async (value) => {
+            const res = await fetch(`/api/emails/${encodeURIComponent(value)}`);
+            return res.ok ? null : 'Already taken';
+        }],
+    },
+});
+
+form.bindField('email', this.emailInput);
+form.bindField('title', this.titleInput);
+
+this.on(this.saveBtn, 'click', form.handleSubmit(async (values) => {
+    await addTask(values);
+}));
+```
+
+`handleSubmit` returns a function: `await form.handleSubmit(onSave)()`. Sync
+`errors` run first, then `validateAsync()`. `useFieldArray` is `{ items, append, remove, move, replace }` for repeatable rows.
 
 ---
 

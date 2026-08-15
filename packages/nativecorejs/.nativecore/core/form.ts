@@ -10,16 +10,19 @@
  */
 import { computed, useState } from './state.js';
 import type { ComputedState, State } from './state.js';
-import type { Validator } from './validators.js';
+import type { AsyncValidator, Validator } from './validators.js';
+import { on } from '../utils/events.js';
 
 type FormValues = Record<string, unknown>;
 type FieldStates<T extends FormValues> = { [K in keyof T]: State<T[K]> };
 type FieldFlags<T extends FormValues> = { [K in keyof T]: State<boolean> };
 type ValidationRules<T extends FormValues> = Partial<{ [K in keyof T]: Validator<T[K]>[] }>;
+type AsyncValidationRules<T extends FormValues> = Partial<{ [K in keyof T]: AsyncValidator<T[K]>[] }>;
 
 export interface UseFormOptions<T extends FormValues> {
     initialValues: T;
     rules?: ValidationRules<T>;
+    asyncRules?: AsyncValidationRules<T>;
     /** Called once before submit when the form is valid; rejects to abort submit. */
     onSubmit?: (values: T) => void | Promise<void>;
 }
@@ -29,6 +32,7 @@ export interface UseFormResult<T extends FormValues> {
     touched: FieldFlags<T>;
     dirty: FieldFlags<T>;
     errors: ComputedState<Record<string, string>>;
+    asyncErrors: State<Record<string, string>>;
     isDirty: ComputedState<boolean>;
     isValid: ComputedState<boolean>;
     isSubmitting: State<boolean>;
@@ -36,8 +40,40 @@ export interface UseFormResult<T extends FormValues> {
     setValue<K extends keyof T>(field: K, value: T[K]): void;
     reset(values?: Partial<T>): void;
     markAllTouched(): void;
+    validateAsync(): Promise<boolean>;
     bindField<K extends keyof T>(field: K, target: string | HTMLElement | null): () => void;
     handleSubmit(handler?: (values: T) => void | Promise<void>): (event?: Event) => Promise<boolean>;
+}
+
+export interface FieldArray<T> {
+    items: State<T[]>;
+    append(item: T): void;
+    remove(index: number): void;
+    move(from: number, to: number): void;
+    replace(next: T[]): void;
+}
+
+export function useFieldArray<T>(initial: T[] = []): FieldArray<T> {
+    const items = useState<T[]>([...initial]);
+    return {
+        items,
+        append(item: T) {
+            items.value = [...items.value, item];
+        },
+        remove(index: number) {
+            items.value = items.value.filter((_, i) => i !== index);
+        },
+        move(from: number, to: number) {
+            const next = [...items.value];
+            if (from < 0 || to < 0 || from >= next.length || to >= next.length) return;
+            const [row] = next.splice(from, 1);
+            next.splice(to, 0, row);
+            items.value = next;
+        },
+        replace(next: T[]) {
+            items.value = [...next];
+        },
+    };
 }
 
 type FormControl = HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement | HTMLElement;
@@ -96,6 +132,7 @@ export function useForm<T extends FormValues>(options: UseFormOptions<T>): UseFo
     }
 
     const isSubmitting = useState(false);
+    const asyncErrors = useState<Record<string, string>>({});
 
     const errors = computed(() => {
         const result: Record<string, string> = {};
@@ -116,7 +153,35 @@ export function useForm<T extends FormValues>(options: UseFormOptions<T>): UseFo
     });
 
     const isDirty = computed(() => Object.values(dirty).some(flag => flag.value));
-    const isValid = computed(() => Object.keys(errors.value).length === 0);
+    const isValid = computed(() =>
+        Object.keys(errors.value).length === 0 && Object.keys(asyncErrors.value).length === 0
+    );
+
+    function clearAsyncError(field: string): void {
+        if (!(field in asyncErrors.value)) return;
+        const next = { ...asyncErrors.value };
+        delete next[field];
+        asyncErrors.value = next;
+    }
+
+    async function validateAsync(): Promise<boolean> {
+        const next: Record<string, string> = {};
+        const asyncRules: AsyncValidationRules<T> = options.asyncRules ?? ({} as AsyncValidationRules<T>);
+        for (const key of Object.keys(fields) as Array<keyof T>) {
+            const fieldRules = asyncRules[key];
+            if (!fieldRules || fieldRules.length === 0) continue;
+            const value = fields[key].value;
+            for (const validator of fieldRules) {
+                const message = await validator(value);
+                if (message) {
+                    next[key as string] = message;
+                    break;
+                }
+            }
+        }
+        asyncErrors.value = next;
+        return Object.keys(next).length === 0 && Object.keys(errors.value).length === 0;
+    }
 
     function getValues(): T {
         const out = {} as T;
@@ -129,6 +194,7 @@ export function useForm<T extends FormValues>(options: UseFormOptions<T>): UseFo
     function setValue<K extends keyof T>(field: K, value: T[K]): void {
         fields[field].value = value;
         dirty[field].value = !Object.is(value, initialSnapshot[field]);
+        clearAsyncError(field as string);
     }
 
     function reset(values: Partial<T> = {}): void {
@@ -137,6 +203,7 @@ export function useForm<T extends FormValues>(options: UseFormOptions<T>): UseFo
             touched[key].value = false;
             dirty[key].value = false;
         }
+        asyncErrors.value = {};
     }
 
     function markAllTouched(): void {
@@ -154,19 +221,15 @@ export function useForm<T extends FormValues>(options: UseFormOptions<T>): UseFo
         writeControlValue(element as FormControl, fields[field].value);
 
         const eventName = controlEventName(element as FormControl);
-        const onInputEvt = () => {
+        const stopInput = on(element, eventName, () => {
             const next = readControlValue(element as FormControl) as T[K];
-            fields[field].value = next;
-            dirty[field].value = !Object.is(next, initialSnapshot[field]);
-        };
-        const onBlur = () => { touched[field].value = true; };
-
-        element.addEventListener(eventName, onInputEvt);
-        element.addEventListener('blur', onBlur);
+            setValue(field, next);
+        });
+        const stopBlur = on(element, 'blur', () => { touched[field].value = true; });
 
         return () => {
-            element.removeEventListener(eventName, onInputEvt);
-            element.removeEventListener('blur', onBlur);
+            stopInput();
+            stopBlur();
         };
     }
 
@@ -174,7 +237,9 @@ export function useForm<T extends FormValues>(options: UseFormOptions<T>): UseFo
         return async (event?: Event) => {
             event?.preventDefault();
             markAllTouched();
-            if (!isValid.value) return false;
+            if (Object.keys(errors.value).length > 0) return false;
+            const asyncOk = await validateAsync();
+            if (!asyncOk) return false;
             const cb = handler ?? options.onSubmit;
             if (!cb) return true;
             try {
@@ -192,6 +257,7 @@ export function useForm<T extends FormValues>(options: UseFormOptions<T>): UseFo
         touched,
         dirty,
         errors,
+        asyncErrors,
         isDirty,
         isValid,
         isSubmitting,
@@ -199,6 +265,7 @@ export function useForm<T extends FormValues>(options: UseFormOptions<T>): UseFo
         setValue,
         reset,
         markAllTouched,
+        validateAsync,
         bindField,
         handleSubmit,
     };

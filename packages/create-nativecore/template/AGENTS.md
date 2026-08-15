@@ -33,14 +33,15 @@ It does **not** include login, JWT auth, or a dashboard. Auth is author-owned vi
 4. Prefer `CoreController` + factory export for pages; prefer `CoreComponent` for UI
 5. ALWAYS return a cleanup function from controller factories (`() => ctrl.destroy()`)
 6. Use `this.on(target, type, handler)` — never leak raw listeners
-7. ALWAYS set `static useShadowDOM = true` on UI components unless light DOM is required
-8. NEVER add business logic to `app.*` — routes go in `src/routes/routes.*`
-9. NEVER put `<style>` or `<script>` tags in view HTML files — markup only
-10. Do not hand-edit vendored `.nativecore/core|utils` — change `packages/nativecorejs`, then `npm run vendor-core` in create-nativecore
-11. NEVER invent a JWT/session login flow unless the user explicitly asks
-12. Inside `registerRoutes(r)`, use `r.register` (not `router.register`)
-13. Prefer generators (`make:*` / `remove:*`) over hand-wiring registries and routes
-14. Component Builder is experimental (disabled by default)
+7. In controllers and non-core UI components, use `dom` from `@core-utils/dom.js` for DOM queries and creation instead of direct document APIs
+8. ALWAYS set `static useShadowDOM = true` on UI components unless light DOM is required
+9. NEVER add business logic to `app.*` — routes go in `src/routes/routes.*`
+10. NEVER put `<style>` or `<script>` tags in view HTML files — markup only
+11. Do not hand-edit vendored `.nativecore/core|utils` — change `packages/nativecorejs`, then `npm run vendor-core` in create-nativecore
+12. NEVER invent a JWT/session login flow unless the user explicitly asks
+13. Inside `registerRoutes(r)`, use `r.register` (not `router.register`)
+14. Prefer generators (`make:*` / `remove:*`) over hand-wiring registries and routes
+15. Component Builder is experimental (disabled by default)
 
 ## Key File Locations
 

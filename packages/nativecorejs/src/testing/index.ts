@@ -86,3 +86,81 @@ export function fireEvent(
         new CustomEvent(eventName, { bubbles: true, composed: true, detail })
     );
 }
+
+export interface MountControllerResult {
+    root: HTMLElement;
+    cleanup: () => void;
+}
+
+type ControllerFactory = (
+    params: Record<string, string>,
+    state?: unknown,
+    loaderData?: unknown,
+    rootElement?: HTMLElement
+) => (() => void) | void | Promise<(() => void) | void>;
+
+/**
+ * Mount a controller against an HTML snippet. Appends a `[data-view]` root,
+ * runs the factory, and returns a cleanup that destroys the controller and
+ * removes the root.
+ */
+export function mountController(
+    html: string,
+    factory: ControllerFactory
+): MountControllerResult {
+    const root = document.createElement('div');
+    root.setAttribute('data-view', 'test');
+    root.innerHTML = html;
+    document.body.appendChild(root);
+
+    const result = factory({}, undefined, undefined, root);
+    let destroy: (() => void) | void;
+    if (typeof result === 'function') destroy = result;
+
+    return {
+        root,
+        cleanup: () => {
+            destroy?.();
+            if (root.parentNode) root.parentNode.removeChild(root);
+        },
+    };
+}
+
+export interface NavigateWaitRouter {
+    navigate(path: string, state?: unknown): void | Promise<void>;
+}
+
+/**
+ * Navigate and wait for `pageloaded` or reject on `nativecore:route-error`.
+ */
+export function navigateAndWait(
+    router: NavigateWaitRouter,
+    path: string,
+    timeout = 1000
+): Promise<unknown> {
+    return new Promise((resolve, reject) => {
+        const timer = setTimeout(() => {
+            cleanup();
+            reject(new Error(`navigateAndWait timed out after ${timeout}ms waiting for ${path}`));
+        }, timeout);
+
+        const onLoaded = (event: Event) => {
+            cleanup();
+            resolve((event as CustomEvent).detail);
+        };
+        const onError = (event: Event) => {
+            cleanup();
+            reject((event as CustomEvent).detail ?? new Error(`Route error navigating to ${path}`));
+        };
+
+        function cleanup() {
+            clearTimeout(timer);
+            window.removeEventListener('pageloaded', onLoaded);
+            window.removeEventListener('nativecore:route-error', onError);
+        }
+
+        window.addEventListener('pageloaded', onLoaded, { once: true });
+        window.addEventListener('nativecore:route-error', onError, { once: true });
+        void router.navigate(path);
+    });
+}

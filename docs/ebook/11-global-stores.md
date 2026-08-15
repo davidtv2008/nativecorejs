@@ -68,6 +68,19 @@ uiStore.removeNotification('n1');
 
 Note: the field is `sidebarCollapsed`, not `sidebarOpen` or `sidebarVisible`.
 
+For a single persisted cell without a full store class, use `persistState`:
+
+```js
+import { persistState } from '@core-utils/persist.js';
+
+export const theme = persistState('theme', 'light');
+export const draft = persistState('quiz-draft', null, { storage: 'session' });
+```
+
+That is `useState` plus JSON `localStorage` / `sessionStorage`. Quota and private-mode
+failures are ignored. Prefer a `make:store` module when you have methods, several
+fields, or page-cleanup wrapping.
+
 ---
 
 ## Generate a store for your own resource

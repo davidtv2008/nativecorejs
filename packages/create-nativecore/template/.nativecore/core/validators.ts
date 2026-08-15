@@ -6,6 +6,7 @@
  */
 
 export type Validator<T = unknown> = (value: T) => string | null;
+export type AsyncValidator<T = unknown> = (value: T) => Promise<string | null>;
 
 const isEmpty = (value: unknown): boolean =>
     value === null ||

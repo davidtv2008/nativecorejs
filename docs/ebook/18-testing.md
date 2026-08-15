@@ -2,17 +2,18 @@
 
 Shipping code you cannot verify is a bet you will always lose eventually.
 NativeCoreJS gives you a small, purpose-built test harness: Vitest as the
-runner, `happy-dom` as the headless browser environment, and three helpers in
-`@testing/index.js` that let you mount real custom elements without a browser
-window.
+runner, `happy-dom` as the headless browser environment, and helpers in
+`@testing/index.js` that let you mount real custom elements and controllers
+without a browser window.
 
 This chapter is a lab. You will:
 
 1. Run the existing scaffold tests to confirm your toolchain works
 2. Generate a component with `--with-tests` and read what was created
 3. Write a meaningful test for `task-card` — mount, inspect, and fire events
-4. Understand the three helpers (`mountComponent`, `waitFor`, `fireEvent`) well
-   enough to write tests for any component you build
+4. Understand the helpers (`mountComponent`, `mountController`,
+   `navigateAndWait`, `waitFor`, `fireEvent`) well enough to write tests for
+   any component or page you build
 
 ---
 
@@ -114,7 +115,7 @@ Two things to notice:
 
 ---
 
-## The three helpers
+## The helpers
 
 ### `mountComponent(tag, attrs?)`
 
@@ -149,6 +150,35 @@ fireEvent(element, 'task-card-toggle', { done: true });
 Dispatches a `CustomEvent` with `bubbles: true` and `composed: true`. That
 mirrors what `this.emit()` inside a `CoreComponent` produces, so you can test
 round-trips: fire → wait → assert.
+
+### `mountController(html, factory)`
+
+```js
+import { mountController } from '@testing/index.js';
+import { tasksController } from '../../src/controllers/tasks.controller.js';
+
+const { root, cleanup } = mountController(
+    '<h1 ref="titleEl">Tasks</h1>',
+    tasksController
+);
+expect(root.querySelector('[ref="titleEl"]').textContent).toBe('Tasks');
+cleanup();
+```
+
+Creates a `[data-view="test"]` root, runs the controller factory with that
+root as the fourth argument, and returns `{ root, cleanup }`. `cleanup()`
+calls the factory disposer and removes the root.
+
+### `navigateAndWait(router, path, timeout?)`
+
+```js
+import { navigateAndWait } from '@testing/index.js';
+
+const detail = await navigateAndWait(router, '/tasks/42');
+```
+
+Calls `router.navigate(path)` and waits for `pageloaded` (resolves with the
+event detail) or `nativecore:route-error` (rejects). Default timeout 1000 ms.
 
 ---
 

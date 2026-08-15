@@ -20,9 +20,10 @@ I18n singleton constructed at import time
   → detects locale from localStorage → navigator.language → 'en'
   → wires persist (localStorage 'nc:locale') in the constructor
 
-configureI18n({ messages })
-  → mainly merges catalogs via i18n.extend(messages)
-  → defaultLocale / fallbackLocale / persist on configureI18n are largely ignored
+configureI18n({ messages, defaultLocale, fallbackLocale, persist })
+  → merges catalogs via i18n.extend(messages)
+  → applies fallbackLocale and persist on the existing singleton
+  → defaultLocale is used when no stored nc:locale preference exists
 
 t('tasks.title')           → looks up key in active locale → falls back to fallbackLocale
 i18n.setLocale('es')       → updates the reactive i18n.locale State
@@ -50,6 +51,9 @@ import { configureI18n, i18n } from '@core/i18n.js';
 
 // Seed catalogs — this is what configureI18n is for
 configureI18n({
+    defaultLocale: 'en',
+    fallbackLocale: 'en',
+    persist: true,
     messages: {
         en: {
             'app.title': 'Deskflow',
@@ -76,22 +80,15 @@ configureI18n({
 
 ### What `configureI18n` does
 
-The real implementation is small:
+Call it once at boot. Options apply to the existing singleton:
 
-```js
-export function configureI18n(options) {
-  if (options.messages) i18n.extend(options.messages);
-  if (options.defaultLocale && !i18n.locale.value) i18n.setLocale(options.defaultLocale);
-}
-```
+1. `messages` — merge catalogs via `i18n.extend`
+2. `fallbackLocale` — used when a key is missing from the active locale
+3. `persist` — enable or disable writing `nc:locale` to `localStorage`
+4. `defaultLocale` — applied when no stored `nc:locale` exists; a stored
+   preference wins
 
-So in practice:
-
-1. Call `configureI18n({ messages })` to seed / merge catalogs via `i18n.extend`
-2. Use `i18n.setLocale(code)` for locale switches
-3. Detection, persistence (`nc:locale`), and fallback already ran in the `I18n`
-   singleton constructor — `defaultLocale` / `fallbackLocale` / `persist` passed
-   to `configureI18n` are largely ignored (the constructor already finished)
+Use `i18n.setLocale(code)` for later locale switches.
 
 ---
 
@@ -101,12 +98,36 @@ So in practice:
 import { t } from '@core/i18n.js';
 
 t('tasks.heading');                // 'Your Tasks' (en) or 'Tus Tareas' (es)
-t('tasks.open', { count: 3 });    // '3 open' (en) or '3 abiertas' (es)
+t('tasks.open', { count: 3 });    // uses Intl.PluralRules — see below
 t('missing.key');                 // returns 'missing.key' (key itself, not undefined)
 ```
 
-Interpolation uses `{name}` placeholders only — no nested expressions, no
-plural helpers (build those on top of `t` if you need them).
+Interpolation uses `{name}` placeholders only — no nested expressions.
+
+When `params.count` is a finite number, `t` selects a plural form with
+`Intl.PluralRules` for the active locale:
+
+1. `key.{category}` — `one`, `other`, and any category the locale uses (`zero`, `few`, `many`, …)
+2. `key.other`
+3. `key`
+
+```js
+configureI18n({
+    messages: {
+        en: {
+            'tasks.open.one': '{count} open task',
+            'tasks.open.other': '{count} open tasks',
+        },
+        es: {
+            'tasks.open.one': '{count} tarea abierta',
+            'tasks.open.other': '{count} tareas abiertas',
+        },
+    },
+});
+
+t('tasks.open', { count: 1 }); // '1 open task'
+t('tasks.open', { count: 3 }); // '3 open tasks'
+```
 
 If a key is missing in the active locale, `t` falls back to `fallbackLocale`.
 If missing there too, the key string is returned as-is.
@@ -314,7 +335,7 @@ export function settingsController(_params, _state, _loaderData, rootElement) {
 | Using `%s` or `{{name}}` interpolation | Only `{name}` is supported |
 | Not calling `configureI18n` before the router renders | The first route may render with untranslated keys |
 | Forgetting to read `i18n.locale.value` inside an `effect` | Reading the value is what subscribes; without it the effect does not re-run on locale change |
-| Expecting plural forms | The helper does not include pluralization; build it with a simple `if` on the count param |
+| Expecting ICU message syntax | Only `{name}` interpolation plus `key.one` / `key.other` when `count` is a number |
 
 ---
 

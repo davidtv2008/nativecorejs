@@ -36,6 +36,8 @@ export class I18n {
     public readonly locale: State<LocaleCode>;
     private messages: MessagesByLocale;
     private fallbackLocale: LocaleCode;
+    private persistEnabled = true;
+    private persistUnsub: (() => void) | null = null;
     private namespaceLoaders: Map<string, NamespaceLoader> = new Map();
     private loadedNamespaces: Map<string, Set<LocaleCode>> = new Map();
     private inflightNamespaces: Map<string, Promise<void>> = new Map();
@@ -44,15 +46,34 @@ export class I18n {
         const defaultLocale = options.defaultLocale ?? 'en';
         this.fallbackLocale = options.fallbackLocale ?? defaultLocale;
         this.messages = options.messages ?? {};
+        this.persistEnabled = options.persist ?? true;
 
-        const initial = this.detectLocale(defaultLocale, options.persist ?? true);
+        const initial = this.detectLocale(defaultLocale, this.persistEnabled);
         this.locale = useState<LocaleCode>(initial);
 
-        if ((options.persist ?? true) && typeof localStorage !== 'undefined') {
-            this.locale.watch(value => {
-                try { localStorage.setItem(STORAGE_KEY, value); } catch { /* quota / private mode */ }
-            });
-        }
+        if (this.persistEnabled) this.enablePersist();
+    }
+
+    setFallbackLocale(locale: LocaleCode): void {
+        this.fallbackLocale = locale;
+    }
+
+    setPersist(enabled: boolean): void {
+        this.persistEnabled = enabled;
+        if (enabled) this.enablePersist();
+        else this.disablePersist();
+    }
+
+    private enablePersist(): void {
+        if (this.persistUnsub || typeof localStorage === 'undefined') return;
+        this.persistUnsub = this.locale.watch(value => {
+            try { localStorage.setItem(STORAGE_KEY, value); } catch { /* quota / private mode */ }
+        });
+    }
+
+    private disablePersist(): void {
+        this.persistUnsub?.();
+        this.persistUnsub = null;
     }
 
     private detectLocale(defaultLocale: LocaleCode, persist: boolean): LocaleCode {
@@ -147,13 +168,24 @@ export class I18n {
         return Object.keys(this.messages);
     }
 
-    /** Translate a key, interpolating `{name}` placeholders from `params`. */
+    /**
+     * Translate a key, interpolating `{name}` placeholders from `params`.
+     * When `params.count` is a number, looks up `key.{plural}` via
+     * `Intl.PluralRules` (`one` / `other` / …), then `key.other`, then `key`.
+     */
     t(key: string, params: Record<string, string | number> = {}): string {
         const active = this.locale.value;
-        const message = this.messages[active]?.[key]
-            ?? this.messages[this.fallbackLocale]?.[key]
-            ?? key;
-        return interpolate(message, params);
+        const lookup = (candidate: string): string | undefined =>
+            this.messages[active]?.[candidate] ?? this.messages[this.fallbackLocale]?.[candidate];
+
+        let message: string | undefined;
+        if (typeof params.count === 'number' && Number.isFinite(params.count)) {
+            const category = new Intl.PluralRules(active).select(params.count);
+            message = lookup(`${key}.${category}`) ?? lookup(`${key}.other`) ?? lookup(key);
+        } else {
+            message = lookup(key);
+        }
+        return interpolate(message ?? key, params);
     }
 
     /** Returns true if the key is defined in the active locale. */
@@ -204,5 +236,14 @@ export const t = (key: string, params?: Record<string, string | number>): string
 
 export function configureI18n(options: I18nOptions): void {
     if (options.messages) i18n.extend(options.messages);
-    if (options.defaultLocale && !i18n.locale.value) i18n.setLocale(options.defaultLocale);
+    if (options.fallbackLocale) i18n.setFallbackLocale(options.fallbackLocale);
+    if (typeof options.persist === 'boolean') i18n.setPersist(options.persist);
+    if (options.defaultLocale) {
+        let stored: string | null = null;
+        if (options.persist !== false && typeof localStorage !== 'undefined') {
+            try { stored = localStorage.getItem(STORAGE_KEY); } catch { /* ignore */ }
+        }
+        if (stored) i18n.setLocale(stored);
+        else i18n.setLocale(options.defaultLocale);
+    }
 }

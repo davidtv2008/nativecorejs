@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
-import { trapFocus, announce } from '../a11y/index.js';
+import { trapFocus, announce, lockBodyScroll } from '../a11y/index.js';
 
 describe('a11y helpers', () => {
     let root: HTMLDivElement;
@@ -25,6 +25,14 @@ describe('a11y helpers', () => {
         const release = trapFocus(dialog);
         expect(document.activeElement?.id).toBe('first');
         release();
+    });
+
+    it('lockBodyScroll hides overflow and restores it on release', () => {
+        document.body.style.overflow = 'auto';
+        const release = lockBodyScroll();
+        expect(document.body.style.overflow).toBe('hidden');
+        release();
+        expect(document.body.style.overflow).toBe('auto');
     });
 
     it('announce creates a live region', async () => {

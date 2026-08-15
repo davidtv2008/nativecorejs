@@ -130,6 +130,60 @@ this.on(this.filterBtn, 'click', () => {
 
 ---
 
+## Recipe 6 — `nc-animation` (picks GPU, CSS, or canvas)
+
+`<nc-animation>` is a special core component: you name a **preset**, and it
+selects the cheapest engine for that motion. You do not choose “GPU vs CPU”
+yourself.
+
+```
+name="fade-in"  →  WAAPI (Web Animations API)  →  GPU transform + opacity
+name="spin"     →  CSS @keyframes              →  compositor thread, no JS
+name="confetti" →  canvas2d overlay            →  CPU draw (custom particles)
+```
+
+### Why the path matters
+
+Browsers promote `transform` and `opacity` to the compositor. Animating those
+on the GPU avoids layout and paint on every frame. A looping `spin` does not
+need JavaScript at all — CSS keyframes stay on the compositor. Enter/exit
+and attention presets need per-run control (`delay`, `iterations`, `pause()`),
+so they use the Web Animations API through `gpu-animation.ts` (still
+GPU-friendly: `translate3d` / `scale3d` / opacity, plus `will-change` unless
+you set `no-gpu-hint`). Particle presets (`confetti`, `firework`, `electricity`,
+…) cannot be a CSS keyframe; they run a full-viewport canvas overlay. Generic
+WebGL particles exist in `gpu-animation.ts`; the named presets use canvas2d
+so each effect can have its own spawn and update.
+
+| Path | Presets | Engine |
+|------|---------|--------|
+| CSS | `spin`, `ping`, `float`, `glow` | `@keyframes` on the slotted node |
+| WAAPI | `fade-in`, `fade-out`, `slide-up` / `down` / `left` / `right`, `scale-in` / `out`, `zoom-in` / `out`, `flip-x` / `y`, `pulse`, `shake`, `bounce`, `rubber-band`, `swing`, `jello`, `tada`, `heartbeat` | Web Animations API |
+| Particle | `confetti`, `sparkles`, `bubbles`, `snow`, `firework`, `electricity`, `fire`, `explosion`, `ripple` | canvas2d overlay |
+
+Triggers: `mount` (default), `visible` (IntersectionObserver + `threshold`),
+`hover`, `click`, `manual` (`el.play()`). Events: `start`, `finish` (not on
+infinite), `cancel`. Methods: `play()`, `pause()` (WAAPI only), `cancel()`.
+
+```html
+<nc-animation name="fade-in" trigger="visible" delay="150">
+    <nc-card>Scroll into view</nc-card>
+</nc-animation>
+
+<nc-animation name="pulse" trigger="hover" iterations="infinite">
+    <nc-button>Hover me</nc-button>
+</nc-animation>
+
+<nc-animation name="confetti" trigger="click">
+    <nc-button variant="success">Celebrate</nc-button>
+</nc-animation>
+```
+
+Particle extras: `origin-x` / `origin-y` / `target-x` / `target-y` (0–1 or
+`top` / `bottom` / `left` / `right` / `center`), `count`, `spread`.
+
+---
+
 ## Categories cheat sheet
 
 | Category | Examples |
@@ -140,6 +194,7 @@ this.on(this.filterBtn, 'click', () => {
 | Overlays | `nc-modal`, `nc-drawer`, `nc-popover`, `nc-tooltip` |
 | Navigation | `nc-tabs`, `nc-breadcrumb`, `nc-pagination` |
 | Data | `nc-table`, `nc-timeline`, `nc-code` |
+| Motion | `nc-animation` (CSS / WAAPI / canvas — path picked per preset) |
 
 Shell chrome (opt-in): `app-header`, `app-sidebar`, `app-footer`.
 

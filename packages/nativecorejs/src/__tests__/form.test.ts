@@ -2,7 +2,7 @@
  * Unit tests for `useForm()` and the bundled validators.
  */
 import { describe, it, expect } from 'vitest';
-import { useForm } from '../../.nativecore/core/form.js';
+import { useFieldArray, useForm } from '../../.nativecore/core/form.js';
 import { required, minLength, email, compose } from '../../.nativecore/core/validators.js';
 
 describe('validators', () => {
@@ -91,5 +91,28 @@ describe('useForm', () => {
         expect(form.fields.name.value).toBe('a');
         expect(form.isDirty.value).toBe(false);
         expect(form.touched.name.value).toBe(false);
+    });
+
+    it('runs async validators on submit', async () => {
+        const form = useForm({
+            initialValues: { username: 'taken' },
+            asyncRules: {
+                username: [async (value) => value === 'taken' ? 'Already taken' : null],
+            },
+        });
+        const ok = await form.handleSubmit(() => {})();
+        expect(ok).toBe(false);
+        expect(form.asyncErrors.value.username).toBe('Already taken');
+    });
+
+    it('useFieldArray appends and removes items', () => {
+        const list = useFieldArray(['a']);
+        list.append('b');
+        expect(list.items.value).toEqual(['a', 'b']);
+        list.remove(0);
+        expect(list.items.value).toEqual(['b']);
+        list.move(0, 0);
+        list.replace(['c']);
+        expect(list.items.value).toEqual(['c']);
     });
 });

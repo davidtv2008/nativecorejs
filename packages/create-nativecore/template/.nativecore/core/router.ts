@@ -22,10 +22,25 @@ export interface RouteConfig {
     controller?: ControllerFunction | null;
     loader?: (params: Record<string, string>, signal: AbortSignal) => Promise<unknown>;
     cachePolicy?: CachePolicy;
+    /**
+     * Path of another registered route used as a layout shell.
+     * That route may also set `layout`, forming an outer-to-inner chain.
+     * Each layout HTML file must contain `#route-outlet` (or `[data-route-outlet]`).
+     */
     layout?: string;
     /** Disable page enter/exit animation for this route. */
     disableTransition?: boolean;
+    /** Document title after a successful navigation. */
+    title?: string | ((match: RouteMatch) => string);
+    /** `<meta name>` tags to set or create after a successful navigation. */
+    meta?: Record<string, string> | ((match: RouteMatch) => Record<string, string>);
 }
+
+/** Dispatched on `window` when a route fails to load. Listen for a custom error UI. */
+export const ROUTE_ERROR_EVENT = 'nativecore:route-error';
+
+/** Safety cap for `layout` → `layout` walks (cycles throw before this). */
+const MAX_LAYOUT_DEPTH = 8;
 
 export interface RouteMatch {
     path: string;
@@ -66,6 +81,7 @@ interface RouteDebugEntry {
     cacheStatus: 'uncached' | 'fresh' | 'stale' | 'no-policy';
     ageMs: number;
     hasLayout: boolean;
+    layoutDepth: number;
     hasLoader: boolean;
 }
 
@@ -91,7 +107,8 @@ export class Router {
     private pageScripts: Record<string, { cleanup?: () => void }> = {};
     private navigationController: AbortController | null = null;
     private isNavigating = false;
-    private renderedLayoutPath: string | null = null;
+    private renderedLayoutChain: string[] = [];
+    private layoutScripts: Record<string, { cleanup?: () => void }> = {};
     private _groupMiddlewares: string[] = [];
     private _groupPrefix: string = '';
     private _routeMiddlewares: Map<string, string[]> = new Map();
@@ -238,10 +255,15 @@ export class Router {
             if (config) {
                 this.htmlCache.delete(config.htmlFile);
 
-                if (config.layout) {
-                    const layoutConfig = this.routes[config.layout];
-                    if (layoutConfig) {
-                        this.htmlCache.delete(layoutConfig.htmlFile);
+                try {
+                    const chain = this.getLayoutChain({ path, params: {}, config });
+                    for (const layout of chain) {
+                        this.htmlCache.delete(layout.config.htmlFile);
+                    }
+                } catch {
+                    if (config.layout) {
+                        const layoutConfig = this.routes[config.layout];
+                        if (layoutConfig) this.htmlCache.delete(layoutConfig.htmlFile);
                     }
                 }
             }
@@ -262,10 +284,8 @@ export class Router {
         const requests: Array<Promise<string>> = [
             this.fetchHTML(route.config.htmlFile, route.config.cachePolicy, true)
         ];
-        const layoutRoute = this.getLayoutRoute(route);
-
-        if (layoutRoute) {
-            requests.push(this.fetchHTML(layoutRoute.config.htmlFile, layoutRoute.config.cachePolicy, true));
+        for (const layout of this.getLayoutChain(route)) {
+            requests.push(this.fetchHTML(layout.config.htmlFile, layout.config.cachePolicy, true));
         }
 
         await Promise.allSettled(requests);
@@ -405,11 +425,11 @@ export class Router {
         // WRONG (newer) signal and allow stale navigations to overwrite new ones.
         const signal = this.navigationController?.signal ?? null;
 
-        // Prevent concurrent navigations that haven't been superseded
-        if (this.isNavigating && signal && !signal.aborted) {
+        // A newer navigate() already replaced the controller — this call is stale.
+        if (signal && this.navigationController && signal !== this.navigationController.signal) {
             return;
         }
-        
+
         this.isNavigating = true;
         
         const route = this.matchRoute(path);
@@ -488,6 +508,7 @@ export class Router {
             // Always fetch/render view HTML on a normal navigation. Animation is
             // optional and only used when we already have a warm HTML cache so the
             // exit transition does not wait on a cold network fetch.
+            let mountedLayouts: RouteMatch[] = [];
             if (!isPrerenderedInitialRoute) {
                 if (shouldAnimateTransition) {
                     mainContent.classList.add('page-transition-exit');
@@ -503,7 +524,9 @@ export class Router {
                     }
                 }
 
-                const contentTarget = await this.resolveContentTarget(mainContent, route);
+                const resolved = await this.resolveContentTarget(mainContent, route);
+                const contentTarget = resolved.outlet;
+                mountedLayouts = resolved.mountedLayouts;
                 const html = await this.fetchHTML(route.config.htmlFile, route.config.cachePolicy);
 
                 // Bail again after the async fetch in case navigation was superseded
@@ -539,6 +562,11 @@ export class Router {
                 }
             }
             
+            for (const layout of mountedLayouts) {
+                if (signal?.aborted) return;
+                await this.mountLayoutController(layout, route, state, signal);
+            }
+
             if (route.config.controller) {
                 let loaderData: unknown;
 
@@ -573,6 +601,7 @@ export class Router {
                 mainContent.removeAttribute('data-prerendered-route');
             }
             
+            this.applyRouteHead(route);
             window.dispatchEvent(new CustomEvent('pageloaded', { detail: route }));
 
             // Always settle scroll after the controller runs. Hash targets win;
@@ -595,7 +624,7 @@ export class Router {
             if (progressBar) {
                 progressBar.classList.remove('loading');
             }
-            window.dispatchEvent(new CustomEvent('nativecore:route-error', {
+            window.dispatchEvent(new CustomEvent(ROUTE_ERROR_EVENT, {
                 detail: {
                     error,
                     route: route.path,
@@ -618,7 +647,7 @@ export class Router {
         route: RouteMatch,
         previousRoute: RouteMatch | null
     ): boolean {
-        if (previousRoute !== null || route.config.layout) {
+        if (previousRoute !== null || this.getLayoutChain(route).length > 0) {
             return false;
         }
 
@@ -763,7 +792,31 @@ export class Router {
     /**
      * Handle 404
      */
+    private applyRouteHead(route: RouteMatch): void {
+        if (typeof document === 'undefined') return;
+
+        const { title, meta } = route.config;
+        if (title) {
+            document.title = typeof title === 'function' ? title(route) : title;
+        }
+        if (!meta) return;
+
+        const tags = typeof meta === 'function' ? meta(route) : meta;
+        for (const [name, content] of Object.entries(tags)) {
+            const selector = `meta[name="${name.replace(/"/g, '')}"]`;
+            let el = document.head.querySelector(selector);
+            if (!el) {
+                el = document.createElement('meta');
+                el.setAttribute('name', name);
+                document.head.appendChild(el);
+            }
+            el.setAttribute('content', content);
+        }
+    }
+
     private handle404(path: string): void {
+        this.teardownLayouts([]);
+        this.renderedLayoutChain = [];
         const mainContent = document.getElementById('main-content');
         if (mainContent) {
             // Invalidate the rendered-HTML cache for this container. handle404 overwrites
@@ -918,6 +971,7 @@ export class Router {
                 cacheStatus,
                 ageMs,
                 hasLayout: !!config.layout,
+                layoutDepth: this.safeLayoutDepth({ path, params: {}, config }),
                 hasLoader: typeof config.loader === 'function',
             } satisfies RouteDebugEntry;
         });
@@ -972,52 +1026,139 @@ export class Router {
         window.history[method](window.history.state, '', url);
     }
 
-    private async resolveContentTarget(mainContent: HTMLElement, route: RouteMatch): Promise<HTMLElement> {
-        const layoutRoute = this.getLayoutRoute(route);
-
-        if (!layoutRoute) {
-            this.renderedLayoutPath = null;
-            return mainContent;
-        }
-
-        const needsLayoutRender = this.renderedLayoutPath !== layoutRoute.path ||
-            !mainContent.querySelector('#route-outlet');
-
-        if (needsLayoutRender) {
-            const layoutHtml = await this.fetchHTML(layoutRoute.config.htmlFile, layoutRoute.config.cachePolicy);
-            mainContent.innerHTML = layoutHtml;
-            this.renderedLayoutPath = layoutRoute.path;
-        }
-
-        const outlet = mainContent.querySelector<HTMLElement>('#route-outlet');
-        if (!outlet) {
-            // Graceful fallback: warn loudly in dev tools but keep the app
-            // navigable by rendering directly into the layout root. Throwing
-            // here used to nuke the whole page on a single missing element.
-            console.error(
-                `[router] Layout route "${layoutRoute.path}" is missing a #route-outlet element. ` +
-                `Falling back to rendering into the layout root. Add <div id="route-outlet"></div> to ${layoutRoute.config.htmlFile} to silence this warning.`
-            );
-            this.renderedLayoutPath = null;
-            return mainContent;
-        }
-
-        return outlet;
+    private findOutlet(container: HTMLElement): HTMLElement | null {
+        return container.querySelector<HTMLElement>('#route-outlet, [data-route-outlet]');
     }
 
-    private getLayoutRoute(route: RouteMatch): RouteMatch | null {
-        const layoutPath = route.config.layout;
-        if (!layoutPath) return null;
+    private async resolveContentTarget(
+        mainContent: HTMLElement,
+        route: RouteMatch
+    ): Promise<{ outlet: HTMLElement; mountedLayouts: RouteMatch[] }> {
+        const chain = this.getLayoutChain(route);
+        const mountedLayouts: RouteMatch[] = [];
 
-        const layoutConfig = this.routes[layoutPath];
-        if (!layoutConfig) {
-            throw new Error(`Layout route "${layoutPath}" is not registered`);
+        if (chain.length === 0) {
+            this.teardownLayouts([]);
+            this.renderedLayoutChain = [];
+            return { outlet: mainContent, mountedLayouts };
         }
 
-        return {
-            path: layoutPath,
-            params: {},
-            config: layoutConfig
+        const nextPaths = chain.map(layout => layout.path);
+        let reuseUntil = 0;
+        while (
+            reuseUntil < nextPaths.length &&
+            reuseUntil < this.renderedLayoutChain.length &&
+            this.renderedLayoutChain[reuseUntil] === nextPaths[reuseUntil]
+        ) {
+            reuseUntil += 1;
+        }
+
+        this.teardownLayouts(nextPaths.slice(0, reuseUntil));
+
+        let target = mainContent;
+        for (let i = 0; i < chain.length; i++) {
+            const layout = chain[i];
+            const existingOutlet = this.findOutlet(target);
+            const canReuse = i < reuseUntil && Boolean(existingOutlet);
+
+            if (!canReuse) {
+                this.teardownLayout(layout.path);
+                const layoutHtml = await this.fetchHTML(layout.config.htmlFile, layout.config.cachePolicy);
+                target.innerHTML = layoutHtml;
+                this.renderedHtmlCache.set(target, { file: layout.config.htmlFile, html: layoutHtml });
+                mountedLayouts.push(layout);
+            }
+
+            const outlet = this.findOutlet(target);
+            if (!outlet) {
+                console.error(
+                    `[router] Layout route "${layout.path}" is missing a #route-outlet element. ` +
+                    `Falling back to rendering into the layout root. Add <div id="route-outlet"></div> ` +
+                    `or data-route-outlet to ${layout.config.htmlFile} to silence this warning.`
+                );
+                this.renderedLayoutChain = nextPaths.slice(0, i);
+                return { outlet: target, mountedLayouts };
+            }
+
+            target = outlet;
+        }
+
+        this.renderedLayoutChain = nextPaths;
+        return { outlet: target, mountedLayouts };
+    }
+
+    /**
+     * Walk `layout` pointers from the page to the outermost shell.
+     * Returns outer-to-inner. Throws on a missing route or a cycle.
+     */
+    private getLayoutChain(route: RouteMatch): RouteMatch[] {
+        const chain: RouteMatch[] = [];
+        const seen = new Set<string>();
+        let layoutPath = route.config.layout;
+
+        while (layoutPath) {
+            if (seen.has(layoutPath)) {
+                throw new Error(`Layout cycle detected at "${layoutPath}"`);
+            }
+            if (chain.length >= MAX_LAYOUT_DEPTH) {
+                throw new Error(`Layout chain exceeds ${MAX_LAYOUT_DEPTH} levels`);
+            }
+            seen.add(layoutPath);
+
+            const layoutConfig = this.routes[layoutPath];
+            if (!layoutConfig) {
+                throw new Error(`Layout route "${layoutPath}" is not registered`);
+            }
+
+            chain.unshift({
+                path: layoutPath,
+                params: {},
+                config: layoutConfig,
+            });
+            layoutPath = layoutConfig.layout;
+        }
+
+        return chain;
+    }
+
+    private safeLayoutDepth(route: RouteMatch): number {
+        try {
+            return this.getLayoutChain(route).length;
+        } catch {
+            return route.config.layout ? 1 : 0;
+        }
+    }
+
+    private teardownLayouts(keepPaths: string[]): void {
+        const keep = new Set(keepPaths);
+        for (const path of [...this.renderedLayoutChain].reverse()) {
+            if (keep.has(path)) continue;
+            this.teardownLayout(path);
+        }
+    }
+
+    private teardownLayout(path: string): void {
+        this.layoutScripts[path]?.cleanup?.();
+        delete this.layoutScripts[path];
+    }
+
+    private async mountLayoutController(
+        layout: RouteMatch,
+        page: RouteMatch,
+        state: unknown,
+        signal?: AbortSignal | null
+    ): Promise<void> {
+        if (!layout.config.controller) return;
+
+        let loaderData: unknown;
+        if (layout.config.loader) {
+            const loaderSignal = signal ?? this.navigationController?.signal ?? new AbortController().signal;
+            loaderData = await layout.config.loader(page.params, loaderSignal);
+        }
+
+        const cleanup = await layout.config.controller(page.params, state, loaderData);
+        this.layoutScripts[layout.path] = {
+            cleanup: typeof cleanup === 'function' ? cleanup : undefined,
         };
     }
 

@@ -32,6 +32,23 @@ describe('Router query helpers', () => {
         expect(router.getQueryParam('missing', 'default')).toBe('default');
     });
 
+    it('applyRouteHead sets document.title and meta from RouteConfig', () => {
+        const previous = document.title;
+        const match = {
+            path: '/titled',
+            params: {},
+            config: {
+                htmlFile: 'x.html',
+                title: 'Titled route',
+                meta: { description: 'Hello' },
+            },
+        };
+        (router as any).applyRouteHead(match);
+        expect(document.title).toBe('Titled route');
+        expect(document.head.querySelector('meta[name="description"]')?.getAttribute('content')).toBe('Hello');
+        document.title = previous;
+    });
+
     it('setQuery merges keys and removes null/undefined', () => {
         window.history.replaceState({}, '', '/x?page=1&q=old');
         router.setQuery({ page: 2, q: null, sort: 'name' });

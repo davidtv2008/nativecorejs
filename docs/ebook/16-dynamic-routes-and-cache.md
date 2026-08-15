@@ -240,6 +240,79 @@ Or use a plain `<a href="/tasks/42">` — the router intercepts internal links a
 
 ---
 
+## Route `title` / `meta` and load errors
+
+After a successful navigation the router applies optional head fields from
+`RouteConfig`:
+
+```js
+r.register(
+    '/tasks/:id',
+    'src/views/public/task-detail.html',
+    lazyController('taskDetailController', '../controllers/task-detail.controller.js'),
+    {
+        title: (match) => `Task ${match.params.id}`,
+        meta: { description: 'Task detail' },
+    }
+);
+```
+
+`title` and `meta` may be a string/object or a function of the `RouteMatch`.
+`meta` sets or creates `<meta name="…">` tags.
+
+If the view fails to load, the router dispatches `nativecore:route-error` on
+`window` (`ROUTE_ERROR_EVENT` from `@core/router.js`) with
+`{ error, route, controller }` and then shows the built-in 404. Listen if you
+want a custom error UI. The event is for the failed page load, not each
+layout frame.
+
+---
+
+## Nested layout chains
+
+A route's `layout` is the path of another registered route. That layout may
+also set `layout`, so shells nest:
+
+```
+#main-content
+  /app                  ← outer shell (sidebar)
+    #route-outlet
+      /app/settings     ← inner shell (settings tabs)
+        #route-outlet
+          /app/settings/profile   ← page
+```
+
+```js
+r.register('/app', 'src/views/layouts/app.html',
+    lazyController('appLayoutController', '../controllers/app-layout.controller.js'));
+
+r.register('/app/settings', 'src/views/layouts/settings.html',
+    lazyController('settingsLayoutController', '../controllers/settings-layout.controller.js'),
+    { layout: '/app' });
+
+r.register('/app/settings/profile', 'src/views/protected/profile.html',
+    lazyController('profileController', '../controllers/profile.controller.js'),
+    { layout: '/app/settings' });
+```
+
+Each layout HTML file must contain `#route-outlet` (or `data-route-outlet`).
+The router walks outer-to-inner, reuses the shared prefix on sibling
+navigations, and keeps those layout controllers mounted until that frame
+leaves the chain. Layout controllers receive the **page** params (so a shell
+can highlight `/app/settings/profile`). Prefer `CoreController` — module
+`effect()` without `{ pageCleanup: false }` is flushed on every navigation.
+
+Cycles and missing layout paths throw (and dispatch `nativecore:route-error`).
+Depth is capped at 8.
+
+```js
+window.addEventListener('nativecore:route-error', (e) => {
+    console.error(e.detail.route, e.detail.error);
+});
+```
+
+---
+
 ## Cache management API
 
 ```js
