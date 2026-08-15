@@ -99,13 +99,14 @@ describe('Router nested layouts', () => {
     it('runs a layout controller once and keeps it across sibling navigations', async () => {
         let mounts = 0;
         let cleanups = 0;
-        router.register('/shell', 'shell.html', () => {
+        router.register('/shell', 'shell.html', (_p, _s, _l, root) => {
             mounts += 1;
+            expect(root?.getAttribute('data-view')).toBe('shell');
             return () => { cleanups += 1; };
         });
         router.register('/shell/a', 'a.html', null, { layout: '/shell' });
         router.register('/shell/b', 'b.html', null, { layout: '/shell' });
-        seedHtml(router, 'shell.html', '<div data-layout="shell"><div id="route-outlet"></div></div>');
+        seedHtml(router, 'shell.html', '<div data-view="shell" data-layout="shell"><div id="route-outlet"></div></div>');
         seedHtml(router, 'a.html', '<div data-view="a">A</div>');
         seedHtml(router, 'b.html', '<div data-view="b">B</div>');
 

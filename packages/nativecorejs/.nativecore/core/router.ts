@@ -48,7 +48,12 @@ export interface RouteMatch {
     config: RouteConfig;
 }
 
-export type ControllerFunction = (params: Record<string, string>, state?: any, loaderData?: unknown) => Promise<(() => void) | void> | (() => void) | void;
+export type ControllerFunction = (
+    params: Record<string, string>,
+    state?: any,
+    loaderData?: unknown,
+    rootElement?: HTMLElement
+) => Promise<(() => void) | void> | (() => void) | void;
 export type MiddlewareFunction = (route: RouteMatch, state?: any) => Promise<boolean> | boolean;
 
 interface CacheEntry {
@@ -109,6 +114,7 @@ export class Router {
     private isNavigating = false;
     private renderedLayoutChain: string[] = [];
     private layoutScripts: Record<string, { cleanup?: () => void }> = {};
+    private layoutRoots = new Map<string, HTMLElement>();
     private _groupMiddlewares: string[] = [];
     private _groupPrefix: string = '';
     private _routeMiddlewares: Map<string, string[]> = new Map();
@@ -509,6 +515,7 @@ export class Router {
             // optional and only used when we already have a warm HTML cache so the
             // exit transition does not wait on a cold network fetch.
             let mountedLayouts: RouteMatch[] = [];
+            let pageRoot: HTMLElement = mainContent;
             if (!isPrerenderedInitialRoute) {
                 if (shouldAnimateTransition) {
                     mainContent.classList.add('page-transition-exit');
@@ -560,6 +567,8 @@ export class Router {
                     mainContent.classList.remove('page-transition-exit');
                     mainContent.classList.add('page-transition-enter');
                 }
+
+                pageRoot = contentTarget.querySelector<HTMLElement>('[data-view]') ?? contentTarget;
             }
             
             for (const layout of mountedLayouts) {
@@ -577,7 +586,7 @@ export class Router {
                     window.dispatchEvent(new CustomEvent('nc-route-loaded', { detail: { path: route.path, params: route.params, data: loaderData } }));
                 }
 
-                const cleanup = await route.config.controller(route.params, state, loaderData);
+                const cleanup = await route.config.controller(route.params, state, loaderData, pageRoot);
                 this.pageScripts[route.path] = { 
                     cleanup: typeof cleanup === 'function' ? cleanup : undefined 
                 };
@@ -1069,6 +1078,9 @@ export class Router {
                 mountedLayouts.push(layout);
             }
 
+            const layoutHost = target.querySelector<HTMLElement>('[data-view]') ?? target;
+            this.layoutRoots.set(layout.path, layoutHost);
+
             const outlet = this.findOutlet(target);
             if (!outlet) {
                 console.error(
@@ -1140,6 +1152,7 @@ export class Router {
     private teardownLayout(path: string): void {
         this.layoutScripts[path]?.cleanup?.();
         delete this.layoutScripts[path];
+        this.layoutRoots.delete(path);
     }
 
     private async mountLayoutController(
@@ -1156,7 +1169,8 @@ export class Router {
             loaderData = await layout.config.loader(page.params, loaderSignal);
         }
 
-        const cleanup = await layout.config.controller(page.params, state, loaderData);
+        const root = this.layoutRoots.get(layout.path);
+        const cleanup = await layout.config.controller(page.params, state, loaderData, root);
         this.layoutScripts[layout.path] = {
             cleanup: typeof cleanup === 'function' ? cleanup : undefined,
         };

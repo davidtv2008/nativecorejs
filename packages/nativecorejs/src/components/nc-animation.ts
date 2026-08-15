@@ -451,6 +451,7 @@ export class NcAnimation extends CoreComponent {
     // tear-down refs
     private _hoverOff: (() => void) | null = null;
     private _clickOff: (() => void) | null = null;
+    private _slotOff: (() => void) | null = null;
     // css animation class injected into shadow
     private _cssAnimName = '';
     // track whether IntersectionObserver already fired
@@ -533,6 +534,8 @@ export class NcAnimation extends CoreComponent {
     private _teardown() {
         this._io?.disconnect();
         this._io = null;
+        this._slotOff?.();
+        this._slotOff = null;
         this._hoverOff?.();
         this._hoverOff = null;
         this._clickOff?.();
@@ -554,30 +557,63 @@ export class NcAnimation extends CoreComponent {
         }
     }
 
+    /**
+     * `display: contents` hosts are skipped in Chromium's event path, so
+     * click/hover must bind to the slotted target (or the host as fallback).
+     */
+    private _bindTargetEvent(type: string, handler: EventListener): () => void {
+        const slot = this.shadowRoot?.querySelector<HTMLSlotElement>('slot');
+        let current: EventTarget | null = null;
+        const attach = () => {
+            const next = this._target() ?? this;
+            if (current === next) return;
+            current?.removeEventListener(type, handler);
+            next.addEventListener(type, handler);
+            current = next;
+        };
+        slot?.addEventListener('slotchange', attach);
+        attach();
+        return () => {
+            slot?.removeEventListener('slotchange', attach);
+            current?.removeEventListener(type, handler);
+            current = null;
+        };
+    }
+
     private _setupVisibleTrigger() {
         const threshold = parseFloat(this.getAttribute('threshold') || '0.15');
-        this._io = new IntersectionObserver((entries) => {
-            for (const entry of entries) {
-                if (entry.isIntersecting && !this._visibleFired) {
-                    this._visibleFired = true;
-                    this._scheduleRun();
-                    this._io?.disconnect();
+        const slot = this.shadowRoot?.querySelector<HTMLSlotElement>('slot');
+        const observe = () => {
+            this._io?.disconnect();
+            const target = this._target() ?? this;
+            this._io = new IntersectionObserver((entries) => {
+                for (const entry of entries) {
+                    if (entry.isIntersecting && !this._visibleFired) {
+                        this._visibleFired = true;
+                        this._scheduleRun();
+                        this._io?.disconnect();
+                    }
                 }
-            }
-        }, { threshold });
-        this._io.observe(this);
+            }, { threshold });
+            this._io.observe(target);
+        };
+        slot?.addEventListener('slotchange', observe);
+        this._slotOff = () => slot?.removeEventListener('slotchange', observe);
+        observe();
     }
 
     private _setupHoverTrigger() {
-        const onEnter = () => { this._visibleFired = false; this._run(); };
-        this.addEventListener('mouseenter', onEnter);
-        this._hoverOff = () => this.removeEventListener('mouseenter', onEnter);
+        this._hoverOff = this._bindTargetEvent('mouseenter', () => {
+            this._visibleFired = false;
+            this._run();
+        });
     }
 
     private _setupClickTrigger() {
-        const onClick = () => { this._visibleFired = false; this._run(); };
-        this.addEventListener('click', onClick);
-        this._clickOff = () => this.removeEventListener('click', onClick);
+        this._clickOff = this._bindTargetEvent('click', () => {
+            this._visibleFired = false;
+            this._run();
+        });
     }
 
     // ── Core run dispatcher ───────────────────────────────────────────────────
@@ -1135,7 +1171,8 @@ export class NcAnimation extends CoreComponent {
 
     private _iterAttr(): number {
         const raw = this.getAttribute('iterations');
-        if (!raw || raw === 'infinite') return 1;
+        if (raw === 'infinite') return Infinity;
+        if (!raw) return 1;
         const n = parseInt(raw, 10);
         return isNaN(n) ? 1 : n;
     }
