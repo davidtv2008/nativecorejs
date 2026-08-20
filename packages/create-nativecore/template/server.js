@@ -1344,7 +1344,7 @@ const server = http.createServer(async (req, res) => {
             "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
             "font-src 'self' https://fonts.gstatic.com",
             buildConnectSrcDirective({ development: true, hmrPort: HMR_PORT }),
-            "img-src 'self' data: https:",
+            "img-src 'self' data: blob:https:",
             "media-src 'self' blob: https:",
         ]);
     } else if (!isDevelopment && contentType === 'text/html') {
@@ -1354,7 +1354,7 @@ const server = http.createServer(async (req, res) => {
             "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
             "font-src 'self' https://fonts.gstatic.com",
             buildConnectSrcDirective({ development: false, hmrPort: HMR_PORT }),
-            "img-src 'self' data: https:",
+            "img-src 'self' data: blob: https:",
             "media-src 'self' blob: https:",
             "frame-ancestors 'none'",
         ]);

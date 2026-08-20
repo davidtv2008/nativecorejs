@@ -8,46 +8,80 @@ import { minify } from 'terser';
 
 async function getAllJSFiles(dir, fileList = []) {
   const files = await readdir(dir);
-  
+
   for (const file of files) {
     const filePath = join(dir, file);
     const fileStat = await stat(filePath);
-    
+
     if (fileStat.isDirectory()) {
       await getAllJSFiles(filePath, fileList);
     } else if (file.endsWith('.js') && !file.endsWith('.min.js')) {
       fileList.push(filePath);
     }
   }
-  
+
   return fileList;
 }
 
-async function minifyFile(filePath) {
+function readCacheVersion(code) {
+  const match = code.match(/isDevelopment[\s\S]*?:\s*['"]([^'"]+)['"]/);
+  return match ? match[1] : '';
+}
+
+async function readDeployCacheVersion(distPath) {
+  const candidates = [
+    join(distPath, '.nativecore', 'utils', 'cacheBuster.js'),
+    join(distPath, 'nativecore', 'utils', 'cacheBuster.js'),
+  ];
+
+  for (const filePath of candidates) {
+    try {
+      const code = await readFile(filePath, 'utf8');
+      const version = readCacheVersion(code);
+      if (version) return version;
+    } catch {
+      // try next candidate
+    }
+  }
+
+  return '';
+}
+
+function bustRelativeJsImports(code, version) {
+  if (!version) return code;
+  return code.replace(
+    /(['"])(\.{1,2}\/[^'"]+\.js)(?:\?v=[^'"]*)?(\1)/g,
+    (_match, quote, spec) => `${quote}${spec}?v=${version}${quote}`
+  );
+}
+
+async function minifyFile(filePath, cacheVersion) {
   try {
     const code = await readFile(filePath, 'utf8');
     const result = await minify(code, {
+      module: true,
       compress: {
         dead_code: true,
-        drop_console: false, // Keep console.warn/error, remove console.log
+        drop_console: false,
         drop_debugger: true,
-        passes: 2, // Multiple passes for better compression
+        passes: 2,
         pure_funcs: ['console.log', 'console.debug', 'console.trace'],
       },
       mangle: {
-        toplevel: true, // Mangle all variable names for max compression
-        properties: false, // Don't mangle property names (safer for web components)
+        toplevel: true,
+        properties: false,
       },
       format: {
-        comments: false, // Remove all comments
-        beautify: false, // No whitespace/newlines - everything on one line
+        comments: false,
+        beautify: false,
       },
     });
-    
+
     if (result.code) {
-      await writeFile(filePath, result.code, 'utf8');
+      const output = bustRelativeJsImports(result.code, cacheVersion);
+      await writeFile(filePath, output, 'utf8');
       const originalSize = Buffer.byteLength(code, 'utf8');
-      const minifiedSize = Buffer.byteLength(result.code, 'utf8');
+      const minifiedSize = Buffer.byteLength(output, 'utf8');
       const savings = ((1 - minifiedSize / originalSize) * 100).toFixed(1);
       console.log(`✓ ${filePath.replace(process.cwd(), '.')} - ${savings}% smaller`);
     }
@@ -64,15 +98,19 @@ async function minifyAll() {
     : join(process.cwd(), 'dist');
 
   console.log(`Minifying JavaScript files in ${distPath}...\n`);
-  
-  const jsFiles = await getAllJSFiles(distPath);
-  
-  for (const file of jsFiles) {
-    await minifyFile(file);
+
+  const cacheVersion = await readDeployCacheVersion(distPath);
+  if (cacheVersion) {
+    console.log(`Cache-busting relative ESM imports with v=${cacheVersion}\n`);
   }
-  
+
+  const jsFiles = await getAllJSFiles(distPath);
+
+  for (const file of jsFiles) {
+    await minifyFile(file, cacheVersion);
+  }
+
   console.log(`\nMinified ${jsFiles.length} files`);
 }
 
 minifyAll().catch(console.error);
-

@@ -43,12 +43,20 @@ export const ROUTE_ERROR_EVENT = 'nativecore:route-error';
 const MAX_LAYOUT_DEPTH = 8;
 
 export interface RouteMatch {
+    /** Registered route pattern (e.g. `/courses/:slug`). */
     path: string;
+    /** Browser path that matched this route (e.g. `/courses/brt`). */
+    requestPath?: string;
     params: Record<string, string>;
     config: RouteConfig;
 }
 
-export type ControllerFunction = (params: Record<string, string>, state?: any, loaderData?: unknown) => Promise<(() => void) | void> | (() => void) | void;
+export type ControllerFunction = (
+    params: Record<string, string>,
+    state?: any,
+    loaderData?: unknown,
+    rootElement?: HTMLElement
+) => Promise<(() => void) | void> | (() => void) | void;
 export type MiddlewareFunction = (route: RouteMatch, state?: any) => Promise<boolean> | boolean;
 
 interface CacheEntry {
@@ -109,6 +117,7 @@ export class Router {
     private isNavigating = false;
     private renderedLayoutChain: string[] = [];
     private layoutScripts: Record<string, { cleanup?: () => void }> = {};
+    private layoutRoots = new Map<string, HTMLElement>();
     private _groupMiddlewares: string[] = [];
     private _groupPrefix: string = '';
     private _routeMiddlewares: Map<string, string[]> = new Map();
@@ -509,6 +518,7 @@ export class Router {
             // optional and only used when we already have a warm HTML cache so the
             // exit transition does not wait on a cold network fetch.
             let mountedLayouts: RouteMatch[] = [];
+            let pageRoot: HTMLElement = mainContent;
             if (!isPrerenderedInitialRoute) {
                 if (shouldAnimateTransition) {
                     mainContent.classList.add('page-transition-exit');
@@ -560,6 +570,8 @@ export class Router {
                     mainContent.classList.remove('page-transition-exit');
                     mainContent.classList.add('page-transition-enter');
                 }
+
+                pageRoot = contentTarget.querySelector<HTMLElement>('[data-view]') ?? contentTarget;
             }
             
             for (const layout of mountedLayouts) {
@@ -577,7 +589,7 @@ export class Router {
                     window.dispatchEvent(new CustomEvent('nc-route-loaded', { detail: { path: route.path, params: route.params, data: loaderData } }));
                 }
 
-                const cleanup = await route.config.controller(route.params, state, loaderData);
+                const cleanup = await route.config.controller(route.params, state, loaderData, pageRoot);
                 this.pageScripts[route.path] = { 
                     cleanup: typeof cleanup === 'function' ? cleanup : undefined 
                 };
@@ -628,12 +640,16 @@ export class Router {
                 detail: {
                     error,
                     route: route.path,
+                    requestPath: route.requestPath || window.location.pathname,
+                    params: route.params,
                     controller: route.config.htmlFile,
                 }
             }));
-            
-            // Show 404 page when file doesn't exist
-            this.handle404(route.path);
+
+            // Matched routes that fail to fetch HTML / run the controller are load
+            // errors, not 404s. Passing route.path here used to show the pattern
+            // (`/courses/:slug`) instead of the URL the user actually opened.
+            this.handleLoadError(route.requestPath || window.location.pathname, error);
         }
     }
 
@@ -721,14 +737,19 @@ export class Router {
 
         // Exact match
         if (this.routes[normalizedPath]) {
-            return { path: normalizedPath, params: {}, config: this.routes[normalizedPath] };
+            return {
+                path: normalizedPath,
+                requestPath: normalizedPath,
+                params: {},
+                config: this.routes[normalizedPath],
+            };
         }
         
         // Dynamic match
         for (const [routePath, config] of Object.entries(this.routes)) {
             const params = this.extractParams(routePath, normalizedPath);
             if (params) {
-                return { path: routePath, params, config };
+                return { path: routePath, requestPath: normalizedPath, params, config };
             }
         }
         
@@ -814,19 +835,32 @@ export class Router {
         }
     }
 
-    private handle404(path: string): void {
+    private escapeHtml(value: string): string {
+        return value
+            .replace(/&/g, '&amp;')
+            .replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;')
+            .replace(/"/g, '&quot;');
+    }
+
+    private renderFailurePage(options: {
+        code: string;
+        title: string;
+        bodyHtml: string;
+        eventDetail: Record<string, unknown>;
+    }): void {
         this.teardownLayouts([]);
         this.renderedLayoutChain = [];
         const mainContent = document.getElementById('main-content');
-        if (mainContent) {
-            // Invalidate the rendered-HTML cache for this container. handle404 overwrites
-            // mainContent.innerHTML directly, so the cache entry (if any) no longer reflects
-            // what is in the DOM. Without this, the next navigation to the previously-rendered
-            // route sees a matching cache entry and skips the innerHTML write, leaving the
-            // 404 HTML in place.
-            this.renderedHtmlCache.delete(mainContent);
-            this.resetScrollPosition(mainContent);
-            mainContent.innerHTML = `
+        if (!mainContent) {
+            return;
+        }
+
+        // Failure UIs overwrite mainContent.innerHTML directly, so drop the
+        // skip-render cache entry or the next navigation can leave this page up.
+        this.renderedHtmlCache.delete(mainContent);
+        this.resetScrollPosition(mainContent);
+        mainContent.innerHTML = `
                 <div style="
                     display: flex;
                     flex-direction: column;
@@ -842,14 +876,14 @@ export class Router {
                         color: var(--primary);
                         line-height: 1;
                         margin-bottom: var(--spacing-md);
-                    ">404</div>
+                    ">${this.escapeHtml(options.code)}</div>
                     
                     <h1 style="
                         font-size: 2rem;
                         font-weight: 600;
                         color: var(--text-primary);
                         margin-bottom: var(--spacing-sm);
-                    ">Page Not Found</h1>
+                    ">${this.escapeHtml(options.title)}</h1>
                     
                     <p style="
                         font-size: 1.1rem;
@@ -857,12 +891,7 @@ export class Router {
                         max-width: 500px;
                         margin-bottom: var(--spacing-lg);
                     ">
-                        The page <code style="
-                            background: var(--background-secondary);
-                            padding: 0.2rem 0.5rem;
-                            border-radius: var(--radius-sm);
-                            color: var(--primary);
-                        ">${path}</code> could not be found.
+                        ${options.bodyHtml}
                     </p>
                     
                     <button onclick="window.history.back()" style="
@@ -880,18 +909,52 @@ export class Router {
                         transition: all 0.2s ease;
                     " onmouseover="this.style.transform='translateY(-2px)'; this.style.boxShadow='var(--shadow-md)'" 
                        onmouseout="this.style.transform='translateY(0)'; this.style.boxShadow='none'">
-                        <span>←</span> Go Back
+                        <span>&larr;</span> Go Back
                     </button>
                 </div>
             `;
 
-            window.dispatchEvent(new CustomEvent('pageloaded', {
-                detail: {
-                    path,
-                    notFound: true,
-                },
-            }));
-        }
+        window.dispatchEvent(new CustomEvent('pageloaded', {
+            detail: options.eventDetail,
+        }));
+    }
+
+    private handle404(path: string): void {
+        const safePath = this.escapeHtml(path);
+        this.renderFailurePage({
+            code: '404',
+            title: 'Page Not Found',
+            bodyHtml: `The page <code style="
+                            background: var(--background-secondary);
+                            padding: 0.2rem 0.5rem;
+                            border-radius: var(--radius-sm);
+                            color: var(--primary);
+                        ">${safePath}</code> could not be found.`,
+            eventDetail: {
+                path,
+                notFound: true,
+            },
+        });
+    }
+
+    private handleLoadError(path: string, error: unknown): void {
+        const safePath = this.escapeHtml(path);
+        this.renderFailurePage({
+            code: 'Error',
+            title: 'Unable to load this page',
+            bodyHtml: `The page <code style="
+                            background: var(--background-secondary);
+                            padding: 0.2rem 0.5rem;
+                            border-radius: var(--radius-sm);
+                            color: var(--primary);
+                        ">${safePath}</code> matched a route, but the view or controller failed to load.`,
+            eventDetail: {
+                path,
+                notFound: false,
+                loadError: true,
+                error,
+            },
+        });
     }
     
     /**
@@ -979,7 +1042,7 @@ export class Router {
         return {
             total: routeEntries.length,
             cached: routeEntries.filter(r => r.cacheStatus === 'fresh' || r.cacheStatus === 'stale').length,
-            currentPath: this.currentRoute?.path ?? null,
+            currentPath: this.currentRoute?.requestPath ?? this.currentRoute?.path ?? null,
             routes: routeEntries,
         };
     }
@@ -1069,6 +1132,9 @@ export class Router {
                 mountedLayouts.push(layout);
             }
 
+            const layoutHost = target.querySelector<HTMLElement>('[data-view]') ?? target;
+            this.layoutRoots.set(layout.path, layoutHost);
+
             const outlet = this.findOutlet(target);
             if (!outlet) {
                 console.error(
@@ -1140,6 +1206,7 @@ export class Router {
     private teardownLayout(path: string): void {
         this.layoutScripts[path]?.cleanup?.();
         delete this.layoutScripts[path];
+        this.layoutRoots.delete(path);
     }
 
     private async mountLayoutController(
@@ -1156,7 +1223,8 @@ export class Router {
             loaderData = await layout.config.loader(page.params, loaderSignal);
         }
 
-        const cleanup = await layout.config.controller(page.params, state, loaderData);
+        const root = this.layoutRoots.get(layout.path);
+        const cleanup = await layout.config.controller(page.params, state, loaderData, root);
         this.layoutScripts[layout.path] = {
             cleanup: typeof cleanup === 'function' ? cleanup : undefined,
         };
