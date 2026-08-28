@@ -1,6 +1,6 @@
 {
   "name": "nativecorejs",
-  "version": "2.0.22",
+  "version": "2.0.23",
   "description": "NativeCoreJS runtime: CoreController, CoreComponent, router, signals, and nc-* Web Components",
   "keywords": [
     "nativecore",
@@ -12,6 +12,10 @@
   "homepage": "https://github.com/davidtv2008/nativecorejs#readme",
   "bugs": {
     "url": "https://github.com/davidtv2008/nativecorejs/issues"
+  },
+  "funding": {
+    "type": "Buy Me a Coffee",
+    "url": "https://buymeacoffee.com/davidtv200e"
   },
   "repository": {
     "type": "git",
