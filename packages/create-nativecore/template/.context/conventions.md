@@ -211,8 +211,9 @@ Default shell is minimal (`#app.minimal-shell`). `app-header`, `app-sidebar`, an
 ## CSS in Shadow DOM
 
 - Scope styles inside the component `template()` or `static styles`.
-- Framework tokens use `--nc-*` variables.
-- App layout styles live under `src/styles/`.
+- Framework tokens use `--nc-*` variables (in `core-variables.css` — do not edit).
+- App theme tokens use `--color-*` semantics in `src/styles/themes/` (imported via `variables.css`).
+- App layout and shell overrides live under `src/styles/` (`shell.css`, `main.css`).
 
 ## Testing
 

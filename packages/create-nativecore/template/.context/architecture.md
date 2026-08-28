@@ -61,6 +61,14 @@ How a scaffolded NativeCore app is structured and how data flows through it.
 │   ├── stores/                # appStore, uiStore, make:store
 │   ├── middleware/            # empty by default; make:middleware
 │   ├── styles/
+│   │   ├── core-variables.css   # framework --nc-* (do not edit)
+│   │   ├── core.css             # framework shell layout (do not edit)
+│   │   ├── variables.css        # theme entry (@import tokens + themes)
+│   │   ├── tokens/base.css      # spacing, typography, radius
+│   │   ├── themes/default.css   # brand + semantic colors
+│   │   ├── themes/default.dark.css
+│   │   ├── shell.css            # project shell overrides
+│   │   └── main.css             # page/layout rules
 │   ├── utils/
 │   ├── constants/
 │   └── types/

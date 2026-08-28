@@ -1,0 +1,45 @@
+/**
+ * App shell chrome — project-owned overrides on framework core.css.
+ *
+ * Add rules here that customize header, sidebar, or grid layout.
+ * Use --shell-* tokens from themes/*.css so shell branding swaps with your theme.
+ *
+ * The rules below are optional examples — uncomment to apply branded shell chrome.
+ */
+
+.main-content {
+    scrollbar-gutter: stable;
+}
+
+/*
+.app-header {
+    background: var(--shell-header-bg);
+    backdrop-filter: none;
+    -webkit-backdrop-filter: none;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+#app {
+    grid-template-columns: var(--shell-sidebar-width) 1fr;
+}
+
+#app.minimal-shell {
+    background: transparent;
+}
+
+#app.minimal-shell app-header,
+#app.minimal-shell app-sidebar {
+    display: none !important;
+}
+
+@media (max-width: 768px) {
+    app-sidebar {
+        background: var(--shell-sidebar-bg);
+        box-shadow: none;
+    }
+
+    app-sidebar.mobile-open {
+        box-shadow: var(--shell-sidebar-mobile-shadow);
+    }
+}
+*/

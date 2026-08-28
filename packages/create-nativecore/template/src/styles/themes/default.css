@@ -1,0 +1,100 @@
+/**
+ * Default scaffold theme — light mode.
+ *
+ * Swap this file via variables.css to use a different brand theme.
+ * Use --color-* semantic tokens in components and main.css (not --brand-*).
+ */
+:root {
+    /* Brand primitives — rename or replace for your product */
+    --brand-primary: #10b981;
+    --brand-primary-light: #34d399;
+    --brand-primary-dark: #059669;
+    --brand-secondary: #3b82f6;
+    --brand-accent: #0f172a;
+
+    /* Semantic colors */
+    --color-primary: var(--brand-primary);
+    --color-primary-light: var(--brand-primary-light);
+    --color-primary-dark: var(--brand-primary-dark);
+    --color-primary-deep: var(--brand-accent);
+    --color-secondary: var(--brand-secondary);
+    --color-secondary-light: #60a5fa;
+    --color-accent: var(--brand-accent);
+    --color-primary-white: #ffffff;
+
+    /* Framework bridge — keeps nc-* components on-brand */
+    --nc-theme-primary: var(--brand-primary);
+    --nc-theme-primary-light: var(--brand-primary-light);
+    --nc-theme-primary-dark: var(--brand-primary-dark);
+    --nc-theme-secondary: var(--brand-secondary);
+    --nc-theme-accent: var(--brand-accent);
+
+    /* Optional shell chrome tokens (used by shell.css when customized) */
+    --shell-header-bg: rgba(15, 23, 42, 0.92);
+    --shell-sidebar-bg: var(--color-bg-secondary);
+    --shell-sidebar-width: 250px;
+    --shell-logo-mark-bg: var(--color-primary);
+    --shell-sidebar-mobile-shadow: 0 24px 48px rgba(15, 23, 42, 0.24);
+
+    /* Gradients */
+    --gradient-primary: linear-gradient(135deg, #10b981 0%, #059669 100%);
+    --gradient-secondary: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
+    --gradient-accent: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
+    --gradient-success: linear-gradient(135deg, #10b981 0%, #059669 100%);
+    --gradient-subtle: linear-gradient(180deg, rgba(255, 255, 255, 0) 0%, rgba(0, 0, 0, 0.02) 100%);
+    --gradient-hero: linear-gradient(135deg, rgba(16, 185, 129, 0.1) 0%, rgba(5, 150, 105, 0.05) 100%);
+
+    --gradient-gold: linear-gradient(135deg, #10b981 0%, #059669 100%);
+    --gradient-silver: linear-gradient(135deg, #64748b 0%, #475569 100%);
+    --gradient-platinum: linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%);
+    --gradient-bronze: linear-gradient(135deg, #10b981 0%, #059669 100%);
+
+    /* Neutral palette */
+    --color-white: #ffffff;
+    --color-black: #000000;
+    --color-gray-50: #f8fafc;
+    --color-gray-100: #f1f5f9;
+    --color-gray-200: #e2e8f0;
+    --color-gray-300: #cbd5e1;
+    --color-gray-400: #94a3b8;
+    --color-gray-500: #64748b;
+    --color-gray-600: #475569;
+    --color-gray-700: #334155;
+    --color-gray-800: #1e293b;
+    --color-gray-900: #0f172a;
+
+    /* Semantic status colors */
+    --color-success: #10b981;
+    --color-warning: #f59e0b;
+    --color-error: #ef4444;
+    --color-info: #3b82f6;
+
+    /* Text */
+    --color-text: #0f172a;
+    --color-text-secondary: #64748b;
+    --color-text-muted: #94a3b8;
+
+    /* Backgrounds */
+    --color-bg: #ffffff;
+    --color-bg-secondary: #f8fafc;
+    --color-bg-tertiary: #f1f5f9;
+    --color-border: #e2e8f0;
+
+    /* Short aliases */
+    --primary: var(--color-primary);
+    --primary-dark: var(--color-primary-dark);
+    --secondary: var(--color-secondary);
+    --secondary-dark: #2563eb;
+    --success: var(--color-success);
+    --danger: var(--color-error);
+    --text: var(--color-text);
+    --text-secondary: var(--color-text-secondary);
+    --bg: var(--color-bg);
+    --bg-secondary: var(--color-bg-secondary);
+    --border: var(--color-border);
+
+    /* Brand-tinted shadows */
+    --shadow-primary: 0 4px 12px rgba(16, 185, 129, 0.25);
+    --shadow-secondary: 0 4px 12px rgba(59, 130, 246, 0.25);
+    --shadow-success: 0 4px 12px rgba(16, 185, 129, 0.25);
+}

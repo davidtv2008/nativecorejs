@@ -1,0 +1,19 @@
+/**
+ * Default dark mode overrides.
+ * Applied when <html data-theme="dark"> (via uiStore.setTheme).
+ */
+[data-theme="dark"] {
+    --color-text: #f1f5f9;
+    --color-text-secondary: #94a3b8;
+    --color-text-muted: #64748b;
+    --color-bg: #0f172a;
+    --color-bg-secondary: #1e293b;
+    --color-bg-tertiary: #334155;
+    --color-border: #334155;
+
+    --text: var(--color-text);
+    --text-secondary: var(--color-text-secondary);
+    --bg: var(--color-bg);
+    --bg-secondary: var(--color-bg-secondary);
+    --border: var(--color-border);
+}

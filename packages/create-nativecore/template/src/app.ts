@@ -23,7 +23,11 @@ import { initSidebar } from '@utils/sidebar.js';
 import { initLazyComponents } from '@core/lazyComponents.js';
 import { dom } from '@core-utils/dom.js';
 import { pausePageCleanupCollection, resumePageCleanupCollection } from '@core/pageCleanupRegistry.js';
+import { uiStore } from '@stores/uiStore.js';
 import '@components/registry.js'; // side-effect import: registers all lazy components
+
+// Apply persisted theme before first route render
+uiStore.setTheme(uiStore.theme.value);
 
 function isLocalhost(): boolean {
     // Never treat Capacitor's WebView as localhost — it uses https://localhost as its

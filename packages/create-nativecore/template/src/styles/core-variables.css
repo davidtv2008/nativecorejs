@@ -6,10 +6,11 @@
  * These variables are reserved for NativeCore's built-in components.
  * All variables are prefixed with --nc- to prevent conflicts.
  * 
- * For your own components and customization, use variables.css instead.
- * 
- * Optional Theming: You can override framework colors by setting
- * --nc-theme-* variables in variables.css (see examples at bottom).
+ * For your own components and customization, use src/styles/themes/*.css
+ * (imported via variables.css).
+ *
+ * Optional Theming: Set --nc-theme-* variables in your active theme file
+ * (see examples at bottom).
  */
 
 :root {
@@ -208,7 +209,8 @@
    THEMING EXAMPLE (for developers)
    ============================================
    
-   To customize the framework's primary color, add this to variables.css:
+   To customize the framework's primary color, add this to themes/default.css
+   (or your active theme file imported from variables.css):
    
    :root {
      --nc-theme-primary: #your-color;

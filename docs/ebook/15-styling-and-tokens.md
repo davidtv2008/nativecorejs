@@ -1,202 +1,211 @@
 # Chapter 15 — Styling and Tokens
 
-NativeCoreJS ships a layered CSS architecture: a framework token layer you do not touch, a theme override layer you own, an app styles layer for page-level rules, and Shadow DOM styles local to each component. Understanding which layer to use — and never mixing them up — is what keeps Deskflow looking polished and maintainable.
+NativeCoreJS ships a layered CSS architecture: a framework token layer you do not touch, a project-owned theme layer you can swap, shell overrides, page-level rules, and Shadow DOM styles local to each component. Understanding which layer to use — and never mixing them up — is what keeps your app polished and maintainable.
 
 ---
 
 ## Mental model
 
 ```
-index.html  (loads stylesheets in order)
+index.html  (loads bundle.css, built in this order)
   │
-  ├── core-variables.css   → --nc-* tokens     ← DO NOT EDIT
-  ├── core.css             → framework resets   ← DO NOT EDIT
-  ├── variables.css        → --color-*, --font-* overrides  ← YOURS
-  └── main.css             → page/layout rules              ← YOURS
+  ├── core-variables.css   → --nc-* tokens        ← DO NOT EDIT
+  ├── core.css             → framework shell      ← DO NOT EDIT
+  ├── variables.css        → @imports your theme  ← swap themes here
+  │     ├── tokens/base.css      → spacing, fonts, radius
+  │     └── themes/default.css   → --color-*, --nc-theme-*
+  ├── shell.css            → header/sidebar tweaks ← YOURS (optional)
+  └── main.css             → page/layout rules    ← YOURS
 
 Components (Shadow DOM)
-  └── <style> inside template()  → scoped to that tag only
+  └── static styles / template <style>  → use var(--color-*), not raw hex
 ```
 
-The `--nc-` prefix is reserved for the framework. Every token you add in `variables.css` should use your own prefix (e.g. `--color-`, `--df-`, `--spacing-`) to avoid collisions with future framework updates.
+The `--nc-` prefix is reserved for the framework. Use `--color-*` semantic tokens in components and `main.css`. Keep brand primitives (`--brand-*` or your own prefix) inside theme files only.
 
 ---
 
-## The four files
+## The style files
 
 | File | Edit it? | Purpose |
 |------|----------|---------|
-| `src/styles/core-variables.css` | Never | Framework `--nc-*` tokens — treat as read-only |
-| `src/styles/core.css` | Never | Framework base resets and defaults |
-| `src/styles/variables.css` | Yes — yours | App tokens, `--nc-theme-*` overrides |
+| `src/styles/core-variables.css` | Never | Framework `--nc-*` tokens |
+| `src/styles/core.css` | Never | Framework shell layout and defaults |
+| `src/styles/variables.css` | Yes — theme selector | Thin `@import` entry; swap theme files here |
+| `src/styles/tokens/base.css` | Rarely | Structural tokens (spacing, typography, radius) |
+| `src/styles/themes/*.css` | Yes — your brand | Colors, gradients, `--nc-theme-*` bridge, `--shell-*` chrome |
+| `src/styles/shell.css` | Yes — optional | Project overrides on framework shell chrome |
 | `src/styles/main.css` | Yes — yours | Page classes, layout, global overrides |
+
+---
+
+## Swapping themes
+
+`variables.css` is a thin loader:
+
+```css
+/* src/styles/variables.css */
+@import './tokens/base.css';
+@import './themes/default.css';
+@import './themes/default.dark.css';
+```
+
+To use a different brand, create `themes/my-brand.css` and change the import:
+
+```css
+@import './themes/my-brand.css';
+@import './themes/my-brand.dark.css';
+```
+
+The CSS bundler inlines `@import` statements automatically when you run `npm run compile` or `npm run bundle:css`.
+
+---
+
+## Theme file structure
+
+Put brand primitives and semantic aliases in your theme file:
+
+```css
+/* src/styles/themes/default.css */
+:root {
+    /* Brand primitives — only defined here */
+    --brand-primary: #10b981;
+    --brand-secondary: #3b82f6;
+
+    /* Semantic tokens — use these everywhere else */
+    --color-primary: var(--brand-primary);
+    --color-secondary: var(--brand-secondary);
+
+    /* Framework bridge — nc-* components pick these up */
+    --nc-theme-primary: var(--brand-primary);
+    --nc-theme-secondary: var(--brand-secondary);
+
+    /* Optional shell chrome (for shell.css) */
+    --shell-header-bg: rgba(15, 23, 42, 0.92);
+    --shell-sidebar-width: 250px;
+}
+```
+
+In components and `main.css`, always consume semantics:
+
+```css
+.hero-title { color: var(--color-primary-deep); }
+.cta-button { background: var(--color-secondary); }
+```
+
+Never reference `--brand-*` outside the theme file.
 
 ---
 
 ## Overriding framework colors
 
-To change the primary color that `nc-*` components use, set `--nc-theme-*` variables in `variables.css`:
+The framework reads `--nc-primary: var(--nc-theme-primary, #10b981)`. Set `--nc-theme-*` in your theme file (not in `core-variables.css`):
 
 ```css
-/* src/styles/variables.css */
 :root {
-    --nc-theme-primary:       #6366f1;   /* indigo */
+    --nc-theme-primary:       #6366f1;
     --nc-theme-primary-light: #818cf8;
     --nc-theme-primary-dark:  #4f46e5;
 }
 ```
 
-The framework reads `--nc-primary: var(--nc-theme-primary, #10b981)` — your override wins because it is set earlier in the cascade.
-
 ---
 
-## Adding Deskflow brand tokens
+## Shell chrome overrides
 
-Put your own tokens in `variables.css` without the `--nc-` prefix:
+Framework `core.css` ships generic header/sidebar layout. Customize branding in `shell.css` using `--shell-*` tokens from your theme:
 
 ```css
-/* src/styles/variables.css */
-:root {
-    --df-sidebar-width: 240px;
-    --df-task-radius:   0.625rem;
-    --df-priority-high: #ef4444;
-    --df-priority-med:  #f59e0b;
-    --df-priority-low:  #10b981;
+/* src/styles/shell.css */
+.app-header {
+    background: var(--shell-header-bg);
+    backdrop-filter: none;
+}
+
+#app {
+    grid-template-columns: var(--shell-sidebar-width) 1fr;
 }
 ```
 
-Use them in `main.css` and in component `<style>` blocks:
+Keep brand-specific shell rules out of `core.css` so framework updates never conflict with your theme.
+
+---
+
+## Theme toggle with `uiStore`
+
+`uiStore.setTheme` stores the choice in `localStorage` and sets `data-theme` on `<html>`:
+
+```js
+import { uiStore } from '@stores/uiStore.js';
+
+uiStore.setTheme('dark');
+uiStore.setTheme('light');
+```
+
+Import `uiStore` early in `app.ts` / `app.js` so the persisted theme applies before first paint:
+
+```js
+import { uiStore } from '@stores/uiStore.js';
+
+uiStore.setTheme(uiStore.theme.value);
+```
+
+Dark overrides belong in a separate theme file:
 
 ```css
-/* src/styles/main.css */
-.tasks-page {
-    max-width: 680px;
-    margin: 0 auto;
-    padding: var(--nc-spacing-lg, 1.5rem);
+/* src/styles/themes/default.dark.css */
+[data-theme="dark"] {
+    --color-bg: #0f172a;
+    --color-text: #f1f5f9;
+    --color-border: #334155;
 }
+```
 
+---
+
+## Adding app-specific tokens
+
+Use your own prefix for app-only tokens (e.g. `--df-*` for Deskflow):
+
+```css
+/* src/styles/themes/default.css */
+:root {
+    --df-sidebar-width: 240px;
+    --df-task-radius: 0.625rem;
+    --df-priority-high: #ef4444;
+}
+```
+
+Use them in `main.css` and component styles:
+
+```css
 .task-list {
-    display: flex;
-    flex-direction: column;
     gap: var(--nc-spacing-sm, 0.5rem);
 }
 ```
 
 ---
 
-## Theme toggle with `uiStore`
-
-`uiStore.setTheme` stores the choice in `localStorage` and sets `data-theme` on `<html>`. All your `[data-theme="dark"]` rules kick in immediately:
-
-```js
-import { uiStore } from '@stores/uiStore.js';
-
-uiStore.setTheme('dark');   // → localStorage + data-theme="dark" on <html>
-uiStore.setTheme('light');
-```
-
-To wire a toggle switch in the settings controller:
-
-```js
-import { CoreController } from '@core/controller.js';
-import { uiStore } from '@stores/uiStore.js';
-
-export class SettingsController extends CoreController {
-    onMount() {
-        this.assertRefs('themeSwitch');
-
-        // Reflect current theme on mount
-        this.themeSwitch.toggleAttribute(
-            'checked', uiStore.theme.value === 'dark'
-        );
-
-        this.on(this.themeSwitch, 'change', () => {
-            const next = uiStore.theme.value === 'dark' ? 'light' : 'dark';
-            uiStore.setTheme(next);
-        });
-    }
-}
-
-export function settingsController(_params, _state, _loaderData, rootElement) {
-    const ctrl = new SettingsController(rootElement);
-    return () => ctrl.destroy();
-}
-```
-
-In `src/views/protected/settings.html`:
-
-```html
-<div data-view="settings">
-    <h1>Settings</h1>
-    <label>
-        Dark mode
-        <nc-switch ref="themeSwitch"></nc-switch>
-    </label>
-</div>
-```
-
-Confirm the event name for `nc-switch` in its source file — `change` is the standard DOM event and is used by most scaffold controls, but always verify before relying on it.
-
----
-
-## Dark-mode CSS
-
-Add the dark token overrides to `variables.css`:
-
-```css
-[data-theme="dark"] {
-    --nc-bg:           #0f172a;
-    --nc-text:         #f1f5f9;
-    --nc-border:       #334155;
-    --nc-bg-secondary: #1e293b;
-
-    /* Your app tokens in dark mode */
-    --df-priority-high: #f87171;
-    --df-priority-med:  #fbbf24;
-}
-```
-
-Because `--nc-*` tokens are consumed by the framework's built-in components via CSS custom properties, overriding them in `[data-theme="dark"]` automatically re-themes every `nc-*` element on the page.
-
----
-
 ## Styling inside a `CoreComponent`
 
-Component styles go inside the `template()` method's `<style>` block. They are scoped to the shadow root — no leaking, no globals:
+Component styles go in `static styles` or inside `template()`. They are scoped to the shadow root:
 
 ```js
-template() {
-    return html`
-        <style>
-            :host {
-                display: block;
-                color: var(--nc-text, #0f172a);
-                background: var(--nc-bg, #fff);
-            }
-            :host([priority="high"]) {
-                border-left: 3px solid var(--df-priority-high, #ef4444);
-            }
-            button {
-                background: var(--nc-primary);
-                border-radius: var(--nc-radius-md);
-                color: var(--nc-white);
-                border: none;
-                padding: 0.375rem 0.75rem;
-                cursor: pointer;
-            }
-        </style>
-        <!-- markup here -->
-    `;
-}
+static styles = css`
+    :host {
+        display: block;
+        color: var(--color-text, #0f172a);
+        background: var(--color-bg, #fff);
+    }
+    button {
+        background: var(--color-primary);
+        border-radius: var(--radius-md);
+        color: var(--color-primary-white, #fff);
+    }
+`;
 ```
 
-Always use `var(--token, fallback)`. The fallback keeps the component usable if the stylesheet has not loaded yet or if the component is used outside the scaffold.
-
----
-
-## CSS layers (static styles)
-
-For heavy component stylesheets you can use `static styles = css\`...\`` instead of putting CSS inside `template()`. This is slightly more efficient because the browser parses it once per class rather than once per instance. Check Chapter 13's examples of `nc-button` and `nc-snackbar` for the pattern.
+Always use `var(--token, fallback)` so components work before the stylesheet loads.
 
 ---
 
@@ -204,33 +213,21 @@ For heavy component stylesheets you can use `static styles = css\`...\`` instead
 
 > **Feature:** The settings page can toggle light / dark mode, and the preference survives a page reload.
 
-1. In `src/views/protected/settings.html`, add an `<nc-switch ref="themeSwitch">` label.
-2. In the settings controller, wire `uiStore.setTheme` to the switch's `change` event.
-3. On mount, set the initial `checked` state from `uiStore.theme.value`.
-4. Add `[data-theme="dark"]` overrides to `variables.css`.
-5. Reload the browser — the chosen theme should persist.
-
-Optionally, style the tasks page layout in `main.css` using your `--df-*` tokens.
+1. Add an `<nc-switch ref="themeSwitch">` in settings view.
+2. Wire `uiStore.setTheme` to the switch `change` event in the settings controller.
+3. Add `[data-theme="dark"]` overrides to `themes/default.dark.css`.
+4. Confirm `uiStore.setTheme(uiStore.theme.value)` runs in `app.*` on boot.
 
 ---
 
 ## Verify
 
-- [ ] Toggling the switch flips `data-theme` on `<html>` (check DevTools Elements panel)
-- [ ] Reloading the browser preserves the chosen theme
-- [ ] `nc-*` components change appearance when theme flips
-- [ ] You have not added any tokens with the `--nc-` prefix to `variables.css`
-- [ ] `var(--token, fallback)` pattern is used inside all component styles
-
----
-
-## Challenges
-
-**Bronze** — Add a `--df-card-bg` token in `variables.css` and use it as `background: var(--df-card-bg, var(--nc-bg))` in `task-card.js`. Override it in `[data-theme="dark"]`.
-
-**Silver** — Create a simple CSS animation in `main.css` that fades new task cards in when they are appended to the list. Apply the animation class from the `buildCard` helper.
-
-**Gold** — Read `uiStore.theme` in `task-card.js` using `this.effect` (not CSS) and programmatically update an icon inside the card based on priority. Use `this.bind(priorityState, iconEl)` to keep it in sync. Confirm the icon updates immediately when priority changes without a page reload.
+- [ ] `variables.css` only contains `@import` lines (no raw token blocks)
+- [ ] Brand primitives live in `themes/*.css`, not in components
+- [ ] Components use `--color-*`, not `--brand-*` or `--nc-*`
+- [ ] `core.css` and `core-variables.css` have no project-specific edits
+- [ ] Toggling theme flips `data-theme` on `<html>` and persists on reload
+- [ ] `npm run bundle:css` succeeds (imports are inlined)
 
 ---
 
@@ -238,11 +235,12 @@ Optionally, style the tasks page layout in `main.css` using your `--df-*` tokens
 
 | Mistake | Fix |
 |---------|-----|
-| Editing `core-variables.css` | Override via `--nc-theme-*` in `variables.css` instead |
-| Adding `--nc-` prefixed tokens to `variables.css` | Use your own prefix to avoid collision with framework updates |
-| Putting global page styles inside a `CoreComponent` template | Component styles are shadow-scoped; global layout goes in `main.css` |
-| Expecting `data-theme` to be set before `uiStore` is imported | `uiStore` reads `localStorage` at import time and calls `setTheme` — import it early in `app.js` if you want the theme applied before first render |
-| `::slotted` selectors in `main.css` (outside shadow root) | `::slotted` only works inside a shadow root's stylesheet — it has no effect in `main.css` |
+| Putting all tokens in `variables.css` | Split into `tokens/` + `themes/`; keep `variables.css` as a loader |
+| Editing `core-variables.css` or `core.css` | Override via theme files and `shell.css` |
+| Using `--brand-*` in components | Use `--color-*` semantics; keep primitives in theme files only |
+| Adding `--nc-` prefixed tokens to theme files | Use `--nc-theme-*` bridge vars only |
+| Expecting `@import` to work in the browser without bundling | Run `npm run compile` — the bundler inlines imports into `bundle.css` |
+| Putting global page styles inside a component template | Global layout goes in `main.css` |
 
 ---
 
