@@ -9,6 +9,7 @@ Monorepo for the NativeCore framework runtime and the official app scaffolder.
 - **[Ebook](./docs/ebook/README.md)** — Deskflow curriculum (learn by building)
 - **[npm publishing](./docs/NPM_PUBLISHING.md)** — release flow for maintainers
 - **[Contributing](./CONTRIBUTING.md)** — how to contribute
+- **[Support / Buy me a coffee](https://buymeacoffee.com/davidtv200e)** — help fund continued development
 
 ## Packages
 
