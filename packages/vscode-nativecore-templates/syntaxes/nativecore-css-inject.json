@@ -1,0 +1,48 @@
+{
+  "scopeName": "inline.nativecore.css",
+  "injectionSelector": "L:source.js -comment -string, L:source.js.jsx -comment -string, L:source.jsx -comment -string, L:source.ts -comment -string, L:source.tsx -comment -string, L:source.js.tsx -comment -string",
+  "patterns": [
+    {
+      "comment": "Tagged css`...`",
+      "name": "string.template.nativecore.css",
+      "begin": "(?i)(?:\\bcss\\s*)(`)",
+      "beginCaptures": {
+        "1": { "name": "punctuation.definition.string.template.begin.js" }
+      },
+      "end": "(`)",
+      "endCaptures": {
+        "1": { "name": "punctuation.definition.string.template.end.js" }
+      },
+      "patterns": [
+        { "include": "source.js#template-substitution-element" },
+        {
+          "begin": "(?<=`)",
+          "end": "(?=`)",
+          "contentName": "meta.embedded.block.css",
+          "patterns": [{ "include": "source.css" }]
+        }
+      ]
+    },
+    {
+      "comment": "Untagged `...` that looks like a CSS ruleset (optional heuristic)",
+      "name": "string.template.nativecore.css.untagged",
+      "begin": "(`)(?=\\s*(?::host\\b|@media\\b|@keyframes\\b|\\.\\w+[^{`]*\\{|#\\w+[^{`]*\\{|[a-zA-Z][\\w-]*\\s*\\{))",
+      "beginCaptures": {
+        "1": { "name": "punctuation.definition.string.template.begin.js" }
+      },
+      "end": "(`)",
+      "endCaptures": {
+        "1": { "name": "punctuation.definition.string.template.end.js" }
+      },
+      "patterns": [
+        { "include": "source.js#template-substitution-element" },
+        {
+          "begin": "(?<=`)",
+          "end": "(?=`)",
+          "contentName": "meta.embedded.block.css",
+          "patterns": [{ "include": "source.css" }]
+        }
+      ]
+    }
+  ]
+}

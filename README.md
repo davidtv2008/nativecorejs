@@ -7,6 +7,8 @@ Monorepo for the NativeCore framework runtime and the official app scaffolder.
 - **[Quick Start](./docs/QUICK_START.md)** — scaffold and run an app
 - **[Cheat Sheet](./docs/CHEATSHEET.md)** — common APIs and patterns
 - **[Ebook](./docs/ebook/README.md)** — Deskflow curriculum (learn by building)
+- **[VS Code / Cursor extensions](./docs/VSCODE_EXTENSIONS.md)** — Refs, Snippets, Diagnostics, Routes pack
+- **[Open VSX (Cursor)](./docs/OPEN_VSX.md)** — publish extensions so Cursor can install by ID
 - **[npm publishing](./docs/NPM_PUBLISHING.md)** — release flow for maintainers
 - **[Contributing](./CONTRIBUTING.md)** — how to contribute
 - **[Support / Buy me a coffee](https://buymeacoffee.com/davidtv200e)** — help fund continued development
@@ -17,6 +19,7 @@ Monorepo for the NativeCore framework runtime and the official app scaffolder.
 |---------|------|
 | `packages/nativecorejs` | Publishable runtime (`import … from 'nativecorejs'`) |
 | `packages/create-nativecore` | CLI scaffolder (`npx create-nativecore`) |
+| `packages/vscode-nativecore-*` | VS Code / Cursor extension family ([docs](./docs/VSCODE_EXTENSIONS.md)) |
 
 Current version: **`2.0.11`**.
 

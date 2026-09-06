@@ -1,0 +1,48 @@
+{
+  "scopeName": "inline.nativecore.html",
+  "injectionSelector": "L:source.js -comment -string, L:source.js.jsx -comment -string, L:source.jsx -comment -string, L:source.ts -comment -string, L:source.tsx -comment -string, L:source.js.tsx -comment -string",
+  "patterns": [
+    {
+      "comment": "Tagged html`...` / svg`...` (NativeCore / lit-style)",
+      "name": "string.template.nativecore.html",
+      "begin": "(?i)(?:\\b(?:html|svg)\\s*)(`)",
+      "beginCaptures": {
+        "1": { "name": "punctuation.definition.string.template.begin.js" }
+      },
+      "end": "(`)",
+      "endCaptures": {
+        "1": { "name": "punctuation.definition.string.template.end.js" }
+      },
+      "patterns": [
+        { "include": "source.js#template-substitution-element" },
+        {
+          "begin": "(?<=`)",
+          "end": "(?=`)",
+          "contentName": "meta.embedded.block.html",
+          "patterns": [{ "include": "text.html.basic" }]
+        }
+      ]
+    },
+    {
+      "comment": "Untagged `...` that starts like HTML/markup (devs often forget html`)",
+      "name": "string.template.nativecore.html.untagged",
+      "begin": "(`)(?=\\s*(?:<!--|<!DOCTYPE\\b|<[!?]?/?[A-Za-z]))",
+      "beginCaptures": {
+        "1": { "name": "punctuation.definition.string.template.begin.js" }
+      },
+      "end": "(`)",
+      "endCaptures": {
+        "1": { "name": "punctuation.definition.string.template.end.js" }
+      },
+      "patterns": [
+        { "include": "source.js#template-substitution-element" },
+        {
+          "begin": "(?<=`)",
+          "end": "(?=`)",
+          "contentName": "meta.embedded.block.html",
+          "patterns": [{ "include": "text.html.basic" }]
+        }
+      ]
+    }
+  ]
+}

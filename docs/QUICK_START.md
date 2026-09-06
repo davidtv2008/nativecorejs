@@ -69,6 +69,9 @@ Builder is disabled in current scaffolds.
 | `.nativecore/` | Vendored runtime, utils, generators, testing, dev tools |
 | `server.js` | Dev server + HMR + mock `/api` |
 | `nativecore.config.json` | `useTypeScript`, feature flags |
+| `.vscode/extensions.json` | Recommends **NativeCoreJS Extension Pack** (+ lite: Refs, Routes, Pair, Contract, Diagnostics, Import Guard, Templates) |
+
+Editor DX: [VSCODE_EXTENSIONS.md](./VSCODE_EXTENSIONS.md) (full family). Legacy Refs-only note: [VSCODE_REFS.md](./VSCODE_REFS.md).
 
 ---
 

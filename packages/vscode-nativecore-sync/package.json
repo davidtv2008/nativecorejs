@@ -1,0 +1,46 @@
+{
+  "name": "vscode-nativecore-sync",
+  "displayName": "NativeCoreJS Sync",
+  "description": "Run sync:core / sync:components / sync:importmap and surface .nativecore health",
+  "version": "0.1.0",
+  "publisher": "NativeCoreJS",
+  "license": "MIT",
+  "icon": "media/icon.png",
+  "homepage": "https://github.com/davidtv2008/nativecorejs#readme",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/davidtv2008/nativecorejs.git",
+    "directory": "packages/vscode-nativecore-sync"
+  },
+  "engines": { "vscode": "^1.85.0" },
+  "categories": ["Other"],
+  "keywords": ["nativecore", "nativecorejs", "sync"],
+  "activationEvents": [
+    "workspaceContains:nativecore.config.json"
+  ],
+  "main": "./src/extension.js",
+  "contributes": {
+    "commands": [
+      {
+        "command": "nativecoreSync.syncCore",
+        "title": "NativeCore: Sync Core (.nativecore/core)"
+      },
+      {
+        "command": "nativecoreSync.syncComponents",
+        "title": "NativeCore: Sync Components (nc-*)"
+      },
+      {
+        "command": "nativecoreSync.syncImportMap",
+        "title": "NativeCore: Sync Import Map"
+      },
+      {
+        "command": "nativecoreSync.check",
+        "title": "NativeCore: Check Vendored Runtime"
+      }
+    ]
+  },
+  "scripts": {
+    "package": "npx --yes @vscode/vsce package --no-dependencies",
+    "build": "echo vscode-nativecore-sync has no compile step"
+  }
+}

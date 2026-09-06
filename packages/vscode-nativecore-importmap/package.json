@@ -1,0 +1,71 @@
+{
+  "name": "vscode-nativecore-importmap",
+  "displayName": "NativeCoreJS Import Guard",
+  "description": "Warn on broken @alias imports and missing importmap / tsconfig path targets",
+  "version": "0.1.0",
+  "publisher": "NativeCoreJS",
+  "license": "MIT",
+  "icon": "media/icon.png",
+  "homepage": "https://github.com/davidtv2008/nativecorejs#readme",
+  "bugs": {
+    "url": "https://github.com/davidtv2008/nativecorejs/issues"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/davidtv2008/nativecorejs.git",
+    "directory": "packages/vscode-nativecore-importmap"
+  },
+  "engines": {
+    "vscode": "^1.85.0"
+  },
+  "categories": [
+    "Linters"
+  ],
+  "keywords": [
+    "nativecore",
+    "nativecorejs",
+    "importmap",
+    "aliases"
+  ],
+  "activationEvents": [
+    "workspaceContains:nativecore.config.json",
+    "workspaceContains:**/tsconfig.json"
+  ],
+  "main": "./src/extension.js",
+  "contributes": {
+    "commands": [
+      {
+        "command": "nativecoreImportmap.refresh",
+        "title": "NativeCore: Refresh Import Guard Index"
+      }
+    ],
+    "configuration": {
+      "title": "NativeCore Import Guard",
+      "properties": {
+        "nativecoreImportmap.enabled": {
+          "type": "boolean",
+          "default": true
+        },
+        "nativecoreImportmap.warnMissingAliasTarget": {
+          "type": "boolean",
+          "default": true,
+          "description": "Warn when an @alias import does not resolve to an existing file."
+        },
+        "nativecoreImportmap.warnMissingJsExt": {
+          "type": "boolean",
+          "default": true,
+          "description": "Warn when @alias imports omit the .js extension."
+        },
+        "nativecoreImportmap.warnUnknownAlias": {
+          "type": "boolean",
+          "default": true,
+          "description": "Warn when an import uses an unknown @alias (not in tsconfig paths / defaults)."
+        }
+      }
+    }
+  },
+  "scripts": {
+    "package": "npx --yes @vscode/vsce package --no-dependencies",
+    "build": "echo vscode-nativecore-importmap has no compile step"
+  }
+}

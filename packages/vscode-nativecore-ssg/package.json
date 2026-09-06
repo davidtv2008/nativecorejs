@@ -1,0 +1,62 @@
+{
+  "name": "vscode-nativecore-ssg",
+  "displayName": "NativeCoreJS SSG Map",
+  "description": "Sidebar map of which SPA routes are SSG-eligible (public/static) vs protected/dynamic",
+  "version": "0.1.0",
+  "publisher": "NativeCoreJS",
+  "license": "MIT",
+  "icon": "media/icon.png",
+  "homepage": "https://github.com/davidtv2008/nativecorejs#readme",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/davidtv2008/nativecorejs.git",
+    "directory": "packages/vscode-nativecore-ssg"
+  },
+  "engines": { "vscode": "^1.85.0" },
+  "categories": ["Other"],
+  "keywords": ["nativecore", "nativecorejs", "ssg", "seo"],
+  "activationEvents": [
+    "workspaceContains:nativecore.config.json",
+    "workspaceContains:**/src/routes/routes.js"
+  ],
+  "main": "./src/extension.js",
+  "contributes": {
+    "viewsContainers": {
+      "activitybar": [
+        {
+          "id": "nativecore",
+          "title": "NativeCore",
+          "icon": "media/icon.png"
+        }
+      ]
+    },
+    "views": {
+      "nativecore": [
+        {
+          "id": "nativecoreSsg.routes",
+          "name": "SSG Map"
+        }
+      ]
+    },
+    "commands": [
+      {
+        "command": "nativecoreSsg.refresh",
+        "title": "NativeCore: Refresh SSG Map",
+        "icon": "$(refresh)"
+      }
+    ],
+    "menus": {
+      "view/title": [
+        {
+          "command": "nativecoreSsg.refresh",
+          "when": "view == nativecoreSsg.routes",
+          "group": "navigation"
+        }
+      ]
+    }
+  },
+  "scripts": {
+    "package": "npx --yes @vscode/vsce package --no-dependencies",
+    "build": "echo vscode-nativecore-ssg has no compile step"
+  }
+}

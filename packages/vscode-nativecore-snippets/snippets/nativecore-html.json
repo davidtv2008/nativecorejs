@@ -1,0 +1,26 @@
+{
+  "nc-view-root": {
+    "prefix": ["ncv", "nc-view"],
+    "body": [
+      "<div class=\"${1:page}\" data-view=\"${2:name}\">",
+      "    <h1 ref=\"${3:titleEl}\">${4:Title}</h1>",
+      "    $0",
+      "</div>"
+    ],
+    "description": "NativeCore view root with data-view + ref"
+  },
+  "nc-ref": {
+    "prefix": ["ncref", "nc-ref"],
+    "body": [
+      "ref=\"${1:el}\""
+    ],
+    "description": "NativeCore ref attribute"
+  },
+  "nc-button-ref": {
+    "prefix": ["ncbtn", "nc-button"],
+    "body": [
+      "<button type=\"button\" ref=\"${1:actionBtn}\">${2:Save}</button>"
+    ],
+    "description": "Button with NativeCore ref"
+  }
+}

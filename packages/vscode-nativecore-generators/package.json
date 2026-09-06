@@ -1,0 +1,40 @@
+{
+  "name": "vscode-nativecore-generators",
+  "displayName": "NativeCoreJS Generators",
+  "description": "Command Palette UI for NativeCore make:* and remove:* generators",
+  "version": "0.1.0",
+  "publisher": "NativeCoreJS",
+  "license": "MIT",
+  "icon": "media/icon.png",
+  "homepage": "https://github.com/davidtv2008/nativecorejs#readme",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/davidtv2008/nativecorejs.git",
+    "directory": "packages/vscode-nativecore-generators"
+  },
+  "engines": { "vscode": "^1.85.0" },
+  "categories": ["Other"],
+  "keywords": ["nativecore", "nativecorejs", "generator", "scaffold"],
+  "activationEvents": [
+    "workspaceContains:nativecore.config.json",
+    "onCommand:nativecoreGenerators.make",
+    "onCommand:nativecoreGenerators.remove"
+  ],
+  "main": "./src/extension.js",
+  "contributes": {
+    "commands": [
+      {
+        "command": "nativecoreGenerators.make",
+        "title": "NativeCore: Make (view / component / store / middleware…)"
+      },
+      {
+        "command": "nativecoreGenerators.remove",
+        "title": "NativeCore: Remove (view / component / store / middleware…)"
+      }
+    ]
+  },
+  "scripts": {
+    "package": "npx --yes @vscode/vsce package --no-dependencies",
+    "build": "echo vscode-nativecore-generators has no compile step"
+  }
+}

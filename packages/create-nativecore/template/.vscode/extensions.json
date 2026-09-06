@@ -1,0 +1,12 @@
+{
+  "recommendations": [
+    "NativeCoreJS.vscode-nativecore-pack",
+    "NativeCoreJS.vscode-nativecore-refs",
+    "NativeCoreJS.vscode-nativecore-routes",
+    "NativeCoreJS.vscode-nativecore-pair",
+    "NativeCoreJS.vscode-nativecore-contract",
+    "NativeCoreJS.vscode-nativecore-diagnostics",
+    "NativeCoreJS.vscode-nativecore-importmap",
+    "NativeCoreJS.vscode-nativecore-templates"
+  ]
+}

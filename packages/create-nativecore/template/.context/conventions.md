@@ -37,6 +37,7 @@ Do not wrap every button or paragraph in an `nc-*` component.
 - Root element should include `data-view="<name>"`.
 - Wire DOM for controllers with `ref="name"` (not `id` for controller bindings).
 - Router injects views into `#main-content`.
+- Optional editor DX: install **NativeCoreJS** extensions (`ref` navigation, snippets, diagnostics, routes). See monorepo `docs/VSCODE_EXTENSIONS.md`.
 
 ```html
 <div class="profile-page" data-view="profile">

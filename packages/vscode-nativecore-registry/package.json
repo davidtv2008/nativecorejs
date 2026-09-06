@@ -1,0 +1,62 @@
+{
+  "name": "vscode-nativecore-registry",
+  "displayName": "NativeCoreJS Registry",
+  "description": "Custom element tags to registry / component files; warn unregistered tags in views",
+  "version": "0.1.0",
+  "publisher": "NativeCoreJS",
+  "license": "MIT",
+  "icon": "media/icon.png",
+  "homepage": "https://github.com/davidtv2008/nativecorejs#readme",
+  "bugs": {
+    "url": "https://github.com/davidtv2008/nativecorejs/issues"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/davidtv2008/nativecorejs.git",
+    "directory": "packages/vscode-nativecore-registry"
+  },
+  "engines": {
+    "vscode": "^1.85.0"
+  },
+  "categories": [
+    "Programming Languages"
+  ],
+  "keywords": [
+    "nativecore",
+    "nativecorejs",
+    "components",
+    "registry",
+    "custom-elements"
+  ],
+  "activationEvents": [
+    "workspaceContains:nativecore.config.json",
+    "workspaceContains:**/src/components/**"
+  ],
+  "main": "./src/extension.js",
+  "contributes": {
+    "commands": [
+      {
+        "command": "nativecoreRegistry.refresh",
+        "title": "NativeCore: Refresh Component Registry Index"
+      }
+    ],
+    "configuration": {
+      "title": "NativeCore Registry",
+      "properties": {
+        "nativecoreRegistry.enabled": {
+          "type": "boolean",
+          "default": true
+        },
+        "nativecoreRegistry.warnUnregistered": {
+          "type": "boolean",
+          "default": true,
+          "description": "Warn on hyphenated custom tags in views that are not in the component registry."
+        }
+      }
+    }
+  },
+  "scripts": {
+    "package": "npx --yes @vscode/vsce package --no-dependencies",
+    "build": "echo vscode-nativecore-registry has no compile step"
+  }
+}

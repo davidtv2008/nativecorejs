@@ -1,0 +1,62 @@
+{
+  "name": "vscode-nativecore-params",
+  "displayName": "NativeCoreJS Route Params",
+  "description": "Completions, F12, and warnings for params.* from route :segments",
+  "version": "0.1.0",
+  "publisher": "NativeCoreJS",
+  "license": "MIT",
+  "icon": "media/icon.png",
+  "homepage": "https://github.com/davidtv2008/nativecorejs#readme",
+  "bugs": {
+    "url": "https://github.com/davidtv2008/nativecorejs/issues"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/davidtv2008/nativecorejs.git",
+    "directory": "packages/vscode-nativecore-params"
+  },
+  "engines": {
+    "vscode": "^1.85.0"
+  },
+  "categories": [
+    "Programming Languages"
+  ],
+  "keywords": [
+    "nativecore",
+    "nativecorejs",
+    "params",
+    "router",
+    "loader"
+  ],
+  "activationEvents": [
+    "workspaceContains:nativecore.config.json",
+    "workspaceContains:**/src/routes/routes.js"
+  ],
+  "main": "./src/extension.js",
+  "contributes": {
+    "commands": [
+      {
+        "command": "nativecoreParams.refresh",
+        "title": "NativeCore: Refresh Route Params Index"
+      }
+    ],
+    "configuration": {
+      "title": "NativeCore Route Params",
+      "properties": {
+        "nativecoreParams.enabled": {
+          "type": "boolean",
+          "default": true
+        },
+        "nativecoreParams.warnUnknown": {
+          "type": "boolean",
+          "default": true,
+          "description": "Warn when params.foo is not a :segment on the paired route."
+        }
+      }
+    }
+  },
+  "scripts": {
+    "package": "npx --yes @vscode/vsce package --no-dependencies",
+    "build": "echo vscode-nativecore-params has no compile step"
+  }
+}

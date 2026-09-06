@@ -1,0 +1,57 @@
+{
+  "name": "vscode-nativecore-pack",
+  "displayName": "NativeCoreJS Extension Pack",
+  "description": "Official NativeCoreJS editor family (Refs through Route Params)",
+  "version": "0.3.2",
+  "publisher": "NativeCoreJS",
+  "license": "MIT",
+  "icon": "media/icon.png",
+  "homepage": "https://github.com/davidtv2008/nativecorejs#readme",
+  "bugs": {
+    "url": "https://github.com/davidtv2008/nativecorejs/issues"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/davidtv2008/nativecorejs.git",
+    "directory": "packages/vscode-nativecore-pack"
+  },
+  "engines": {
+    "vscode": "^1.85.0"
+  },
+  "categories": [
+    "Extension Packs"
+  ],
+  "keywords": [
+    "nativecore",
+    "nativecorejs",
+    "extension pack"
+  ],
+  "extensionPack": [
+    "NativeCoreJS.vscode-nativecore-refs",
+    "NativeCoreJS.vscode-nativecore-snippets",
+    "NativeCoreJS.vscode-nativecore-diagnostics",
+    "NativeCoreJS.vscode-nativecore-routes",
+    "NativeCoreJS.vscode-nativecore-explorer",
+    "NativeCoreJS.vscode-nativecore-contract",
+    "NativeCoreJS.vscode-nativecore-generators",
+    "NativeCoreJS.vscode-nativecore-sync",
+    "NativeCoreJS.vscode-nativecore-ssg",
+    "NativeCoreJS.vscode-nativecore-templates",
+    "NativeCoreJS.vscode-nativecore-env",
+    "NativeCoreJS.vscode-nativecore-fixtures",
+    "NativeCoreJS.vscode-nativecore-test",
+    "NativeCoreJS.vscode-nativecore-stores",
+    "NativeCoreJS.vscode-nativecore-middleware",
+    "NativeCoreJS.vscode-nativecore-registry",
+    "NativeCoreJS.vscode-nativecore-pair",
+    "NativeCoreJS.vscode-nativecore-importmap",
+    "NativeCoreJS.vscode-nativecore-orphans",
+    "NativeCoreJS.vscode-nativecore-signals",
+    "NativeCoreJS.vscode-nativecore-devtools",
+    "NativeCoreJS.vscode-nativecore-params"
+  ],
+  "scripts": {
+    "package": "npx --yes @vscode/vsce package --no-dependencies",
+    "build": "echo vscode-nativecore-pack has no compile step"
+  }
+}

@@ -37,13 +37,15 @@ nativecorejs/
 │   │   │   ├── testing/       ← mountComponent, waitFor, fireEvent
 │   │   │   └── index.ts       ← public export surface
 │   │   └── .nativecore/       ← router, state, reconciler, utilities
-│   └── create-nativecore/     ← scaffolding CLI (published as `create-nativecore`)
-│       ├── bin/index.mjs      ← CLI entry point
-│       └── template/          ← full project template copied to new apps
+│   ├── create-nativecore/     ← scaffolding CLI (published as `create-nativecore`)
+│   │   ├── bin/index.mjs      ← CLI entry point
+│   │   └── template/          ← full project template copied to new apps
+│   └── vscode-nativecore-*/  ← VS Code / Cursor extension family
 ├── docs/
 │   ├── ebook/                 ← 35+ chapter ebook
 │   ├── QUICK_START.md         ← 10-command getting-started guide
-│   └── CHEATSHEET.md          ← single-page pattern reference
+│   ├── CHEATSHEET.md          ← single-page pattern reference
+│   └── VSCODE_EXTENSIONS.md   ← editor extension family
 └── benchmarks/                ← performance benchmarks
 ```
 

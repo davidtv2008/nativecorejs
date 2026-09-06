@@ -1,0 +1,74 @@
+{
+  "name": "vscode-nativecore-contract",
+  "displayName": "NativeCoreJS Contract",
+  "description": "Link API_ENDPOINTS / api.get|post(…) to Laravel controller methods (method-aware)",
+  "version": "0.2.0",
+  "publisher": "NativeCoreJS",
+  "license": "MIT",
+  "icon": "media/icon.png",
+  "homepage": "https://github.com/davidtv2008/nativecorejs#readme",
+  "bugs": {
+    "url": "https://github.com/davidtv2008/nativecorejs/issues"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/davidtv2008/nativecorejs.git",
+    "directory": "packages/vscode-nativecore-contract"
+  },
+  "engines": {
+    "vscode": "^1.85.0"
+  },
+  "categories": [
+    "Programming Languages"
+  ],
+  "keywords": [
+    "nativecore",
+    "nativecorejs",
+    "api",
+    "laravel",
+    "contract"
+  ],
+  "activationEvents": [
+    "workspaceContains:nativecore.config.json",
+    "workspaceContains:**/src/constants/apiEndpoints.js",
+    "workspaceContains:**/routes/api.php"
+  ],
+  "main": "./src/extension.js",
+  "contributes": {
+    "configuration": {
+      "title": "NativeCore Contract",
+      "properties": {
+        "nativecoreContract.enabled": {
+          "type": "boolean",
+          "default": true,
+          "description": "Enable API contract navigation and diagnostics."
+        },
+        "nativecoreContract.apiPhpGlob": {
+          "type": "string",
+          "default": "**/routes/api.php",
+          "description": "Glob for Laravel API route files (multi-root workspaces)."
+        },
+        "nativecoreContract.endpointsGlob": {
+          "type": "string",
+          "default": "**/src/constants/apiEndpoints.{js,ts}",
+          "description": "Glob for client API_ENDPOINTS modules."
+        },
+        "nativecoreContract.warnMissingBackend": {
+          "type": "boolean",
+          "default": true,
+          "description": "Warn when an API_ENDPOINTS path has no matching Laravel route."
+        }
+      }
+    },
+    "commands": [
+      {
+        "command": "nativecoreContract.refresh",
+        "title": "NativeCore: Refresh API Contract Index"
+      }
+    ]
+  },
+  "scripts": {
+    "package": "npx --yes @vscode/vsce package --no-dependencies",
+    "build": "echo vscode-nativecore-contract has no compile step"
+  }
+}

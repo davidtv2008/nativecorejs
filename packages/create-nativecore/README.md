@@ -35,7 +35,7 @@ Open `http://localhost:3000`.
 | Home | Calm enterprise starter page only — no login, dashboard, or marketing showcase routes |
 | Framework | Vendored under `.nativecore/` (`core`, `utils`, `testing`, plus scaffold-owned `dev` / `scripts`) |
 | UI | Full `nc-*` component set under `src/components/core/` |
-| Tooling | HMR, Vitest, ESLint/HTMLHint, mock API helpers, `make:*` / `remove:*` generators |
+| Tooling | HMR, Vitest, ESLint/HTMLHint, mock API helpers, `make:*` / `remove:*`; `.vscode/extensions.json` recommends **NativeCoreJS Extension Pack** (+ lite set) |
 | AI guidance | `.context/`, `.cursorrules`, `AGENTS.md`, `.github/copilot-instructions.md` |
 | Auth | **Not shipped.** Router middleware / `make:middleware` / protected views stay available so you add your own model |
 | Component Builder | Experimental and **disabled by default** |
@@ -58,7 +58,17 @@ npm run sync:core                 # .nativecore runtime (router/state/utils)
 npm run sync:core -- <version>    # pin a published version
 npm run sync:components           # additive src/components/core nc-* UI
 npm run sync:components -- <version>
+npm run sync:tooling              # safe root tooling merge (jsconfig, .vscode/extensions)
+npm run sync:tooling -- <version>
 ```
+
+Older apps that do not yet have the local `sync:tooling` script can run:
+
+```bash
+npx create-nativecore@latest sync-tooling
+```
+
+That command targets the current working directory and applies the same non-destructive tooling sync.
 
 ## Flags
 

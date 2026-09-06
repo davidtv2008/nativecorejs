@@ -1,0 +1,52 @@
+{
+  "name": "vscode-nativecore-routes",
+  "displayName": "NativeCoreJS Routes",
+  "description": "Go to Definition from routes.js view paths and lazyController modules",
+  "version": "0.1.0",
+  "publisher": "NativeCoreJS",
+  "license": "MIT",
+  "icon": "media/icon.png",
+  "homepage": "https://github.com/davidtv2008/nativecorejs#readme",
+  "bugs": {
+    "url": "https://github.com/davidtv2008/nativecorejs/issues"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/davidtv2008/nativecorejs.git",
+    "directory": "packages/vscode-nativecore-routes"
+  },
+  "engines": {
+    "vscode": "^1.85.0"
+  },
+  "categories": [
+    "Programming Languages"
+  ],
+  "keywords": [
+    "nativecore",
+    "nativecorejs",
+    "routes",
+    "navigation"
+  ],
+  "activationEvents": [
+    "workspaceContains:nativecore.config.json",
+    "onLanguage:javascript",
+    "onLanguage:typescript"
+  ],
+  "main": "./src/extension.js",
+  "contributes": {
+    "configuration": {
+      "title": "NativeCore Routes",
+      "properties": {
+        "nativecoreRoutes.enabled": {
+          "type": "boolean",
+          "default": true,
+          "description": "Enable Go to Definition for NativeCore route strings."
+        }
+      }
+    }
+  },
+  "scripts": {
+    "package": "npx --yes @vscode/vsce package --no-dependencies",
+    "build": "echo vscode-nativecore-routes has no compile step"
+  }
+}

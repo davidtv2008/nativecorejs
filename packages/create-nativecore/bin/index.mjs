@@ -148,6 +148,34 @@ async function installDependencies(targetDir) {
     });
 }
 
+async function runToolingSync(commandArgs) {
+    const scriptPath = path.join(templateDir, '.nativecore', 'scripts', 'sync-tooling.mjs');
+    const forwardedArgs = commandArgs.filter((arg, index) => {
+        if (index === 0) return false;
+        if (arg === '--out-dir') return false;
+        const prev = commandArgs[index - 1];
+        if (prev === '--out-dir') return false;
+        return true;
+    });
+
+    await new Promise((resolve, reject) => {
+        const child = spawn(process.execPath, [scriptPath, '--root', process.cwd(), ...forwardedArgs], {
+            stdio: 'inherit',
+            shell: false,
+        });
+
+        child.on('error', reject);
+        child.on('exit', code => {
+            if (code === 0) {
+                resolve();
+                return;
+            }
+
+            reject(new Error(`sync:tooling failed with exit code ${code ?? 'unknown'}`));
+        });
+    });
+}
+
 function packageJsonTemplate(config) {
     const scripts = {
         prestart: 'npm run compile && node .nativecore/scripts/inject-version.mjs',
@@ -172,6 +200,7 @@ function packageJsonTemplate(config) {
         'sync:importmap': 'node .nativecore/scripts/sync-importmap.mjs',
         'sync:core': 'node .nativecore/scripts/sync-core.mjs',
         'sync:components': 'node .nativecore/scripts/sync-components.mjs',
+        'sync:tooling': 'node .nativecore/scripts/sync-tooling.mjs',
         'compile:prod': 'npm run clean:prod && node .nativecore/scripts/write-public-env.mjs && node .nativecore/scripts/watch-compile.mjs --once --outdir dist-prod && node .nativecore/scripts/bundle-css.mjs --outdir dist-prod',
         'make:component': 'node .nativecore/scripts/make-component.mjs',
         'make:core-component': 'node .nativecore/scripts/make-core-component.mjs',
@@ -609,6 +638,47 @@ export default [
 `;
 }
 
+function jsconfigTemplate() {
+    return `{
+  "compilerOptions": {
+    "target": "ES2020",
+    "module": "ES2020",
+    "lib": ["ES2020", "DOM", "DOM.Iterable"],
+    "moduleResolution": "node",
+    "allowJs": true,
+    "checkJs": false,
+    "baseUrl": ".",
+    "paths": {
+      "@core/*": [".nativecore/core/*"],
+      "@core-utils/*": [".nativecore/utils/*"],
+      "@core-types/*": [".nativecore/types/*"],
+      "@dev/*": [".nativecore/dev/*"],
+      "@components/*": ["src/components/*"],
+      "@config/*": ["src/config/*"],
+      "@routes/*": ["src/routes/*"],
+      "@services/*": ["src/services/*"],
+      "@utils/*": ["src/utils/*"],
+      "@stores/*": ["src/stores/*"],
+      "@middleware/*": ["src/middleware/*"],
+      "@types/*": ["src/types/*"],
+      "@constants/*": ["src/constants/*"],
+      "@testing/*": [".nativecore/testing/*"],
+      "nativecorejs/testing": [".nativecore/testing/index.js"]
+    }
+  },
+  "include": [
+    "src/**/*",
+    ".nativecore/**/*"
+  ],
+  "exclude": [
+    "node_modules",
+    "dist",
+    "tests"
+  ]
+}
+`;
+}
+
 function controllersIndexTemplate() {
     return `/**
  * Controller Registry
@@ -673,6 +743,8 @@ async function customizeProject(targetDir, config) {
     if (!config.useTypeScript) {
         // Replace TypeScript-aware ESLint config with a plain JS one
         await writeFile(path.join(targetDir, 'eslint.config.js'), eslintConfigJsTemplate());
+        // Keep editor alias resolution working in JavaScript projects
+        await writeFile(path.join(targetDir, 'jsconfig.json'), jsconfigTemplate());
         // TypeScript config files are not needed in a JS project
         await removeIfExists(path.join(targetDir, 'tsconfig.json'));
         await removeIfExists(path.join(targetDir, 'tsconfig.build.json'));
@@ -710,9 +782,17 @@ async function buildProject(config) {
 }
 
 async function main() {
+    const subcommand = cliArgs.find(arg => !arg.startsWith('--'));
+    if (subcommand === 'sync-tooling') {
+        console.log('\nNativeCore sync:tooling\n');
+        await runToolingSync(cliArgs);
+        rl.close();
+        return;
+    }
+
     console.log('\nNativeCore installer\n');
 
-    const positionalInput = cliArgs.find(arg => !arg.startsWith('--'));
+    const positionalInput = subcommand;
     const rawInput = positionalInput || await ask('Project name', 'my-nativecore-app');
     const resolvedTargetDir = resolveTargetDir(rawInput);
 

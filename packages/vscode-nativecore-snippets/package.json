@@ -1,0 +1,49 @@
+{
+  "name": "vscode-nativecore-snippets",
+  "displayName": "NativeCoreJS Snippets",
+  "description": "Code snippets for NativeCore controllers, components, routes, views, and middleware",
+  "version": "0.1.0",
+  "publisher": "NativeCoreJS",
+  "license": "MIT",
+  "icon": "media/icon.png",
+  "homepage": "https://github.com/davidtv2008/nativecorejs#readme",
+  "bugs": {
+    "url": "https://github.com/davidtv2008/nativecorejs/issues"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/davidtv2008/nativecorejs.git",
+    "directory": "packages/vscode-nativecore-snippets"
+  },
+  "engines": {
+    "vscode": "^1.85.0"
+  },
+  "categories": [
+    "Snippets"
+  ],
+  "keywords": [
+    "nativecore",
+    "nativecorejs",
+    "snippets"
+  ],
+  "contributes": {
+    "snippets": [
+      {
+        "language": "javascript",
+        "path": "./snippets/nativecore-js.json"
+      },
+      {
+        "language": "typescript",
+        "path": "./snippets/nativecore-js.json"
+      },
+      {
+        "language": "html",
+        "path": "./snippets/nativecore-html.json"
+      }
+    ]
+  },
+  "scripts": {
+    "package": "npx --yes @vscode/vsce package --no-dependencies",
+    "build": "echo vscode-nativecore-snippets has no compile step"
+  }
+}

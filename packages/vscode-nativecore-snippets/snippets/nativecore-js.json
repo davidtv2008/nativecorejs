@@ -1,0 +1,134 @@
+{
+  "nc-controller": {
+    "prefix": ["ncc", "nc-controller"],
+    "body": [
+      "import { CoreController } from '@core/controller.js';",
+      "",
+      "export class ${1:Name}Controller extends CoreController {",
+      "    onMount() {",
+      "        this.assertRefs('${2:titleEl}');",
+      "        this.${3:title} = this.state('${4:Title}');",
+      "        this.bind(this.${3:title}, this.${2:titleEl});",
+      "    }",
+      "",
+      "    onUnmount() {}",
+      "}",
+      "",
+      "export function ${5:name}Controller(_params, _state, _loaderData, rootElement) {",
+      "    const ctrl = new ${1:Name}Controller(rootElement);",
+      "    return () => ctrl.destroy();",
+      "}"
+    ],
+    "description": "NativeCore CoreController class + factory"
+  },
+  "nc-component": {
+    "prefix": ["ncmp", "nc-component"],
+    "body": [
+      "import { CoreComponent, defineComponent } from '@core/component.js';",
+      "import { html } from '@core-utils/templates.js';",
+      "",
+      "export class ${1:MyCard} extends CoreComponent {",
+      "    static useShadowDOM = true;",
+      "    static observedAttributes = [${2:'title'}];",
+      "",
+      "    template() {",
+      "        return html`",
+      "            <style>",
+      "                :host { display: block; }",
+      "            </style>",
+      "            <div ref=\"${3:rootEl}\">",
+      "                <slot></slot>",
+      "            </div>",
+      "        `;",
+      "    }",
+      "",
+      "    onMount() {",
+      "        this.assertRefs('${3:rootEl}');",
+      "    }",
+      "}",
+      "",
+      "defineComponent('${4:my-card}', ${1:MyCard});"
+    ],
+    "description": "NativeCore CoreComponent + defineComponent"
+  },
+  "nc-middleware": {
+    "prefix": ["ncmw", "nc-middleware"],
+    "body": [
+      "import { createMiddleware } from '@core/createMiddleware.js';",
+      "",
+      "export const ${1:verified} = createMiddleware(async (ctx, next) => {",
+      "    ${2:// gate or enrich ctx}",
+      "    return next();",
+      "});"
+    ],
+    "description": "NativeCore createMiddleware"
+  },
+  "nc-route": {
+    "prefix": ["ncr", "nc-route"],
+    "body": [
+      "r.register(",
+      "    '/${1:path}',",
+      "    'src/views/${2|public,protected|}/${3:name}.html',",
+      "    lazyController('${4:name}Controller', '../controllers/${3:name}.controller.js')",
+      ");"
+    ],
+    "description": "NativeCore r.register + lazyController"
+  },
+  "nc-route-group": {
+    "prefix": ["ncrg", "nc-route-group"],
+    "body": [
+      "// @group:${1|public,protected|}",
+      "r.group({ middleware: [${2}] }, (r) => {",
+      "    r.register(",
+      "        '/${3:path}',",
+      "        'src/views/${1|public,protected|}/${4:name}.html',",
+      "        lazyController('${5:name}Controller', '../controllers/${4:name}.controller.js')",
+      "    );",
+      "});"
+    ],
+    "description": "NativeCore route group"
+  },
+  "nc-assert-refs": {
+    "prefix": ["ncar", "nc-assert-refs"],
+    "body": [
+      "this.assertRefs(${1:'titleEl'});"
+    ],
+    "description": "assertRefs for required DOM refs"
+  },
+  "nc-bind": {
+    "prefix": ["ncb", "nc-bind"],
+    "body": [
+      "this.${1:label} = this.state(${2:''});",
+      "this.bind(this.${1:label}, this.${3:labelEl});"
+    ],
+    "description": "state + bind to a ref"
+  },
+  "nc-on": {
+    "prefix": ["ncon", "nc-on"],
+    "body": [
+      "this.on(this.${1:buttonEl}, '${2:click}', () => {",
+      "    ${3}",
+      "});"
+    ],
+    "description": "this.on listener (auto-cleaned)"
+  },
+  "nc-rebind": {
+    "prefix": ["ncrebind", "nc-rebind"],
+    "body": [
+      "this.${1:hostEl}.innerHTML = ${2:markup};",
+      "this.rebind(this.${1:hostEl});"
+    ],
+    "description": "Inject HTML then rebind refs"
+  },
+  "nc-store": {
+    "prefix": ["ncs", "nc-store"],
+    "body": [
+      "import { useState } from '@core/state.js';",
+      "",
+      "export const ${1:item}Store = {",
+      "    ${2:items}: useState(${3:[]}),",
+      "};"
+    ],
+    "description": "Simple NativeCore store module shape"
+  }
+}

@@ -1,0 +1,72 @@
+{
+  "name": "vscode-nativecore-env",
+  "displayName": "NativeCoreJS Env Guard",
+  "description": "Warn on unknown env.* keys, secret-like client usage, and NC_PUBLIC mismatches",
+  "version": "0.1.0",
+  "publisher": "NativeCoreJS",
+  "license": "MIT",
+  "icon": "media/icon.png",
+  "homepage": "https://github.com/davidtv2008/nativecorejs#readme",
+  "bugs": {
+    "url": "https://github.com/davidtv2008/nativecorejs/issues"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/davidtv2008/nativecorejs.git",
+    "directory": "packages/vscode-nativecore-env"
+  },
+  "engines": {
+    "vscode": "^1.85.0"
+  },
+  "categories": [
+    "Linters"
+  ],
+  "keywords": [
+    "nativecore",
+    "nativecorejs",
+    "env",
+    "security"
+  ],
+  "activationEvents": [
+    "workspaceContains:nativecore.config.json",
+    "workspaceContains:**/src/config/env.js"
+  ],
+  "main": "./src/extension.js",
+  "contributes": {
+    "commands": [
+      {
+        "command": "nativecoreEnv.refresh",
+        "title": "NativeCore: Refresh Env Guard Index"
+      }
+    ],
+    "configuration": {
+      "title": "NativeCore Env Guard",
+      "properties": {
+        "nativecoreEnv.enabled": {
+          "type": "boolean",
+          "default": true,
+          "description": "Enable Env Guard diagnostics."
+        },
+        "nativecoreEnv.warnUnknownKeys": {
+          "type": "boolean",
+          "default": true,
+          "description": "Warn when env.prop / env.features.x / env.get('KEY') is not declared in env.js."
+        },
+        "nativecoreEnv.warnSecrets": {
+          "type": "boolean",
+          "default": true,
+          "description": "Warn on secret-like identifiers in client src (API_SECRET, PRIVATE_KEY, etc.)."
+        },
+        "nativecoreEnv.envGlob": {
+          "type": "string",
+          "default": "**/src/config/env.{js,ts}",
+          "description": "Glob for client env modules."
+        }
+      }
+    }
+  },
+  "scripts": {
+    "package": "npx --yes @vscode/vsce package --no-dependencies",
+    "build": "echo vscode-nativecore-env has no compile step"
+  }
+}

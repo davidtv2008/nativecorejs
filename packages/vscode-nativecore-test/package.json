@@ -1,0 +1,70 @@
+{
+  "name": "vscode-nativecore-test",
+  "displayName": "NativeCoreJS Test Runner",
+  "description": "CodeLens and commands to run Vitest for the current NativeCore test file",
+  "version": "0.1.0",
+  "publisher": "NativeCoreJS",
+  "license": "MIT",
+  "icon": "media/icon.png",
+  "homepage": "https://github.com/davidtv2008/nativecorejs#readme",
+  "bugs": {
+    "url": "https://github.com/davidtv2008/nativecorejs/issues"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/davidtv2008/nativecorejs.git",
+    "directory": "packages/vscode-nativecore-test"
+  },
+  "engines": {
+    "vscode": "^1.85.0"
+  },
+  "categories": [
+    "Testing"
+  ],
+  "keywords": [
+    "nativecore",
+    "nativecorejs",
+    "vitest",
+    "testing"
+  ],
+  "activationEvents": [
+    "workspaceContains:nativecore.config.json",
+    "workspaceContains:**/vitest.config.*"
+  ],
+  "main": "./src/extension.js",
+  "contributes": {
+    "commands": [
+      {
+        "command": "nativecoreTest.runFile",
+        "title": "NativeCore: Run Current Test File"
+      },
+      {
+        "command": "nativecoreTest.runWorkspace",
+        "title": "NativeCore: Run All Tests"
+      }
+    ],
+    "configuration": {
+      "title": "NativeCore Test Runner",
+      "properties": {
+        "nativecoreTest.enabled": {
+          "type": "boolean",
+          "default": true
+        },
+        "nativecoreTest.codeLens": {
+          "type": "boolean",
+          "default": true,
+          "description": "Show Run Test CodeLens on *.test.js / *.spec.js files."
+        },
+        "nativecoreTest.npmScript": {
+          "type": "string",
+          "default": "test",
+          "description": "npm script name used to run Vitest."
+        }
+      }
+    }
+  },
+  "scripts": {
+    "package": "npx --yes @vscode/vsce package --no-dependencies",
+    "build": "echo vscode-nativecore-test has no compile step"
+  }
+}

@@ -1,0 +1,82 @@
+{
+  "name": "vscode-nativecore-pair",
+  "displayName": "NativeCoreJS Pair Jump",
+  "description": "Jump between view ↔ controller ↔ routes.js for the current NativeCore page",
+  "version": "0.1.0",
+  "publisher": "NativeCoreJS",
+  "license": "MIT",
+  "icon": "media/icon.png",
+  "homepage": "https://github.com/davidtv2008/nativecorejs#readme",
+  "bugs": {
+    "url": "https://github.com/davidtv2008/nativecorejs/issues"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/davidtv2008/nativecorejs.git",
+    "directory": "packages/vscode-nativecore-pair"
+  },
+  "engines": {
+    "vscode": "^1.85.0"
+  },
+  "categories": [
+    "Other"
+  ],
+  "keywords": [
+    "nativecore",
+    "nativecorejs",
+    "pair",
+    "navigation"
+  ],
+  "activationEvents": [
+    "workspaceContains:nativecore.config.json",
+    "workspaceContains:**/src/routes/routes.js"
+  ],
+  "main": "./src/extension.js",
+  "contributes": {
+    "commands": [
+      {
+        "command": "nativecorePair.openPair",
+        "title": "NativeCore: Open Paired File"
+      },
+      {
+        "command": "nativecorePair.openRoute",
+        "title": "NativeCore: Open Route Registration"
+      },
+      {
+        "command": "nativecorePair.cycle",
+        "title": "NativeCore: Cycle View / Controller / Route"
+      },
+      {
+        "command": "nativecorePair.refresh",
+        "title": "NativeCore: Refresh Pair Index"
+      }
+    ],
+    "keybindings": [
+      {
+        "command": "nativecorePair.openPair",
+        "key": "ctrl+alt+p",
+        "mac": "cmd+alt+p",
+        "when": "editorTextFocus"
+      },
+      {
+        "command": "nativecorePair.cycle",
+        "key": "ctrl+alt+shift+p",
+        "mac": "cmd+alt+shift+p",
+        "when": "editorTextFocus"
+      }
+    ],
+    "configuration": {
+      "title": "NativeCore Pair Jump",
+      "properties": {
+        "nativecorePair.enabled": {
+          "type": "boolean",
+          "default": true
+        }
+      }
+    }
+  },
+  "scripts": {
+    "package": "npx --yes @vscode/vsce package --no-dependencies",
+    "build": "echo vscode-nativecore-pair has no compile step"
+  }
+}

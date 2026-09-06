@@ -1,0 +1,25 @@
+{
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "name": "Run Extension",
+      "type": "extensionHost",
+      "request": "launch",
+      "args": [
+        "--extensionDevelopmentPath=${workspaceFolder}/packages/vscode-nativecore-refs",
+        "${workspaceFolder}/sample-nativecore"
+      ],
+      "outFiles": []
+    },
+    {
+      "name": "Run Extension (this package)",
+      "type": "extensionHost",
+      "request": "launch",
+      "args": [
+        "--extensionDevelopmentPath=${workspaceFolder}",
+        "${workspaceFolder}/../../sample-nativecore"
+      ],
+      "outFiles": []
+    }
+  ]
+}
