@@ -914,7 +914,10 @@ async function main() {
 }
 
 main().catch(error => {
-    console.error('\nFailed to scaffold NativeCore app.');
+    const subcommand = cliArgs.find(arg => !arg.startsWith('--'));
+    console.error(subcommand === 'sync-tooling'
+        ? '\nFailed to run NativeCore sync:tooling.'
+        : '\nFailed to scaffold NativeCore app.');
     console.error(error.message);
     rl.close();
     process.exit(1);

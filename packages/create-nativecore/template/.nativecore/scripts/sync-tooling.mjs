@@ -49,6 +49,8 @@ const positional = args.filter((a, i) => {
     if (a.startsWith('--')) return false;
     const fromIdx = args.indexOf('--from');
     if (fromIdx >= 0 && i === fromIdx + 1) return false;
+    const rootIdx = args.indexOf('--root');
+    if (rootIdx >= 0 && i === rootIdx + 1) return false;
     return true;
 });
 
