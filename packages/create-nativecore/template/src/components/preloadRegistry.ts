@@ -13,6 +13,7 @@
 
 // Initial route components used on first paint.
 import './core/loading-spinner.js';
+import './core/nc-error-boundary.js';
 import './core/nc-snackbar.js';
 
 // Other critical components

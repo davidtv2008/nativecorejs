@@ -17,6 +17,7 @@ export function registerFrameworkComponents(): void {
     componentRegistry.register('nc-bottom-nav', './core/nc-bottom-nav.js');
     componentRegistry.register('nc-breadcrumb', './core/nc-breadcrumb.js');
     componentRegistry.register('nc-button', './core/nc-button.js');
+    componentRegistry.register('nc-canvas', './core/nc-canvas.js');
     componentRegistry.register('nc-card', './core/nc-card.js');
     componentRegistry.register('nc-checkbox', './core/nc-checkbox.js');
     componentRegistry.register('nc-chip', './core/nc-chip.js');
@@ -30,6 +31,7 @@ export function registerFrameworkComponents(): void {
     componentRegistry.register('nc-drawer', './core/nc-drawer.js');
     componentRegistry.register('nc-dropdown', './core/nc-dropdown.js');
     componentRegistry.register('nc-empty-state', './core/nc-empty-state.js');
+    componentRegistry.register('nc-error-boundary', './core/nc-error-boundary.js');
     componentRegistry.register('nc-file-upload', './core/nc-file-upload.js');
     componentRegistry.register('nc-field', './core/nc-form.js');
     componentRegistry.register('nc-form', './core/nc-form.js');

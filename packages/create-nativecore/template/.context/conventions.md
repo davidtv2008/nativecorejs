@@ -207,7 +207,7 @@ On Windows PowerShell, prefer `npm.cmd run ... -- <args>` so flags after `--` ar
 
 ## Shell chrome
 
-Default shell is minimal (`#app.minimal-shell`). `app-header`, `app-sidebar`, and `app-footer` ship under `src/components/core/` but are not mounted. Opt in via `index.html` and switch `#app` off `minimal-shell` when you need sidebar sync.
+Default shell is minimal (`#app.minimal-shell`) inside `<nc-error-boundary mode="dev">`. `app-header`, `app-sidebar`, and `app-footer` ship under `src/components/core/` but are not mounted. Opt in via `index.html` and switch `#app` off `minimal-shell` when you need sidebar sync.
 
 ## CSS in Shadow DOM
 

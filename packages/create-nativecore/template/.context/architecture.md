@@ -166,7 +166,7 @@ Empty protected group ships as `middleware: []` until authors attach tags.
 | `appRegistry` | App UI + shell chrome tags |
 | `preloadRegistry` | Eager side-effect imports for critical first paint |
 
-Default preload is small (e.g. `loading-spinner`, `nc-snackbar`). Shell chrome is registered for lazy use but not preloaded until opted into the DOM.
+Default preload is small (`loading-spinner`, `nc-error-boundary`, `nc-snackbar`). Shell chrome is registered for lazy use but not preloaded until opted into the DOM.
 
 ### Services
 
@@ -188,12 +188,16 @@ Default preload is small (e.g. `loading-spinner`, `nc-snackbar`). Shell chrome i
 ## Shell model
 
 ```html
-<div id="app" class="minimal-shell">
-  <main class="main-content">
-    <div id="main-content" class="page">…</div>
-  </main>
-</div>
+<nc-error-boundary mode="dev">
+  <div id="app" class="minimal-shell">
+    <main class="main-content">
+      <div id="main-content" class="page">…</div>
+    </main>
+  </div>
+</nc-error-boundary>
 ```
+
+`mode="dev"` is swapped to `mode="production"` by `strip-dev-blocks` / SSG on production builds. `nc-canvas` ships in `frameworkRegistry` and lazy-loads on first use.
 
 To opt into chrome, mount `app-header` / `app-sidebar` / `app-footer` and stop using `minimal-shell` so sidebar visibility helpers can run.
 

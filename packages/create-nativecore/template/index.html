@@ -98,6 +98,7 @@
             '/dist/src/app.js',
             '/dist/src/controllers/home.controller.js',
             '/dist/src/components/core/loading-spinner.js',
+            '/dist/src/components/core/nc-error-boundary.js',
             '/dist/src/components/core/nc-snackbar.js'
         ].forEach(function(path) {
             var link = document.createElement('link');
@@ -130,13 +131,15 @@
     <div id="page-progress" role="progressbar" aria-label="Page loading progress"></div>
 
     <!-- Minimal shell: content only. Opt into app-header / app-sidebar / app-footer when needed. -->
-    <div id="app" class="minimal-shell">
-        <main class="main-content">
-            <div id="main-content" class="page">
-                <loading-spinner message="Loading page..."></loading-spinner>
-            </div>
-        </main>
-    </div>
+    <nc-error-boundary mode="dev">
+        <div id="app" class="minimal-shell">
+            <main class="main-content">
+                <div id="main-content" class="page">
+                    <loading-spinner message="Loading page..."></loading-spinner>
+                </div>
+            </main>
+        </div>
+    </nc-error-boundary>
 
     <nc-snackbar position="bottom-right"></nc-snackbar>
 
