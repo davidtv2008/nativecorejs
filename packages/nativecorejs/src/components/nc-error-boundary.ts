@@ -52,6 +52,158 @@ export interface NcErrorDetail {
     source?: 'component' | 'route' | 'global' | 'promise';
 }
 
+/** Generated stack frames: compiled URL + 1-based line/column (not source-mapped). */
+const FRAME_LOC_RE = /(https?:\/\/[^\s)]+?\.(?:js|mjs|cjs|ts|tsx|jsx)(?:\?[^)\s]*)?):(\d+):(\d+)/g;
+
+const sourceMapCache = new Map<string, Promise<DecodedSourceMap | null>>();
+
+interface DecodedMapping {
+    genCol: number;
+    source?: string;
+    origLine?: number;
+    origCol?: number;
+}
+
+interface DecodedSourceMap {
+    lines: DecodedMapping[][];
+    mapUrl: string;
+}
+
+function decodeBase64VLQ(segment: string): number[] {
+    const charset = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/';
+    const out: number[] = [];
+    let i = 0;
+    while (i < segment.length) {
+        let result = 0;
+        let shift = 0;
+        let digit = 0;
+        do {
+            digit = charset.indexOf(segment[i++]);
+            if (digit === -1) return out;
+            result |= (digit & 31) << shift;
+            shift += 5;
+        } while (digit & 32);
+        const signed = result & 1 ? -(result >> 1) : (result >> 1);
+        out.push(signed);
+    }
+    return out;
+}
+
+function decodeSourceMap(json: { mappings?: string; sources?: string[] }, mapUrl: string): DecodedSourceMap {
+    const lines: DecodedMapping[][] = [];
+    let src = 0;
+    let origLine = 0;
+    let origCol = 0;
+    for (const rawLine of String(json.mappings || '').split(';')) {
+        const segs: DecodedMapping[] = [];
+        let genCol = 0;
+        if (rawLine) {
+            for (const part of rawLine.split(',')) {
+                const v = decodeBase64VLQ(part);
+                if (!v.length) continue;
+                genCol += v[0];
+                const mapping: DecodedMapping = { genCol };
+                if (v.length >= 4) {
+                    src += v[1];
+                    origLine += v[2];
+                    origCol += v[3];
+                    mapping.source = json.sources?.[src];
+                    mapping.origLine = origLine;
+                    mapping.origCol = origCol;
+                }
+                segs.push(mapping);
+            }
+        }
+        lines.push(segs);
+    }
+    return { lines, mapUrl };
+}
+
+function resolveSourcePath(mapUrl: string, source: string): string {
+    try {
+        const resolved = new URL(source, mapUrl);
+        const path = resolved.pathname.replace(/\\/g, '/');
+        const srcIdx = path.lastIndexOf('/src/');
+        if (srcIdx !== -1) return path.slice(srcIdx + 1);
+        return source.replace(/\\/g, '/').replace(/^(?:\.\.\/)+/, '');
+    } catch {
+        return source;
+    }
+}
+
+function originalPosition(
+    map: DecodedSourceMap,
+    line: number,
+    column: number,
+): { source: string; line: number; column: number } | null {
+    const segs = map.lines[line - 1];
+    if (!segs?.length) return null;
+    const col = Math.max(0, column - 1);
+    let best: DecodedMapping | null = null;
+    for (const seg of segs) {
+        if (seg.genCol <= col) best = seg;
+        else break;
+    }
+    if (!best || best.origLine == null || !best.source) return null;
+    return {
+        source: resolveSourcePath(map.mapUrl, best.source),
+        line: best.origLine + 1,
+        column: (best.origCol ?? 0) + 1,
+    };
+}
+
+function loadSourceMap(fileUrl: string): Promise<DecodedSourceMap | null> {
+    const mapUrl = fileUrl.split('?')[0].replace(/\.map$/, '') + '.map';
+    let pending = sourceMapCache.get(mapUrl);
+    if (!pending) {
+        pending = fetch(mapUrl)
+            .then((res) => (res.ok ? res.json() : null))
+            .then((json) => (json ? decodeSourceMap(json, mapUrl) : null))
+            .catch(() => null);
+        sourceMapCache.set(mapUrl, pending);
+    }
+    return pending;
+}
+
+function frameRegex(): RegExp {
+    return new RegExp(FRAME_LOC_RE.source, 'g');
+}
+
+async function remapDetail(detail: NcErrorDetail): Promise<NcErrorDetail> {
+    let stack = detail.stack;
+    let file = detail.file;
+    let line = detail.line;
+    let column = detail.column;
+
+    if (stack) {
+        const frames = [...stack.matchAll(frameRegex())];
+        const maps = new Map<string, DecodedSourceMap | null>();
+        for (const frame of frames) {
+            const key = frame[1].split('?')[0];
+            if (!maps.has(key)) maps.set(key, await loadSourceMap(frame[1]));
+        }
+        stack = stack.replace(frameRegex(), (full, url, rawLine, rawCol) => {
+            const map = maps.get(String(url).split('?')[0]);
+            if (!map) return full;
+            const orig = originalPosition(map, Number(rawLine), Number(rawCol));
+            if (!orig) return full;
+            return `${orig.source}:${orig.line}:${orig.column}`;
+        });
+    }
+
+    if (file && line && /^https?:\/\//.test(file)) {
+        const map = await loadSourceMap(file);
+        const orig = map ? originalPosition(map, line, column ?? 1) : null;
+        if (orig) {
+            file = orig.source;
+            line = orig.line;
+            column = orig.column;
+        }
+    }
+
+    return { ...detail, stack, file, line, column };
+}
+
 export class NcErrorBoundary extends CoreComponent {
     static useShadowDOM = true;
 
@@ -62,6 +214,7 @@ export class NcErrorBoundary extends CoreComponent {
     private _error: NcErrorDetail | null = null;
     private _originalHTML = '';
     private _isRoot = false;
+    private _remapToken = 0;
 
     // Bound handlers stored so we can remove them on unmount
     private _onComponentError = (e: Event) => {
@@ -336,6 +489,15 @@ export class NcErrorBoundary extends CoreComponent {
         super.connectedCallback();
     }
 
+    /**
+     * CoreComponent.render() is a no-op. This UI is template() driven by `_error`.
+     */
+    protected render(): void {
+        const root = this.shadowRoot;
+        if (!root) return;
+        root.innerHTML = String(this.template());
+    }
+
     onMount(): void {
         this.shadowRoot!.addEventListener('click', (e: Event) => {
             const target = e.target as HTMLElement;
@@ -376,6 +538,7 @@ export class NcErrorBoundary extends CoreComponent {
     }
 
     reset(): void {
+        this._remapToken += 1;
         this._error = null;
         this.innerHTML = this._originalHTML;
         this.render();
@@ -386,6 +549,17 @@ export class NcErrorBoundary extends CoreComponent {
         this._error = this._withLocation(detail);
         this.render();
         this.emit('nc-error', this._error);
+        const token = ++this._remapToken;
+        void this._applySourceMaps(token);
+    }
+
+    private async _applySourceMaps(token: number): Promise<void> {
+        if ((this.getAttribute('mode') ?? 'dev') === 'production') return;
+        if (!this._error) return;
+        const remapped = await remapDetail(this._error);
+        if (token !== this._remapToken || !this._error) return;
+        this._error = remapped;
+        this.render();
     }
 
     private _withLocation(detail: NcErrorDetail): NcErrorDetail {
@@ -408,17 +582,13 @@ export class NcErrorBoundary extends CoreComponent {
 
     private _parseLocationFromStack(stack?: string): { file: string; line?: number; column?: number } | null {
         if (!stack) return null;
-        const lines = stack.split('\n');
-        for (const line of lines) {
-            const match = line.match(/(?:\()?(https?:\/\/[^\s)]+|\/?[^\s()]+):(\d+):(\d+)(?:\))?/);
-            if (!match) continue;
-            return {
-                file: match[1],
-                line: Number(match[2]),
-                column: Number(match[3]),
-            };
-        }
-        return null;
+        const match = frameRegex().exec(stack);
+        if (!match) return null;
+        return {
+            file: match[1],
+            line: Number(match[2]),
+            column: Number(match[3]),
+        };
     }
 
     private _escapeHtml(str: string): string {
