@@ -319,6 +319,8 @@ if unsure. Many use short names (`open` / `close`), not `nc-*-open`.
 | `nc-pagination` / `nc-stepper` / `nc-bottom-nav` | `change` |
 | Form inputs (`nc-input`, `nc-select`, …) | `input`, `change` (+ `clear` on input) |
 | `nc-animation` | `start`, `finish`, `cancel` |
+| `nc-error-boundary` | `nc-error`, `nc-error-reset` |
+| `nc-canvas` | `nc-canvas-ready`, `nc-canvas-draw-start`, `nc-canvas-draw-move`, `nc-canvas-draw-end`, `nc-canvas-clear` |
 
 `nc-button` uses the native **`click`** event (no custom `nc-button-click`).
 
@@ -347,6 +349,32 @@ Triggers: `mount` (default), `visible` (IntersectionObserver), `hover`, `click`,
 
 Do not pick GPU vs CSS yourself — change `name`. Use `no-gpu-hint` only on
 tiny nodes where `will-change` would waste layers.
+
+### `nc-error-boundary`
+
+Wrap the shell (or a widget). Dev mode is a debug panel; production is a
+fallback heading. Call `catchError(error, meta?)` from a controller; `reset()`
+restores slotted content.
+
+```html
+<nc-error-boundary mode="dev">
+    <div id="app">…</div>
+</nc-error-boundary>
+```
+
+### `nc-canvas`
+
+`mode="draw"` / `signature` / `static`. HiDPI + resize are built in.
+
+```html
+<nc-canvas mode="draw" height="240"></nc-canvas>
+<nc-canvas ref="chartCanvas" mode="static" height="180"></nc-canvas>
+```
+
+```js
+const ctx = this.chartCanvas.getContext();
+ctx.fillRect(10, 10, 80, 80);
+```
 
 ---
 

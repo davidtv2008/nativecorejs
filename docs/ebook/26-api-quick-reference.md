@@ -652,6 +652,46 @@ Triggers: `mount` \| `visible` \| `hover` \| `click` \| `manual`. Methods:
 
 ---
 
+## `nc-error-boundary`
+
+Wrap a region or the shell. Dev mode shows a debug panel; production shows the
+`fallback` heading. Scaffold builds swap `mode="dev"` to `mode="production"`.
+
+```html
+<nc-error-boundary mode="dev">
+    <div id="app" class="minimal-shell">…</div>
+</nc-error-boundary>
+```
+
+| Member | Notes |
+|--------|-------|
+| Attributes | `mode` (`dev` \| `production`), `fallback` |
+| Methods | `catchError(error, meta?)`, `reset()` |
+| Events | `nc-error`, `nc-error-reset` |
+
+See [Chapter 13](./13-core-components.md). Live: `/live/errors`.
+
+---
+
+## `nc-canvas`
+
+HiDPI canvas with pointer drawing or programmatic `getContext()`.
+
+```html
+<nc-canvas mode="draw" height="240"></nc-canvas>
+<nc-canvas ref="chartCanvas" mode="static" height="180"></nc-canvas>
+```
+
+| Member | Notes |
+|--------|-------|
+| Attributes | `mode` (`draw` \| `signature` \| `static`), `width`, `height`, `stroke-color`, `stroke-width`, `bg-color`, `show-toolbar`, `placeholder`, `disabled`, download attrs |
+| Methods | `getCanvas()`, `getContext()`, `clear()`, `download()`, `toDataURL()`, `toBlob()`, `isEmpty()`, `loadImage()`, `resize()` |
+| Events | `nc-canvas-ready`, `nc-canvas-draw-start` / `move` / `end`, `nc-canvas-clear` |
+
+See [Chapter 13](./13-core-components.md). Live: `/live/canvas`.
+
+---
+
 ## Appendices
 
 - [Appendix A — Framework comparison](./A-framework-comparison.md)

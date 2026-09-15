@@ -6,12 +6,16 @@
  * graceful fallback in production mode.
  *
  * Attributes:
- *   mode             - "dev" (default) | "production"
- *   fallback         - Custom fallback heading (default: "Something went wrong")
+ *   - mode: "dev" (default) | "production"
+ *   - fallback: Custom fallback heading (default: "Something went wrong")
  *
  * Events:
- *   nc-error         - CustomEvent<NcErrorDetail> — fires when any error is caught
- *   nc-error-reset   - CustomEvent<{}> — fires after a successful reset
+ *   - nc-error: CustomEvent<NcErrorDetail> — fires when any error is caught
+ *   - nc-error-reset: CustomEvent — fires after a successful reset
+ *
+ * Methods:
+ *   - reset(): Restore slotted content after an error
+ *   - catchError(error, meta?): Capture an error programmatically
  *
  * Framework events listened for (when placed at root):
  *   nativecore:component-error  - from component lifecycle failures

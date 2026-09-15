@@ -29,16 +29,16 @@
  *   - strokeWidth: number
  *   - bgColor: string
  *
- * Methods (accessible via element reference):
- *   - getContext(): CanvasRenderingContext2D | null
+ * Methods:
  *   - getCanvas(): HTMLCanvasElement | null
+ *   - getContext(): CanvasRenderingContext2D | null
  *   - clear(): void
  *   - download(filename?, format?): void
  *   - toDataURL(format?, quality?): string
  *   - toBlob(callback, format?, quality?): void
  *   - isEmpty(): boolean
  *   - loadImage(src: string): Promise<void>
- *   - resize(): void  — call this if you change container size programmatically
+ *   - resize(): void — recompute size from the container
  *
  * Events:
  *   - nc-canvas-draw-start:  CustomEvent<{ x: number; y: number }>

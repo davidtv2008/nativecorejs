@@ -184,16 +184,66 @@ Particle extras: `origin-x` / `origin-y` / `target-x` / `target-y` (0–1 or
 
 ---
 
+## Recipe 7 — `nc-error-boundary` (catch, fallback, reset)
+
+Wrap the shell in `index.html` (create-nativecore already does this). Nested
+boundaries isolate a widget without taking down the page.
+
+```html
+<nc-error-boundary mode="dev">
+    <div id="app" class="minimal-shell">…</div>
+</nc-error-boundary>
+```
+
+Production builds swap `mode="dev"` to `mode="production"` (fallback heading,
+no stack). Existing apps: `npm run sync:components`, then wrap `index.html`
+once and preload the tag.
+
+From a controller, capture a failure you already caught and restore later:
+
+```js
+this.boundary.catchError(new Error('Load failed'), { source: 'component' });
+this.on(this.boundary, 'nc-error', (e) => console.warn(e.detail.message));
+this.boundary.reset();
+```
+
+Events: `nc-error`, `nc-error-reset`. Live example: `/live/errors`.
+
+---
+
+## Recipe 8 — `nc-canvas` (draw, signature, static)
+
+```html
+<nc-canvas mode="draw" height="240"></nc-canvas>
+<nc-canvas mode="signature" height="160" placeholder="Sign here"></nc-canvas>
+<nc-canvas ref="chartCanvas" mode="static" height="180"></nc-canvas>
+```
+
+```js
+const ctx = this.chartCanvas.getContext();
+ctx.fillStyle = '#2dd4bf';
+ctx.fillRect(24, 24, 80, 80);
+
+this.chartCanvas.clear();
+this.chartCanvas.download('sketch', 'png');
+```
+
+Modes: `draw` (toolbar), `signature` (thin black pen), `static` (you paint).
+HiDPI scaling and resize are handled for you. Live example: `/live/canvas`.
+
+---
+
 ## Categories cheat sheet
 
 | Category | Examples |
 |----------|----------|
 | Inputs | `nc-input`, `nc-textarea`, `nc-select`, `nc-checkbox`, `nc-switch` |
 | Actions | `nc-button`, `nc-copy-button` |
-| Feedback | `nc-alert`, `nc-snackbar`, `nc-badge`, `nc-progress` |
+| Feedback | `nc-alert`, `nc-snackbar`, `nc-badge`, `nc-progress`, `nc-error-boundary` |
 | Overlays | `nc-modal`, `nc-drawer`, `nc-popover`, `nc-tooltip` |
 | Navigation | `nc-tabs`, `nc-breadcrumb`, `nc-pagination` |
 | Data | `nc-table`, `nc-timeline`, `nc-code` |
+| Media | `nc-canvas` (`draw` / `signature` / `static`) |
 | Motion | `nc-animation` (CSS / WAAPI / canvas — path picked per preset) |
 
 Shell chrome (opt-in): `app-header`, `app-sidebar`, `app-footer`.
