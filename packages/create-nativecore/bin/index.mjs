@@ -679,15 +679,6 @@ function jsconfigTemplate() {
 `;
 }
 
-function controllersIndexTemplate() {
-    return `/**
- * Controller Registry
- */
-
-export { homeController } from './home.controller.js';
-`;
-}
-
 async function copyTemplate(targetDir) {
     await fs.cp(templateDir, targetDir, { recursive: true, force: true });
 }
@@ -699,7 +690,6 @@ async function customizeProject(targetDir, config) {
     await writeFile(path.join(targetDir, 'nativecore.config.json'), nativecoreConfigTemplate(config));
     await writeFile(path.join(targetDir, `src/app.${ext}`), appTsTemplate(config));
     await writeFile(path.join(targetDir, `src/routes/routes.${ext}`), routesTemplate(config));
-    await writeFile(path.join(targetDir, `src/controllers/index.${ext}`), controllersIndexTemplate());
     await writeFile(path.join(targetDir, `src/controllers/home.controller.${ext}`), homeControllerTemplate(config));
     // home.html ships from the template copy — enterprise starter welcome page
 

@@ -321,23 +321,13 @@ async function generateView() {
     if (createController) {
       const controllersDir = path.resolve(ROOT, 'src', 'controllers');
       const controllerFile = path.join(controllersDir, `${flatName}.controller.${ext}`);
-      const indexFile = path.join(controllersDir, `index.${ext}`);
 
       if (fs.existsSync(controllerFile)) {
         console.error(`Warning: Controller "${flatName}.controller.${ext}" already exists`);
       } else {
+        fs.mkdirSync(controllersDir, { recursive: true });
         fs.writeFileSync(controllerFile, createControllerTemplate({ flatName, viewTitle, controllerName }));
         console.log(`Created controller: src/controllers/${flatName}.controller.${ext}`);
-
-        if (fs.existsSync(indexFile)) {
-          let indexContent = fs.readFileSync(indexFile, 'utf8');
-          const exportStatement = `export { ${controllerName}Controller } from './${flatName}.controller.js';\n`;
-          if (!indexContent.includes(`${flatName}.controller.js`)) {
-            indexContent += exportStatement;
-            fs.writeFileSync(indexFile, indexContent);
-            console.log(`Updated: src/controllers/index.${ext}`);
-          }
-        }
       }
     }
 

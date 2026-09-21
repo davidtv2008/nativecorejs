@@ -107,7 +107,7 @@ On Windows PowerShell, prefer `npm.cmd run … -- <args>` so flags after `--` ar
 | App component registry | `src/components/appRegistry.*` |
 | Framework nc-* registry | `src/components/frameworkRegistry.*` |
 | Preload registry | `src/components/preloadRegistry.*` |
-| Controller exports | `src/controllers/index.*` |
+| Controllers | `src/controllers/*.controller.*` (wire via `lazyController` in routes) |
 | Views | `src/views/public/`, `src/views/protected/` |
 | Middleware (user-owned) | `src/middleware/` |
 | HTML shell | `index.html` (`#main-content`, often `#app.minimal-shell`) |

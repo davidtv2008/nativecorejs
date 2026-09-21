@@ -38,6 +38,7 @@
 
 import { CoreComponent } from '@core/component.js';
 import { css, html, trusted } from '@core-utils/templates.js';
+import { portal } from '@core-utils/portal.js';
 import { lockBodyScroll, trapFocus } from '../../a11y/index.js';
 
 export class NcModal extends CoreComponent {
@@ -55,15 +56,20 @@ export class NcModal extends CoreComponent {
     declare closeBtnEl: HTMLButtonElement;
     private _releaseFocus: (() => void) | null = null;
     private _releaseScroll: (() => void) | null = null;
+    private _releasePortal: (() => void) | null = null;
+    private _suppressDisconnectCleanup = false;
 
     static styles = css`
-        :host { display: block; position: fixed; inset: 0; z-index: 1000; pointer-events: none; }
+        :host { display: block; position: fixed; inset: 0; z-index: 1100; pointer-events: none; }
         .overlay {
             position: absolute; inset: 0;
+            box-sizing: border-box;
             background: var(--modal-overlay-bg, rgba(0,0,0,.5));
             z-index: 1000;
-            display: flex; align-items: center; justify-content: center;
+            display: flex; align-items: flex-start; justify-content: center;
             padding: var(--nc-spacing-lg);
+            overflow-x: hidden;
+            overflow-y: auto;
             opacity: 0; pointer-events: none;
             transition: opacity var(--nc-transition-base);
         }
@@ -76,10 +82,14 @@ export class NcModal extends CoreComponent {
             box-shadow: var(--nc-shadow-xl, 0 25px 60px rgba(0,0,0,.35));
             width: 100%; max-width: var(--modal-max-width, 560px);
             max-height: calc(100vh - 2 * var(--nc-spacing-lg));
+            max-height: calc(100dvh - 2 * var(--nc-spacing-lg));
+            margin-block: auto;
             display: flex; flex-direction: column;
             transform: translateY(12px) scale(0.97);
             transition: transform var(--nc-transition-base);
             overflow: hidden;
+            min-height: 0;
+            flex-shrink: 0;
         }
         :host([open]) .dialog { transform: translateY(0) scale(1); }
         .dialog__header {
@@ -90,7 +100,7 @@ export class NcModal extends CoreComponent {
             font-size: var(--nc-font-size-lg); color: var(--nc-text);
         }
         .dialog__body {
-            flex: 1; overflow-y: auto; padding: var(--nc-spacing-lg);
+            flex: 1 1 auto; min-height: 0; overflow-y: auto; padding: var(--nc-spacing-lg);
             font-family: var(--nc-font-family); font-size: var(--nc-font-size-base);
             color: var(--nc-text); line-height: var(--nc-line-height-relaxed, 1.7);
         }
@@ -108,6 +118,7 @@ export class NcModal extends CoreComponent {
             background: none; border: none; cursor: pointer; padding: 4px;
             color: var(--nc-text-muted); border-radius: var(--nc-radius-sm, 4px);
             display: flex; flex-shrink: 0;
+            position: relative; z-index: 1;
             transition: color var(--nc-transition-fast), background var(--nc-transition-fast);
         }
         .close-btn:hover { color: var(--nc-text); background: var(--nc-bg-secondary); }
@@ -132,21 +143,46 @@ export class NcModal extends CoreComponent {
         `;
     }
 
+    disconnectedCallback() {
+        if (this._suppressDisconnectCleanup) return;
+        super.disconnectedCallback();
+    }
+
     onMount() {
         this._syncFromAttrs();
-        this.on(this.closeBtnEl, 'click', () => this._close());
+        this._bindUiEvents();
+    }
+
+    private _bindUiEvents() {
+        this.on(this.closeBtnEl, 'click', (e: MouseEvent) => {
+            e.preventDefault();
+            e.stopPropagation();
+            this._close();
+        });
         this.on(this.overlayEl, 'click', (e: MouseEvent) => {
             if (this.getAttribute('close-on-overlay') === 'false') return;
-            if (!this.dialogEl.contains(e.target as Node)) this._close();
+            // Slotted light-DOM is not a tree descendant of dialogEl; use composedPath.
+            const path = typeof e.composedPath === 'function' ? e.composedPath() : [];
+            if (path.includes(this.dialogEl)) return;
+            if (e.target === this.overlayEl) this._close();
         });
         this.on(document as EventTarget, 'keydown', (e: KeyboardEvent) => {
             if (e.key === 'Escape' && this.hasAttribute('open')) this._close();
         });
     }
 
+    private _withPortalReparent<T>(fn: () => T): T {
+        this._suppressDisconnectCleanup = true;
+        try {
+            return fn();
+        } finally {
+            this._suppressDisconnectCleanup = false;
+        }
+    }
+
     private _close() {
+        if (!this.hasAttribute('open')) return;
         this.removeAttribute('open');
-        this.emit('close');
     }
 
     protected _handleAttributeUpdate(name: string, val: string | null) {
@@ -154,6 +190,11 @@ export class NcModal extends CoreComponent {
             const open = this.hasAttribute('open');
             this.overlayEl.setAttribute('aria-hidden', String(!open));
             if (open) {
+                this._withPortalReparent(() => {
+                    this._releasePortal?.();
+                    this._releasePortal = portal(this, document.body);
+                });
+                this.overlayEl.scrollTop = 0;
                 this._releaseScroll?.();
                 this._releaseScroll = lockBodyScroll();
                 this._releaseFocus?.();
@@ -164,6 +205,10 @@ export class NcModal extends CoreComponent {
                 this._releaseFocus = null;
                 this._releaseScroll?.();
                 this._releaseScroll = null;
+                this._withPortalReparent(() => {
+                    this._releasePortal?.();
+                    this._releasePortal = null;
+                });
                 this.emit('close');
             }
         } else {
@@ -187,6 +232,8 @@ export class NcModal extends CoreComponent {
         this._releaseFocus = null;
         this._releaseScroll?.();
         this._releaseScroll = null;
+        this._releasePortal?.();
+        this._releasePortal = null;
     }
 }
 

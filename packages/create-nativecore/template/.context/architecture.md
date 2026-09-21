@@ -156,7 +156,7 @@ Empty protected group ships as `middleware: []` until authors attach tags.
 
 - One controller per view when logic is needed
 - Exported factory name must match `lazyController('name', ...)`
-- Barrel: `src/controllers/index.*` (updated by generators)
+- Wired only via `lazyController(...)` in `routes.*` — no controller barrel/registry
 
 ### Components
 

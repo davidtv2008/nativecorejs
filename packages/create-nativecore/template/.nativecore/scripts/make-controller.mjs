@@ -49,8 +49,7 @@ async function main() {
     // Paths
     const controllersDir = path.resolve(ROOT, 'src', 'controllers');
     const controllerFile = path.join(controllersDir, `${kebabName}.controller.${ext}`);
-    const indexFile = path.join(controllersDir, `index.${ext}`);
-    
+
     // Check if controller already exists
     if (fs.existsSync(controllerFile)) {
         console.error(`Error: Controller "${kebabName}.controller.${ext}" already exists`);
@@ -112,33 +111,16 @@ export function ${camelName}Controller(_params, _state, _loaderData, rootElement
 
     const controllerTemplate = useTypeScript ? tsTemplate : jsTemplate;
     
-    // Create controller file
+    // Create controller file (lazy-loaded via routes — no barrel/registry entry)
+    fs.mkdirSync(controllersDir, { recursive: true });
     fs.writeFileSync(controllerFile, controllerTemplate);
     console.log(`Created controller: src/controllers/${kebabName}.controller.${ext}`);
-    
-    // Update index file
-    if (fs.existsSync(indexFile)) {
-        let indexContent = fs.readFileSync(indexFile, 'utf-8');
-        const exportLine = `export { ${camelName}Controller } from './${kebabName}.controller.js';\n`;
-        
-        // Check if already exported
-        if (!indexContent.includes(`${camelName}Controller`)) {
-            indexContent += exportLine;
-            fs.writeFileSync(indexFile, indexContent);
-            console.log(`Added export to controllers/index.${ext}`);
-        }
-    } else {
-        // Create index file if it doesn't exist
-        const indexContent = `export { ${camelName}Controller } from './${kebabName}.controller.js';\n`;
-        fs.writeFileSync(indexFile, indexContent);
-        console.log(`Created controllers/index.${ext}`);
-    }
-    
+
     console.log('\nController created successfully!');
     console.log(`\nNext steps:`);
     console.log(`1. Register in routes: lazyController('${camelName}Controller', '../controllers/${kebabName}.controller.js')`);
     console.log(`2. Add your logic to: src/controllers/${kebabName}.controller.${ext}`);
-    
+
     rl.close();
 }
 

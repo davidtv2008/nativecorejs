@@ -26,7 +26,7 @@ component, controller, store, or view by hand.
 |--------|----------------|-----------------|
 | `make:component` | `src/components/ui/<name>.*` | `appRegistry.*` |
 | `make:core-component` | `src/components/core/nc-<name>.*` | `frameworkRegistry.*`, `preloadRegistry.*` |
-| `make:controller` | `src/controllers/<name>.controller.*` | `src/controllers/index.*` |
+| `make:controller` | `src/controllers/<name>.controller.*` | — (wire via `lazyController` in routes) |
 | `make:store` | `src/stores/<name>.store.*` | `src/stores/index.*` |
 | `make:view` / `make:page` | View HTML + optional controller | `routes.*`, viewsMap |
 | `make:middleware` | `src/middleware/<name>.middleware.*` | `app.*` `router.use(...)` |
@@ -37,8 +37,8 @@ component, controller, store, or view by hand.
 | `remove:middleware` | — | Removes middleware file, `app.*` import |
 
 > There are **no** `delete:*` scripts. Always use `remove:*`.
-> There is also no `remove:controller` — if you need to delete a controller,
-> remove the file and its export line from `src/controllers/index.*` manually.
+> There is also no `remove:controller` — if you need to delete a standalone
+> controller, remove the file and any `lazyController(...)` route wiring manually.
 
 ## Components
 
@@ -84,7 +84,8 @@ for app-specific UI.
 
 ## Controllers
 
-`make:controller` creates a controller file and a matching barrel export.
+`make:controller` creates a controller file only. Controllers are lazy-loaded
+from routes via `lazyController(...)` — there is no controller barrel/registry.
 Use it when you need a controller that is not paired with a new view:
 
 ```bash
@@ -272,7 +273,7 @@ fix is `remove:*` followed by `make:*`.
 |---------|-----|
 | `npm run make:component -- task-card --defaults` on PowerShell drops `--defaults` | Use `npm.cmd run make:component -- task-card --defaults` |
 | Using `delete:component` or `delete:view` | Those scripts do not exist — use `remove:*` |
-| `remove:controller` | Not available — delete file + barrel line manually |
+| `remove:controller` | Not available — delete file + any `lazyController(...)` route wiring manually |
 | Hand-creating a component and forgetting the registry line | Run `remove:component` then `make:component` to re-generate cleanly |
 | Generator runs but file extension is wrong | Check `nativecore.config.json` — `"useTypeScript"` must be set correctly |
 | Forgetting `npm run compile` after generating in a stopped dev server | The watcher is off — run `npm run compile` manually |

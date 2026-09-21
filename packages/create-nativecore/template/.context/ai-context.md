@@ -389,7 +389,7 @@ registerAppComponents();
 |--------|-------------------|
 | `make:component` | `src/components/ui/*` + `appRegistry` |
 | `make:core-component` | `src/components/core/nc-*` + `frameworkRegistry` |
-| `make:controller` | `src/controllers/*.controller.*` + index barrel |
+| `make:controller` | `src/controllers/*.controller.*` (wire via `lazyController` in routes) |
 | `make:store` | `src/stores/*.store.*` + index barrel |
 | `make:view` / `make:page` | view HTML, optional controller, routes, viewsMap |
 | `make:middleware` | middleware file + `app.*` import/`router.use` |

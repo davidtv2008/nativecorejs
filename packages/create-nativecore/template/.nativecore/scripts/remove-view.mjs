@@ -60,10 +60,6 @@ function toFlatName(value) {
   return value.split('/').join('-');
 }
 
-function toControllerName(flatName) {
-  return flatName.split('-').map((word, index) => index === 0 ? word : word.charAt(0).toUpperCase() + word.slice(1)).join('');
-}
-
 function escapeRegExp(value) {
   return value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 }
@@ -139,7 +135,6 @@ async function removeView() {
   }
 
   const flatName = toFlatName(normalizedViewPath);
-  const controllerName = toControllerName(flatName);
   const summary = { removed: [], updated: [], skipped: [], failed: [] };
 
   const publicViewPath = path.resolve(ROOT, 'src', 'views', 'public', `${normalizedViewPath}.html`);
@@ -149,7 +144,6 @@ async function removeView() {
   const publicViewsRoot = path.resolve(ROOT, 'src', 'views', 'public');
   const protectedViewsRoot = path.resolve(ROOT, 'src', 'views', 'protected');
   const controllerPath = path.resolve(ROOT, 'src', 'controllers', `${flatName}.controller.${ext}`);
-  const controllersIndexPath = path.resolve(ROOT, 'src', 'controllers', `index.${ext}`);
   const routesPath = path.resolve(ROOT, 'src', 'routes', `routes.${ext}`);
   const indexPath = path.resolve(ROOT, 'index.html');
   const headerPath = path.resolve(ROOT, 'src', 'components', 'core', `app-header.${ext}`);
@@ -223,22 +217,6 @@ async function removeView() {
     }
   } else {
     addSummary(summary, 'skipped', `Already missing: src/controllers/${flatName}.controller.${ext}`);
-  }
-
-  if (fs.existsSync(controllersIndexPath)) {
-    try {
-      const exportPattern = new RegExp(`export \\{ ${controllerName}Controller \\} from '\\.\\/${flatName}\\.controller\\.js';\\r?\\n`, 'g');
-      const existingContent = fs.readFileSync(controllersIndexPath, 'utf8');
-      const updatedContent = existingContent.replace(exportPattern, '');
-      if (updatedContent !== existingContent) {
-        fs.writeFileSync(controllersIndexPath, updatedContent);
-        addSummary(summary, 'updated', `src/controllers/index.${ext}`);
-      } else {
-        addSummary(summary, 'skipped', `No controller export to remove in src/controllers/index.${ext}`);
-      }
-    } catch (error) {
-      addSummary(summary, 'failed', `Could not update src/controllers/index.${ext}: ${error.message}`);
-    }
   }
 
   let removedRoutePaths = [];
