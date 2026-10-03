@@ -358,11 +358,11 @@ export const dom = {
         createDataScope(viewName, root),
 };
 
-if (typeof window !== 'undefined') {
+if (typeof window !== 'undefined' && !Object.getOwnPropertyDescriptor(window, 'dom')) {
     Object.defineProperty(window, 'dom', {
         value: Object.freeze(dom),
         writable: false,
-        configurable: false,
+        configurable: true,
     });
 }
 
