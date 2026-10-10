@@ -500,6 +500,13 @@ export class Router {
                 hasWarmHtmlCache &&
                 route.config.disableTransition !== true &&
                 previousRoute?.config?.htmlFile !== route.config.htmlFile;
+            // Prefer the View Transitions API (native crossfade of the old and new
+            // content). Fall back to the class-based fade when unsupported, and skip
+            // motion entirely when the user prefers reduced motion.
+            const useViewTransition =
+                shouldAnimateTransition &&
+                'startViewTransition' in document &&
+                !window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
 
             // Avoid first-paint flash on SSG pages: no progress bar / scroll jump.
             if (!isPrerenderedInitialRoute) {
@@ -520,7 +527,7 @@ export class Router {
             let mountedLayouts: RouteMatch[] = [];
             let pageRoot: HTMLElement = mainContent;
             if (!isPrerenderedInitialRoute) {
-                if (shouldAnimateTransition) {
+                if (shouldAnimateTransition && !useViewTransition) {
                     mainContent.classList.add('page-transition-exit');
                     await new Promise(resolve => setTimeout(resolve, 50));
 
@@ -561,14 +568,22 @@ export class Router {
                     lastRendered?.file === route.config.htmlFile &&
                     lastRendered?.html === html;
 
-                if (!shouldSkipRender) {
-                    contentTarget.innerHTML = html;
-                    this.renderedHtmlCache.set(contentTarget, { file: route.config.htmlFile, html });
-                }
+                const swapContent = (): void => {
+                    if (!shouldSkipRender) {
+                        contentTarget.innerHTML = html;
+                        this.renderedHtmlCache.set(contentTarget, { file: route.config.htmlFile, html });
+                    }
+                };
 
-                if (shouldAnimateTransition) {
-                    mainContent.classList.remove('page-transition-exit');
-                    mainContent.classList.add('page-transition-enter');
+                if (useViewTransition) {
+                    // The browser snapshots the old page, runs the swap, then animates.
+                    await this.runViewTransition(mainContent, swapContent);
+                } else {
+                    swapContent();
+                    if (shouldAnimateTransition) {
+                        mainContent.classList.remove('page-transition-exit');
+                        mainContent.classList.add('page-transition-enter');
+                    }
                 }
 
                 pageRoot = contentTarget.querySelector<HTMLElement>('[data-view]') ?? contentTarget;
@@ -658,6 +673,35 @@ export class Router {
      * Prefer the explicit `data-prerendered-route` marker written by SSG; fall back
      * to detecting non-shell view content so a missed marker still avoids a flash.
      */
+    /**
+     * Run a DOM update inside a View Transition scoped to `target`.
+     * The target gets a dedicated view-transition-name so it animates as its
+     * own group while the surrounding app shell stays put. The name is removed
+     * once the transition finishes. Resolves when the DOM update has run.
+     */
+    private runViewTransition(target: HTMLElement, update: () => void): Promise<void> {
+        const doc = document as Document & {
+            startViewTransition: (callback: () => void) => {
+                updateCallbackDone: Promise<void>;
+                finished: Promise<void>;
+            };
+        };
+        const previousName = target.style.viewTransitionName;
+        target.style.viewTransitionName = 'nc-page';
+
+        const transition = doc.startViewTransition(() => update());
+        const restoreName = (): void => {
+            if (target.style.viewTransitionName === 'nc-page') {
+                target.style.viewTransitionName = previousName;
+            }
+        };
+        transition.finished.then(restoreName, restoreName);
+
+        // A thrown update should surface to the navigation's error handling,
+        // so only the transition's own callback promise is awaited here.
+        return transition.updateCallbackDone;
+    }
+
     private isPrerenderedInitialRoute(
         mainContent: HTMLElement,
         route: RouteMatch,
