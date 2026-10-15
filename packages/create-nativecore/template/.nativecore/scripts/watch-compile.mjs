@@ -274,7 +274,9 @@ function watchCssBundle() {
 // and restart the esbuild context so it picks up the new entry point.
 
 function watchForNewFiles() {
-    const fileExtPattern = useTypeScript ? /\.ts$/ : /\.js$/;
+    // App JS mode still compiles .nativecore/**/*.ts; watch both so new
+    // framework utils (e.g. viewTransitions.ts) restart the esbuild context.
+    const fileExtPattern = useTypeScript ? /\.ts$/ : /\.(?:js|ts)$/;
     let restartTimer = null;
 
     const watchDir = (relativeRoot) => {

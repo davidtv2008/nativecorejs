@@ -5,6 +5,7 @@
 
 import { bustCache } from '../utils/cacheBuster.js';
 import { flushPageCleanups } from '../core/pageCleanupRegistry.js';
+import { isBenignViewTransitionAbort } from '../utils/viewTransitions.js';
 
 // Types
 export interface CachePolicy {
@@ -506,6 +507,7 @@ export class Router {
             const useViewTransition =
                 shouldAnimateTransition &&
                 'startViewTransition' in document &&
+                !document.hidden &&
                 !window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
 
             // Avoid first-paint flash on SSG pages: no progress bar / scroll jump.
@@ -680,26 +682,56 @@ export class Router {
      * once the transition finishes. Resolves when the DOM update has run.
      */
     private runViewTransition(target: HTMLElement, update: () => void): Promise<void> {
+        // Tab backgrounded / minimized — VT rejects with "Document hidden".
+        if (document.hidden) {
+            update();
+            return Promise.resolve();
+        }
+
         const doc = document as Document & {
             startViewTransition: (callback: () => void) => {
                 updateCallbackDone: Promise<void>;
+                ready: Promise<void>;
                 finished: Promise<void>;
             };
         };
         const previousName = target.style.viewTransitionName;
         target.style.viewTransitionName = 'nc-page';
 
-        const transition = doc.startViewTransition(() => update());
         const restoreName = (): void => {
             if (target.style.viewTransitionName === 'nc-page') {
                 target.style.viewTransitionName = previousName;
             }
         };
-        transition.finished.then(restoreName, restoreName);
 
-        // A thrown update should surface to the navigation's error handling,
-        // so only the transition's own callback promise is awaited here.
-        return transition.updateCallbackDone;
+        try {
+            const transition = doc.startViewTransition(() => update());
+            // `ready` rejects when the document is hidden mid-transition; leave it
+            // handled so it never becomes an unhandledrejection / error-boundary crash.
+            void transition.ready.then(undefined, (reason) => {
+                if (!isBenignViewTransitionAbort(reason)) {
+                    console.warn('View transition ready failed:', reason);
+                }
+            });
+            transition.finished.then(restoreName, restoreName);
+
+            // A thrown update should surface to the navigation's error handling,
+            // so only the transition's own callback promise is awaited here.
+            return transition.updateCallbackDone.catch((reason) => {
+                restoreName();
+                if (isBenignViewTransitionAbort(reason)) {
+                    return;
+                }
+                throw reason;
+            });
+        } catch (reason) {
+            restoreName();
+            if (isBenignViewTransitionAbort(reason)) {
+                update();
+                return Promise.resolve();
+            }
+            throw reason;
+        }
     }
 
     private isPrerenderedInitialRoute(

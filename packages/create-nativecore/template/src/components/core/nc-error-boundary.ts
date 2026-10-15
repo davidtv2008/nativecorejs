@@ -39,6 +39,7 @@
  */
 import { CoreComponent, defineComponent } from '@core/component.js';
 import { html, raw } from '@core-utils/templates.js';
+import { isBenignViewTransitionAbort } from '@core-utils/viewTransitions.js';
 
 export interface NcErrorDetail {
     error: unknown;
@@ -255,6 +256,11 @@ export class NcErrorBoundary extends CoreComponent {
 
     private _onUnhandledRejection = (event: PromiseRejectionEvent) => {
         const reason = event.reason;
+        // View Transitions abort when the tab is hidden — not an app failure.
+        if (isBenignViewTransitionAbort(reason)) {
+            event.preventDefault();
+            return;
+        }
         this._capture({
             error: reason,
             message: reason instanceof Error ? reason.message : String(reason ?? 'Unhandled promise rejection'),
